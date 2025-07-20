@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PawPrint, PlusCircle, Download, Settings, List, LayoutGrid } from 'lucide-react';
+import { PawPrint, PlusCircle, Download, Settings, List, LayoutGrid, Shield } from 'lucide-react';
 import { Animal } from '@/lib/types';
 import { AnimalTable } from '@/components/animal-table';
 import { useState, useEffect } from 'react';
@@ -84,7 +84,13 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                 <PlusCircle className="mr-2" />
                 Add Animal
               </Button>
-               <Button variant="secondary">
+              <Button asChild variant="outline">
+                <Link href="/compliance">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Compliance
+                </Link>
+              </Button>
+              <Button variant="secondary">
                 <Download className="mr-2" />
                 Export All
               </Button>

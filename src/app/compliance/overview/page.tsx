@@ -1,0 +1,435 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { 
+  CheckCircle, 
+  AlertTriangle, 
+  XCircle, 
+  Calendar, 
+  Users, 
+  Shield, 
+  FileText,
+  TrendingUp,
+  TrendingDown,
+  Activity
+} from "lucide-react";
+import { 
+  getAnimals, 
+  getUsers, 
+  getReleaseChecklists, 
+  getHygieneLogs, 
+  getIncidentReports 
+} from "@/lib/data";
+import Link from "next/link";
+
+export default async function ComplianceOverviewPage() {
+  const animals = await getAnimals();
+  const users = await getUsers();
+  const releaseChecklists = await getReleaseChecklists();
+  const hygieneLogs = await getHygieneLogs();
+  const incidentReports = await getIncidentReports();
+
+  const carers = users.filter(user => user.role === 'Carer');
+  const animalsInCare = animals.filter(a => a.status === 'In Care');
+  const releasedAnimals = animals.filter(a => a.status === 'Released');
+
+  // Calculate compliance metrics
+  const getDaysUntilExpiry = (expiryDate: string) => {
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    const diffTime = expiry.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const expiringLicences = carers.filter(c => {
+    const daysUntil = getDaysUntilExpiry(c.licenceExpiry || '');
+    return daysUntil <= 30 && daysUntil > 0;
+  });
+
+  const expiredLicences = carers.filter(c => {
+    const daysUntil = getDaysUntilExpiry(c.licenceExpiry || '');
+    return daysUntil < 0;
+  });
+
+  const getHygieneComplianceScore = (log: any) => {
+    const checks = [
+      log.enclosureCleaned,
+      log.ppeUsed,
+      log.handwashAvailable,
+      log.feedingBowlsDisinfected,
+      log.quarantineSignsPresent
+    ];
+    const passed = checks.filter(Boolean).length;
+    return Math.round((passed / checks.length) * 100);
+  };
+
+  const avgHygieneScore = hygieneLogs.length > 0 
+    ? Math.round(hygieneLogs.reduce((sum, log) => sum + getHygieneComplianceScore(log), 0) / hygieneLogs.length)
+    : 0;
+
+  const criticalIncidents = incidentReports.filter(i => i.type === 'Escape' || i.type === 'Injury');
+
+  // Overall compliance score calculation
+  const complianceFactors = [
+    { name: 'Licence Compliance', score: Math.max(0, 100 - (expiredLicences.length * 20)) },
+    { name: 'Hygiene Compliance', score: avgHygieneScore },
+    { name: 'Release Compliance', score: releaseChecklists.filter(r => r.within10km).length > 0 ? 100 : 80 },
+    { name: 'Incident Management', score: criticalIncidents.length === 0 ? 100 : Math.max(60, 100 - (criticalIncidents.length * 10)) }
+  ];
+
+  const overallCompliance = Math.round(complianceFactors.reduce((sum, factor) => sum + factor.score, 0) / complianceFactors.length);
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Compliance Overview</h1>
+          <p className="text-muted-foreground">
+            ACT Wildlife Compliance Status Dashboard
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline">
+            <FileText className="h-4 w-4 mr-2" />
+            Generate Report
+          </Button>
+          <Button variant="outline">
+            <Calendar className="h-4 w-4 mr-2" />
+            Schedule Audit
+          </Button>
+        </div>
+      </div>
+
+      {/* Overall Compliance Score */}
+      <Card className="border-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-6 w-6" />
+            Overall Compliance Score
+          </CardTitle>
+          <CardDescription>
+            Comprehensive compliance assessment across all ACT requirements
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="text-4xl font-bold">
+                  {overallCompliance}%
+                </div>
+                <div>
+                  <Badge 
+                    variant={
+                      overallCompliance >= 90 ? 'secondary' :
+                      overallCompliance >= 75 ? 'outline' : 'destructive'
+                    }
+                    className="text-lg"
+                  >
+                    {overallCompliance >= 90 ? 'Excellent' :
+                     overallCompliance >= 75 ? 'Good' : 'Needs Attention'}
+                  </Badge>
+                </div>
+              </div>
+              <Progress value={overallCompliance} className="h-3" />
+              <p className="text-sm text-muted-foreground mt-2">
+                Based on licence compliance, hygiene standards, release protocols, and incident management
+              </p>
+            </div>
+            <div className="space-y-3">
+              {complianceFactors.map((factor, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{factor.name}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-20 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full ${
+                          factor.score >= 90 ? 'bg-green-600' :
+                          factor.score >= 75 ? 'bg-yellow-600' : 'bg-red-600'
+                        }`}
+                        style={{ width: `${factor.score}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium w-8">{factor.score}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold">{carers.length}</div>
+                <div className="text-sm text-muted-foreground">Active Carers</div>
+              </div>
+              <Users className="h-8 w-8 text-blue-600" />
+            </div>
+            <div className="mt-2">
+              {expiredLicences.length > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  {expiredLicences.length} expired
+                </Badge>
+              )}
+              {expiringLicences.length > 0 && (
+                <Badge variant="outline" className="text-xs ml-1">
+                  {expiringLicences.length} expiring
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold">{animalsInCare.length}</div>
+                <div className="text-sm text-muted-foreground">Animals in Care</div>
+              </div>
+              <Shield className="h-8 w-8 text-green-600" />
+            </div>
+            <div className="mt-2">
+              <div className="text-xs text-muted-foreground">
+                {releasedAnimals.length} successfully released
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold">{avgHygieneScore}%</div>
+                <div className="text-sm text-muted-foreground">Hygiene Compliance</div>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+            <div className="mt-2">
+              <div className="text-xs text-muted-foreground">
+                Based on {hygieneLogs.length} daily logs
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold">{criticalIncidents.length}</div>
+                <div className="text-sm text-muted-foreground">Critical Incidents</div>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+            </div>
+            <div className="mt-2">
+              <div className="text-xs text-muted-foreground">
+                {incidentReports.length} total incidents
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Alerts and Warnings */}
+      <div className="space-y-4">
+        {expiredLicences.length > 0 && (
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-800">
+                <XCircle className="h-5 w-5" />
+                Expired Licences
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {expiredLicences.map(carer => (
+                  <div key={carer.id} className="flex items-center justify-between p-2 bg-white rounded">
+                    <div>
+                      <span className="font-medium">{carer.fullName}</span>
+                      <span className="text-muted-foreground ml-2">
+                        expired {carer.licenceExpiry}
+                      </span>
+                    </div>
+                    <Link href={`/compliance/carers/${carer.id}`}>
+                      <Button variant="outline" size="sm">
+                        Review
+                      </Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {expiringLicences.length > 0 && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-800">
+                <AlertTriangle className="h-5 w-5" />
+                Licences Expiring Soon
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {expiringLicences.map(carer => (
+                  <div key={carer.id} className="flex items-center justify-between p-2 bg-white rounded">
+                    <div>
+                      <span className="font-medium">{carer.fullName}</span>
+                      <span className="text-muted-foreground ml-2">
+                        expires {carer.licenceExpiry} ({getDaysUntilExpiry(carer.licenceExpiry || '')} days)
+                      </span>
+                    </div>
+                    <Link href={`/compliance/carers/${carer.id}`}>
+                      <Button variant="outline" size="sm">
+                        Renew
+                      </Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {criticalIncidents.length > 0 && (
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-800">
+                <AlertTriangle className="h-5 w-5" />
+                Recent Critical Incidents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {criticalIncidents.slice(0, 3).map(incident => (
+                  <div key={incident.id} className="flex items-center justify-between p-2 bg-white rounded">
+                    <div>
+                      <span className="font-medium">{incident.type}</span>
+                      <span className="text-muted-foreground ml-2">
+                        {incident.date} - {incident.description.substring(0, 50)}...
+                      </span>
+                    </div>
+                    <Link href={`/compliance/incidents/${incident.id}`}>
+                      <Button variant="outline" size="sm">
+                        Review
+                      </Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>
+            Common compliance tasks and reports
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link href="/compliance/register">
+              <Button variant="outline" className="w-full h-20 flex-col">
+                <FileText className="h-6 w-6 mb-2" />
+                Wildlife Register
+              </Button>
+            </Link>
+            <Link href="/compliance/release-checklist">
+              <Button variant="outline" className="w-full h-20 flex-col">
+                <CheckCircle className="h-6 w-6 mb-2" />
+                Release Checklists
+              </Button>
+            </Link>
+            <Link href="/compliance/hygiene">
+              <Button variant="outline" className="w-full h-20 flex-col">
+                <Shield className="h-6 w-6 mb-2" />
+                Hygiene Logs
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Compliance Trends */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Monthly Compliance Trends
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Licence Compliance</span>
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium">+5%</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Hygiene Standards</span>
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium">+2%</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Release Compliance</span>
+                <div className="flex items-center gap-1">
+                  <TrendingDown className="h-4 w-4 text-red-600" />
+                  <span className="text-sm font-medium">-1%</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Upcoming Deadlines
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {expiringLicences.slice(0, 3).map(carer => (
+                <div key={carer.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <div>
+                    <div className="font-medium">{carer.fullName}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Licence expires {carer.licenceExpiry}
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {getDaysUntilExpiry(carer.licenceExpiry || '')} days
+                  </Badge>
+                </div>
+              ))}
+              {expiringLicences.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  No upcoming deadlines
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+} 
