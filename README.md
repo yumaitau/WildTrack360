@@ -1,6 +1,6 @@
 # WildHub - Wildlife Conservation Management System
 
-WildHub is a comprehensive wildlife conservation management application designed to help wildlife carers track animals throughout their entire lifecycle, from initial admission to release or unfortunate passing. The system also manages critical assets like GPS trackers and equipment to ensure efficient wildlife care operations.
+WildHub is a comprehensive wildlife conservation management application designed to help wildlife carers track animals throughout their entire lifecycle, from initial admission to release or unfortunate passing. The system also manages critical assets like GPS trackers and equipment to ensure efficient wildlife care operations, with full compliance tracking for ACT Wildlife Code of Practice requirements.
 
 ## 🖼️ Screenshots
 
@@ -14,6 +14,76 @@ The dashboard provides a comprehensive overview of your wildlife conservation op
 - **Species Distribution Chart**: Visual breakdown of animals by species (Koala, Possum, Wombat, Turtle, Kookaburra, Echidna, Kangaroo)
 - **Carer Workload Chart**: Distribution of animals among carers (John Smith, Susan Williams, Jane Doe, Peter Jones)
 - **Action Buttons**: Add Animal, Export All, and Settings options
+
+### ACT Wildlife Compliance Toolkit
+The compliance dashboard provides comprehensive tools for managing ACT Wildlife Code of Practice requirements:
+
+![Compliance Dashboard](docs/images/compliance-home.png)
+
+**Features shown:**
+- **Compliance Modules**: Wildlife Register, Release Checklist, Carer Management, Hygiene Logs, Incident Reports
+- **Compliance Status**: Real-time compliance scoring and status indicators
+- **ACT Requirements**: Section-specific compliance tracking (7.1.1, 6.1-6.3, 5.2.x, etc.)
+- **Quick Actions**: Export functionality and detailed view access
+
+### Wildlife Admission & Outcome Register
+Complete record keeping for all wildlife admissions with ACT compliance requirements:
+
+![Wildlife Register](docs/images/wildlife-admission-register.png)
+
+**Features shown:**
+- **Comprehensive Records**: Animal ID, species, sex, age class, rescue details
+- **Search & Filter**: Advanced filtering by species, status, carer, and date ranges
+- **Export Capability**: CSV and PDF export for compliance reporting
+- **3+ Year Retention**: Automatic record retention for regulatory compliance
+
+### Release Site Checklist
+Ensure ethical and ecologically sound releases with compliance verification:
+
+![Release Checklist](docs/images/release-site-checklist.png)
+
+**Features shown:**
+- **Distance Enforcement**: 10km distance checking with GPS coordinates
+- **Fitness Assessment**: Pre-release health and behavior indicators
+- **Veterinary Sign-off**: Required vet approval for juveniles and long-term care
+- **Release Types**: Soft, Hard, and Passive release tracking
+- **Compliance Scoring**: Real-time compliance status and ACT requirements
+
+### Carer Licence & CPD Tracker
+Manage carer licences, training, and continuing professional development:
+
+![Carer Management](docs/images/career-license-management.png)
+
+**Features shown:**
+- **Licence Management**: Expiry tracking with 30-day reminders
+- **Training History**: Course completion and certification tracking
+- **Authorised Species**: Species-specific authorization management
+- **Compliance Alerts**: Automatic notifications for expiring licences
+- **Performance Tracking**: Carer workload and outcome monitoring
+
+### Daily Hygiene & Biosecurity Log
+Track daily cleaning protocols and biosecurity compliance:
+
+![Hygiene Management](docs/images/daily-hygine-management.png)
+
+**Features shown:**
+- **Daily Protocols**: Enclosure cleaning, PPE usage, handwashing verification
+- **Compliance Scoring**: Real-time compliance percentage calculation
+- **Biosecurity Tracking**: Quarantine procedures and disease prevention
+- **Photo Documentation**: Visual evidence of cleaning procedures
+- **Weekly Reports**: Automated compliance reporting
+
+### Incident Report Log
+Comprehensive incident tracking and reporting for regulatory compliance:
+
+![Incident Reports](docs/images/incident-report-logs.png)
+
+**Features shown:**
+- **Incident Classification**: Escape, Injury, Disease Outbreak, Improper Handling
+- **Critical Incident Alerts**: Immediate notification for serious incidents
+- **Authority Reporting**: Automatic escalation to relevant authorities
+- **Timeline Tracking**: Incident occurrence, action taken, and follow-up
+- **Documentation**: Complete audit trail with attachments
 
 ### Recent Admissions & Animal Records
 Track admissions over time and browse individual animal profiles:
@@ -66,6 +136,16 @@ Track GPS trackers and equipment inventory:
 - **Carer Workload Management**: Monitor animal distribution across carers to ensure balanced workloads
 - **Recent Admissions Tracking**: View admission trends over the last 30 days with interactive filtering
 
+### 🛡️ ACT Wildlife Compliance Toolkit
+- **Wildlife Admission & Outcome Register**: Complete record keeping with 3+ year retention (Section 7.1.1, 7.1.2)
+- **Release Site Checklist**: Distance enforcement, fitness assessment, and vet sign-off (Section 6.1-6.3)
+- **Carer Licence & CPD Tracker**: Licence expiry tracking and training management
+- **Daily Hygiene & Biosecurity Log**: Daily cleaning protocols and compliance scoring (Section 5.2.x)
+- **Incident Report Log**: Comprehensive incident tracking and authority reporting (Section 5.1.3, 5.2.4, 6.4)
+- **Compliance Dashboard**: Real-time compliance scoring and status monitoring
+- **Export Functionality**: PDF and CSV export for regulatory reporting
+- **Jurisdiction Awareness**: ACT-specific requirements and policy enforcement
+
 ### 🐨 Animal Lifecycle Management
 - **Complete Animal Profiles**: Detailed records including species, carer assignment, and admission date
 - **Care Activity Logging**: Add detailed records for each care activity with timestamps and notes
@@ -77,6 +157,8 @@ Track GPS trackers and equipment inventory:
 - **Carer Assignment**: Assign animals to specific carers with workload balancing
 - **Performance Tracking**: Monitor carer performance and animal outcomes
 - **Workload Distribution**: Visual charts showing animal distribution across carers
+- **Licence Management**: Track licence expiry dates and training requirements
+- **Authorised Species**: Manage species-specific authorizations for each carer
 
 ### 🏷️ Species Management
 - **Species Database**: Maintain a comprehensive list of wildlife species
@@ -93,6 +175,14 @@ Track GPS trackers and equipment inventory:
 - **Animal Search**: Find specific animals by name or characteristics
 - **Grid/List Views**: Toggle between different viewing modes
 - **Date-based Filtering**: Filter records by admission dates and time periods
+- **Compliance Filtering**: Filter by compliance status and requirements
+
+### 📋 Compliance Features
+- **Real-time Compliance Scoring**: Automatic calculation of compliance percentages
+- **ACT Code Reference**: Direct links to relevant sections of ACT Wildlife Code
+- **Alert System**: Notifications for non-compliance and expiring items
+- **Audit Trail**: Complete documentation for regulatory inspections
+- **Multi-tenant Support**: Jurisdiction-aware feature toggling
 
 ## 🚀 Getting Started
 
@@ -156,6 +246,12 @@ WildHub/
 │   ├── app/                    # Next.js app directory
 │   │   ├── admin/             # Admin panel pages
 │   │   ├── animals/           # Animal management pages
+│   │   ├── compliance/        # ACT Compliance Toolkit pages
+│   │   │   ├── carers/        # Carer management and licensing
+│   │   │   ├── hygiene/       # Daily hygiene and biosecurity logs
+│   │   │   ├── incidents/     # Incident reporting and tracking
+│   │   │   ├── register/      # Wildlife admission register
+│   │   │   └── release-checklist/ # Release site compliance
 │   │   └── layout.tsx         # Root layout
 │   ├── components/            # Reusable UI components
 │   │   ├── ui/               # Base UI components
@@ -191,6 +287,8 @@ WildHub/
 - **Dialogs**: Modal interfaces for adding/editing records with Radix UI
 - **AI Integration**: Genkit-powered features for enhanced functionality
 - **Carousel**: Image galleries and content sliders with Embla Carousel
+- **Compliance Components**: Compliance scoring, status badges, and requirement tracking
+- **Navigation**: Consistent home and back navigation throughout the application
 
 ## 📄 License
 
