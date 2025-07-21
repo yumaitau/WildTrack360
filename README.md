@@ -183,6 +183,30 @@ Track GPS trackers and equipment inventory:
 - **Alert System**: Notifications for non-compliance and expiring items
 - **Audit Trail**: Complete documentation for regulatory inspections
 - **Multi-tenant Support**: Jurisdiction-aware feature toggling
+- **Jurisdiction Configuration**: Dynamic compliance requirements based on jurisdiction
+
+### 🌍 Multi-Jurisdiction Support
+WildHub supports multiple jurisdictions with different compliance requirements:
+
+**ACT (Australian Capital Territory)**
+- **Enabled Forms**: Release Checklist, Incident Log, Hygiene Log, Carer Licence
+- **Templates**: ACT Register, ACT Release Checklist
+- **Release Distance**: Enforced (10km rule)
+- **Vet Sign-off**: Required for juveniles and long-term care
+- **Record Retention**: 3+ years
+
+**NSW (New South Wales)**
+- **Enabled Forms**: Release Checklist, Incident Log
+- **Templates**: NSW Register
+- **Release Distance**: Not enforced
+- **Vet Sign-off**: Not required
+- **Record Retention**: 2+ years
+
+**Jurisdiction Configuration System**
+- **Dynamic Feature Toggling**: Forms and requirements automatically adjust based on jurisdiction
+- **Template Management**: Jurisdiction-specific templates and forms
+- **Compliance Enforcement**: Automatic enforcement of jurisdiction-specific rules
+- **Scalable Architecture**: Easy addition of new jurisdictions and requirements
 
 ## 🚀 Getting Started
 
@@ -276,6 +300,7 @@ WildHub/
 - **Database**: Firebase 11.9.1
 - **Date Handling**: date-fns 3.6.0
 - **Carousel**: Embla Carousel React 8.6.0
+- **Configuration Management**: Dynamic jurisdiction-based feature toggling and compliance enforcement
 
 ## 📋 Key Components
 
