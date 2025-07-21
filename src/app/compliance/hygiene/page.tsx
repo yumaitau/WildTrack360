@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -5,13 +7,55 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Shield, Calendar, CheckCircle, XCircle, Download, Plus, AlertTriangle, ArrowLeft } from "lucide-react";
 import { getHygieneLogs, getUsers } from "@/lib/data";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import jsPDF from 'jspdf';
 
-export default async function HygieneLogPage() {
-  const hygieneLogs = await getHygieneLogs();
-  const users = await getUsers();
+export default function HygieneLogPage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [hygieneLogs, users] = await Promise.all([
+          getHygieneLogs(),
+          getUsers()
+        ]);
+        setData({ hygieneLogs, users });
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading hygiene data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-red-600">Error loading data</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { hygieneLogs, users } = data;
 
   const getCarerName = (carerId: string) => {
-    const carer = users.find(u => u.id === carerId);
+    const carer = users.find((u: any) => u.id === carerId);
     return carer?.fullName || 'Unknown';
   };
 
@@ -50,9 +94,155 @@ export default async function HygieneLogPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button 
+            variant="outline"
+            onClick={() => {
+              // Generate CSV export
+              const csvContent = [
+                ['Date', 'Carer', 'Enclosure Cleaned', 'PPE Used', 'Handwash Available', 'Bowls Disinfected', 'Quarantine Signs', 'Compliance Score', 'Notes'],
+                ...hygieneLogs.map((log: any) => {
+                  const complianceScore = getComplianceScore(log);
+                  return [
+                    log.date,
+                    getCarerName(log.carerId),
+                    log.enclosureCleaned ? 'Yes' : 'No',
+                    log.ppeUsed ? 'Yes' : 'No',
+                    log.handwashAvailable ? 'Yes' : 'No',
+                    log.feedingBowlsDisinfected ? 'Yes' : 'No',
+                    log.quarantineSignsPresent ? 'Yes' : 'No',
+                    `${complianceScore}%`,
+                    log.notes || ''
+                  ];
+                })
+              ].map(row => row.join(',')).join('\n');
+              
+              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `hygiene-logs-${new Date().toISOString().split('T')[0]}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+          >
             <Download className="h-4 w-4 mr-2" />
-            Export Weekly Report
+            Export CSV
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => {
+              // Generate PDF export
+              const doc = new jsPDF();
+              const pageWidth = doc.internal.pageSize.getWidth();
+              const margin = 20;
+              let yPosition = 20;
+              
+              // Header
+              doc.setFontSize(20);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Daily Hygiene & Biosecurity Log Report', pageWidth / 2, yPosition, { align: 'center' });
+              
+              yPosition += 15;
+              doc.setFontSize(12);
+              doc.setFont('helvetica', 'normal');
+              doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
+              
+              yPosition += 20;
+              
+              // Statistics
+              doc.setFontSize(14);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Summary Statistics', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'normal');
+              
+              const totalEntries = hygieneLogs.length;
+              const fullyCompliant = hygieneLogs.filter((log: any) => getComplianceScore(log) === 100).length;
+              const mostlyCompliant = hygieneLogs.filter((log: any) => {
+                const score = getComplianceScore(log);
+                return score >= 80 && score < 100;
+              }).length;
+              const nonCompliant = hygieneLogs.filter((log: any) => getComplianceScore(log) < 80).length;
+              
+              doc.text(`Total Log Entries: ${totalEntries}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Fully Compliant: ${fullyCompliant}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Mostly Compliant: ${mostlyCompliant}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Non-Compliant: ${nonCompliant}`, margin + 10, yPosition);
+              
+              yPosition += 15;
+              
+              // Log entries table
+              doc.setFontSize(14);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Hygiene Log Entries', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(8);
+              doc.setFont('helvetica', 'normal');
+              
+              // Table headers
+              const headers = ['Date', 'Carer', 'Score', 'Status'];
+              const colWidths = [30, 50, 20, 30];
+              let xPos = margin;
+              
+              headers.forEach((header, index) => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(header, xPos, yPosition);
+                xPos += colWidths[index];
+              });
+              
+              yPosition += 5;
+              
+              // Table data
+              hygieneLogs.slice(0, 20).forEach((log: any) => {
+                if (yPosition > 250) {
+                  doc.addPage();
+                  yPosition = 20;
+                }
+                
+                const complianceScore = getComplianceScore(log);
+                const complianceStatus = getComplianceStatus(complianceScore);
+                
+                xPos = margin;
+                doc.setFont('helvetica', 'normal');
+                doc.text(log.date, xPos, yPosition);
+                xPos += colWidths[0];
+                doc.text(getCarerName(log.carerId), xPos, yPosition);
+                xPos += colWidths[1];
+                doc.text(`${complianceScore}%`, xPos, yPosition);
+                xPos += colWidths[2];
+                doc.text(complianceStatus, xPos, yPosition);
+                
+                yPosition += 5;
+              });
+              
+              if (hygieneLogs.length > 20) {
+                yPosition += 5;
+                doc.text(`... and ${hygieneLogs.length - 20} more entries`, margin, yPosition);
+              }
+              
+              // Footer
+              doc.addPage();
+              yPosition = 20;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'italic');
+              doc.text('This report was generated automatically by WildHub Compliance System.', margin, yPosition);
+              yPosition += 7;
+              doc.text('For questions or concerns, please contact your compliance coordinator.', margin, yPosition);
+              
+              // Save the PDF
+              doc.save(`hygiene-logs-${new Date().toISOString().split('T')[0]}.pdf`);
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export PDF
           </Button>
           <Link href="/compliance/hygiene/new">
             <Button>
@@ -74,7 +264,7 @@ export default async function HygieneLogPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">
-              {hygieneLogs.filter(log => getComplianceScore(log) === 100).length}
+              {hygieneLogs.filter((log: any) => getComplianceScore(log) === 100).length}
             </div>
             <div className="text-sm text-muted-foreground">Fully Compliant</div>
           </CardContent>
@@ -82,7 +272,7 @@ export default async function HygieneLogPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-orange-600">
-              {hygieneLogs.filter(log => {
+              {hygieneLogs.filter((log: any) => {
                 const score = getComplianceScore(log);
                 return score >= 80 && score < 100;
               }).length}
@@ -93,7 +283,7 @@ export default async function HygieneLogPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-red-600">
-              {hygieneLogs.filter(log => getComplianceScore(log) < 80).length}
+              {hygieneLogs.filter((log: any) => getComplianceScore(log) < 80).length}
             </div>
             <div className="text-sm text-muted-foreground">Non-Compliant</div>
           </CardContent>
@@ -124,7 +314,7 @@ export default async function HygieneLogPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {hygieneLogs.map((log) => {
+              {hygieneLogs.map((log: any) => {
                 const complianceScore = getComplianceScore(log);
                 const complianceStatus = getComplianceStatus(complianceScore);
                 
@@ -207,8 +397,8 @@ export default async function HygieneLogPage() {
               <h4 className="font-semibold mb-4">Today's Entries</h4>
               <div className="space-y-3">
                 {hygieneLogs
-                  .filter(log => log.date === new Date().toISOString().split('T')[0])
-                  .map(log => {
+                  .filter((log: any) => log.date === new Date().toISOString().split('T')[0])
+                  .map((log: any) => {
                     const complianceScore = getComplianceScore(log);
                     const complianceStatus = getComplianceStatus(complianceScore);
                     
@@ -231,7 +421,7 @@ export default async function HygieneLogPage() {
                       </div>
                     );
                   })}
-                {hygieneLogs.filter(log => log.date === new Date().toISOString().split('T')[0]).length === 0 && (
+                {hygieneLogs.filter((log: any) => log.date === new Date().toISOString().split('T')[0]).length === 0 && (
                   <div className="text-center py-4 text-muted-foreground">
                     No entries for today
                   </div>
@@ -242,13 +432,13 @@ export default async function HygieneLogPage() {
               <h4 className="font-semibold mb-4">Weekly Compliance Trend</h4>
               <div className="space-y-2">
                 {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                  const dayLogs = hygieneLogs.filter(log => {
+                  const dayLogs = hygieneLogs.filter((log: any) => {
                     const logDate = new Date(log.date);
                     const dayName = logDate.toLocaleDateString('en-US', { weekday: 'long' });
                     return dayName === day;
                   });
                   const avgScore = dayLogs.length > 0 
-                    ? Math.round(dayLogs.reduce((sum, log) => sum + getComplianceScore(log), 0) / dayLogs.length)
+                    ? Math.round(dayLogs.reduce((sum: number, log: any) => sum + getComplianceScore(log), 0) / dayLogs.length)
                     : 0;
                   
                   return (

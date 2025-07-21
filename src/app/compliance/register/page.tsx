@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,11 +9,53 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Download, Search, Plus, Filter, ArrowLeft } from "lucide-react";
 import { getAnimals, getSpecies, getCarers } from "@/lib/data";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import jsPDF from 'jspdf';
 
-export default async function WildlifeRegisterPage() {
-  const animals = await getAnimals();
-  const species = await getSpecies();
-  const carers = await getCarers();
+export default function WildlifeRegisterPage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [animals, species, carers] = await Promise.all([
+          getAnimals(),
+          getSpecies(),
+          getCarers()
+        ]);
+        setData({ animals, species, carers });
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading register data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-red-600">Error loading data</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { animals, species, carers } = data;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -30,11 +74,154 @@ export default async function WildlifeRegisterPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button 
+            variant="outline"
+            onClick={() => {
+              // Generate CSV export
+              const csvContent = [
+                ['Animal ID', 'Name', 'Species', 'Sex', 'Age Class', 'Rescue Location', 'Rescue Date', 'Carer', 'Status'],
+                ...animals.map((animal: any) => [
+                  animal.animalId,
+                  animal.name,
+                  animal.species,
+                  animal.sex,
+                  animal.ageClass,
+                  animal.rescueLocation,
+                  animal.rescueDate,
+                  animal.carer,
+                  animal.status
+                ])
+              ].map(row => row.join(',')).join('\n');
+              
+              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `wildlife-register-${new Date().toISOString().split('T')[0]}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+          >
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <Button variant="outline">
+          <Button 
+            variant="outline"
+            onClick={() => {
+              // Generate PDF export
+              const doc = new jsPDF();
+              const pageWidth = doc.internal.pageSize.getWidth();
+              const margin = 20;
+              let yPosition = 20;
+              
+              // Header
+              doc.setFontSize(20);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Wildlife Admission & Outcome Register', pageWidth / 2, yPosition, { align: 'center' });
+              
+              yPosition += 15;
+              doc.setFontSize(12);
+              doc.setFont('helvetica', 'normal');
+              doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
+              
+              yPosition += 20;
+              
+              // Statistics
+              doc.setFontSize(14);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Summary Statistics', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'normal');
+              
+              const totalAnimals = animals.length;
+              const inCare = animals.filter((a: any) => a.status === 'In Care').length;
+              const released = animals.filter((a: any) => a.status === 'Released').length;
+              const deceased = animals.filter((a: any) => a.status === 'Deceased').length;
+              
+              doc.text(`Total Animals: ${totalAnimals}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Currently in Care: ${inCare}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Successfully Released: ${released}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Deceased: ${deceased}`, margin + 10, yPosition);
+              
+              yPosition += 15;
+              
+              // Register table
+              doc.setFontSize(14);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Wildlife Register', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(8);
+              doc.setFont('helvetica', 'normal');
+              
+              // Table headers
+              const headers = ['ID', 'Name', 'Species', 'Sex', 'Age', 'Location', 'Date', 'Carer', 'Status'];
+              const colWidths = [25, 30, 25, 15, 20, 30, 20, 25, 20];
+              let xPos = margin;
+              
+              headers.forEach((header, index) => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(header, xPos, yPosition);
+                xPos += colWidths[index];
+              });
+              
+              yPosition += 5;
+              
+              // Table data
+              animals.slice(0, 20).forEach((animal: any) => {
+                if (yPosition > 250) {
+                  doc.addPage();
+                  yPosition = 20;
+                }
+                
+                xPos = margin;
+                doc.setFont('helvetica', 'normal');
+                doc.text(animal.animalId, xPos, yPosition);
+                xPos += colWidths[0];
+                doc.text(animal.name, xPos, yPosition);
+                xPos += colWidths[1];
+                doc.text(animal.species, xPos, yPosition);
+                xPos += colWidths[2];
+                doc.text(animal.sex, xPos, yPosition);
+                xPos += colWidths[3];
+                doc.text(animal.ageClass, xPos, yPosition);
+                xPos += colWidths[4];
+                doc.text(animal.rescueLocation.substring(0, 20), xPos, yPosition);
+                xPos += colWidths[5];
+                doc.text(animal.rescueDate, xPos, yPosition);
+                xPos += colWidths[6];
+                doc.text(animal.carer, xPos, yPosition);
+                xPos += colWidths[7];
+                doc.text(animal.status, xPos, yPosition);
+                
+                yPosition += 5;
+              });
+              
+              if (animals.length > 20) {
+                yPosition += 5;
+                doc.text(`... and ${animals.length - 20} more entries`, margin, yPosition);
+              }
+              
+              // Footer
+              doc.addPage();
+              yPosition = 20;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'italic');
+              doc.text('This report was generated automatically by WildHub Compliance System.', margin, yPosition);
+              yPosition += 7;
+              doc.text('For questions or concerns, please contact your compliance coordinator.', margin, yPosition);
+              
+              // Save the PDF
+              doc.save(`wildlife-register-${new Date().toISOString().split('T')[0]}.pdf`);
+            }}
+          >
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
@@ -69,7 +256,7 @@ export default async function WildlifeRegisterPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All species</SelectItem>
-                  {species.map((s) => (
+                  {species.map((s: any) => (
                     <SelectItem key={s} value={s.toLowerCase()}>
                       {s}
                     </SelectItem>
@@ -100,7 +287,7 @@ export default async function WildlifeRegisterPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All carers</SelectItem>
-                  {carers.map((c) => (
+                  {carers.map((c: any) => (
                     <SelectItem key={c} value={c.toLowerCase()}>
                       {c}
                     </SelectItem>
@@ -123,7 +310,7 @@ export default async function WildlifeRegisterPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-blue-600">
-              {animals.filter(a => a.status === 'In Care').length}
+              {animals.filter((a: any) => a.status === 'In Care').length}
             </div>
             <div className="text-sm text-muted-foreground">Currently in Care</div>
           </CardContent>
@@ -131,7 +318,7 @@ export default async function WildlifeRegisterPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">
-              {animals.filter(a => a.status === 'Released').length}
+              {animals.filter((a: any) => a.status === 'Released').length}
             </div>
             <div className="text-sm text-muted-foreground">Successfully Released</div>
           </CardContent>
@@ -139,7 +326,7 @@ export default async function WildlifeRegisterPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-red-600">
-              {animals.filter(a => a.status === 'Deceased').length}
+              {animals.filter((a: any) => a.status === 'Deceased').length}
             </div>
             <div className="text-sm text-muted-foreground">Deceased</div>
           </CardContent>
@@ -171,7 +358,7 @@ export default async function WildlifeRegisterPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {animals.map((animal) => (
+              {animals.map((animal: any) => (
                 <TableRow key={animal.id}>
                   <TableCell className="font-mono text-sm">
                     {animal.animalId}

@@ -1,25 +1,38 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle } from "lucide-react";
+import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, ArrowLeft, Home } from "lucide-react";
 import Link from "next/link";
+import { getJurisdictionConfig, getCurrentJurisdiction, getOrganizationName } from '@/lib/config';
 
 export default function CompliancePage() {
+  const jurisdiction = getCurrentJurisdiction();
+  const config = getJurisdictionConfig();
+  const orgName = getOrganizationName();
   return (
     <div className="container mx-auto px-6 py-8 space-y-8">
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-4xl font-bold mb-2">ACT Wildlife Compliance Toolkit</h1>
-          <p className="text-lg text-muted-foreground">
-            Manage compliance with ACT Wildlife Code of Practice
-          </p>
+        <div className="flex items-center gap-4">
+          <Link href="/">
+            <Button variant="outline" size="icon">
+              <Home className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-4xl font-bold mb-2">{jurisdiction} Wildlife Compliance Toolkit</h1>
+            <p className="text-lg text-muted-foreground">
+              Manage compliance with {jurisdiction} Wildlife Code of Practice
+            </p>
+          </div>
         </div>
         <Badge variant="outline" className="text-sm px-3 py-1">
-          ACT Jurisdiction
+          {jurisdiction} Jurisdiction
         </Badge>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+
         {/* Wildlife Admission & Outcome Register */}
         <Card className="h-full">
           <CardHeader className="pb-4">

@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,18 +23,65 @@ import {
   getHygieneLogs, 
   getIncidentReports 
 } from "@/lib/data";
+import { getCurrentJurisdiction, getJurisdictionConfig, getOrganizationName } from '@/lib/config';
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import jsPDF from 'jspdf';
 
-export default async function ComplianceOverviewPage() {
-  const animals = await getAnimals();
-  const users = await getUsers();
-  const releaseChecklists = await getReleaseChecklists();
-  const hygieneLogs = await getHygieneLogs();
-  const incidentReports = await getIncidentReports();
+export default function ComplianceOverviewPage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const jurisdiction = getCurrentJurisdiction();
+  const config = getJurisdictionConfig();
+  const orgName = getOrganizationName();
 
-  const carers = users.filter(user => user.role === 'Carer');
-  const animalsInCare = animals.filter(a => a.status === 'In Care');
-  const releasedAnimals = animals.filter(a => a.status === 'Released');
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [animals, users, releaseChecklists, hygieneLogs, incidentReports] = await Promise.all([
+          getAnimals(),
+          getUsers(),
+          getReleaseChecklists(),
+          getHygieneLogs(),
+          getIncidentReports()
+        ]);
+        
+        setData({ animals, users, releaseChecklists, hygieneLogs, incidentReports });
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading compliance data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-red-600">Error loading data</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { animals, users, releaseChecklists, hygieneLogs, incidentReports } = data;
+
+  const carers = users.filter((user: any) => user.role === 'Carer');
+  const animalsInCare = animals.filter((a: any) => a.status === 'In Care');
+  const releasedAnimals = animals.filter((a: any) => a.status === 'Released');
 
   // Calculate compliance metrics
   const getDaysUntilExpiry = (expiryDate: string) => {
@@ -42,12 +91,12 @@ export default async function ComplianceOverviewPage() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const expiringLicences = carers.filter(c => {
+  const expiringLicences = carers.filter((c: any) => {
     const daysUntil = getDaysUntilExpiry(c.licenceExpiry || '');
     return daysUntil <= 30 && daysUntil > 0;
   });
 
-  const expiredLicences = carers.filter(c => {
+  const expiredLicences = carers.filter((c: any) => {
     const daysUntil = getDaysUntilExpiry(c.licenceExpiry || '');
     return daysUntil < 0;
   });
@@ -65,16 +114,16 @@ export default async function ComplianceOverviewPage() {
   };
 
   const avgHygieneScore = hygieneLogs.length > 0 
-    ? Math.round(hygieneLogs.reduce((sum, log) => sum + getHygieneComplianceScore(log), 0) / hygieneLogs.length)
+    ? Math.round(hygieneLogs.reduce((sum: number, log: any) => sum + getHygieneComplianceScore(log), 0) / hygieneLogs.length)
     : 0;
 
-  const criticalIncidents = incidentReports.filter(i => i.type === 'Escape' || i.type === 'Injury');
+  const criticalIncidents = incidentReports.filter((i: any) => i.type === 'Escape' || i.type === 'Injury');
 
   // Overall compliance score calculation
   const complianceFactors = [
     { name: 'Licence Compliance', score: Math.max(0, 100 - (expiredLicences.length * 20)) },
     { name: 'Hygiene Compliance', score: avgHygieneScore },
-    { name: 'Release Compliance', score: releaseChecklists.filter(r => r.within10km).length > 0 ? 100 : 80 },
+    { name: 'Release Compliance', score: releaseChecklists.filter((r: any) => r.within10km).length > 0 ? 100 : 80 },
     { name: 'Incident Management', score: criticalIncidents.length === 0 ? 100 : Math.max(60, 100 - (criticalIncidents.length * 10)) }
   ];
 
@@ -86,19 +135,191 @@ export default async function ComplianceOverviewPage() {
         <div>
           <h1 className="text-3xl font-bold">Compliance Overview</h1>
           <p className="text-muted-foreground">
-            ACT Wildlife Compliance Status Dashboard
+            {jurisdiction} Wildlife Compliance Status Dashboard
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button 
+            variant="outline"
+            onClick={() => {
+              // Create PDF report
+              const doc = new jsPDF();
+              const pageWidth = doc.internal.pageSize.getWidth();
+              const margin = 20;
+              let yPosition = 20;
+              
+              // Header
+              doc.setFontSize(20);
+              doc.setFont('helvetica', 'bold');
+              doc.text(`${jurisdiction} Wildlife Compliance Report`, pageWidth / 2, yPosition, { align: 'center' });
+              
+              yPosition += 15;
+              doc.setFontSize(12);
+              doc.setFont('helvetica', 'normal');
+              doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
+              
+              yPosition += 20;
+              
+              // Overall Compliance Score
+              doc.setFontSize(16);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Overall Compliance Score', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(24);
+              doc.setTextColor(overallCompliance >= 90 ? 0 : overallCompliance >= 75 ? 128 : 255, 0, 0);
+              doc.text(`${overallCompliance}%`, margin, yPosition);
+              doc.setTextColor(0, 0, 0);
+              
+              yPosition += 15;
+              
+              // Compliance Factors
+              doc.setFontSize(14);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Compliance Factors', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'normal');
+              
+              complianceFactors.forEach(factor => {
+                if (yPosition > 250) {
+                  doc.addPage();
+                  yPosition = 20;
+                }
+                
+                                 const scoreColor = factor.score >= 90 ? [0, 128, 0] : factor.score >= 75 ? [255, 165, 0] : [255, 0, 0];
+                 doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+                doc.text(`${factor.name}: ${factor.score}%`, margin + 10, yPosition);
+                doc.setTextColor(0, 0, 0);
+                yPosition += 7;
+              });
+              
+              yPosition += 10;
+              
+              // Key Metrics
+              doc.setFontSize(14);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Key Metrics', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'normal');
+              
+              const metrics = [
+                `Active Carers: ${carers.length}`,
+                `Animals in Care: ${animalsInCare.length}`,
+                `Successfully Released: ${releasedAnimals.length}`,
+                `Hygiene Compliance: ${avgHygieneScore}%`,
+                `Critical Incidents: ${criticalIncidents.length}`,
+                `Total Incidents: ${incidentReports.length}`
+              ];
+              
+              metrics.forEach(metric => {
+                if (yPosition > 250) {
+                  doc.addPage();
+                  yPosition = 20;
+                }
+                doc.text(metric, margin + 10, yPosition);
+                yPosition += 7;
+              });
+              
+              yPosition += 10;
+              
+              // Alerts Section
+              if (expiredLicences.length > 0 || expiringLicences.length > 0 || criticalIncidents.length > 0) {
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(255, 0, 0);
+                doc.text('Alerts & Warnings', margin, yPosition);
+                doc.setTextColor(0, 0, 0);
+                
+                yPosition += 10;
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                
+                if (expiredLicences.length > 0) {
+                  if (yPosition > 250) {
+                    doc.addPage();
+                    yPosition = 20;
+                  }
+                  doc.setTextColor(255, 0, 0);
+                  doc.text(`Expired Licences: ${expiredLicences.length}`, margin + 10, yPosition);
+                  yPosition += 7;
+                  
+                  expiredLicences.forEach((carer: any) => {
+                    if (yPosition > 250) {
+                      doc.addPage();
+                      yPosition = 20;
+                    }
+                    doc.text(`- ${carer.fullName} (${carer.licenceExpiry})`, margin + 20, yPosition);
+                    yPosition += 6;
+                  });
+                  yPosition += 5;
+                }
+                
+                if (expiringLicences.length > 0) {
+                  if (yPosition > 250) {
+                    doc.addPage();
+                    yPosition = 20;
+                  }
+                  doc.setTextColor(255, 165, 0);
+                  doc.text(`Licences Expiring Soon: ${expiringLicences.length}`, margin + 10, yPosition);
+                  yPosition += 7;
+                  
+                  expiringLicences.forEach((carer: any) => {
+                    if (yPosition > 250) {
+                      doc.addPage();
+                      yPosition = 20;
+                    }
+                    doc.text(`- ${carer.fullName} (${carer.licenceExpiry})`, margin + 20, yPosition);
+                    yPosition += 6;
+                  });
+                  yPosition += 5;
+                }
+                
+                if (criticalIncidents.length > 0) {
+                  if (yPosition > 250) {
+                    doc.addPage();
+                    yPosition = 20;
+                  }
+                  doc.setTextColor(255, 0, 0);
+                  doc.text(`Critical Incidents: ${criticalIncidents.length}`, margin + 10, yPosition);
+                  yPosition += 7;
+                  
+                  criticalIncidents.forEach((incident: any) => {
+                    if (yPosition > 250) {
+                      doc.addPage();
+                      yPosition = 20;
+                    }
+                    doc.text(`- ${incident.type}: ${incident.date}`, margin + 20, yPosition);
+                    yPosition += 6;
+                    doc.text(`  ${incident.description.substring(0, 60)}...`, margin + 20, yPosition);
+                    yPosition += 6;
+                  });
+                }
+                
+                doc.setTextColor(0, 0, 0);
+              }
+              
+              // Footer
+              doc.addPage();
+              yPosition = 20;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'italic');
+              doc.text('This report was generated automatically by WildHub Compliance System.', margin, yPosition);
+              yPosition += 7;
+              doc.text('For questions or concerns, please contact your compliance coordinator.', margin, yPosition);
+              
+              // Save the PDF
+              doc.save(`compliance-report-${new Date().toISOString().split('T')[0]}.pdf`);
+            }}
+          >
             <FileText className="h-4 w-4 mr-2" />
             Generate Report
           </Button>
-          <Button variant="outline">
-            <Calendar className="h-4 w-4 mr-2" />
-            Schedule Audit
-          </Button>
         </div>
+
       </div>
 
       {/* Overall Compliance Score */}
@@ -250,7 +471,7 @@ export default async function ComplianceOverviewPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {expiredLicences.map(carer => (
+                {expiredLicences.map((carer: any) => (
                   <div key={carer.id} className="flex items-center justify-between p-2 bg-white rounded">
                     <div>
                       <span className="font-medium">{carer.fullName}</span>
@@ -280,7 +501,7 @@ export default async function ComplianceOverviewPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {expiringLicences.map(carer => (
+                {expiringLicences.map((carer: any) => (
                   <div key={carer.id} className="flex items-center justify-between p-2 bg-white rounded">
                     <div>
                       <span className="font-medium">{carer.fullName}</span>
@@ -310,7 +531,7 @@ export default async function ComplianceOverviewPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {criticalIncidents.slice(0, 3).map(incident => (
+                {criticalIncidents.slice(0, 3).map((incident: any) => (
                   <div key={incident.id} className="flex items-center justify-between p-2 bg-white rounded">
                     <div>
                       <span className="font-medium">{incident.type}</span>
@@ -408,7 +629,7 @@ export default async function ComplianceOverviewPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {expiringLicences.slice(0, 3).map(carer => (
+              {expiringLicences.slice(0, 3).map((carer: any) => (
                 <div key={carer.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                   <div>
                     <div className="font-medium">{carer.fullName}</div>

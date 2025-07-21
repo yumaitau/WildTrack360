@@ -49,7 +49,7 @@ const addAnimalSchema = z.object({
     required_error: "Date found is required.",
   }),
   carer: z.string().min(1, "Carer is required."),
-  status: z.enum(["In Care", "Released", "Deceased"]),
+  status: z.enum(["In Care", "Released", "Deceased", "Transferred"]),
 })
 
 type AddAnimalFormValues = z.infer<typeof addAnimalSchema>
@@ -118,12 +118,20 @@ export function AddAnimalDialog({
 
     const newAnimal: Animal = {
       id: isEditMode ? animalToEdit.id : `${data.species.toLowerCase()}-${data.name.toLowerCase().replace(/\s/g, '-')}-${Date.now()}`,
+      animalId: isEditMode ? animalToEdit.animalId : `AN-${Date.now()}`,
       name: data.name,
       species: data.species,
       dateFound: format(data.dateFound, "yyyy-MM-dd"),
       carer: data.carer,
       status: data.status,
       photo: isEditMode ? animalToEdit.photo : `https://placehold.co/600x400.png`,
+      sex: isEditMode ? animalToEdit.sex : "Unknown",
+      ageClass: isEditMode ? animalToEdit.ageClass : "Unknown",
+      rescueLocation: isEditMode ? animalToEdit.rescueLocation : "Unknown",
+      rescueDate: isEditMode ? animalToEdit.rescueDate : format(data.dateFound, "yyyy-MM-dd"),
+      reasonForAdmission: isEditMode ? animalToEdit.reasonForAdmission : "Unknown",
+      carerId: isEditMode ? animalToEdit.carerId : data.carer,
+      notes: isEditMode ? animalToEdit.notes : "",
     };
 
     onAnimalAdd(newAnimal)
@@ -137,7 +145,7 @@ export function AddAnimalDialog({
     setIsOpen(false)
   }
 
-  const statusOptions: AnimalStatus[] = ["In Care", "Released", "Deceased"];
+  const statusOptions: AnimalStatus[] = ["In Care", "Released", "Deceased", "Transferred"];
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

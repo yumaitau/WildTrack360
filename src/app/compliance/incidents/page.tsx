@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -5,14 +7,56 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertTriangle, Calendar, Download, Plus, FileText, User, MapPin, ArrowLeft } from "lucide-react";
 import { getIncidentReports, getAnimals } from "@/lib/data";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import jsPDF from 'jspdf';
 
-export default async function IncidentReportsPage() {
-  const incidentReports = await getIncidentReports();
-  const animals = await getAnimals();
+export default function IncidentReportsPage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [incidentReports, animals] = await Promise.all([
+          getIncidentReports(),
+          getAnimals()
+        ]);
+        setData({ incidentReports, animals });
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading incident data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-red-600">Error loading data</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { incidentReports, animals } = data;
 
   const getAnimalName = (animalId?: string) => {
     if (!animalId) return 'N/A';
-    const animal = animals.find(a => a.animalId === animalId);
+    const animal = animals.find((a: any) => a.animalId === animalId);
     return animal?.name || 'Unknown';
   };
 
@@ -48,9 +92,147 @@ export default async function IncidentReportsPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button 
+            variant="outline"
+            onClick={() => {
+              // Generate CSV export
+              const csvContent = [
+                ['Incident ID', 'Date', 'Type', 'Animal', 'Person Involved', 'Description', 'Reported To', 'Action Taken'],
+                ...incidentReports.map((incident: any) => [
+                  incident.id,
+                  incident.date,
+                  incident.type,
+                  incident.animalId ? getAnimalName(incident.animalId) : 'N/A',
+                  incident.personInvolved,
+                  incident.description,
+                  incident.reportedTo || 'Not reported',
+                  incident.actionTaken
+                ])
+              ].map(row => row.join(',')).join('\n');
+              
+              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `incident-reports-${new Date().toISOString().split('T')[0]}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+          >
             <Download className="h-4 w-4 mr-2" />
-            Export Report
+            Export CSV
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => {
+              // Generate PDF export
+              const doc = new jsPDF();
+              const pageWidth = doc.internal.pageSize.getWidth();
+              const margin = 20;
+              let yPosition = 20;
+              
+              // Header
+              doc.setFontSize(20);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Incident Report Log', pageWidth / 2, yPosition, { align: 'center' });
+              
+              yPosition += 15;
+              doc.setFontSize(12);
+              doc.setFont('helvetica', 'normal');
+              doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
+              
+              yPosition += 20;
+              
+              // Statistics
+              doc.setFontSize(14);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Summary Statistics', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'normal');
+              
+              const totalIncidents = incidentReports.length;
+              const criticalIncidents = incidentReports.filter((i: any) => i.type === 'Escape' || i.type === 'Injury').length;
+              const diseaseOutbreaks = incidentReports.filter((i: any) => i.type === 'Disease Outbreak').length;
+              const handlingIssues = incidentReports.filter((i: any) => i.type === 'Improper Handling').length;
+              
+              doc.text(`Total Incidents: ${totalIncidents}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Critical Incidents: ${criticalIncidents}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Disease Outbreaks: ${diseaseOutbreaks}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Handling Issues: ${handlingIssues}`, margin + 10, yPosition);
+              
+              yPosition += 15;
+              
+              // Incident entries table
+              doc.setFontSize(14);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Incident Reports', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(8);
+              doc.setFont('helvetica', 'normal');
+              
+              // Table headers
+              const headers = ['Date', 'Type', 'Animal', 'Person', 'Status'];
+              const colWidths = [25, 30, 40, 35, 20];
+              let xPos = margin;
+              
+              headers.forEach((header, index) => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(header, xPos, yPosition);
+                xPos += colWidths[index];
+              });
+              
+              yPosition += 5;
+              
+              // Table data
+              incidentReports.slice(0, 20).forEach((incident: any) => {
+                if (yPosition > 250) {
+                  doc.addPage();
+                  yPosition = 20;
+                }
+                
+                xPos = margin;
+                doc.setFont('helvetica', 'normal');
+                doc.text(incident.date, xPos, yPosition);
+                xPos += colWidths[0];
+                doc.text(incident.type, xPos, yPosition);
+                xPos += colWidths[1];
+                doc.text(incident.animalId ? getAnimalName(incident.animalId) : 'N/A', xPos, yPosition);
+                xPos += colWidths[2];
+                doc.text(incident.personInvolved, xPos, yPosition);
+                xPos += colWidths[3];
+                doc.text(incident.reportedTo ? 'Reported' : 'Not reported', xPos, yPosition);
+                
+                yPosition += 5;
+              });
+              
+              if (incidentReports.length > 20) {
+                yPosition += 5;
+                doc.text(`... and ${incidentReports.length - 20} more entries`, margin, yPosition);
+              }
+              
+              // Footer
+              doc.addPage();
+              yPosition = 20;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'italic');
+              doc.text('This report was generated automatically by WildHub Compliance System.', margin, yPosition);
+              yPosition += 7;
+              doc.text('For questions or concerns, please contact your compliance coordinator.', margin, yPosition);
+              
+              // Save the PDF
+              doc.save(`incident-reports-${new Date().toISOString().split('T')[0]}.pdf`);
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export PDF
           </Button>
           <Link href="/compliance/incidents/new">
             <Button>
@@ -72,7 +254,7 @@ export default async function IncidentReportsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-red-600">
-              {incidentReports.filter(i => i.type === 'Escape' || i.type === 'Injury').length}
+              {incidentReports.filter((i: any) => i.type === 'Escape' || i.type === 'Injury').length}
             </div>
             <div className="text-sm text-muted-foreground">Critical Incidents</div>
           </CardContent>
@@ -80,7 +262,7 @@ export default async function IncidentReportsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-orange-600">
-              {incidentReports.filter(i => i.type === 'Disease Outbreak').length}
+              {incidentReports.filter((i: any) => i.type === 'Disease Outbreak').length}
             </div>
             <div className="text-sm text-muted-foreground">Disease Outbreaks</div>
           </CardContent>
@@ -88,7 +270,7 @@ export default async function IncidentReportsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-blue-600">
-              {incidentReports.filter(i => i.type === 'Improper Handling').length}
+              {incidentReports.filter((i: any) => i.type === 'Improper Handling').length}
             </div>
             <div className="text-sm text-muted-foreground">Handling Issues</div>
           </CardContent>
@@ -118,7 +300,7 @@ export default async function IncidentReportsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {incidentReports.map((incident) => (
+              {incidentReports.map((incident: any) => (
                 <TableRow key={incident.id}>
                   <TableCell className="font-mono text-sm">
                     {incident.id}
@@ -166,7 +348,7 @@ export default async function IncidentReportsPage() {
       </Card>
 
       {/* Recent Critical Incidents */}
-      {incidentReports.filter(i => i.type === 'Escape' || i.type === 'Injury').length > 0 && (
+      {incidentReports.filter((i: any) => i.type === 'Escape' || i.type === 'Injury').length > 0 && (
         <Card className="border-red-200 bg-red-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-800">
@@ -177,9 +359,9 @@ export default async function IncidentReportsPage() {
           <CardContent>
             <div className="space-y-4">
               {incidentReports
-                .filter(i => i.type === 'Escape' || i.type === 'Injury')
+                .filter((i: any) => i.type === 'Escape' || i.type === 'Injury')
                 .slice(0, 3)
-                .map(incident => (
+                .map((incident: any) => (
                   <div key={incident.id} className="p-4 bg-white rounded border">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">

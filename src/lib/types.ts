@@ -135,19 +135,5 @@ export type JurisdictionConfig = {
   maxRetentionYears: number;
 };
 
-export const JURISDICTION_CONFIG: { [key: string]: JurisdictionConfig } = {
-  ACT: {
-    enabledForms: ['releaseChecklist', 'incidentLog', 'hygieneLog', 'carerLicence'],
-    templates: ['ACTRegister', 'ACTReleaseChecklist'],
-    enforceReleaseDistance: true,
-    requireVetSignOff: true,
-    maxRetentionYears: 3,
-  },
-  NSW: {
-    enabledForms: ['releaseChecklist', 'incidentLog'],
-    templates: ['NSWRegister'],
-    enforceReleaseDistance: false,
-    requireVetSignOff: false,
-    maxRetentionYears: 2,
-  },
-};
+// Jurisdiction configuration is now handled by src/lib/config.ts
+// This allows for environment-based configuration per organization

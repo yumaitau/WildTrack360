@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -5,18 +7,60 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { CheckCircle, MapPin, Calendar, Download, Plus, AlertTriangle, ArrowLeft } from "lucide-react";
 import { getReleaseChecklists, getAnimals } from "@/lib/data";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import jsPDF from 'jspdf';
 
-export default async function ReleaseChecklistPage() {
-  const releaseChecklists = await getReleaseChecklists();
-  const animals = await getAnimals();
+export default function ReleaseChecklistPage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [releaseChecklists, animals] = await Promise.all([
+          getReleaseChecklists(),
+          getAnimals()
+        ]);
+        setData({ releaseChecklists, animals });
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading release data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-red-600">Error loading data</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { releaseChecklists, animals } = data;
 
   const getAnimalName = (animalId: string) => {
-    const animal = animals.find(a => a.animalId === animalId);
+    const animal = animals.find((a: any) => a.animalId === animalId);
     return animal?.name || 'Unknown';
   };
 
   const getAnimalSpecies = (animalId: string) => {
-    const animal = animals.find(a => a.animalId === animalId);
+    const animal = animals.find((a: any) => a.animalId === animalId);
     return animal?.species || 'Unknown';
   };
 
@@ -37,7 +81,149 @@ export default async function ReleaseChecklistPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button 
+            variant="outline"
+            onClick={() => {
+              // Generate CSV export
+              const csvContent = [
+                ['Animal', 'Species', 'Release Date', 'Release Location', 'Distance Check', 'Release Type', 'Fitness Indicators', 'Vet Sign-off'],
+                ...releaseChecklists.map((checklist: any) => [
+                  getAnimalName(checklist.animalId),
+                  getAnimalSpecies(checklist.animalId),
+                  checklist.releaseDate,
+                  checklist.releaseLocation,
+                  checklist.within10km ? 'Within 10km' : 'Outside 10km',
+                  checklist.releaseType,
+                  checklist.fitnessIndicators.join('; '),
+                  `${checklist.vetSignOff.name} (${checklist.vetSignOff.date})`
+                ])
+              ].map(row => row.join(',')).join('\n');
+              
+              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `release-checklists-${new Date().toISOString().split('T')[0]}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => {
+              // Generate PDF export
+              const doc = new jsPDF();
+              const pageWidth = doc.internal.pageSize.getWidth();
+              const margin = 20;
+              let yPosition = 20;
+              
+              // Header
+              doc.setFontSize(20);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Release Site Checklist Report', pageWidth / 2, yPosition, { align: 'center' });
+              
+              yPosition += 15;
+              doc.setFontSize(12);
+              doc.setFont('helvetica', 'normal');
+              doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
+              
+              yPosition += 20;
+              
+              // Statistics
+              doc.setFontSize(14);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Summary Statistics', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'normal');
+              
+              const totalReleases = releaseChecklists.length;
+              const within10km = releaseChecklists.filter((r: any) => r.within10km).length;
+              const softReleases = releaseChecklists.filter((r: any) => r.releaseType === 'Soft').length;
+              const hardReleases = releaseChecklists.filter((r: any) => r.releaseType === 'Hard').length;
+              
+              doc.text(`Total Releases: ${totalReleases}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Within 10km: ${within10km}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Soft Releases: ${softReleases}`, margin + 10, yPosition);
+              yPosition += 7;
+              doc.text(`Hard Releases: ${hardReleases}`, margin + 10, yPosition);
+              
+              yPosition += 15;
+              
+              // Release entries table
+              doc.setFontSize(14);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Release Checklists', margin, yPosition);
+              
+              yPosition += 10;
+              doc.setFontSize(8);
+              doc.setFont('helvetica', 'normal');
+              
+              // Table headers
+              const headers = ['Animal', 'Species', 'Date', 'Location', 'Distance', 'Type', 'Vet'];
+              const colWidths = [30, 25, 25, 40, 20, 20, 30];
+              let xPos = margin;
+              
+              headers.forEach((header, index) => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(header, xPos, yPosition);
+                xPos += colWidths[index];
+              });
+              
+              yPosition += 5;
+              
+              // Table data
+              releaseChecklists.slice(0, 20).forEach((checklist: any) => {
+                if (yPosition > 250) {
+                  doc.addPage();
+                  yPosition = 20;
+                }
+                
+                xPos = margin;
+                doc.setFont('helvetica', 'normal');
+                doc.text(getAnimalName(checklist.animalId), xPos, yPosition);
+                xPos += colWidths[0];
+                doc.text(getAnimalSpecies(checklist.animalId), xPos, yPosition);
+                xPos += colWidths[1];
+                doc.text(checklist.releaseDate, xPos, yPosition);
+                xPos += colWidths[2];
+                doc.text(checklist.releaseLocation.substring(0, 25), xPos, yPosition);
+                xPos += colWidths[3];
+                doc.text(checklist.within10km ? 'Within 10km' : 'Outside', xPos, yPosition);
+                xPos += colWidths[4];
+                doc.text(checklist.releaseType, xPos, yPosition);
+                xPos += colWidths[5];
+                doc.text(checklist.vetSignOff.name, xPos, yPosition);
+                
+                yPosition += 5;
+              });
+              
+              if (releaseChecklists.length > 20) {
+                yPosition += 5;
+                doc.text(`... and ${releaseChecklists.length - 20} more entries`, margin, yPosition);
+              }
+              
+              // Footer
+              doc.addPage();
+              yPosition = 20;
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'italic');
+              doc.text('This report was generated automatically by WildHub Compliance System.', margin, yPosition);
+              yPosition += 7;
+              doc.text('For questions or concerns, please contact your compliance coordinator.', margin, yPosition);
+              
+              // Save the PDF
+              doc.save(`release-checklists-${new Date().toISOString().split('T')[0]}.pdf`);
+            }}
+          >
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
@@ -61,7 +247,7 @@ export default async function ReleaseChecklistPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">
-              {releaseChecklists.filter(r => r.within10km).length}
+              {releaseChecklists.filter((r: any) => r.within10km).length}
             </div>
             <div className="text-sm text-muted-foreground">Within 10km</div>
           </CardContent>
@@ -69,7 +255,7 @@ export default async function ReleaseChecklistPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-blue-600">
-              {releaseChecklists.filter(r => r.releaseType === 'Soft').length}
+              {releaseChecklists.filter((r: any) => r.releaseType === 'Soft').length}
             </div>
             <div className="text-sm text-muted-foreground">Soft Releases</div>
           </CardContent>
@@ -77,7 +263,7 @@ export default async function ReleaseChecklistPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-orange-600">
-              {releaseChecklists.filter(r => r.releaseType === 'Hard').length}
+              {releaseChecklists.filter((r: any) => r.releaseType === 'Hard').length}
             </div>
             <div className="text-sm text-muted-foreground">Hard Releases</div>
           </CardContent>
@@ -108,7 +294,7 @@ export default async function ReleaseChecklistPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {releaseChecklists.map((checklist) => (
+              {releaseChecklists.map((checklist: any) => (
                 <TableRow key={checklist.id}>
                   <TableCell className="font-medium">
                     {getAnimalName(checklist.animalId)}
@@ -144,7 +330,7 @@ export default async function ReleaseChecklistPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {checklist.fitnessIndicators.slice(0, 2).map((indicator, index) => (
+                      {checklist.fitnessIndicators.slice(0, 2).map((indicator: any, index: any) => (
                         <Badge key={index} variant="outline" className="text-xs">
                           {indicator}
                         </Badge>

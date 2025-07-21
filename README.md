@@ -300,7 +300,52 @@ WildHub/
 - **Database**: Firebase 11.9.1
 - **Date Handling**: date-fns 3.6.0
 - **Carousel**: Embla Carousel React 8.6.0
-- **Configuration Management**: Dynamic jurisdiction-based feature toggling and compliance enforcement
+- **Configuration Management**: Environment-based jurisdiction configuration for multi-organization deployment
+
+## 🌍 Multi-Jurisdiction Deployment
+
+WildHub supports deployment for multiple organizations across different Australian jurisdictions. Each organization can have its own configuration through environment variables.
+
+### Environment Configuration
+
+1. **Copy the example environment file:**
+   ```bash
+   cp env.example .env.local
+   ```
+
+2. **Configure your jurisdiction and organization:**
+   ```bash
+   # Jurisdiction (ACT, NSW, VIC, QLD, WA, SA, TAS, NT)
+   NEXT_PUBLIC_JURISDICTION=ACT
+   
+   # Organization details
+   NEXT_PUBLIC_ORGANIZATION_NAME=ACT Wildlife
+   NEXT_PUBLIC_ORGANIZATION_CONTACT=contact@actwildlife.org.au
+   NEXT_PUBLIC_ORGANIZATION_LOGO=/act-logo.png
+   ```
+
+### Supported Jurisdictions
+
+Each jurisdiction has different compliance requirements:
+
+- **ACT**: Full compliance toolkit (all forms enabled)
+- **NSW**: Basic compliance (release checklist, incident log)
+- **VIC**: Standard compliance (release checklist, incident log, hygiene log)
+- **QLD**: Enhanced compliance (release checklist, incident log, carer licence)
+- **WA**: Full compliance toolkit
+- **SA**: Standard compliance with distance enforcement
+- **TAS**: Basic compliance
+- **NT**: Enhanced compliance with distance enforcement
+
+### Deployment per Organization
+
+To deploy for a new organization:
+
+1. Set up a new deployment environment
+2. Configure the environment variables for that organization
+3. Deploy the same codebase with different environment settings
+
+This allows you to maintain a single codebase while serving multiple organizations with their specific jurisdiction requirements.
 
 ## 📋 Key Components
 
