@@ -306,15 +306,147 @@ export const createIncidentReport = (report: IncidentReport) => dataStore.incide
 export const updateIncidentReport = (id: string, updates: Partial<IncidentReport>) => dataStore.incidentReports.update(id, updates);
 export const deleteIncidentReport = (id: string) => dataStore.incidentReports.delete(id);
 
-// Utility functions
+// Species and Carer management
 export const getSpecies = async (): Promise<string[]> => {
+  if (typeof window === 'undefined') return [];
+  
+  try {
+    const stored = localStorage.getItem('wildhub-species');
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error reading species from localStorage:', error);
+    return [];
+  }
+};
+
+export const createSpecies = async (species: string): Promise<string> => {
+  const existingSpecies = await getSpecies();
+  if (existingSpecies.includes(species)) {
+    throw new Error(`Species "${species}" already exists`);
+  }
+  
+  const updatedSpecies = [...existingSpecies, species].sort();
+  localStorage.setItem('wildhub-species', JSON.stringify(updatedSpecies));
+  return species;
+};
+
+export const updateSpecies = async (oldSpecies: string, newSpecies: string): Promise<string> => {
+  const existingSpecies = await getSpecies();
+  const index = existingSpecies.indexOf(oldSpecies);
+  
+  if (index === -1) {
+    throw new Error(`Species "${oldSpecies}" not found`);
+  }
+  
+  if (existingSpecies.includes(newSpecies) && oldSpecies !== newSpecies) {
+    throw new Error(`Species "${newSpecies}" already exists`);
+  }
+  
+  existingSpecies[index] = newSpecies;
+  const updatedSpecies = existingSpecies.sort();
+  localStorage.setItem('wildhub-species', JSON.stringify(updatedSpecies));
+  
+  // Update all animals that use this species
   const animals = await dataStore.animals.getAll();
-  return [...new Set(animals.map(a => a.species))].sort();
+  for (const animal of animals) {
+    if (animal.species === oldSpecies) {
+      await dataStore.animals.update(animal.id, { species: newSpecies });
+    }
+  }
+  
+  return newSpecies;
+};
+
+export const deleteSpecies = async (species: string): Promise<boolean> => {
+  const existingSpecies = await getSpecies();
+  const index = existingSpecies.indexOf(species);
+  
+  if (index === -1) {
+    throw new Error(`Species "${species}" not found`);
+  }
+  
+  // Check if any animals are using this species
+  const animals = await dataStore.animals.getAll();
+  const animalsUsingSpecies = animals.filter(animal => animal.species === species);
+  
+  if (animalsUsingSpecies.length > 0) {
+    throw new Error(`Cannot delete species "${species}" - ${animalsUsingSpecies.length} animals are using it`);
+  }
+  
+  existingSpecies.splice(index, 1);
+  localStorage.setItem('wildhub-species', JSON.stringify(existingSpecies));
+  return true;
 };
 
 export const getCarers = async (): Promise<string[]> => {
+  if (typeof window === 'undefined') return [];
+  
+  try {
+    const stored = localStorage.getItem('wildhub-carers');
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error reading carers from localStorage:', error);
+    return [];
+  }
+};
+
+export const createCarer = async (carer: string): Promise<string> => {
+  const existingCarers = await getCarers();
+  if (existingCarers.includes(carer)) {
+    throw new Error(`Carer "${carer}" already exists`);
+  }
+  
+  const updatedCarers = [...existingCarers, carer].sort();
+  localStorage.setItem('wildhub-carers', JSON.stringify(updatedCarers));
+  return carer;
+};
+
+export const updateCarer = async (oldCarer: string, newCarer: string): Promise<string> => {
+  const existingCarers = await getCarers();
+  const index = existingCarers.indexOf(oldCarer);
+  
+  if (index === -1) {
+    throw new Error(`Carer "${oldCarer}" not found`);
+  }
+  
+  if (existingCarers.includes(newCarer) && oldCarer !== newCarer) {
+    throw new Error(`Carer "${newCarer}" already exists`);
+  }
+  
+  existingCarers[index] = newCarer;
+  const updatedCarers = existingCarers.sort();
+  localStorage.setItem('wildhub-carers', JSON.stringify(updatedCarers));
+  
+  // Update all animals that use this carer
   const animals = await dataStore.animals.getAll();
-  return [...new Set(animals.map(a => a.carer))].sort();
+  for (const animal of animals) {
+    if (animal.carer === oldCarer) {
+      await dataStore.animals.update(animal.id, { carer: newCarer });
+    }
+  }
+  
+  return newCarer;
+};
+
+export const deleteCarer = async (carer: string): Promise<boolean> => {
+  const existingCarers = await getCarers();
+  const index = existingCarers.indexOf(carer);
+  
+  if (index === -1) {
+    throw new Error(`Carer "${carer}" not found`);
+  }
+  
+  // Check if any animals are using this carer
+  const animals = await dataStore.animals.getAll();
+  const animalsUsingCarer = animals.filter(animal => animal.carer === carer);
+  
+  if (animalsUsingCarer.length > 0) {
+    throw new Error(`Cannot delete carer "${carer}" - ${animalsUsingCarer.length} animals are assigned to them`);
+  }
+  
+  existingCarers.splice(index, 1);
+  localStorage.setItem('wildhub-carers', JSON.stringify(existingCarers));
+  return true;
 };
 
 // Initialize all stores with mock data

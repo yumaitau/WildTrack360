@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,39 +11,151 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Pen, PlusCircle, Trash } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Pen, PlusCircle, Trash, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getCarers, createCarer, updateCarer, deleteCarer } from '@/lib/data-store';
 
 interface CarerManagementProps {
   initialCarers: string[];
 }
 
 export function CarerManagement({ initialCarers }: CarerManagementProps) {
-  const [carers, setCarers] = useState(initialCarers);
+  const [carers, setCarers] = useState<string[]>(initialCarers);
   const [newCarer, setNewCarer] = useState('');
+  const [editingCarer, setEditingCarer] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [carerToDelete, setCarerToDelete] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleAddCarer = () => {
-    if (newCarer && !carers.map(c => c.toLowerCase()).includes(newCarer.toLowerCase())) {
-       // In a real app, you'd call an API here.
-      setCarers([...carers, newCarer].sort());
-      setNewCarer('');
-      toast({ title: 'Success', description: `Carer "${newCarer}" added.` });
-    } else if (!newCarer) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Carer name cannot be empty.' });
-    } else {
-       toast({ variant: 'destructive', title: 'Error', description: `Carer "${newCarer}" already exists.` });
+  // Refresh carers list from data store
+  const refreshCarers = async () => {
+    try {
+      const updatedCarers = await getCarers();
+      setCarers(updatedCarers);
+    } catch (error) {
+      console.error('Error refreshing carers:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: 'Failed to refresh carers list.' 
+      });
     }
   };
 
-  const handleDeleteCarer = (carerToDelete: string) => {
-    // In a real app, you'd call an API here.
-    setCarers(carers.filter((c) => c !== carerToDelete));
-    toast({ title: 'Success', description: `Carer "${carerToDelete}" deleted.` });
+  useEffect(() => {
+    refreshCarers();
+  }, []);
+
+  const handleAddCarer = async () => {
+    if (!newCarer.trim()) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: 'Carer name cannot be empty.' 
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await createCarer(newCarer.trim());
+      setNewCarer('');
+      await refreshCarers();
+      toast({ 
+        title: 'Success', 
+        description: `Carer "${newCarer.trim()}" added.` 
+      });
+    } catch (error) {
+      console.error('Error adding carer:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: error instanceof Error ? error.message : 'Failed to add carer.' 
+      });
+    } finally {
+      setLoading(false);
+    }
   };
-  
-  // Note: Edit functionality would require more state management (e.g., dialogs or inline editing)
-  // which is omitted here for simplicity. Users can delete and re-add.
+
+  const handleEditCarer = async () => {
+    if (!editingCarer || !editValue.trim()) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: 'Carer name cannot be empty.' 
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await updateCarer(editingCarer, editValue.trim());
+      setEditingCarer(null);
+      setEditValue('');
+      setIsEditDialogOpen(false);
+      await refreshCarers();
+      toast({ 
+        title: 'Success', 
+        description: `Carer "${editingCarer}" updated to "${editValue.trim()}".` 
+      });
+    } catch (error) {
+      console.error('Error updating carer:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: error instanceof Error ? error.message : 'Failed to update carer.' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteCarer = async () => {
+    if (!carerToDelete) return;
+
+    setLoading(true);
+    try {
+      await deleteCarer(carerToDelete);
+      setCarerToDelete(null);
+      setIsDeleteDialogOpen(false);
+      await refreshCarers();
+      toast({ 
+        title: 'Success', 
+        description: `Carer "${carerToDelete}" deleted.` 
+      });
+    } catch (error) {
+      console.error('Error deleting carer:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: error instanceof Error ? error.message : 'Failed to delete carer.' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditDialog = (carerName: string) => {
+    setEditingCarer(carerName);
+    setEditValue(carerName);
+    setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (carerName: string) => {
+    setCarerToDelete(carerName);
+    setIsDeleteDialogOpen(true);
+  };
 
   return (
     <div className="space-y-4">
@@ -52,17 +164,21 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
           placeholder="New carer name..."
           value={newCarer}
           onChange={(e) => setNewCarer(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleAddCarer()}
+          disabled={loading}
         />
-        <Button onClick={handleAddCarer}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Carer
+        <Button onClick={handleAddCarer} disabled={loading || !newCarer.trim()}>
+          <PlusCircle className="mr-2 h-4 w-4" /> 
+          {loading ? 'Adding...' : 'Add Carer'}
         </Button>
       </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Carer Name</TableHead>
-              <TableHead className="w-[100px] text-right">Actions</TableHead>
+              <TableHead className="w-[120px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -70,22 +186,102 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
               <TableRow key={c}>
                 <TableCell>{c}</TableCell>
                 <TableCell className="text-right">
-                   <Button variant="ghost" size="icon" disabled>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => openEditDialog(c)}
+                    disabled={loading}
+                  >
                     <Pen className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDeleteCarer(c)}
+                    onClick={() => openDeleteDialog(c)}
+                    disabled={loading}
                   >
                     <Trash className="h-4 w-4" />
                   </Button>
                 </TableCell>
               </TableRow>
             ))}
+            {carers.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center text-muted-foreground">
+                  No carers found. Add your first carer above.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Carer</DialogTitle>
+            <DialogDescription>
+              Update the carer name. This will also update all animals assigned to this carer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Carer name..."
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleEditCarer()}
+            />
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditDialogOpen(false)}
+              disabled={loading}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleEditCarer} 
+              disabled={loading || !editValue.trim() || editValue === editingCarer}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {loading ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Carer</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{carerToDelete}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={loading}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteCarer} 
+              disabled={loading}
+            >
+              <Trash className="mr-2 h-4 w-4" />
+              {loading ? 'Deleting...' : 'Delete Carer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -24,6 +24,12 @@ import {
   getIncidentReports
 } from "@/lib/data-store";
 import { getCurrentJurisdiction, getJurisdictionConfig, getOrganizationName } from '@/lib/config';
+import { 
+  getJurisdictionComplianceConfig, 
+  getComplianceRulesForJurisdiction,
+  isFormRequired,
+  isFormOptional 
+} from '@/lib/compliance-rules';
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';
@@ -33,6 +39,8 @@ export default function ComplianceOverviewPage() {
   const [loading, setLoading] = useState(true);
   const jurisdiction = getCurrentJurisdiction();
   const config = getJurisdictionConfig();
+  const complianceConfig = getJurisdictionComplianceConfig(jurisdiction);
+  const complianceRules = getComplianceRulesForJurisdiction(jurisdiction);
   const orgName = getOrganizationName();
 
   useEffect(() => {
@@ -119,13 +127,31 @@ export default function ComplianceOverviewPage() {
 
   const criticalIncidents = incidentReports.filter((i: any) => i.type === 'Escape' || i.type === 'Injury');
 
-  // Overall compliance score calculation
+  // Overall compliance score calculation - jurisdiction-aware
   const complianceFactors = [
-    { name: 'Licence Compliance', score: Math.max(0, 100 - (expiredLicences.length * 20)) },
-    { name: 'Hygiene Compliance', score: avgHygieneScore },
-    { name: 'Release Compliance', score: releaseChecklists.filter((r: any) => r.within10km).length > 0 ? 100 : 80 },
-    { name: 'Incident Management', score: criticalIncidents.length === 0 ? 100 : Math.max(60, 100 - (criticalIncidents.length * 10)) }
-  ];
+    { 
+      name: 'Licence Compliance', 
+      score: Math.max(0, 100 - (expiredLicences.length * 20)),
+      required: isFormRequired('carer-licence', jurisdiction)
+    },
+    { 
+      name: 'Hygiene Compliance', 
+      score: avgHygieneScore,
+      required: isFormRequired('hygiene-log', jurisdiction)
+    },
+    { 
+      name: 'Release Compliance', 
+      score: complianceConfig.distanceRequirements.enforced 
+        ? (releaseChecklists.filter((r: any) => r.within10km).length > 0 ? 100 : 80)
+        : 100,
+      required: isFormRequired('release-checklist', jurisdiction)
+    },
+    { 
+      name: 'Incident Management', 
+      score: criticalIncidents.length === 0 ? 100 : Math.max(60, 100 - (criticalIncidents.length * 10)),
+      required: isFormRequired('incident-report', jurisdiction)
+    }
+  ].filter(factor => factor.required); // Only include factors required for this jurisdiction
 
   const overallCompliance = Math.round(complianceFactors.reduce((sum, factor) => sum + factor.score, 0) / complianceFactors.length);
 
@@ -136,6 +162,9 @@ export default function ComplianceOverviewPage() {
           <h1 className="text-3xl font-bold">Compliance Overview</h1>
           <p className="text-muted-foreground">
             {jurisdiction} Wildlife Compliance Status Dashboard
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Based on {complianceConfig.codeOfPractice}
           </p>
         </div>
         <div className="flex gap-2">
@@ -424,22 +453,24 @@ export default function ComplianceOverviewPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">{avgHygieneScore}%</div>
-                <div className="text-sm text-muted-foreground">Hygiene Compliance</div>
+        {isFormRequired('hygiene-log', jurisdiction) && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold">{avgHygieneScore}%</div>
+                  <div className="text-sm text-muted-foreground">Hygiene Compliance</div>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-            <div className="mt-2">
-              <div className="text-xs text-muted-foreground">
-                Based on {hygieneLogs.length} daily logs
+              <div className="mt-2">
+                <div className="text-xs text-muted-foreground">
+                  Based on {hygieneLogs.length} daily logs
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardContent className="p-4">
@@ -461,7 +492,7 @@ export default function ComplianceOverviewPage() {
 
       {/* Alerts and Warnings */}
       <div className="space-y-4">
-        {expiredLicences.length > 0 && (
+        {isFormRequired('carer-licence', jurisdiction) && expiredLicences.length > 0 && (
           <Card className="border-red-200 bg-red-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-red-800">
@@ -491,7 +522,7 @@ export default function ComplianceOverviewPage() {
           </Card>
         )}
 
-        {expiringLicences.length > 0 && (
+        {isFormRequired('carer-licence', jurisdiction) && expiringLicences.length > 0 && (
           <Card className="border-orange-200 bg-orange-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-orange-800">
@@ -521,7 +552,7 @@ export default function ComplianceOverviewPage() {
           </Card>
         )}
 
-        {criticalIncidents.length > 0 && (
+        {isFormRequired('incident-report', jurisdiction) && criticalIncidents.length > 0 && (
           <Card className="border-red-200 bg-red-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-red-800">
@@ -568,18 +599,22 @@ export default function ComplianceOverviewPage() {
                 Wildlife Register
               </Button>
             </Link>
-            <Link href="/compliance/release-checklist">
-              <Button variant="outline" className="w-full h-20 flex-col">
-                <CheckCircle className="h-6 w-6 mb-2" />
-                Release Checklists
-              </Button>
-            </Link>
-            <Link href="/compliance/hygiene">
-              <Button variant="outline" className="w-full h-20 flex-col">
-                <Shield className="h-6 w-6 mb-2" />
-                Hygiene Logs
-              </Button>
-            </Link>
+            {isFormRequired('release-checklist', jurisdiction) && (
+              <Link href="/compliance/release-checklist">
+                <Button variant="outline" className="w-full h-20 flex-col">
+                  <CheckCircle className="h-6 w-6 mb-2" />
+                  Release Checklists
+                </Button>
+              </Link>
+            )}
+            {isFormRequired('hygiene-log', jurisdiction) && (
+              <Link href="/compliance/hygiene">
+                <Button variant="outline" className="w-full h-20 flex-col">
+                  <Shield className="h-6 w-6 mb-2" />
+                  Hygiene Logs
+                </Button>
+              </Link>
+            )}
           </div>
         </CardContent>
       </Card>

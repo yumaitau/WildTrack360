@@ -192,33 +192,50 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                 WildHub
               </h1>
             </Link>
-            <div className="flex items-center gap-2">
-              <Button onClick={handleOpenAddDialog}>
-                <PlusCircle className="mr-2" />
-                Add Animal
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/compliance">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Compliance
-                </Link>
-              </Button>
-              <Button variant="secondary">
-                <Download className="mr-2" />
-                Export All
-              </Button>
-              <Button variant="outline" onClick={refreshAnimalsData}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh
-              </Button>
-              {currentUser.role === 'admin' && (
-                <Button asChild variant="outline">
-                  <Link href="/admin">
-                    <User className="mr-2 h-4 w-4" />
-                    Admin
+            <div className="flex items-center gap-3">
+              {/* Primary Actions */}
+              <div className="flex items-center gap-2">
+                <Button onClick={handleOpenAddDialog}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Animal
+                </Button>
+                <Button asChild variant="default">
+                  <Link href="/animals">
+                    <List className="mr-2 h-4 w-4" />
+                    View All Animals
                   </Link>
                 </Button>
-              )}
+              </div>
+
+              {/* Navigation */}
+              <div className="flex items-center gap-2">
+                <Button asChild variant="outline">
+                  <Link href="/compliance">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Compliance
+                  </Link>
+                </Button>
+                {currentUser.role === 'admin' && (
+                  <Button asChild variant="outline">
+                    <Link href="/admin">
+                      <User className="mr-2 h-4 w-4" />
+                      Admin
+                    </Link>
+                  </Button>
+                )}
+              </div>
+
+              {/* Utilities */}
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={refreshAnimalsData}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </Button>
+                <Button variant="secondary">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -247,6 +264,12 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                         className="w-48"
                      />
                    )}
+                    <Button asChild variant="outline">
+                      <Link href="/animals">
+                        <List className="mr-2 h-4 w-4" />
+                        View All Animals
+                      </Link>
+                    </Button>
                     <Button variant="outline" size="icon" onClick={() => setViewMode('grid')}>
                         <LayoutGrid className={viewMode === 'grid' ? 'text-primary' : ''}/>
                     </Button>
