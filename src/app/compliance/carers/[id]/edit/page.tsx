@@ -14,7 +14,7 @@ import {
   Calendar,
   Home
 } from "lucide-react";
-import { getUsers } from "@/lib/data";
+import { getUsers } from "@/lib/data-store";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 

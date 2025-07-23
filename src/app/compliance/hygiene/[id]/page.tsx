@@ -15,7 +15,7 @@ import {
   Image as ImageIcon,
   Home
 } from "lucide-react";
-import { getHygieneLogs, getUsers } from "@/lib/data";
+import { getHygieneLogs, getUsers } from "@/lib/data-store";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 

@@ -35,9 +35,15 @@ export type Record = {
   id: string;
   animalId: string;
   type: RecordType;
-  date: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  datetime: string; // ISO datetime string (YYYY-MM-DDTHH:mm:ss)
   notes: string;
   details?: { [key: string]: string | number };
+  location?: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
 };
 
 export type Photo = {

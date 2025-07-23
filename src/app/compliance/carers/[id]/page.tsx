@@ -17,7 +17,7 @@ import {
   Shield,
   Home
 } from "lucide-react";
-import { getUsers, getAnimals } from "@/lib/data";
+import { getUsers, getAnimals } from "@/lib/data-store";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 

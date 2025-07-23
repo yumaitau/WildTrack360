@@ -11,6 +11,25 @@ interface DashboardStatsProps {
 }
 
 export default function DashboardStats({ animals }: DashboardStatsProps) {
+  // Debug: Log the animals data to see what we're working with
+  console.log('DashboardStats - animals data:', {
+    totalAnimals: animals.length,
+    inCareCount: animals.filter(a => a.status === 'In Care').length,
+    releasedCount: animals.filter(a => a.status === 'Released').length,
+    deceasedCount: animals.filter(a => a.status === 'Deceased').length,
+    transferredCount: animals.filter(a => a.status === 'Transferred').length,
+    releasedAnimals: animals.filter(a => a.status === 'Released').map(a => ({
+      name: a.name,
+      outcomeDate: a.outcomeDate,
+      status: a.status
+    })),
+    releasedWithoutOutcomeDate: animals.filter(a => a.status === 'Released' && !a.outcomeDate).map(a => ({
+      name: a.name,
+      outcomeDate: a.outcomeDate,
+      status: a.status
+    }))
+  });
+
   const inCareCount = animals.filter(a => a.status === 'In Care').length;
   const releasedCount = animals.filter(a => a.status === 'Released').length;
 

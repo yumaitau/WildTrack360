@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, PlusCircle } from "lucide-react";
+import { CalendarIcon, PlusCircle, Clock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,39 +36,57 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Record, RecordType, recordTypes } from "@/lib/types";
+import { LocationPicker } from "@/components/location-picker";
 
 const addRecordSchema = z.object({
   type: z.enum(recordTypes),
   date: z.date({ required_error: "Record date is required." }),
+  time: z.string().min(1, "Record time is required."),
   notes: z.string().min(1, "Notes are required."),
   weight: z.string().optional(),
   height: z.string().optional(),
   medication: z.string().optional(),
   foodType: z.string().optional(),
   foodAmount: z.string().optional(),
+  location: z.object({
+    lat: z.number(),
+    lng: z.number(),
+    address: z.string(),
+  }).optional(),
 });
 
 type AddRecordFormValues = z.infer<typeof addRecordSchema>;
 
 interface AddRecordFormProps {
   animalId: string;
-  onRecordAdd: (record: Record) => void;
+  onRecordAdd: (record: Record) => Promise<void>;
 }
 
 export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
   const { toast } = useToast();
+  const [locationData, setLocationData] = React.useState<{
+    lat: number;
+    lng: number;
+    address: string;
+  }>({
+    lat: -35.2809,
+    lng: 149.1300,
+    address: 'Canberra ACT, Australia'
+  });
+  
   const form = useForm<AddRecordFormValues>({
     resolver: zodResolver(addRecordSchema),
     defaultValues: {
       type: "General",
       date: new Date(),
+      time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
       notes: "",
     },
   });
 
   const recordType = form.watch("type");
 
-  function onSubmit(data: AddRecordFormValues) {
+  async function onSubmit(data: AddRecordFormValues) {
     const details: { [key: string]: string | number } = {};
     if (data.type === 'Growth') {
         if (data.weight) details.weight = data.weight;
@@ -82,17 +100,22 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
         if (data.foodAmount) details.foodAmount = data.foodAmount;
     }
 
+    // Create datetime string by combining date and time
+    const dateStr = format(data.date, "yyyy-MM-dd");
+    const datetimeStr = `${dateStr}T${data.time}:00`;
 
     const newRecord: Record = {
       id: `rec-${Date.now()}`,
       animalId,
       type: data.type,
-      date: format(data.date, "yyyy-MM-dd"),
+      date: dateStr,
+      datetime: datetimeStr,
       notes: data.notes,
       details: Object.keys(details).length > 0 ? details : undefined,
+      location: data.type === 'Release' ? locationData : undefined,
     };
 
-    onRecordAdd(newRecord);
+    await onRecordAdd(newRecord);
 
     toast({
       title: "Record Added",
@@ -102,6 +125,7 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
     form.reset({
       type: "General",
       date: new Date(),
+      time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
       notes: "",
       weight: "",
       height: "",
@@ -120,7 +144,7 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="type"
@@ -180,6 +204,23 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
                         />
                       </PopoverContent>
                     </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Time</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="time"
+                        {...field}
+                        className="w-full"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -262,6 +303,13 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
                     )}
                     />
               </div>
+            )}
+
+            {recordType === 'Release' && (
+              <LocationPicker
+                onLocationChange={setLocationData}
+                initialLocation={locationData}
+              />
             )}
 
 

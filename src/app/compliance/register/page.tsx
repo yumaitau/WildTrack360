@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, Search, Plus, Filter, ArrowLeft } from "lucide-react";
-import { getAnimals, getSpecies, getCarers } from "@/lib/data";
+import { getAnimals, getSpecies, getCarers } from "@/lib/data-store";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';

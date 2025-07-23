@@ -1,6 +1,6 @@
 import type { Animal, Record, Photo, Asset, User, ReleaseChecklist, HygieneLog, IncidentReport, TrainingRecord } from './types';
 
-const animals: Animal[] = [
+export const animals: Animal[] = [
   {
     id: 'wombat-warren',
     name: 'Warren',
@@ -199,20 +199,20 @@ const animals: Animal[] = [
   },
 ];
 
-const records: Record[] = [
-  { id: 'rec-001', animalId: 'koala-kylie', type: 'Health Check', date: '2023-11-02', notes: 'Initial checkup. Mild dehydration and slight burns on paws. Administered fluids.' },
-  { id: 'rec-002', animalId: 'koala-kylie', type: 'Feeding', date: '2023-11-03', notes: 'Started on a diet of fresh eucalyptus leaves. Eating well.' },
-  { id: 'rec-003', animalId: 'koala-kylie', type: 'Growth', date: '2023-11-15', notes: 'Weight gain of 200g. Good progress.', details: { weight: '2.2kg' } },
-  { id: 'rec-004', animalId: 'koala-kylie', type: 'Health Check', date: '2023-12-01', notes: 'Paws healing nicely. Burn ointment applied. Appears more active.' },
-  { id: 'rec-005', animalId: 'koala-kylie', type: 'Release', date: '2024-01-20', notes: 'Released back into a protected habitat. Fitted with a temporary tracker.' },
-  { id: 'rec-010', animalId: 'koala-kylie', type: 'Sighting', date: '2024-02-10', notes: 'Sighting reported by a member of the public. Animal appeared healthy and active in its natural habitat.' },
-  { id: 'rec-006', animalId: 'wombat-warren', type: 'Health Check', date: '2023-10-16', notes: 'Suffering from mange. Started treatment course.' },
-  { id: 'rec-007', animalId: 'wombat-warren', type: 'Feeding', date: '2023-10-17', notes: 'Eating a mix of grasses and supplements.' },
-  { id: 'rec-008', animalId: 'kangaroo-kevin', type: 'Release', date: '2023-11-05', notes: 'Successfully released after leg injury healed.' },
-  { id: 'rec-009', animalId: 'turtle-tina', type: 'Health Check', date: '2024-03-11', notes: 'Shell has a minor crack. Cleaned and sealed.' },
+export const records: Record[] = [
+  { id: 'rec-001', animalId: 'koala-kylie', type: 'Health Check', date: '2023-11-02', datetime: '2023-11-02T09:30:00', notes: 'Initial checkup. Mild dehydration and slight burns on paws. Administered fluids.' },
+  { id: 'rec-002', animalId: 'koala-kylie', type: 'Feeding', date: '2023-11-03', datetime: '2023-11-03T14:15:00', notes: 'Started on a diet of fresh eucalyptus leaves. Eating well.' },
+  { id: 'rec-003', animalId: 'koala-kylie', type: 'Growth', date: '2023-11-15', datetime: '2023-11-15T11:45:00', notes: 'Weight gain of 200g. Good progress.', details: { weight: '2.2kg' } },
+  { id: 'rec-004', animalId: 'koala-kylie', type: 'Health Check', date: '2023-12-01', datetime: '2023-12-01T10:20:00', notes: 'Paws healing nicely. Burn ointment applied. Appears more active.' },
+  { id: 'rec-005', animalId: 'koala-kylie', type: 'Release', date: '2024-01-20', datetime: '2024-01-20T15:30:00', notes: 'Released back into a protected habitat. Fitted with a temporary tracker.' },
+  { id: 'rec-010', animalId: 'koala-kylie', type: 'Sighting', date: '2024-02-10', datetime: '2024-02-10T08:45:00', notes: 'Sighting reported by a member of the public. Animal appeared healthy and active in its natural habitat.' },
+  { id: 'rec-006', animalId: 'wombat-warren', type: 'Health Check', date: '2023-10-16', datetime: '2023-10-16T13:00:00', notes: 'Suffering from mange. Started treatment course.' },
+  { id: 'rec-007', animalId: 'wombat-warren', type: 'Feeding', date: '2023-10-17', datetime: '2023-10-17T16:30:00', notes: 'Eating a mix of grasses and supplements.' },
+  { id: 'rec-008', animalId: 'kangaroo-kevin', type: 'Release', date: '2023-11-05', datetime: '2023-11-05T12:00:00', notes: 'Successfully released after leg injury healed.' },
+  { id: 'rec-009', animalId: 'turtle-tina', type: 'Health Check', date: '2024-03-11', datetime: '2024-03-11T09:15:00', notes: 'Shell has a minor crack. Cleaned and sealed.' },
 ];
 
-const photos: Photo[] = [
+export const photos: Photo[] = [
     { id: 'photo-001', animalId: 'koala-kylie', url: 'https://placehold.co/800x600.png', date: '2023-11-02', description: 'Kylie upon arrival, showing burns on paws.'},
     { id: 'photo-002', animalId: 'koala-kylie', url: 'https://placehold.co/800x600.png', date: '2023-12-01', description: 'Showing significant healing on paws.'},
     { id: 'photo-003', animalId: 'koala-kylie', url: 'https://placehold.co/800x600.png', date: '2024-01-18', description: 'Healthy and alert, just before release.'},
@@ -220,7 +220,7 @@ const photos: Photo[] = [
     { id: 'photo-005', animalId: 'turtle-tina', url: 'https://placehold.co/800x600.png', date: '2024-03-11', description: 'Close-up of the crack on Tina\'s shell.'},
 ];
 
-const assets: Asset[] = [
+export const assets: Asset[] = [
     { id: 'cage-01', name: 'Large Mammal Cage', type: 'Cage', status: 'Available' },
     { id: 'cage-02', name: 'Reptile Terrarium', type: 'Cage', status: 'In Use' },
     { id: 'tracker-01', name: 'GPS Tracker #A45', type: 'Tracker', status: 'In Use' },
@@ -229,7 +229,7 @@ const assets: Asset[] = [
     { id: 'dataset-01', name: 'Koala Population Data 2023', type: 'Dataset', status: 'Available' },
 ]
 
-const users: User[] = [
+export const users: User[] = [
   {
     id: 'user-jane-doe',
     fullName: 'Jane Doe',
@@ -493,15 +493,209 @@ const incidentReports: IncidentReport[] = [
 
 
 export const getAnimals = async (): Promise<Animal[]> => {
+  // Try to get from localStorage first
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('wildhub-animals');
+    if (stored) {
+      try {
+        const parsedAnimals = JSON.parse(stored);
+        console.log('Loaded animals from localStorage:', parsedAnimals.length, 'animals');
+        
+        // Sync missing animals from mock data
+        await syncMissingAnimals(parsedAnimals);
+        
+        return parsedAnimals.sort((a: Animal, b: Animal) => new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime());
+      } catch (error) {
+        console.error('Error parsing stored animals:', error);
+      }
+    } else {
+      console.log('No animals found in localStorage, using default data');
+      // Initialize localStorage with default animals
+      await saveAnimals(animals);
+    }
+  }
+  
+  // Fallback to default animals
   return animals.sort((a,b) => new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime());
 };
 
+export const saveAnimals = async (animals: Animal[]): Promise<void> => {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('wildhub-animals', JSON.stringify(animals));
+      console.log('Animals saved to localStorage:', animals.length, 'animals');
+    } catch (error) {
+      console.error('Error saving animals to localStorage:', error);
+    }
+  }
+};
+
+export const clearStoredAnimals = async (): Promise<void> => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('wildhub-animals');
+  }
+};
+
+export const syncMissingAnimals = async (storedAnimals: Animal[]): Promise<void> => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const storedAnimalIds = new Set(storedAnimals.map(animal => animal.id));
+    const missingAnimals = animals.filter(animal => !storedAnimalIds.has(animal.id));
+    
+    if (missingAnimals.length > 0) {
+      console.log(`Found ${missingAnimals.length} missing animals from mock data, adding to localStorage`);
+      
+      // Add missing animals to existing stored animals
+      const updatedAnimals = [...storedAnimals, ...missingAnimals];
+      
+      // Save back to localStorage
+      await saveAnimals(updatedAnimals);
+      
+      console.log('Successfully synced missing animals to localStorage');
+    } else {
+      console.log('All mock animals are already in localStorage');
+    }
+  } catch (error) {
+    console.error('Error syncing missing animals:', error);
+  }
+};
+
+export const syncMissingRecords = async (storedRecords: Record[]): Promise<void> => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const storedRecordIds = new Set(storedRecords.map(record => record.id));
+    const missingRecords = records.filter(record => !storedRecordIds.has(record.id));
+    
+    if (missingRecords.length > 0) {
+      console.log(`Found ${missingRecords.length} missing records from mock data, adding to localStorage`);
+      
+      // Add missing records to existing stored records
+      const updatedRecords = [...storedRecords, ...missingRecords];
+      
+      // Save back to localStorage
+      await saveRecords(updatedRecords);
+      
+      console.log('Successfully synced missing records to localStorage');
+    } else {
+      console.log('All mock records are already in localStorage');
+    }
+  } catch (error) {
+    console.error('Error syncing missing records:', error);
+  }
+};
+
+export const saveRecords = async (records: Record[]): Promise<void> => {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('wildhub-records', JSON.stringify(records));
+      console.log('Records saved to localStorage:', records.length, 'records');
+    } catch (error) {
+      console.error('Error saving records to localStorage:', error);
+    }
+  }
+};
+
+export const addRecord = async (newRecord: Record): Promise<void> => {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('wildhub-records');
+      let allRecords: Record[] = [];
+      
+      if (stored) {
+        allRecords = JSON.parse(stored);
+      }
+      
+      allRecords.push(newRecord);
+      await saveRecords(allRecords);
+      console.log('Record added to localStorage:', newRecord.id);
+    } catch (error) {
+      console.error('Error adding record to localStorage:', error);
+    }
+  }
+};
+
+export const getAllRecords = async (): Promise<Record[]> => {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('wildhub-records');
+    if (stored) {
+      try {
+        const parsedRecords = JSON.parse(stored);
+        console.log('Loaded all records from localStorage:', parsedRecords.length, 'records');
+        return parsedRecords.sort((a: Record, b: Record) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      } catch (error) {
+        console.error('Error parsing stored records:', error);
+      }
+    }
+  }
+  
+  // Fallback to default records
+  return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+};
+
 export const getAnimalById = async (id: string): Promise<Animal | undefined> => {
-  return animals.find((animal) => animal.id === id);
+  console.log('getAnimalById called with id:', id);
+  
+  // Try to get from localStorage first
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('wildhub-animals');
+    if (stored) {
+      try {
+        const parsedAnimals = JSON.parse(stored);
+        console.log('Searching for animal with id:', id, 'in', parsedAnimals.length, 'animals');
+        const foundAnimal = parsedAnimals.find((animal: Animal) => animal.id === id);
+        if (foundAnimal) {
+          console.log('Found animal in localStorage:', foundAnimal.name);
+          return foundAnimal;
+        } else {
+          console.log('Animal not found in localStorage');
+        }
+      } catch (error) {
+        console.error('Error parsing stored animals:', error);
+      }
+    } else {
+      console.log('No animals found in localStorage');
+    }
+  }
+  
+  // Fallback to default animals
+  console.log('Searching in default animals');
+  const defaultAnimal = animals.find((animal) => animal.id === id);
+  if (defaultAnimal) {
+    console.log('Found animal in default data:', defaultAnimal.name);
+  } else {
+    console.log('Animal not found in default data either');
+  }
+  return defaultAnimal;
 };
 
 export const getRecordsByAnimalId = async (animalId: string): Promise<Record[]> => {
-    return records.filter((record) => record.animalId === animalId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Try to get from localStorage first
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('wildhub-records');
+    if (stored) {
+      try {
+        const parsedRecords = JSON.parse(stored);
+        
+        // Sync missing records from mock data
+        await syncMissingRecords(parsedRecords);
+        
+        const animalRecords = parsedRecords.filter((record: Record) => record.animalId === animalId);
+        console.log('Loaded records from localStorage:', animalRecords.length, 'records for animal', animalId);
+        return animalRecords.sort((a: Record, b: Record) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      } catch (error) {
+        console.error('Error parsing stored records:', error);
+      }
+    } else {
+      console.log('No records found in localStorage, using default data');
+      // Initialize localStorage with default records
+      await saveRecords(records);
+    }
+  }
+  
+  // Fallback to default records
+  return records.filter((record) => record.animalId === animalId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
 
 export const getPhotosByAnimalId = async (animalId: string): Promise<Photo[]> => {

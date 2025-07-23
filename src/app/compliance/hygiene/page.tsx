@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Shield, Calendar, CheckCircle, XCircle, Download, Plus, AlertTriangle, ArrowLeft } from "lucide-react";
-import { getHygieneLogs, getUsers } from "@/lib/data";
+import { getHygieneLogs, getUsers } from "@/lib/data-store";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';

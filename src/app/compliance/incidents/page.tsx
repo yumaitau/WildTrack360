@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertTriangle, Calendar, Download, Plus, FileText, User, MapPin, ArrowLeft } from "lucide-react";
-import { getIncidentReports, getAnimals } from "@/lib/data";
+import { getIncidentReports, getAnimals } from "@/lib/data-store";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';

@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Animal, AnimalStatus } from "@/lib/types"
+import { LocationPicker } from "@/components/location-picker"
 
 const addAnimalSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -50,6 +51,11 @@ const addAnimalSchema = z.object({
   }),
   carer: z.string().min(1, "Carer is required."),
   status: z.enum(["In Care", "Released", "Deceased", "Transferred"]),
+  rescueLocation: z.string().min(1, "Rescue location is required."),
+  rescueCoordinates: z.object({
+    lat: z.number(),
+    lng: z.number(),
+  }).optional(),
 })
 
 type AddAnimalFormValues = z.infer<typeof addAnimalSchema>
@@ -57,7 +63,7 @@ type AddAnimalFormValues = z.infer<typeof addAnimalSchema>
 interface AddAnimalDialogProps {
   isOpen: boolean
   setIsOpen: (isOpen: boolean) => void
-  onAnimalAdd: (animal: Animal) => void
+  onAnimalAdd: (animal: Animal) => Promise<void>
   animalToEdit?: Animal | null;
   speciesOptions: string[];
   carerOptions: string[];
@@ -73,6 +79,15 @@ export function AddAnimalDialog({
 }: AddAnimalDialogProps) {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = React.useState(false)
+  const [locationData, setLocationData] = React.useState<{
+    lat: number;
+    lng: number;
+    address: string;
+  }>({
+    lat: -35.2809,
+    lng: 149.1300,
+    address: 'Canberra ACT, Australia'
+  });
   
   const isEditMode = !!animalToEdit;
 
@@ -80,12 +95,16 @@ export function AddAnimalDialog({
     resolver: zodResolver(addAnimalSchema),
     defaultValues: isEditMode ? {
       ...animalToEdit,
-      dateFound: parse(animalToEdit.dateFound, "yyyy-MM-dd", new Date())
+      dateFound: parse(animalToEdit.dateFound, "yyyy-MM-dd", new Date()),
+      rescueLocation: animalToEdit.rescueLocation || 'Canberra ACT, Australia',
+      rescueCoordinates: animalToEdit.rescueCoordinates || { lat: -35.2809, lng: 149.1300 }
     } : {
       name: "",
       species: "",
       carer: "",
       status: "In Care",
+      rescueLocation: "Canberra ACT, Australia",
+      rescueCoordinates: { lat: -35.2809, lng: 149.1300 }
     },
   })
   
@@ -94,7 +113,14 @@ export function AddAnimalDialog({
       if (animalToEdit) {
           form.reset({
               ...animalToEdit,
-              dateFound: parse(animalToEdit.dateFound, "yyyy-MM-dd", new Date())
+              dateFound: parse(animalToEdit.dateFound, "yyyy-MM-dd", new Date()),
+              rescueLocation: animalToEdit.rescueLocation || 'Canberra ACT, Australia',
+              rescueCoordinates: animalToEdit.rescueCoordinates || { lat: -35.2809, lng: 149.1300 }
+          });
+          setLocationData({
+            lat: animalToEdit.rescueCoordinates?.lat || -35.2809,
+            lng: animalToEdit.rescueCoordinates?.lng || 149.1300,
+            address: animalToEdit.rescueLocation || 'Canberra ACT, Australia'
           });
       } else {
           form.reset({
@@ -103,6 +129,13 @@ export function AddAnimalDialog({
               carer: "",
               status: "In Care",
               dateFound: new Date(),
+              rescueLocation: "Canberra ACT, Australia",
+              rescueCoordinates: { lat: -35.2809, lng: 149.1300 }
+          });
+          setLocationData({
+            lat: -35.2809,
+            lng: 149.1300,
+            address: 'Canberra ACT, Australia'
           });
       }
     }
@@ -127,14 +160,15 @@ export function AddAnimalDialog({
       photo: isEditMode ? animalToEdit.photo : `https://placehold.co/600x400.png`,
       sex: isEditMode ? animalToEdit.sex : "Unknown",
       ageClass: isEditMode ? animalToEdit.ageClass : "Unknown",
-      rescueLocation: isEditMode ? animalToEdit.rescueLocation : "Unknown",
+      rescueLocation: locationData.address,
+      rescueCoordinates: { lat: locationData.lat, lng: locationData.lng },
       rescueDate: isEditMode ? animalToEdit.rescueDate : format(data.dateFound, "yyyy-MM-dd"),
       reasonForAdmission: isEditMode ? animalToEdit.reasonForAdmission : "Unknown",
       carerId: isEditMode ? animalToEdit.carerId : data.carer,
       notes: isEditMode ? animalToEdit.notes : "",
     };
 
-    onAnimalAdd(newAnimal)
+    await onAnimalAdd(newAnimal)
     
     toast({
       title: isEditMode ? "Animal Updated" : "Animal Added",
@@ -149,7 +183,7 @@ export function AddAnimalDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Edit Animal' : 'Add New Animal'}</DialogTitle>
           <DialogDescription>
@@ -271,6 +305,15 @@ export function AddAnimalDialog({
                   <FormMessage />
                 </FormItem>
               )}
+            />
+            
+            <LocationPicker
+              onLocationChange={setLocationData}
+              initialLocation={isEditMode ? {
+                lat: animalToEdit.rescueCoordinates?.lat || -35.2809,
+                lng: animalToEdit.rescueCoordinates?.lng || 149.1300,
+                address: animalToEdit.rescueLocation || 'Canberra ACT, Australia'
+              } : undefined}
             />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>

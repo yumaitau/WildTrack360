@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, PawPrint, User, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getSpecies, getCarers, getAssets } from '@/lib/data';
+import { getSpecies, getCarers, getAssets } from '@/lib/data-store';
 import { SpeciesManagement } from './species-management';
 import { CarerManagement } from './carer-management';
 import { AssetManagement } from './asset-management';

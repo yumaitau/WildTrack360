@@ -16,13 +16,13 @@ import {
   TrendingDown,
   Activity
 } from "lucide-react";
-import { 
-  getAnimals, 
-  getUsers, 
-  getReleaseChecklists, 
-  getHygieneLogs, 
-  getIncidentReports 
-} from "@/lib/data";
+import {
+  getAnimals,
+  getUsers,
+  getReleaseChecklists,
+  getHygieneLogs,
+  getIncidentReports
+} from "@/lib/data-store";
 import { getCurrentJurisdiction, getJurisdictionConfig, getOrganizationName } from '@/lib/config';
 import Link from "next/link";
 import { useEffect, useState } from "react";
