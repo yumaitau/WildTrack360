@@ -233,7 +233,7 @@ export const users: User[] = [
   {
     id: 'user-jane-doe',
     fullName: 'Jane Doe',
-    email: 'jane.doe@wildhub.act.gov.au',
+    email: 'jane.doe@wildtrack360.act.gov.au',
     jurisdiction: 'ACT',
     licenceNumber: 'ACT-WC-2023-001',
     licenceExpiry: '2025-12-31',
@@ -261,7 +261,7 @@ export const users: User[] = [
   {
     id: 'user-john-smith',
     fullName: 'John Smith',
-    email: 'john.smith@wildhub.act.gov.au',
+    email: 'john.smith@wildtrack360.act.gov.au',
     jurisdiction: 'ACT',
     licenceNumber: 'ACT-WC-2023-002',
     licenceExpiry: '2024-06-30',
@@ -289,7 +289,7 @@ export const users: User[] = [
   {
     id: 'user-peter-jones',
     fullName: 'Peter Jones',
-    email: 'peter.jones@wildhub.act.gov.au',
+    email: 'peter.jones@wildtrack360.act.gov.au',
     jurisdiction: 'ACT',
     licenceNumber: 'ACT-WC-2023-003',
     licenceExpiry: '2025-09-15',
@@ -317,7 +317,7 @@ export const users: User[] = [
   {
     id: 'user-susan-williams',
     fullName: 'Susan Williams',
-    email: 'susan.williams@wildhub.act.gov.au',
+    email: 'susan.williams@wildtrack360.act.gov.au',
     jurisdiction: 'ACT',
     licenceNumber: 'ACT-WC-2023-004',
     licenceExpiry: '2025-03-20',
@@ -337,7 +337,7 @@ export const users: User[] = [
   {
     id: 'user-dr-brown',
     fullName: 'Dr. Sarah Brown',
-    email: 'sarah.brown@wildhub.act.gov.au',
+    email: 'sarah.brown@wildtrack360.act.gov.au',
     jurisdiction: 'ACT',
     licenceNumber: 'ACT-VET-2023-001',
     licenceExpiry: '2025-12-31',
@@ -364,7 +364,7 @@ export const users: User[] = [
   {
     id: 'user-coordinator',
     fullName: 'Michael Johnson',
-    email: 'michael.johnson@wildhub.act.gov.au',
+    email: 'michael.johnson@wildtrack360.act.gov.au',
     jurisdiction: 'ACT',
     licenceNumber: 'ACT-COORD-2023-001',
     licenceExpiry: '2025-12-31',
@@ -495,7 +495,7 @@ const incidentReports: IncidentReport[] = [
 export const getAnimals = async (): Promise<Animal[]> => {
   // Try to get from localStorage first
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('wildhub-animals');
+    const stored = localStorage.getItem('wildtrack360-animals');
     if (stored) {
       try {
         const parsedAnimals = JSON.parse(stored);
@@ -522,7 +522,7 @@ export const getAnimals = async (): Promise<Animal[]> => {
 export const saveAnimals = async (animals: Animal[]): Promise<void> => {
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem('wildhub-animals', JSON.stringify(animals));
+      localStorage.setItem('wildtrack360-animals', JSON.stringify(animals));
       console.log('Animals saved to localStorage:', animals.length, 'animals');
     } catch (error) {
       console.error('Error saving animals to localStorage:', error);
@@ -532,7 +532,7 @@ export const saveAnimals = async (animals: Animal[]): Promise<void> => {
 
 export const clearStoredAnimals = async (): Promise<void> => {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('wildhub-animals');
+    localStorage.removeItem('wildtrack360-animals');
   }
 };
 
@@ -589,7 +589,7 @@ export const syncMissingRecords = async (storedRecords: Record[]): Promise<void>
 export const saveRecords = async (records: Record[]): Promise<void> => {
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem('wildhub-records', JSON.stringify(records));
+      localStorage.setItem('wildtrack360-records', JSON.stringify(records));
       console.log('Records saved to localStorage:', records.length, 'records');
     } catch (error) {
       console.error('Error saving records to localStorage:', error);
@@ -600,7 +600,7 @@ export const saveRecords = async (records: Record[]): Promise<void> => {
 export const addRecord = async (newRecord: Record): Promise<void> => {
   if (typeof window !== 'undefined') {
     try {
-      const stored = localStorage.getItem('wildhub-records');
+      const stored = localStorage.getItem('wildtrack360-records');
       let allRecords: Record[] = [];
       
       if (stored) {
@@ -618,7 +618,7 @@ export const addRecord = async (newRecord: Record): Promise<void> => {
 
 export const getAllRecords = async (): Promise<Record[]> => {
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('wildhub-records');
+    const stored = localStorage.getItem('wildtrack360-records');
     if (stored) {
       try {
         const parsedRecords = JSON.parse(stored);
@@ -639,7 +639,7 @@ export const getAnimalById = async (id: string): Promise<Animal | undefined> => 
   
   // Try to get from localStorage first
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('wildhub-animals');
+    const stored = localStorage.getItem('wildtrack360-animals');
     if (stored) {
       try {
         const parsedAnimals = JSON.parse(stored);
@@ -673,7 +673,7 @@ export const getAnimalById = async (id: string): Promise<Animal | undefined> => 
 export const getRecordsByAnimalId = async (animalId: string): Promise<Record[]> => {
   // Try to get from localStorage first
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('wildhub-records');
+    const stored = localStorage.getItem('wildtrack360-records');
     if (stored) {
       try {
         const parsedRecords = JSON.parse(stored);

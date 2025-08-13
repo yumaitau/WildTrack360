@@ -59,7 +59,7 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
   // Listen for localStorage changes to refresh data
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'wildhub-animals' || e.key === 'wildhub-records') {
+      if (e.key === 'wildtrack360-animals' || e.key === 'wildtrack360-records') {
         const refreshData = async () => {
           try {
             const [animalsData, speciesData, carersData] = await Promise.all([

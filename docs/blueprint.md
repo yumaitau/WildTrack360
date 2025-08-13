@@ -1,4 +1,4 @@
-# **App Name**: WildHub
+# **App Name**: WildTrack360
 
 ## Core Features:
 

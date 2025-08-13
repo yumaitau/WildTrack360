@@ -223,7 +223,7 @@ export default function IncidentReportsPage() {
               yPosition = 20;
               doc.setFontSize(10);
               doc.setFont('helvetica', 'italic');
-              doc.text('This report was generated automatically by WildHub Compliance System.', margin, yPosition);
+              doc.text('This report was generated automatically by WildTrack360 Compliance System.', margin, yPosition);
               yPosition += 7;
               doc.text('For questions or concerns, please contact your compliance coordinator.', margin, yPosition);
               

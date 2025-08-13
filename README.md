@@ -1,13 +1,13 @@
-# WildHub - Wildlife Conservation Management System
+# WildTrack360 - Wildlife Conservation Management System
 
-WildHub is a comprehensive wildlife conservation management application designed to help wildlife carers track animals throughout their entire lifecycle, from initial admission to release or unfortunate passing. The system also manages critical assets like GPS trackers and equipment to ensure efficient wildlife care operations, with full compliance tracking for ACT Wildlife Code of Practice requirements.
+WildTrack360 is a comprehensive wildlife conservation management application designed to help wildlife carers track animals throughout their entire lifecycle, from initial admission to release or unfortunate outcomes. The system also manages critical assets like GPS trackers and equipment to ensure efficient wildlife care operations, with full compliance tracking for ACT Wildlife Code of Practice requirements.
 
 ## 🖼️ Screenshots
 
 ### Main Dashboard
 The dashboard provides a comprehensive overview of your wildlife conservation operations with real-time statistics and visual data:
 
-![WildHub Dashboard](docs/images/dashboard.png)
+![WildTrack360 Dashboard](docs/images/dashboard.png)
 
 **Features shown:**
 - **Summary Cards**: Quick stats showing 7 animals in care, 2 total releases, and +2 recent admissions
@@ -186,7 +186,7 @@ Track GPS trackers and equipment inventory:
 - **Jurisdiction Configuration**: Dynamic compliance requirements based on jurisdiction
 
 ### 🌍 Multi-Jurisdiction Support
-WildHub supports multiple jurisdictions with different compliance requirements:
+WildTrack360 supports multiple jurisdictions with different compliance requirements:
 
 **ACT (Australian Capital Territory)**
 - **Enabled Forms**: Release Checklist, Incident Log, Hygiene Log, Carer Licence
@@ -221,8 +221,8 @@ WildHub supports multiple jurisdictions with different compliance requirements:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/wildhub.git
-   cd wildhub
+   git clone https://github.com/your-username/wildtrack360.git
+   cd wildtrack360
    ```
 
 2. **Install dependencies**
@@ -265,7 +265,7 @@ npm start
 ## 🏗️ Project Structure
 
 ```
-WildHub/
+WildTrack360/
 ├── src/
 │   ├── app/                    # Next.js app directory
 │   │   ├── admin/             # Admin panel pages
@@ -304,7 +304,7 @@ WildHub/
 
 ## 🌍 Multi-Jurisdiction Deployment
 
-WildHub supports deployment for multiple organizations across different Australian jurisdictions. Each organization can have its own configuration through environment variables.
+WildTrack360 supports deployment for multiple organizations across different Australian jurisdictions. Each organization can have its own configuration through environment variables.
 
 ### Environment Configuration
 

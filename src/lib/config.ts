@@ -93,12 +93,12 @@ export const isFeatureEnabled = (feature: string): boolean => {
 
 // Get organization name from environment
 export const getOrganizationName = (): string => {
-  return process.env.NEXT_PUBLIC_ORGANIZATION_NAME || process.env.ORGANIZATION_NAME || 'WildHub';
+  return process.env.NEXT_PUBLIC_ORGANIZATION_NAME || process.env.ORGANIZATION_NAME || 'WildTrack360';
 };
 
 // Get organization contact from environment
 export const getOrganizationContact = (): string => {
-  return process.env.NEXT_PUBLIC_ORGANIZATION_CONTACT || process.env.ORGANIZATION_CONTACT || 'contact@wildhub.org';
+  return process.env.NEXT_PUBLIC_ORGANIZATION_CONTACT || process.env.ORGANIZATION_CONTACT || 'contact@wildtrack360.org';
 };
 
 // Get organization logo from environment

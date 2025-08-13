@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'WildHub',
+  title: 'WildTrack360',
   description: 'Wildlife Career Management App',
 };
 

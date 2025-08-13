@@ -1,6 +1,6 @@
-# Screenshots for WildHub README
+# Screenshots for WildTrack360 README
 
-This directory should contain the following screenshot files for the WildHub README:
+This directory should contain the following screenshot files for the WildTrack360 README:
 
 1. `dashboard.png` - Main dashboard showing statistics, species distribution, and carer workload
 2. `recent-admissions.png` - Recent admissions chart and animal records grid

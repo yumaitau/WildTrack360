@@ -2,6 +2,7 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { PawPrint, PlusCircle, Download, Settings, List, LayoutGrid, Shield, User, RefreshCw } from 'lucide-react';
 import { Animal } from '@/lib/types';
@@ -84,7 +85,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
   // Listen for localStorage changes to refresh data
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'wildhub-animals' || e.key === 'wildhub-records') {
+      if (e.key === 'wildtrack360-animals' || e.key === 'wildtrack360-records') {
         const refreshData = async () => {
           try {
             const [animalsData, speciesData, carersData] = await Promise.all([
@@ -185,11 +186,8 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <Link href="/" className="flex items-center gap-3">
-              <div className="p-2 bg-primary rounded-full">
-                <PawPrint className="h-6 w-6 text-primary-foreground" />
-              </div>
               <h1 className="text-3xl font-bold font-headline text-primary">
-                WildHub
+                WildTrack360
               </h1>
             </Link>
             <div className="flex items-center gap-3">
@@ -242,6 +240,19 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
       </header>
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
+          {/* Brandmark Logo Section */}
+          <div className="flex justify-center py-4">
+            <div className="relative h-40 w-96">
+              <Image
+                src="/Brandmark-Text-Vert.svg"
+                alt="WildTrack360 Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+          </div>
+          
           <DashboardStats animals={animals} />
           <div className="grid gap-8 md:grid-cols-2">
             <SpeciesDistributionChart animals={animals} />
@@ -292,7 +303,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         </div>
       </main>
        <footer className="text-center py-4 text-muted-foreground text-sm">
-        <p>&copy; {new Date().getFullYear()} WildHub. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} WildTrack360. All rights reserved.</p>
       </footer>
       <AddAnimalDialog 
         isOpen={isAddDialogOpen}

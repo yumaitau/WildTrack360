@@ -5,14 +5,14 @@ import { animals as mockAnimals, records as mockRecords, photos as mockPhotos, a
 
 // Storage keys
 const STORAGE_KEYS = {
-  ANIMALS: 'wildhub-animals',
-  RECORDS: 'wildhub-records',
-  PHOTOS: 'wildhub-photos',
-  ASSETS: 'wildhub-assets',
-  USERS: 'wildhub-users',
-  RELEASE_CHECKLISTS: 'wildhub-release-checklists',
-  HYGIENE_LOGS: 'wildhub-hygiene-logs',
-  INCIDENT_REPORTS: 'wildhub-incident-reports',
+  ANIMALS: 'wildtrack360-animals',
+  RECORDS: 'wildtrack360-records',
+  PHOTOS: 'wildtrack360-photos',
+  ASSETS: 'wildtrack360-assets',
+  USERS: 'wildtrack360-users',
+  RELEASE_CHECKLISTS: 'wildtrack360-release-checklists',
+  HYGIENE_LOGS: 'wildtrack360-hygiene-logs',
+  INCIDENT_REPORTS: 'wildtrack360-incident-reports',
 } as const;
 
 // Base interface for all entities
@@ -311,7 +311,7 @@ export const getSpecies = async (): Promise<string[]> => {
   if (typeof window === 'undefined') return [];
   
   try {
-    const stored = localStorage.getItem('wildhub-species');
+    const stored = localStorage.getItem('wildtrack360-species');
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
     console.error('Error reading species from localStorage:', error);
@@ -326,7 +326,7 @@ export const createSpecies = async (species: string): Promise<string> => {
   }
   
   const updatedSpecies = [...existingSpecies, species].sort();
-  localStorage.setItem('wildhub-species', JSON.stringify(updatedSpecies));
+  localStorage.setItem('wildtrack360-species', JSON.stringify(updatedSpecies));
   return species;
 };
 
@@ -344,7 +344,7 @@ export const updateSpecies = async (oldSpecies: string, newSpecies: string): Pro
   
   existingSpecies[index] = newSpecies;
   const updatedSpecies = existingSpecies.sort();
-  localStorage.setItem('wildhub-species', JSON.stringify(updatedSpecies));
+  localStorage.setItem('wildtrack360-species', JSON.stringify(updatedSpecies));
   
   // Update all animals that use this species
   const animals = await dataStore.animals.getAll();
@@ -374,7 +374,7 @@ export const deleteSpecies = async (species: string): Promise<boolean> => {
   }
   
   existingSpecies.splice(index, 1);
-  localStorage.setItem('wildhub-species', JSON.stringify(existingSpecies));
+  localStorage.setItem('wildtrack360-species', JSON.stringify(existingSpecies));
   return true;
 };
 
@@ -382,7 +382,7 @@ export const getCarers = async (): Promise<string[]> => {
   if (typeof window === 'undefined') return [];
   
   try {
-    const stored = localStorage.getItem('wildhub-carers');
+    const stored = localStorage.getItem('wildtrack360-carers');
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
     console.error('Error reading carers from localStorage:', error);
@@ -397,7 +397,7 @@ export const createCarer = async (carer: string): Promise<string> => {
   }
   
   const updatedCarers = [...existingCarers, carer].sort();
-  localStorage.setItem('wildhub-carers', JSON.stringify(updatedCarers));
+  localStorage.setItem('wildtrack360-carers', JSON.stringify(updatedCarers));
   return carer;
 };
 
@@ -415,7 +415,7 @@ export const updateCarer = async (oldCarer: string, newCarer: string): Promise<s
   
   existingCarers[index] = newCarer;
   const updatedCarers = existingCarers.sort();
-  localStorage.setItem('wildhub-carers', JSON.stringify(updatedCarers));
+  localStorage.setItem('wildtrack360-carers', JSON.stringify(updatedCarers));
   
   // Update all animals that use this carer
   const animals = await dataStore.animals.getAll();
@@ -445,7 +445,7 @@ export const deleteCarer = async (carer: string): Promise<boolean> => {
   }
   
   existingCarers.splice(index, 1);
-  localStorage.setItem('wildhub-carers', JSON.stringify(existingCarers));
+  localStorage.setItem('wildtrack360-carers', JSON.stringify(existingCarers));
   return true;
 };
 
