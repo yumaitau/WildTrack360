@@ -14,7 +14,8 @@ import {
   ExternalLink,
   Home
 } from "lucide-react";
-import { getIncidentReports, getAnimals, getUsers } from "@/lib/data-store";
+import { prisma } from '@/lib/prisma'
+import { auth } from '@clerk/nextjs/server'
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -25,18 +26,17 @@ interface IncidentReportDetailPageProps {
 }
 
 export default async function IncidentReportDetailPage({ params }: IncidentReportDetailPageProps) {
-  const incidentReports = await getIncidentReports();
-  const animals = await getAnimals();
-  const users = await getUsers();
+  const { userId, orgId } = await auth()
+  if (!userId || !orgId) notFound()
 
-  const incident = incidentReports.find(i => i.id === params.id);
-  
-  if (!incident) {
-    notFound();
-  }
+  const incident = await prisma.incidentReport.findFirst({
+    where: { id: params.id, clerkUserId: userId, clerkOrganizationId: orgId },
+  })
+  if (!incident) notFound()
 
-  const animal = incident.animalId ? animals.find(a => a.animalId === incident.animalId) : null;
-  const person = users.find(u => u.fullName === incident.personInvolved);
+  const animal = incident.animalId
+    ? await prisma.animal.findFirst({ where: { id: incident.animalId, clerkUserId: userId, clerkOrganizationId: orgId } })
+    : null
 
   const getIncidentTypeColor = (type: string) => {
     switch (type) {
@@ -75,7 +75,7 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
           <div>
             <h1 className="text-3xl font-bold">Incident Report</h1>
             <p className="text-muted-foreground">
-              {incident.type} • {incident.date}
+              {incident.type} • {new Date(incident.date).toISOString().split('T')[0]}
             </p>
           </div>
         </div>
@@ -116,7 +116,7 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Date</label>
-                  <p className="text-lg font-medium">{incident.date}</p>
+                   <p className="text-lg font-medium">{new Date(incident.date).toLocaleDateString()}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Incident ID</label>
@@ -157,16 +157,12 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Animal ID</label>
-                    <p className="font-mono text-sm">{animal.animalId}</p>
+                    <p className="font-mono text-sm">{animal.id}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Status</label>
                     <Badge 
-                      variant={
-                        animal.status === 'In Care' ? 'default' :
-                        animal.status === 'Released' ? 'secondary' :
-                        animal.status === 'Deceased' ? 'destructive' : 'outline'
-                      }
+                       variant="outline"
                     >
                       {animal.status}
                     </Badge>
@@ -203,9 +199,7 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Person Involved</label>
                 <p className="text-lg font-medium">{incident.personInvolved}</p>
-                {person && (
-                  <p className="text-sm text-muted-foreground">{person.licenceNumber}</p>
-                )}
+                {/* person lookup removed; using free text */}
               </div>
               
               <div>
@@ -227,7 +221,7 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
           </Card>
 
           {/* Attachments */}
-          {incident.attachments && incident.attachments.length > 0 && (
+          {Array.isArray(incident.attachments as any) && (incident.attachments as any).length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -237,7 +231,7 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {incident.attachments.map((attachment, index) => (
+                  {(incident.attachments as any).map((attachment: string, index: number) => (
                     <div key={index} className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
                       <img 
                         src={attachment} 
@@ -353,14 +347,14 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
                   <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
                   <div>
                     <div className="text-sm font-medium">Incident Occurred</div>
-                    <div className="text-xs text-muted-foreground">{incident.date}</div>
+                     <div className="text-xs text-muted-foreground">{new Date(incident.date).toLocaleString()}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-green-600 rounded-full mt-2 flex-shrink-0"></div>
                   <div>
                     <div className="text-sm font-medium">Action Taken</div>
-                    <div className="text-xs text-muted-foreground">{incident.date}</div>
+                       <div className="text-xs text-muted-foreground">{new Date(incident.date).toLocaleString()}</div>
                   </div>
                 </div>
                 {incident.reportedTo && (
@@ -368,7 +362,7 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
                     <div className="w-2 h-2 bg-purple-600 rounded-full mt-2 flex-shrink-0"></div>
                     <div>
                       <div className="text-sm font-medium">Reported to {incident.reportedTo}</div>
-                      <div className="text-xs text-muted-foreground">{incident.date}</div>
+                       <div className="text-xs text-muted-foreground">{new Date(incident.date).toLocaleString()}</div>
                     </div>
                   </div>
                 )}

@@ -35,8 +35,8 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Record, RecordType, recordTypes } from "@/lib/types";
 import { LocationPicker } from "@/components/location-picker";
+import { recordTypes } from "@/lib/types";
 
 const addRecordSchema = z.object({
   type: z.enum(recordTypes),
@@ -59,7 +59,7 @@ type AddRecordFormValues = z.infer<typeof addRecordSchema>;
 
 interface AddRecordFormProps {
   animalId: string;
-  onRecordAdd: (record: Record) => Promise<void>;
+  onRecordAdd: (record: any) => Promise<void>;
 }
 
 export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
@@ -104,15 +104,27 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
     const dateStr = format(data.date, "yyyy-MM-dd");
     const datetimeStr = `${dateStr}T${data.time}:00`;
 
-    const newRecord: Record = {
+    // Map UI type to backend enum keys the API expects
+    const typeMap: Record<string, string> = {
+      'Health Check': 'MEDICAL',
+      'Growth': 'WEIGHT',
+      'Feeding': 'FEEDING',
+      'Sighting': 'LOCATION',
+      'Release': 'RELEASE',
+      'General': 'OTHER',
+    };
+
+    const backendType = typeMap[data.type] || 'OTHER';
+
+    const newRecord = {
       id: `rec-${Date.now()}`,
       animalId,
-      type: data.type,
+      type: backendType,
       date: dateStr,
       datetime: datetimeStr,
       notes: data.notes,
       details: Object.keys(details).length > 0 ? details : undefined,
-      location: data.type === 'Release' ? locationData : undefined,
+      location: data.type === 'Release' ? locationData.address : undefined,
     };
 
     await onRecordAdd(newRecord);

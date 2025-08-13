@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/carousel';
 import { Button } from './ui/button';
 import { Camera, PlusCircle } from 'lucide-react';
-import type { Photo } from '@/lib/types';
+import type { Photo } from '@prisma/client';
 import ImageUploadDialog from './image-upload-dialog';
 
 interface PhotoGalleryProps {
@@ -21,12 +21,21 @@ interface PhotoGalleryProps {
   animalSpecies: string;
 }
 
+type NewPhotoInput = { id: string; animalId: string; url: string; date: Date; description: string };
+
 export default function PhotoGallery({ initialPhotos, animalId, animalSpecies }: PhotoGalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [isUploadDialogOpen, setUploadDialogOpen] = useState(false);
   
-  const handleAddPhoto = (newPhoto: Photo) => {
-    setPhotos([newPhoto, ...photos]);
+  const handleAddPhoto = (newPhoto: NewPhotoInput) => {
+    const photo: Photo = {
+      ...newPhoto,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      clerkUserId: '',
+      clerkOrganizationId: ''
+    };
+    setPhotos([photo, ...photos]);
   };
 
   return (

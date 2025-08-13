@@ -2,13 +2,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Calendar, AlertTriangle, CheckCircle, Download, Plus, Mail, ArrowLeft } from "lucide-react";
-import { getUsers } from "@/lib/data-store";
+import { Users, Calendar, AlertTriangle, CheckCircle, Download, Plus, Mail, ArrowLeft, Home } from "lucide-react";
+import { getCarers } from "@/lib/database";
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
 export default async function CarerManagementPage() {
-  const users = await getUsers();
-  const carers = users.filter(user => user.role === 'Carer');
+  const { userId, orgId } = await auth();
+  if (!userId) redirect('/sign-in');
+  const organizationId = orgId || '';
+  const carers = await getCarers(userId, organizationId);
 
   const getDaysUntilExpiry = (expiryDate: string) => {
     const today = new Date();
@@ -32,6 +36,11 @@ export default async function CarerManagementPage() {
           <Link href="/compliance">
             <Button variant="outline" size="icon">
               <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Link href="/">
+            <Button variant="outline" size="icon">
+              <Home className="h-4 w-4" />
             </Button>
           </Link>
           <div>
@@ -66,7 +75,7 @@ export default async function CarerManagementPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">
-              {carers.filter(c => getExpiryStatus(c.licenceExpiry || '') === 'valid').length}
+              {carers.filter((c: any) => getExpiryStatus(c.licenceExpiry || '') === 'valid').length}
             </div>
             <div className="text-sm text-muted-foreground">Valid Licences</div>
           </CardContent>
@@ -74,7 +83,7 @@ export default async function CarerManagementPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-orange-600">
-              {carers.filter(c => getExpiryStatus(c.licenceExpiry || '') === 'expiring-soon').length}
+              {carers.filter((c: any) => getExpiryStatus(c.licenceExpiry || '') === 'expiring-soon').length}
             </div>
             <div className="text-sm text-muted-foreground">Expiring Soon</div>
           </CardContent>
@@ -82,7 +91,7 @@ export default async function CarerManagementPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-red-600">
-              {carers.filter(c => getExpiryStatus(c.licenceExpiry || '') === 'expired').length}
+              {carers.filter((c: any) => getExpiryStatus(c.licenceExpiry || '') === 'expired').length}
             </div>
             <div className="text-sm text-muted-foreground">Expired</div>
           </CardContent>
@@ -111,7 +120,7 @@ export default async function CarerManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {carers.map((carer) => {
+              {carers.map((carer: any) => {
                 const expiryStatus = getExpiryStatus(carer.licenceExpiry || '');
                 const daysUntil = getDaysUntilExpiry(carer.licenceExpiry || '');
                 
@@ -159,23 +168,23 @@ export default async function CarerManagementPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {carer.authorisedSpecies.slice(0, 2).map((species, index) => (
+                        {carer.authorisedSpecies.slice(0, 2).map((species: any, index: any) => (
                           <Badge key={index} variant="outline" className="text-xs">
                             {species}
                           </Badge>
                         ))}
-                        {carer.authorisedSpecies.length > 2 && (
+                        {carer.specialties.length > 2 && (
                           <Badge variant="outline" className="text-xs">
-                            +{carer.authorisedSpecies.length - 2} more
+                            +{carer.specialties.length - 2} more
                           </Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div>{carer.trainingHistory.length} courses</div>
+                        <div>{carer.trainings.length} courses</div>
                         <div className="text-muted-foreground">
-                          Latest: {carer.trainingHistory[0]?.courseName}
+                          Latest: {carer.trainings[0]?.courseName}
                         </div>
                       </div>
                     </TableCell>
@@ -202,7 +211,7 @@ export default async function CarerManagementPage() {
       </Card>
 
       {/* Alerts for Expiring Licences */}
-      {carers.filter(c => getExpiryStatus(c.licenceExpiry || '') === 'expiring-soon').length > 0 && (
+      {carers.filter((c: any) => getExpiryStatus(c.licenceExpiry || '') === 'expiring-soon').length > 0 && (
         <Card className="border-orange-200 bg-orange-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-orange-800">
@@ -213,8 +222,8 @@ export default async function CarerManagementPage() {
           <CardContent>
             <div className="space-y-2">
               {carers
-                .filter(c => getExpiryStatus(c.licenceExpiry || '') === 'expiring-soon')
-                .map(carer => (
+                .filter((c: any) => getExpiryStatus(c.licenceExpiry || '') === 'expiring-soon')
+                .map((carer: any) => (
                   <div key={carer.id} className="flex items-center justify-between p-2 bg-white rounded">
                     <div>
                       <span className="font-medium">{carer.fullName}</span>

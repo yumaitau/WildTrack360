@@ -1,10 +1,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import type { Animal } from '@/lib/types';
+import type { Animal } from '@prisma/client';
 import { getSpeciesIcon } from './icons';
-import { cn } from '@/lib/utils';
 import { StatusBadge } from './status-badge';
 
 interface AnimalCardProps {
@@ -18,7 +16,7 @@ export default function AnimalCard({ animal }: AnimalCardProps) {
         <CardHeader className="p-0">
           <div className="relative aspect-video rounded-t-lg overflow-hidden">
             <Image
-              src={animal.photo}
+              src={animal.photo || '/Brandmark-Text-Vert.svg'}
               alt={`Photo of ${animal.name}`}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105"

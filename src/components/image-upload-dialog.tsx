@@ -18,12 +18,12 @@ import { Label } from "@/components/ui/label";
 import { getImageDescriptionAction } from "@/lib/actions";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Photo } from "@/lib/types";
+import type { Photo } from "@prisma/client";
 
 interface ImageUploadDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onPhotoAdd: (photo: Photo) => void;
+  onPhotoAdd: (photo: { id: string; animalId: string; url: string; date: Date; description: string }) => void;
   animalId: string;
 }
 
@@ -93,7 +93,7 @@ export default function ImageUploadDialog({
             id: `photo-${Date.now()}`,
             animalId,
             url: preview,
-            date: new Date().toISOString(),
+            date: new Date(),
             description: description
         });
         toast({

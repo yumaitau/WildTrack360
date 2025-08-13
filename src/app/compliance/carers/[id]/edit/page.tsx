@@ -5,18 +5,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { 
   ArrowLeft, 
   Save, 
   X,
   Plus,
-  Calendar,
   Home
 } from "lucide-react";
-import { getUsers } from "@/lib/data-store";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@clerk/nextjs/server";
 
 interface EditCarerPageProps {
   params: {
@@ -25,12 +24,14 @@ interface EditCarerPageProps {
 }
 
 export default async function EditCarerPage({ params }: EditCarerPageProps) {
-  const users = await getUsers();
-  const carer = users.find(u => u.id === params.id);
-  
-  if (!carer) {
-    notFound();
-  }
+  const { userId, orgId } = await auth();
+  if (!userId) redirect("/sign-in");
+  const organizationId = orgId || "";
+
+  const carer = await prisma.carer.findFirst({
+    where: { id: params.id, clerkUserId: userId, clerkOrganizationId: organizationId },
+  });
+  if (!carer) notFound();
 
   return (
     <div className="container mx-auto px-6 py-8 space-y-8">
@@ -84,7 +85,7 @@ export default async function EditCarerPage({ params }: EditCarerPageProps) {
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input 
                   id="fullName" 
-                  defaultValue={carer.fullName}
+                  defaultValue={carer.name}
                   placeholder="Enter full name"
                 />
               </div>
@@ -98,22 +99,12 @@ export default async function EditCarerPage({ params }: EditCarerPageProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select defaultValue={carer.role}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Carer">Carer</SelectItem>
-                    <SelectItem value="Veterinarian">Veterinarian</SelectItem>
-                    <SelectItem value="Coordinator">Coordinator</SelectItem>
-                    <SelectItem value="Administrator">Administrator</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" defaultValue={carer.phone || ""} placeholder="Enter phone number" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="jurisdiction">Jurisdiction</Label>
-                <Select defaultValue={carer.jurisdiction}>
+                <Select defaultValue={carer.jurisdiction || "ACT"}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select jurisdiction" />
                   </SelectTrigger>
@@ -144,31 +135,23 @@ export default async function EditCarerPage({ params }: EditCarerPageProps) {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="licenceNumber">Licence Number</Label>
+                <Label htmlFor="licenseNumber">Licence Number</Label>
                 <Input 
-                  id="licenceNumber" 
-                  defaultValue={carer.licenceNumber}
+                  id="licenseNumber" 
+                  defaultValue={carer.licenseNumber || ""}
                   placeholder="Enter licence number"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="licenceExpiry">Licence Expiry Date</Label>
-                <Input 
-                  id="licenceExpiry" 
-                  type="date"
-                  defaultValue={carer.licenceExpiry}
                 />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Authorised Species */}
+        {/* Specialties */}
         <Card>
           <CardHeader>
-            <CardTitle>Authorised Species</CardTitle>
+            <CardTitle>Specialties</CardTitle>
             <CardDescription>
-              Manage species the carer is authorised to care for
+              Manage carer specialties (e.g., Raptors, Marsupials)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -176,64 +159,13 @@ export default async function EditCarerPage({ params }: EditCarerPageProps) {
               <div className="flex items-center gap-2">
                 <Select>
                   <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Add species" />
+                    <SelectValue placeholder="Add specialty" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Eastern Grey Kangaroo">Eastern Grey Kangaroo</SelectItem>
-                    <SelectItem value="Red Kangaroo">Red Kangaroo</SelectItem>
-                    <SelectItem value="Swamp Wallaby">Swamp Wallaby</SelectItem>
-                    <SelectItem value="Common Brushtail Possum">Common Brushtail Possum</SelectItem>
-                    <SelectItem value="Common Ringtail Possum">Common Ringtail Possum</SelectItem>
-                    <SelectItem value="Koala">Koala</SelectItem>
-                    <SelectItem value="Sugar Glider">Sugar Glider</SelectItem>
-                    <SelectItem value="Feathertail Glider">Feathertail Glider</SelectItem>
-                    <SelectItem value="Common Wombat">Common Wombat</SelectItem>
-                    <SelectItem value="Echidna">Echidna</SelectItem>
-                    <SelectItem value="Platypus">Platypus</SelectItem>
-                    <SelectItem value="Flying Fox">Flying Fox</SelectItem>
-                    <SelectItem value="Microbat">Microbat</SelectItem>
-                    <SelectItem value="Kookaburra">Kookaburra</SelectItem>
-                    <SelectItem value="Magpie">Magpie</SelectItem>
-                    <SelectItem value="Cockatoo">Cockatoo</SelectItem>
-                    <SelectItem value="Lorikeet">Lorikeet</SelectItem>
-                    <SelectItem value="Owl">Owl</SelectItem>
-                    <SelectItem value="Eagle">Eagle</SelectItem>
-                    <SelectItem value="Hawk">Hawk</SelectItem>
-                    <SelectItem value="Falcon">Falcon</SelectItem>
-                    <SelectItem value="Duck">Duck</SelectItem>
-                    <SelectItem value="Swan">Swan</SelectItem>
-                    <SelectItem value="Pelican">Pelican</SelectItem>
-                    <SelectItem value="Ibis">Ibis</SelectItem>
-                    <SelectItem value="Heron">Heron</SelectItem>
-                    <SelectItem value="Egret">Egret</SelectItem>
-                    <SelectItem value="Cormorant">Cormorant</SelectItem>
-                    <SelectItem value="Tern">Tern</SelectItem>
-                    <SelectItem value="Gull">Gull</SelectItem>
-                    <SelectItem value="Plover">Plover</SelectItem>
-                    <SelectItem value="Stilt">Stilt</SelectItem>
-                    <SelectItem value="Grebe">Grebe</SelectItem>
-                    <SelectItem value="Coot">Coot</SelectItem>
-                    <SelectItem value="Moorhen">Moorhen</SelectItem>
-                    <SelectItem value="Rail">Rail</SelectItem>
-                    <SelectItem value="Crake">Crake</SelectItem>
-                    <SelectItem value="Bittern">Bittern</SelectItem>
-                    <SelectItem value="Bustard">Bustard</SelectItem>
-                    <SelectItem value="Button-quail">Button-quail</SelectItem>
-                    <SelectItem value="Quail">Quail</SelectItem>
-                    <SelectItem value="Pheasant">Pheasant</SelectItem>
-                    <SelectItem value="Partridge">Partridge</SelectItem>
-                    <SelectItem value="Grouse">Grouse</SelectItem>
-                    <SelectItem value="Ptarmigan">Ptarmigan</SelectItem>
-                    <SelectItem value="Capercaillie">Capercaillie</SelectItem>
-                    <SelectItem value="Black Grouse">Black Grouse</SelectItem>
-                    <SelectItem value="Red Grouse">Red Grouse</SelectItem>
-                    <SelectItem value="Willow Grouse">Willow Grouse</SelectItem>
-                    <SelectItem value="Rock Ptarmigan">Rock Ptarmigan</SelectItem>
-                    <SelectItem value="White-tailed Ptarmigan">White-tailed Ptarmigan</SelectItem>
-                    <SelectItem value="Western Capercaillie">Western Capercaillie</SelectItem>
-                    <SelectItem value="Black-billed Capercaillie">Black-billed Capercaillie</SelectItem>
-                    <SelectItem value="Eurasian Black Grouse">Eurasian Black Grouse</SelectItem>
-                    <SelectItem value="Caucasian Black Grouse">Caucasian Black Grouse</SelectItem>
+                    <SelectItem value="Raptors">Raptors</SelectItem>
+                    <SelectItem value="Marsupials">Marsupials</SelectItem>
+                    <SelectItem value="Reptiles">Reptiles</SelectItem>
+                    <SelectItem value="Aquatic">Aquatic</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button type="button" variant="outline" size="icon">
@@ -242,9 +174,9 @@ export default async function EditCarerPage({ params }: EditCarerPageProps) {
               </div>
               
               <div className="flex flex-wrap gap-2">
-                {carer.authorisedSpecies.map((species, index) => (
+                {(carer.specialties || []).map((sp: string, index: number) => (
                   <Badge key={index} variant="secondary" className="text-sm">
-                    {species}
+                    {sp}
                     <Button 
                       type="button" 
                       variant="ghost" 
@@ -260,53 +192,22 @@ export default async function EditCarerPage({ params }: EditCarerPageProps) {
           </CardContent>
         </Card>
 
-        {/* Training History */}
+        {/* Notes */}
         <Card>
           <CardHeader>
-            <CardTitle>Training History</CardTitle>
+            <CardTitle>Additional Notes</CardTitle>
             <CardDescription>
-              Add or update training courses and certifications
+              Any additional information about the carer
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              {carer.trainingHistory.map((training, index) => (
-                <div key={training.id} className="p-4 border rounded-lg space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Training Course {index + 1}</h4>
-                    <Button type="button" variant="outline" size="icon">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Course Name</Label>
-                      <Input defaultValue={training.courseName} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Provider</Label>
-                      <Input defaultValue={training.provider} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Date Completed</Label>
-                      <Input type="date" defaultValue={training.date} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Expiry Date (if applicable)</Label>
-                      <Input type="date" defaultValue={training.expiryDate || ''} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Certificate URL</Label>
-                    <Input defaultValue={training.certificateUrl || ''} placeholder="Enter certificate URL" />
-                  </div>
-                </div>
-              ))}
-              
-              <Button type="button" variant="outline" className="w-full">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Training Course
-              </Button>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea 
+                id="notes" 
+                placeholder="Enter any additional notes about the carer..."
+                rows={4}
+              />
             </div>
           </CardContent>
         </Card>

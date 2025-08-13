@@ -27,34 +27,51 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Pen, PlusCircle, Trash, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Asset, AssetType, assetTypes } from '@/lib/types';
-import { getAssets, createAsset, updateAsset, deleteAsset } from '@/lib/data-store';
+import { Asset, AssetStatus } from '@prisma/client';
+import { useUser, useOrganization } from '@clerk/nextjs';
+
+// Constants for component compatibility
+const assetTypes = ['Equipment', 'Cage', 'Tracker', 'Dataset', 'Other'] as const;
+type AssetType = typeof assetTypes[number];
 
 interface AssetManagementProps {
   initialAssets: Asset[];
 }
 
+// Helper to fetch JSON
+async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export function AssetManagement({ initialAssets }: AssetManagementProps) {
+  const { user } = useUser();
+  const { organization } = useOrganization();
   const [assets, setAssets] = useState<Asset[]>(initialAssets);
   const [newAssetName, setNewAssetName] = useState('');
-  const [newAssetType, setNewAssetType] = useState<AssetType>('Other');
+  const [newAssetType, setNewAssetType] = useState<string>('Other');
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [editName, setEditName] = useState('');
-  const [editType, setEditType] = useState<AssetType>('Other');
-  const [editStatus, setEditStatus] = useState<'Available' | 'In Use' | 'Maintenance'>('Available');
+  const [editType, setEditType] = useState<string>('Other');
+  const [editStatus, setEditStatus] = useState<AssetStatus>(AssetStatus.AVAILABLE);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   // Refresh assets list from data store
   const refreshAssets = async () => {
+    if (!user || !organization) return;
     try {
-      const updatedAssets = await getAssets();
-      setAssets(updatedAssets.sort((a, b) => a.name.localeCompare(b.name)));
+      const updatedAssets = await apiJson<Asset[]>(`/api/assets?orgId=${organization.id}`);
+      setAssets(updatedAssets.sort((a: Asset, b: Asset) => a.name.localeCompare(b.name)));
     } catch (error) {
       console.error('Error refreshing assets:', error);
       toast({ 
@@ -67,42 +84,64 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
 
   useEffect(() => {
     refreshAssets();
-  }, []);
+  }, [user, organization]);
 
-  const handleAddAsset = async () => {
-    if (!newAssetName.trim()) {
+  // Add dialog state fields
+  const [addName, setAddName] = useState('');
+  const [addType, setAddType] = useState<string>('Other');
+  const [addStatus, setAddStatus] = useState<AssetStatus>(AssetStatus.AVAILABLE);
+  const [addDescription, setAddDescription] = useState('');
+  const [addLocation, setAddLocation] = useState('');
+  const [addAssignedTo, setAddAssignedTo] = useState('');
+  const [addPurchaseDate, setAddPurchaseDate] = useState('');
+  const [addLastMaintenance, setAddLastMaintenance] = useState('');
+  const [addNotes, setAddNotes] = useState('');
+
+  const openAddDialog = () => {
+    setAddName(newAssetName.trim());
+    setAddType(newAssetType);
+    setAddStatus(AssetStatus.AVAILABLE);
+    setAddDescription('');
+    setAddLocation('');
+    setAddAssignedTo('');
+    setAddPurchaseDate('');
+    setAddLastMaintenance('');
+    setAddNotes('');
+    setIsAddDialogOpen(true);
+  };
+
+  const handleCreateAsset = async () => {
+    if (!addName.trim() || !user || !organization) {
       toast({ 
         variant: 'destructive', 
         title: 'Error', 
-        description: 'Asset name cannot be empty.' 
+        description: 'Asset name is required.' 
       });
       return;
     }
-
     setLoading(true);
     try {
-      const newAsset: Asset = {
-        id: `asset-${Date.now()}`,
-        name: newAssetName.trim(),
-        type: newAssetType,
-        status: 'Available',
-      };
-      
-      await createAsset(newAsset);
+      await apiJson<Asset>(`/api/assets`, { method: 'POST', body: JSON.stringify({
+        name: addName.trim(),
+        type: addType,
+        status: addStatus,
+        description: addDescription || null,
+        location: addLocation || null,
+        assignedTo: addAssignedTo || null,
+        purchaseDate: addPurchaseDate ? new Date(addPurchaseDate).toISOString() : null,
+        lastMaintenance: addLastMaintenance ? new Date(addLastMaintenance).toISOString() : null,
+        notes: addNotes || null,
+        clerkUserId: user.id,
+        clerkOrganizationId: organization.id
+      }) });
       setNewAssetName('');
       setNewAssetType('Other');
+      setIsAddDialogOpen(false);
       await refreshAssets();
-      toast({ 
-        title: 'Success', 
-        description: `Asset "${newAssetName.trim()}" added.` 
-      });
+      toast({ title: 'Success', description: `Asset "${addName.trim()}" added.` });
     } catch (error) {
       console.error('Error adding asset:', error);
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error', 
-        description: error instanceof Error ? error.message : 'Failed to add asset.' 
-      });
+      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to add asset.' });
     } finally {
       setLoading(false);
     }
@@ -120,16 +159,16 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
 
     setLoading(true);
     try {
-      await updateAsset(editingAsset.id, {
+      await apiJson<Asset>(`/api/assets/${editingAsset.id}`, { method: 'PATCH', body: JSON.stringify({
         name: editName.trim(),
         type: editType,
         status: editStatus
-      });
+      })});
       
       setEditingAsset(null);
       setEditName('');
       setEditType('Other');
-      setEditStatus('Available');
+      setEditStatus(AssetStatus.AVAILABLE);
       setIsEditDialogOpen(false);
       await refreshAssets();
       toast({ 
@@ -153,7 +192,7 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
 
     setLoading(true);
     try {
-      await deleteAsset(assetToDelete.id);
+      await apiJson<void>(`/api/assets/${assetToDelete.id}`, { method: 'DELETE' });
       setAssetToDelete(null);
       setIsDeleteDialogOpen(false);
       await refreshAssets();
@@ -193,27 +232,27 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
           placeholder="New asset name..."
           value={newAssetName}
           onChange={(e) => setNewAssetName(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleAddAsset()}
+          onKeyPress={(e) => e.key === 'Enter' && openAddDialog()}
           disabled={loading}
           className="flex-grow"
         />
         <Select 
           value={newAssetType} 
-          onValueChange={(v) => setNewAssetType(v as AssetType)}
+          onValueChange={(v) => setNewAssetType(v as string)}
           disabled={loading}
         >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select type" />
           </SelectTrigger>
           <SelectContent>
-            {assetTypes.map(type => (
+            {assetTypes.map((type: AssetType) => (
               <SelectItem key={type} value={type}>{type}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={handleAddAsset} disabled={loading || !newAssetName.trim()}>
+        <Button onClick={openAddDialog} disabled={loading}>
           <PlusCircle className="mr-2 h-4 w-4" /> 
-          {loading ? 'Adding...' : 'Add Asset'}
+          Add Asset
         </Button>
       </div>
 
@@ -285,7 +324,7 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Type</label>
-              <Select value={editType} onValueChange={(v) => setEditType(v as AssetType)}>
+              <Select value={editType} onValueChange={(v) => setEditType(v as string)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -298,14 +337,14 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
-              <Select value={editStatus} onValueChange={(v) => setEditStatus(v as any)}>
+              <Select value={editStatus} onValueChange={(v) => setEditStatus(v as AssetStatus)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Available">Available</SelectItem>
-                  <SelectItem value="In Use">In Use</SelectItem>
-                  <SelectItem value="Maintenance">Maintenance</SelectItem>
+                  <SelectItem value={AssetStatus.AVAILABLE}>Available</SelectItem>
+                  <SelectItem value={AssetStatus.IN_USE}>In Use</SelectItem>
+                  <SelectItem value={AssetStatus.MAINTENANCE}>Maintenance</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -325,6 +364,90 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
             >
               <Save className="mr-2 h-4 w-4" />
               {loading ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Asset Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Asset</DialogTitle>
+            <DialogDescription>
+              Provide details for the new asset.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input placeholder="Asset name..." value={addName} onChange={(e) => setAddName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select value={addType} onValueChange={(v) => setAddType(v as string)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {assetTypes.map((type: AssetType) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={addStatus} onValueChange={(v) => setAddStatus(v as AssetStatus)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={AssetStatus.AVAILABLE}>Available</SelectItem>
+                  <SelectItem value={AssetStatus.IN_USE}>In Use</SelectItem>
+                  <SelectItem value={AssetStatus.MAINTENANCE}>Maintenance</SelectItem>
+                  <SelectItem value={AssetStatus.RETIRED}>Retired</SelectItem>
+                  <SelectItem value={AssetStatus.LOST}>Lost</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea placeholder="Description (optional)" value={addDescription} onChange={(e) => setAddDescription(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input placeholder="Location (optional)" value={addLocation} onChange={(e) => setAddLocation(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Assigned To</Label>
+                <Input placeholder="Assigned to (optional)" value={addAssignedTo} onChange={(e) => setAddAssignedTo(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Purchase Date</Label>
+                <Input type="date" value={addPurchaseDate} onChange={(e) => setAddPurchaseDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Last Maintenance</Label>
+                <Input type="date" value={addLastMaintenance} onChange={(e) => setAddLastMaintenance(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea placeholder="Notes (optional)" value={addNotes} onChange={(e) => setAddNotes(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={loading}>
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button onClick={handleCreateAsset} disabled={loading}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Save Asset
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -19,7 +19,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart"
-import { Animal } from "@/lib/types"
+import { Animal } from "@prisma/client"
 
 interface CarerDistributionChartProps {
   animals: Animal[];
@@ -39,9 +39,9 @@ const CHART_COLORS = [
 export default function CarerDistributionChart({ animals }: CarerDistributionChartProps) {
   const chartData = React.useMemo(() => {
     const carerCount = animals
-      .filter(a => a.status === 'In Care')
+      .filter(a => a.status === 'IN_CARE')
       .reduce((acc, animal) => {
-          acc[animal.carer] = (acc[animal.carer] || 0) + 1;
+          acc[animal.carerId] = (acc[animal.carerId] || 0) + 1;
           return acc;
         }, {} as { [key: string]: number });
 

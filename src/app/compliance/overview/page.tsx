@@ -14,15 +14,10 @@ import {
   FileText,
   TrendingUp,
   TrendingDown,
-  Activity
+  Activity,
+  Home
 } from "lucide-react";
-import {
-  getAnimals,
-  getUsers,
-  getReleaseChecklists,
-  getHygieneLogs,
-  getIncidentReports
-} from "@/lib/data-store";
+import { useOrganization } from '@clerk/nextjs';
 import { getCurrentJurisdiction, getJurisdictionConfig, getOrganizationName } from '@/lib/config';
 import { 
   getJurisdictionComplianceConfig, 
@@ -37,6 +32,7 @@ import jsPDF from 'jspdf';
 export default function ComplianceOverviewPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { organization } = useOrganization();
   const jurisdiction = getCurrentJurisdiction();
   const config = getJurisdictionConfig();
   const complianceConfig = getJurisdictionComplianceConfig(jurisdiction);
@@ -46,15 +42,16 @@ export default function ComplianceOverviewPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [animals, users, releaseChecklists, hygieneLogs, incidentReports] = await Promise.all([
-          getAnimals(),
-          getUsers(),
-          getReleaseChecklists(),
-          getHygieneLogs(),
-          getIncidentReports()
+        if (!organization) return;
+        const orgId = organization.id;
+        const [animals, carers, releaseChecklists, hygieneLogs, incidentReports] = await Promise.all([
+          fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/carers?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/release-checklists?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/hygiene?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/incidents?orgId=${orgId}`).then(r => r.json()),
         ]);
-        
-        setData({ animals, users, releaseChecklists, hygieneLogs, incidentReports });
+        setData({ animals, carers, releaseChecklists, hygieneLogs, incidentReports });
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -63,7 +60,7 @@ export default function ComplianceOverviewPage() {
     }
     
     loadData();
-  }, []);
+  }, [organization]);
 
   if (loading) {
     return (
@@ -85,11 +82,9 @@ export default function ComplianceOverviewPage() {
     );
   }
 
-  const { animals, users, releaseChecklists, hygieneLogs, incidentReports } = data;
-
-  const carers = users.filter((user: any) => user.role === 'Carer');
-  const animalsInCare = animals.filter((a: any) => a.status === 'In Care');
-  const releasedAnimals = animals.filter((a: any) => a.status === 'Released');
+  const { animals, carers, releaseChecklists, hygieneLogs, incidentReports } = data;
+  const animalsInCare = animals.filter((a: any) => a.status === 'IN_CARE');
+  const releasedAnimals = animals.filter((a: any) => a.status === 'RELEASED');
 
   // Calculate compliance metrics
   const getDaysUntilExpiry = (expiryDate: string) => {
@@ -100,12 +95,12 @@ export default function ComplianceOverviewPage() {
   };
 
   const expiringLicences = carers.filter((c: any) => {
-    const daysUntil = getDaysUntilExpiry(c.licenceExpiry || '');
+    const daysUntil = getDaysUntilExpiry(c.licenseExpiry || '');
     return daysUntil <= 30 && daysUntil > 0;
   });
 
   const expiredLicences = carers.filter((c: any) => {
-    const daysUntil = getDaysUntilExpiry(c.licenceExpiry || '');
+    const daysUntil = getDaysUntilExpiry(c.licenseExpiry || '');
     return daysUntil < 0;
   });
 
@@ -158,7 +153,12 @@ export default function ComplianceOverviewPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex items-center gap-4">
+          <Link href="/">
+            <Button variant="outline" size="icon">
+              <Home className="h-4 w-4" />
+            </Button>
+          </Link>
           <h1 className="text-3xl font-bold">Compliance Overview</h1>
           <p className="text-muted-foreground">
             {jurisdiction} Wildlife Compliance Status Dashboard
@@ -281,7 +281,7 @@ export default function ComplianceOverviewPage() {
                       doc.addPage();
                       yPosition = 20;
                     }
-                    doc.text(`- ${carer.fullName} (${carer.licenceExpiry})`, margin + 20, yPosition);
+                    doc.text(`- ${carer.name} (${carer.licenseExpiry || ''})`, margin + 20, yPosition);
                     yPosition += 6;
                   });
                   yPosition += 5;
@@ -301,7 +301,7 @@ export default function ComplianceOverviewPage() {
                       doc.addPage();
                       yPosition = 20;
                     }
-                    doc.text(`- ${carer.fullName} (${carer.licenceExpiry})`, margin + 20, yPosition);
+                    doc.text(`- ${carer.name} (${carer.licenseExpiry || ''})`, margin + 20, yPosition);
                     yPosition += 6;
                   });
                   yPosition += 5;
@@ -505,9 +505,9 @@ export default function ComplianceOverviewPage() {
                 {expiredLicences.map((carer: any) => (
                   <div key={carer.id} className="flex items-center justify-between p-2 bg-white rounded">
                     <div>
-                      <span className="font-medium">{carer.fullName}</span>
+                      <span className="font-medium">{carer.name}</span>
                       <span className="text-muted-foreground ml-2">
-                        expired {carer.licenceExpiry}
+                        expired {carer.licenseExpiry || ''}
                       </span>
                     </div>
                     <Link href={`/compliance/carers/${carer.id}`}>
@@ -535,9 +535,9 @@ export default function ComplianceOverviewPage() {
                 {expiringLicences.map((carer: any) => (
                   <div key={carer.id} className="flex items-center justify-between p-2 bg-white rounded">
                     <div>
-                      <span className="font-medium">{carer.fullName}</span>
+                      <span className="font-medium">{carer.name}</span>
                       <span className="text-muted-foreground ml-2">
-                        expires {carer.licenceExpiry} ({getDaysUntilExpiry(carer.licenceExpiry || '')} days)
+                        expires {carer.licenseExpiry || ''} ({getDaysUntilExpiry(carer.licenseExpiry || '')} days)
                       </span>
                     </div>
                     <Link href={`/compliance/carers/${carer.id}`}>
@@ -624,56 +624,22 @@ export default function ComplianceOverviewPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Monthly Compliance Trends
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Licence Compliance</span>
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">+5%</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Hygiene Standards</span>
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">+2%</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Release Compliance</span>
-                <div className="flex items-center gap-1">
-                  <TrendingDown className="h-4 w-4 text-red-600" />
-                  <span className="text-sm font-medium">-1%</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               Upcoming Deadlines
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {expiringLicences.slice(0, 3).map((carer: any) => (
+                {expiringLicences.slice(0, 3).map((carer: any) => (
                 <div key={carer.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                   <div>
-                    <div className="font-medium">{carer.fullName}</div>
+                      <div className="font-medium">{carer.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      Licence expires {carer.licenceExpiry}
+                        Licence expires {carer.licenseExpiry || ''}
                     </div>
                   </div>
                   <Badge variant="outline" className="text-xs">
-                    {getDaysUntilExpiry(carer.licenceExpiry || '')} days
+                      {getDaysUntilExpiry(carer.licenseExpiry || '')} days
                   </Badge>
                 </div>
               ))}

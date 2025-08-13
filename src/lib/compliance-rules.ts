@@ -1,4 +1,6 @@
-import { JurisdictionConfig } from './types';
+// Removed invalid import: JurisdictionConfig is not exported from @prisma/client
+
+import { JurisdictionConfig } from "./types";
 
 export interface ComplianceRule {
   id: string;

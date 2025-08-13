@@ -12,17 +12,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Save, MapPin, Calendar, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { getAnimals } from '@/lib/data-store';
-import { Animal } from '@/lib/types';
+import { useOrganization } from '@clerk/nextjs';
 import { getCurrentJurisdiction } from '@/lib/config';
 import { getJurisdictionComplianceConfig, isFormRequired } from '@/lib/compliance-rules';
 import { LocationPicker } from '@/components/location-picker';
+import LocationMap from '@/components/location-map';
 
 export default function NewReleaseChecklistPage() {
   const router = useRouter();
   const jurisdiction = getCurrentJurisdiction();
   const complianceConfig = getJurisdictionComplianceConfig(jurisdiction);
-  const [animals, setAnimals] = useState<Animal[]>([]);
+  const { organization } = useOrganization();
+  const [animals, setAnimals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -64,11 +65,13 @@ export default function NewReleaseChecklistPage() {
   useEffect(() => {
     const loadAnimals = async () => {
       try {
-        const animalsData = await getAnimals();
-        // Filter for animals that are in care and suitable for release
-        const availableAnimals = animalsData.filter(animal => 
-          animal.status === 'In Care' && 
-          animal.species && 
+        if (!organization) return;
+        const orgId = organization.id;
+        const animalsData = await fetch(`/api/animals?orgId=${orgId}`).then(r => r.json());
+        // Filter for animals that are suitable for release based on enum statuses
+        const availableAnimals = animalsData.filter((animal: any) =>
+          (animal.status === 'IN_CARE' || animal.status === 'READY_FOR_RELEASE') &&
+          animal.species &&
           animal.name
         );
         setAnimals(availableAnimals);
@@ -80,7 +83,7 @@ export default function NewReleaseChecklistPage() {
     };
 
     loadAnimals();
-  }, []);
+  }, [organization]);
 
   const fitnessOptions = [
     'Good body condition',
@@ -143,29 +146,22 @@ export default function NewReleaseChecklistPage() {
 
     setSaving(true);
     try {
-      const releaseChecklist = {
-        id: Date.now().toString(),
+      const body = {
         animalId: selectedAnimalId,
         releaseDate,
         releaseLocation: releaseLocation!.address,
-        releaseCoordinates: {
-          lat: releaseLocation!.lat,
-          lng: releaseLocation!.lng
-        },
+        releaseCoordinates: { lat: releaseLocation!.lat, lng: releaseLocation!.lng },
         within10km,
         fitnessIndicators,
-        releaseType,
+        releaseType: releaseType.toUpperCase(),
         vetSignOff: complianceConfig.vetRequirements.signOffRequired ? vetSignOff : null,
         notes,
-        createdAt: new Date().toISOString()
       };
-
-      console.log('Saving release checklist:', releaseChecklist);
-      
-      // TODO: Implement actual save to data store
-      // await saveReleaseChecklist(releaseChecklist);
-      
-      // Redirect to the release checklist list
+      await fetch('/api/release-checklists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
       router.push('/compliance/release-checklist');
     } catch (error) {
       console.error('Error saving release checklist:', error);
@@ -248,8 +244,8 @@ export default function NewReleaseChecklistPage() {
                 <div className="space-y-1 text-sm">
                   <div><strong>Name:</strong> {selectedAnimal.name}</div>
                   <div><strong>Species:</strong> {selectedAnimal.species}</div>
-                  <div><strong>Date Found:</strong> {selectedAnimal.dateFound}</div>
-                  <div><strong>Carer:</strong> {selectedAnimal.carer}</div>
+                  <div><strong>Date Found:</strong> {new Date(selectedAnimal.dateFound).toISOString().split('T')[0]}</div>
+                  <div><strong>Carer:</strong> {selectedAnimal.carer?.name || ''}</div>
                 </div>
               </div>
             )}
@@ -321,6 +317,29 @@ export default function NewReleaseChecklistPage() {
           </CardContent>
         </Card>
 
+        {/* Map Preview (shows rescue point from selected animal and chosen release point) */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Location Map</CardTitle>
+            <CardDescription>Rescue and selected release locations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LocationMap
+              rescueLocation={((): { lat: number; lng: number; address: string } | undefined => {
+                const a = selectedAnimal;
+                if (!a) return undefined;
+                const rc = (a.rescueCoordinates as any) as { lat?: number; lng?: number } | null;
+                if (rc && typeof rc.lat === 'number' && typeof rc.lng === 'number') {
+                  return { lat: rc.lat, lng: rc.lng, address: a.rescueLocation || 'Rescue location' };
+                }
+                return undefined;
+              })()}
+              releaseLocation={releaseLocation ? { lat: releaseLocation.lat, lng: releaseLocation.lng, address: releaseLocation.address } : undefined}
+              animalName={selectedAnimal ? selectedAnimal.name : 'Animal'}
+            />
+          </CardContent>
+        </Card>
+
         {/* Fitness Assessment */}
         <Card>
           <CardHeader>
@@ -346,57 +365,57 @@ export default function NewReleaseChecklistPage() {
           </CardContent>
         </Card>
 
-        {/* Veterinary Sign-off */}
-        {complianceConfig.vetRequirements.signOffRequired && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Veterinary Sign-off</CardTitle>
-              <CardDescription>
-                Required for {jurisdiction} releases
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="vetName">Veterinarian Name *</Label>
-                <Input
-                  id="vetName"
-                  placeholder="Enter veterinarian name"
-                  value={vetSignOff.name}
-                  onChange={(e) => setVetSignOff(prev => ({ ...prev, name: e.target.value }))}
-                />
-                {errors.vetSignOff?.name && (
-                  <p className="text-sm text-red-600">{errors.vetSignOff.name}</p>
-                )}
-              </div>
+        {/* Veterinary Sign-off (always visible; optional unless required by jurisdiction) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Veterinary Sign-off</CardTitle>
+            <CardDescription>
+              {complianceConfig.vetRequirements.signOffRequired
+                ? `Required for ${jurisdiction} releases`
+                : `Optional for ${jurisdiction} releases`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="vetName">Veterinarian Name{complianceConfig.vetRequirements.signOffRequired ? ' *' : ' (optional)'} </Label>
+              <Input
+                id="vetName"
+                placeholder="Enter veterinarian name"
+                value={vetSignOff.name}
+                onChange={(e) => setVetSignOff(prev => ({ ...prev, name: e.target.value }))}
+              />
+              {errors.vetSignOff?.name && (
+                <p className="text-sm text-red-600">{errors.vetSignOff.name}</p>
+              )}
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="vetSignature">Signature *</Label>
-                <Input
-                  id="vetSignature"
-                  placeholder="Enter signature or initials"
-                  value={vetSignOff.signature}
-                  onChange={(e) => setVetSignOff(prev => ({ ...prev, signature: e.target.value }))}
-                />
-                {errors.vetSignOff?.signature && (
-                  <p className="text-sm text-red-600">{errors.vetSignOff.signature}</p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="vetSignature">Signature{complianceConfig.vetRequirements.signOffRequired ? ' *' : ' (optional)'} </Label>
+              <Input
+                id="vetSignature"
+                placeholder="Enter signature or initials"
+                value={vetSignOff.signature}
+                onChange={(e) => setVetSignOff(prev => ({ ...prev, signature: e.target.value }))}
+              />
+              {errors.vetSignOff?.signature && (
+                <p className="text-sm text-red-600">{errors.vetSignOff.signature}</p>
+              )}
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="vetDate">Date *</Label>
-                <Input
-                  id="vetDate"
-                  type="date"
-                  value={vetSignOff.date}
-                  onChange={(e) => setVetSignOff(prev => ({ ...prev, date: e.target.value }))}
-                />
-                {errors.vetSignOff?.date && (
-                  <p className="text-sm text-red-600">{errors.vetSignOff.date}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            <div className="space-y-2">
+              <Label htmlFor="vetDate">Date{complianceConfig.vetRequirements.signOffRequired ? ' *' : ' (optional)'} </Label>
+              <Input
+                id="vetDate"
+                type="date"
+                value={vetSignOff.date}
+                onChange={(e) => setVetSignOff(prev => ({ ...prev, date: e.target.value }))}
+              />
+              {errors.vetSignOff?.date && (
+                <p className="text-sm text-red-600">{errors.vetSignOff.date}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Notes */}
         <Card className="lg:col-span-2">

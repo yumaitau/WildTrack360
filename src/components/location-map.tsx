@@ -30,6 +30,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
   const mapInstanceRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [initTick, setInitTick] = useState(0);
 
   // Debug: Log location data
   console.log('LocationMap props:', {
@@ -59,6 +60,16 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
 
     // Prevent multiple initializations
     if (isInitializedRef.current) return;
+
+    // Require a visible container and at least one valid location
+    const hasValidRescue = !!(rescueLocation && typeof rescueLocation.lat === 'number' && typeof rescueLocation.lng === 'number');
+    const hasValidRelease = !!(releaseLocation && typeof releaseLocation.lat === 'number' && typeof releaseLocation.lng === 'number');
+    if (!mapRef.current || (!hasValidRescue && !hasValidRelease)) return;
+    if (mapRef.current.clientHeight === 0 || mapRef.current.clientWidth === 0) {
+      // Defer init until container is laid out
+      const t = setTimeout(() => setInitTick((v) => v + 1), 100);
+      return () => clearTimeout(t);
+    }
 
     // Load Leaflet CSS if not already loaded
     if (!document.querySelector('link[href*="leaflet"]')) {
@@ -185,7 +196,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
         isInitializedRef.current = false;
       }
     };
-  }, [rescueLocation, releaseLocation, animalName]);
+  }, [rescueLocation, releaseLocation, animalName, initTick]);
 
   if (!rescueLocation && !releaseLocation) {
     return (

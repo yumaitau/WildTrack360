@@ -40,22 +40,32 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { Animal, AnimalStatus } from "@/lib/types"
+import { Animal } from '@prisma/client';
+
+type CreateAnimalData = {
+  name: string;
+  species: string;
+  status: 'ADMITTED' | 'IN_CARE' | 'READY_FOR_RELEASE' | 'RELEASED' | 'DECEASED' | 'TRANSFERRED';
+  dateFound: Date;
+  dateReleased: Date | null;
+  outcomeDate: Date | null;
+  outcome: string | null;
+  photo: string | null;
+  notes: string | null;
+  rescueLocation: string | null;
+  rescueCoordinates: { lat: number; lng: number } | null;
+  carerId: string;
+};
 import { LocationPicker } from "@/components/location-picker"
 
 const addAnimalSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   species: z.string().min(1, "Species is required."),
-  dateFound: z.date({
-    required_error: "Date found is required.",
-  }),
+  dateFound: z.date({ required_error: "Date found is required." }),
   carer: z.string().min(1, "Carer is required."),
-  status: z.enum(["In Care", "Released", "Deceased", "Transferred"]),
+  status: z.enum(["ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED"]),
   rescueLocation: z.string().min(1, "Rescue location is required."),
-  rescueCoordinates: z.object({
-    lat: z.number(),
-    lng: z.number(),
-  }).optional(),
+  rescueCoordinates: z.object({ lat: z.number(), lng: z.number() }).optional(),
 })
 
 type AddAnimalFormValues = z.infer<typeof addAnimalSchema>
@@ -63,10 +73,10 @@ type AddAnimalFormValues = z.infer<typeof addAnimalSchema>
 interface AddAnimalDialogProps {
   isOpen: boolean
   setIsOpen: (isOpen: boolean) => void
-  onAnimalAdd: (animal: Animal) => Promise<void>
+  onAnimalAdd: (animalData: CreateAnimalData) => Promise<void>
   animalToEdit?: Animal | null;
-  speciesOptions: string[];
-  carerOptions: string[];
+  species: any[];
+  carers: any[];
 }
 
 export function AddAnimalDialog({
@@ -74,8 +84,8 @@ export function AddAnimalDialog({
   setIsOpen,
   onAnimalAdd,
   animalToEdit,
-  speciesOptions,
-  carerOptions
+  species,
+  carers
 }: AddAnimalDialogProps) {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = React.useState(false)
@@ -94,32 +104,40 @@ export function AddAnimalDialog({
   const form = useForm<AddAnimalFormValues>({
     resolver: zodResolver(addAnimalSchema),
     defaultValues: isEditMode ? {
-      ...animalToEdit,
-      dateFound: parse(animalToEdit.dateFound, "yyyy-MM-dd", new Date()),
+      name: animalToEdit.name,
+      species: animalToEdit.species,
+      carer: animalToEdit.carerId,
+      status: animalToEdit.status,
+      dateFound: animalToEdit.dateFound,
       rescueLocation: animalToEdit.rescueLocation || 'Canberra ACT, Australia',
-      rescueCoordinates: animalToEdit.rescueCoordinates || { lat: -35.2809, lng: 149.1300 }
+      rescueCoordinates: (animalToEdit.rescueCoordinates as { lat: number; lng: number }) || { lat: -35.2809, lng: 149.1300 }
     } : {
       name: "",
       species: "",
       carer: "",
-      status: "In Care",
+      status: "IN_CARE",
+      dateFound: new Date(),
       rescueLocation: "Canberra ACT, Australia",
       rescueCoordinates: { lat: -35.2809, lng: 149.1300 }
-    },
+    }
   })
   
   React.useEffect(() => {
     if (isOpen) {
       if (animalToEdit) {
           form.reset({
-              ...animalToEdit,
-              dateFound: parse(animalToEdit.dateFound, "yyyy-MM-dd", new Date()),
+              name: animalToEdit.name,
+              species: animalToEdit.species,
+              carer: animalToEdit.carerId,
+              status: animalToEdit.status,
+              dateFound: animalToEdit.dateFound,
               rescueLocation: animalToEdit.rescueLocation || 'Canberra ACT, Australia',
-              rescueCoordinates: animalToEdit.rescueCoordinates || { lat: -35.2809, lng: 149.1300 }
+              rescueCoordinates: (animalToEdit.rescueCoordinates as { lat: number; lng: number }) || { lat: -35.2809, lng: 149.1300 }
           });
+          const coords = animalToEdit.rescueCoordinates as { lat?: number; lng?: number } | null;
           setLocationData({
-            lat: animalToEdit.rescueCoordinates?.lat || -35.2809,
-            lng: animalToEdit.rescueCoordinates?.lng || 149.1300,
+            lat: coords?.lat ?? -35.2809,
+            lng: coords?.lng ?? 149.1300,
             address: animalToEdit.rescueLocation || 'Canberra ACT, Australia'
           });
       } else {
@@ -127,7 +145,7 @@ export function AddAnimalDialog({
               name: "",
               species: "",
               carer: "",
-              status: "In Care",
+              status: "IN_CARE",
               dateFound: new Date(),
               rescueLocation: "Canberra ACT, Australia",
               rescueCoordinates: { lat: -35.2809, lng: 149.1300 }
@@ -144,42 +162,37 @@ export function AddAnimalDialog({
 
   async function onSubmit(data: AddAnimalFormValues) {
     setIsLoading(true)
-    
-    // In a real app, you'd save this to a database.
-    // Here, we'll simulate an async action and then update the UI.
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
-    const newAnimal: Animal = {
-      id: isEditMode ? animalToEdit.id : `${data.species.toLowerCase()}-${data.name.toLowerCase().replace(/\s/g, '-')}-${Date.now()}`,
-      animalId: isEditMode ? animalToEdit.animalId : `AN-${Date.now()}`,
+    const payload: CreateAnimalData = {
       name: data.name,
       species: data.species,
-      dateFound: format(data.dateFound, "yyyy-MM-dd"),
-      carer: data.carer,
       status: data.status,
-      photo: isEditMode ? animalToEdit.photo : `https://placehold.co/600x400.png`,
-      sex: isEditMode ? animalToEdit.sex : "Unknown",
-      ageClass: isEditMode ? animalToEdit.ageClass : "Unknown",
+      dateFound: data.dateFound,
+      dateReleased: null,
+      outcomeDate: null,
+      outcome: null,
+      photo: null,
+      notes: null,
       rescueLocation: locationData.address,
       rescueCoordinates: { lat: locationData.lat, lng: locationData.lng },
-      rescueDate: isEditMode ? animalToEdit.rescueDate : format(data.dateFound, "yyyy-MM-dd"),
-      reasonForAdmission: isEditMode ? animalToEdit.reasonForAdmission : "Unknown",
-      carerId: isEditMode ? animalToEdit.carerId : data.carer,
-      notes: isEditMode ? animalToEdit.notes : "",
+      carerId: data.carer,
     };
 
-    await onAnimalAdd(newAnimal)
-    
+    await onAnimalAdd(payload)
+
     toast({
       title: isEditMode ? "Animal Updated" : "Animal Added",
       description: `${data.name} the ${data.species} has been ${isEditMode ? 'updated' : 'added'}.`,
     })
-    
+
     setIsLoading(false)
     setIsOpen(false)
   }
 
-  const statusOptions: AnimalStatus[] = ["In Care", "Released", "Deceased", "Transferred"];
+  const statusOptions: ("ADMITTED"|"IN_CARE"|"READY_FOR_RELEASE"|"RELEASED"|"DECEASED"|"TRANSFERRED")[] = [
+    "ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED"
+  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -218,7 +231,7 @@ export function AddAnimalDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {speciesOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      {species.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -238,7 +251,7 @@ export function AddAnimalDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {carerOptions.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {carers.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -309,11 +322,14 @@ export function AddAnimalDialog({
             
             <LocationPicker
               onLocationChange={setLocationData}
-              initialLocation={isEditMode ? {
-                lat: animalToEdit.rescueCoordinates?.lat || -35.2809,
-                lng: animalToEdit.rescueCoordinates?.lng || 149.1300,
-                address: animalToEdit.rescueLocation || 'Canberra ACT, Australia'
-              } : undefined}
+              initialLocation={isEditMode ? (() => {
+                const rc = animalToEdit?.rescueCoordinates as { lat?: number; lng?: number } | null;
+                return {
+                  lat: rc?.lat ?? -35.2809,
+                  lng: rc?.lng ?? 149.1300,
+                  address: animalToEdit?.rescueLocation || 'Canberra ACT, Australia'
+                }
+              })() : undefined}
             />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>

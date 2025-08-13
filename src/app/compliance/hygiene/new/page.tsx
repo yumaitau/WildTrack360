@@ -12,12 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Save, Calendar, Shield, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { getUsers } from '@/lib/data-store';
+import { useOrganization } from '@clerk/nextjs';
 import { getCurrentJurisdiction } from '@/lib/config';
 import { getJurisdictionComplianceConfig } from '@/lib/compliance-rules';
 
 export default function NewHygieneLogPage() {
   const router = useRouter();
+  const { organization } = useOrganization();
   const jurisdiction = getCurrentJurisdiction();
   const complianceConfig = getJurisdictionComplianceConfig(jurisdiction);
   const [users, setUsers] = useState<any[]>([]);
@@ -48,19 +49,20 @@ export default function NewHygieneLogPage() {
   }>({});
 
   useEffect(() => {
-    const loadUsers = async () => {
+    const loadCarers = async () => {
       try {
-        const usersData = await getUsers();
-        setUsers(usersData);
+        if (!organization) return;
+        const res = await fetch(`/api/carers?orgId=${organization.id}`);
+        const data = await res.json();
+        setUsers(data);
       } catch (error) {
-        console.error('Error loading users:', error);
+        console.error('Error loading carers:', error);
       } finally {
         setLoading(false);
       }
     };
-
-    loadUsers();
-  }, []);
+    loadCarers();
+  }, [organization]);
 
   const biosecurityOptions = [
     'Footbaths used at entry/exit',
@@ -129,8 +131,7 @@ export default function NewHygieneLogPage() {
 
     setSaving(true);
     try {
-      const hygieneLog = {
-        id: Date.now().toString(),
+      const payload = {
         date,
         carerId,
         enclosureCleaned,
@@ -138,18 +139,19 @@ export default function NewHygieneLogPage() {
         handwashAvailable,
         feedingBowlsDisinfected,
         quarantineSignsPresent,
-        biosecurityProtocols,
+        photos: [],
         notes,
-        jurisdiction,
-        createdAt: new Date().toISOString()
+        clerkOrganizationId: organization?.id,
+        type: 'DAILY',
+        description: `Daily hygiene log (${jurisdiction})`,
+        completed: true
       };
-
-      console.log('Saving hygiene log:', hygieneLog);
-      
-      // TODO: Implement actual save to data store
-      // await saveHygieneLog(hygieneLog);
-      
-      // Redirect to the hygiene logs list
+      const res = await fetch('/api/hygiene', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(await res.text());
       router.push('/compliance/hygiene');
     } catch (error) {
       console.error('Error saving hygiene log:', error);
@@ -243,9 +245,9 @@ export default function NewHygieneLogPage() {
                   <SelectValue placeholder="Select a carer" />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.map(user => (
+                  {users.map((user: any) => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.fullName}
+                      {user.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

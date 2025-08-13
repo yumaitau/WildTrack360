@@ -3,20 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, ArrowLeft, Home } from "lucide-react";
 import Link from "next/link";
-import { getJurisdictionConfig, getCurrentJurisdiction, getOrganizationName } from '@/lib/config';
-import { 
-  getJurisdictionComplianceConfig, 
-  getComplianceSectionsForJurisdiction,
-  isFormRequired,
-  isFormOptional 
-} from '@/lib/compliance-rules';
+import { getCurrentJurisdiction, getJurisdictionConfig } from '@/lib/config';
 
 export default function CompliancePage() {
   const jurisdiction = getCurrentJurisdiction();
   const config = getJurisdictionConfig();
-  const complianceConfig = getJurisdictionComplianceConfig(jurisdiction);
-  const complianceSections = getComplianceSectionsForJurisdiction(jurisdiction);
-  const orgName = getOrganizationName();
+  
   return (
     <div className="container mx-auto px-6 py-8 space-y-8">
       <div className="flex items-center justify-between mb-8">
@@ -29,11 +21,11 @@ export default function CompliancePage() {
           <div>
             <h1 className="text-4xl font-bold mb-2">{jurisdiction} Wildlife Compliance Toolkit</h1>
             <p className="text-lg text-muted-foreground">
-              Manage compliance with {complianceConfig.codeOfPractice}
+              Manage compliance with {config.codeOfPractice}
             </p>
-            {complianceConfig.codeOfPracticeUrl && (
+            {config.codeOfPracticeUrl && (
               <a 
-                href={complianceConfig.codeOfPracticeUrl} 
+                href={config.codeOfPracticeUrl} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-sm text-blue-600 hover:underline"
@@ -49,92 +41,197 @@ export default function CompliancePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {complianceSections.map((section) => (
-          <Card key={section.id} className="h-full">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-3 text-xl">
-                {section.id.includes('record') && <FileText className="h-6 w-6" />}
-                {section.id.includes('release') && <CheckCircle className="h-6 w-6" />}
-                {section.id.includes('hygiene') && <Shield className="h-6 w-6" />}
-                {section.id.includes('incident') && <AlertTriangle className="h-6 w-6" />}
-                {section.id.includes('carer') && <Users className="h-6 w-6" />}
-                {!section.id.includes('record') && !section.id.includes('release') && !section.id.includes('hygiene') && !section.id.includes('incident') && !section.id.includes('carer') && <Calendar className="h-6 w-6" />}
-                {section.title}
-              </CardTitle>
-              <CardDescription className="text-base">
-                {section.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {section.rules.length} requirement{section.rules.length !== 1 ? 's' : ''}
-                </span>
-                <Badge variant="secondary">
-                  {section.rules.every(rule => rule.required) ? 'Required' : 'Mixed'}
-                </Badge>
+        {/* Wildlife Register */}
+        <Card className="h-full">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <FileText className="h-6 w-6" />
+              Wildlife Register
+            </CardTitle>
+            <CardDescription className="text-base">
+              Maintain records of all wildlife admissions and outcomes
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                3 requirements
+              </span>
+              <Badge variant="secondary">Required</Badge>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Wildlife Admission Register</span>
               </div>
-              <div className="space-y-3">
-                {section.rules.slice(0, 3).map((rule) => (
-                  <div key={rule.id} className="flex items-center gap-3 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <span>{rule.title}</span>
-                  </div>
-                ))}
-                {section.rules.length > 3 && (
-                  <div className="text-sm text-muted-foreground">
-                    +{section.rules.length - 3} more requirements
-                  </div>
-                )}
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Search and Filter Capability</span>
               </div>
-              {(() => {
-                const formTypes = section.rules
-                  .map(rule => rule.formType)
-                  .filter(Boolean)
-                  .filter((value, index, self) => self.indexOf(value) === index); // unique values
-                
-                if (formTypes.includes('wildlife-register')) {
-                  return (
-                    <Link href="/compliance/register">
-                      <Button className="w-full mt-4">View Register</Button>
-                    </Link>
-                  );
-                }
-                if (formTypes.includes('release-checklist')) {
-                  return (
-                    <Link href="/compliance/release-checklist">
-                      <Button className="w-full mt-4">Manage Releases</Button>
-                    </Link>
-                  );
-                }
-                if (formTypes.includes('hygiene-log')) {
-                  return (
-                    <Link href="/compliance/hygiene">
-                      <Button className="w-full mt-4">View Hygiene Logs</Button>
-                    </Link>
-                  );
-                }
-                if (formTypes.includes('incident-report')) {
-                  return (
-                    <Link href="/compliance/incidents">
-                      <Button className="w-full mt-4">View Incidents</Button>
-                    </Link>
-                  );
-                }
-                if (formTypes.includes('carer-licence')) {
-                  return (
-                    <Link href="/compliance/carers">
-                      <Button className="w-full mt-4">Manage Carers</Button>
-                    </Link>
-                  );
-                }
-                return null;
-              })()}
-            </CardContent>
-          </Card>
-        ))}
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Export Functionality</span>
+              </div>
+            </div>
+            <Link href="/compliance/register">
+              <Button className="w-full mt-4">View Register</Button>
+            </Link>
+          </CardContent>
+        </Card>
 
-        {/* Available Forms - Show all forms for the jurisdiction */}
+        {/* Release Checklists */}
+        <Card className="h-full">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <CheckCircle className="h-6 w-6" />
+              Release Checklists
+            </CardTitle>
+            <CardDescription className="text-base">
+              Document release site selection and animal fitness
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                3 requirements
+              </span>
+              <Badge variant="secondary">Required</Badge>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Release Site Assessment</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Animal Fitness Evaluation</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Release Documentation</span>
+              </div>
+            </div>
+            <Link href="/compliance/release-checklist">
+              <Button className="w-full mt-4">Manage Releases</Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Hygiene Management */}
+        <Card className="h-full">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <Shield className="h-6 w-6" />
+              Hygiene Management
+            </CardTitle>
+            <CardDescription className="text-base">
+              Maintain hygiene standards and quarantine protocols
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                3 requirements
+              </span>
+              <Badge variant="secondary">Required</Badge>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Daily Hygiene Checks</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Quarantine Protocols</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>PPE Usage Records</span>
+              </div>
+            </div>
+            <Link href="/compliance/hygiene">
+              <Button className="w-full mt-4">View Hygiene Logs</Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Incident Management */}
+        <Card className="h-full">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <AlertTriangle className="h-6 w-6" />
+              Incident Management
+            </CardTitle>
+            <CardDescription className="text-base">
+              Report and document incidents and accidents
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                3 requirements
+              </span>
+              <Badge variant="secondary">Required</Badge>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Incident Reporting</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Investigation Process</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Corrective Actions</span>
+              </div>
+            </div>
+            <Link href="/compliance/incidents">
+              <Button className="w-full mt-4">View Incidents</Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Carer Management */}
+        <Card className="h-full">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <Users className="h-6 w-6" />
+              Carer Management
+            </CardTitle>
+            <CardDescription className="text-base">
+              Manage carer qualifications and compliance
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                3 requirements
+              </span>
+              <Badge variant="secondary">Required</Badge>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>License Verification</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Training Records</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Compliance Monitoring</span>
+              </div>
+            </div>
+            <Link href="/compliance/carers">
+              <Button className="w-full mt-4">Manage Carers</Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Available Forms */}
         <Card className="h-full">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-xl">
@@ -151,60 +248,42 @@ export default function CompliancePage() {
                 <Button variant="outline" className="w-full justify-start">
                   <FileText className="mr-2 h-4 w-4" />
                   Wildlife Register
-                  {isFormRequired('wildlife-register', jurisdiction) && (
-                    <Badge variant="secondary" className="ml-auto">Required</Badge>
-                  )}
+                  <Badge variant="secondary" className="ml-auto">Required</Badge>
                 </Button>
               </Link>
-              {isFormRequired('release-checklist', jurisdiction) || isFormOptional('release-checklist', jurisdiction) ? (
-                <Link href="/compliance/release-checklist">
-                  <Button variant="outline" className="w-full justify-start">
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Release Checklists
-                    {isFormRequired('release-checklist', jurisdiction) && (
-                      <Badge variant="secondary" className="ml-auto">Required</Badge>
-                    )}
-                  </Button>
-                </Link>
-              ) : null}
-              {isFormRequired('hygiene-log', jurisdiction) || isFormOptional('hygiene-log', jurisdiction) ? (
-                <Link href="/compliance/hygiene">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Hygiene Logs
-                    {isFormRequired('hygiene-log', jurisdiction) && (
-                      <Badge variant="secondary" className="ml-auto">Required</Badge>
-                    )}
-                  </Button>
-                </Link>
-              ) : null}
-              {isFormRequired('incident-report', jurisdiction) || isFormOptional('incident-report', jurisdiction) ? (
-                <Link href="/compliance/incidents">
-                  <Button variant="outline" className="w-full justify-start">
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    Incident Reports
-                    {isFormRequired('incident-report', jurisdiction) && (
-                      <Badge variant="secondary" className="ml-auto">Required</Badge>
-                    )}
-                  </Button>
-                </Link>
-              ) : null}
-              {isFormRequired('carer-licence', jurisdiction) || isFormOptional('carer-licence', jurisdiction) ? (
-                <Link href="/compliance/carers">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Users className="mr-2 h-4 w-4" />
-                    Carer Management
-                    {isFormRequired('carer-licence', jurisdiction) && (
-                      <Badge variant="secondary" className="ml-auto">Required</Badge>
-                    )}
-                  </Button>
-                </Link>
-              ) : null}
+              <Link href="/compliance/release-checklist">
+                <Button variant="outline" className="w-full justify-start">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Release Checklists
+                  <Badge variant="secondary" className="ml-auto">Required</Badge>
+                </Button>
+              </Link>
+              <Link href="/compliance/hygiene">
+                <Button variant="outline" className="w-full justify-start">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Hygiene Logs
+                  <Badge variant="secondary" className="ml-auto">Required</Badge>
+                </Button>
+              </Link>
+              <Link href="/compliance/incidents">
+                <Button variant="outline" className="w-full justify-start">
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  Incident Reports
+                  <Badge variant="secondary" className="ml-auto">Required</Badge>
+                </Button>
+              </Link>
+              <Link href="/compliance/carers">
+                <Button variant="outline" className="w-full justify-start">
+                  <Users className="mr-2 h-4 w-4" />
+                  Carer Management
+                  <Badge variant="secondary" className="ml-auto">Required</Badge>
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
 
-        {/* Compliance Overview - Always show */}
+        {/* Compliance Overview */}
         <Card className="h-full">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-xl">

@@ -1,4 +1,13 @@
-import { JurisdictionConfig } from './types';
+// Define the JurisdictionConfig type locally since it's not exported from @prisma/client
+type JurisdictionConfig = {
+  enabledForms: string[];
+  templates: string[];
+  enforceReleaseDistance: boolean;
+  requireVetSignOff: boolean;
+  maxRetentionYears: number;
+  codeOfPractice: string;
+  codeOfPracticeUrl?: string;
+};
 
 // Default jurisdiction configurations
 const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
@@ -8,6 +17,8 @@ const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     enforceReleaseDistance: true,
     requireVetSignOff: true,
     maxRetentionYears: 3,
+    codeOfPractice: 'ACT Wildlife Code of Practice 2020',
+    codeOfPracticeUrl: 'https://www.environment.act.gov.au/parks-conservation/plants-and-animals/wildlife-conservation/act-wildlife-code-of-practice',
   },
   NSW: {
     enabledForms: ['releaseChecklist', 'incidentLog'],
@@ -15,6 +26,7 @@ const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     enforceReleaseDistance: false,
     requireVetSignOff: false,
     maxRetentionYears: 2,
+    codeOfPractice: 'NSW Wildlife Rehabilitation Policy',
   },
   VIC: {
     enabledForms: ['releaseChecklist', 'incidentLog', 'hygieneLog'],
@@ -22,6 +34,7 @@ const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     enforceReleaseDistance: true,
     requireVetSignOff: true,
     maxRetentionYears: 3,
+    codeOfPractice: 'Victorian Wildlife Act 1975',
   },
   QLD: {
     enabledForms: ['releaseChecklist', 'incidentLog', 'carerLicence'],
@@ -29,6 +42,7 @@ const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     enforceReleaseDistance: false,
     requireVetSignOff: false,
     maxRetentionYears: 2,
+    codeOfPractice: 'Queensland Nature Conservation Act 1992',
   },
   WA: {
     enabledForms: ['releaseChecklist', 'incidentLog'],
@@ -36,6 +50,7 @@ const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     enforceReleaseDistance: true,
     requireVetSignOff: true,
     maxRetentionYears: 3,
+    codeOfPractice: 'Western Australia Wildlife Conservation Act 1950',
   },
   SA: {
     enabledForms: ['releaseChecklist', 'incidentLog', 'hygieneLog'],
@@ -43,6 +58,7 @@ const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     enforceReleaseDistance: true,
     requireVetSignOff: false,
     maxRetentionYears: 2,
+    codeOfPractice: 'South Australia National Parks and Wildlife Act 1972',
   },
   TAS: {
     enabledForms: ['releaseChecklist', 'incidentLog'],
@@ -50,6 +66,7 @@ const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     enforceReleaseDistance: false,
     requireVetSignOff: false,
     maxRetentionYears: 2,
+    codeOfPractice: 'Tasmania Nature Conservation Act 2002',
   },
   NT: {
     enabledForms: ['releaseChecklist', 'incidentLog', 'carerLicence'],
@@ -57,26 +74,28 @@ const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     enforceReleaseDistance: true,
     requireVetSignOff: true,
     maxRetentionYears: 3,
+    codeOfPractice: 'Northern Territory Territory Parks and Wildlife Conservation Act 1976',
   },
 };
 
 // Get jurisdiction from environment variable
 export const getCurrentJurisdiction = (): string => {
-  const envJurisdiction = process.env.NEXT_PUBLIC_JURISDICTION || process.env.JURISDICTION;
-  
-  if (!envJurisdiction) {
-    console.warn('No jurisdiction specified in environment variables. Defaulting to ACT.');
-    return 'ACT';
-  }
-  
-  const jurisdiction = envJurisdiction.toUpperCase();
-  
-  if (!DEFAULT_JURISDICTION_CONFIGS[jurisdiction]) {
-    console.warn(`Unknown jurisdiction: ${jurisdiction}. Defaulting to ACT.`);
-    return 'ACT';
-  }
-  
-  return jurisdiction;
+  // Only use Clerk organization publicMetadata (client-side)
+  try {
+    if (typeof window !== 'undefined') {
+      const anyWin = window as any;
+      const orgJurisdiction = anyWin?.Clerk?.organization?.publicMetadata?.jurisdiction as string | undefined;
+      const value = orgJurisdiction?.toString().trim();
+      if (value) {
+        const upper = value.toUpperCase();
+        if (DEFAULT_JURISDICTION_CONFIGS[upper]) return upper;
+      }
+    }
+  } catch {}
+
+  // Default if not present on organization metadata
+  console.warn('Jurisdiction not set on Clerk organization publicMetadata. Defaulting to ACT.');
+  return 'ACT';
 };
 
 // Get jurisdiction configuration

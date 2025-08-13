@@ -22,27 +22,44 @@ import {
 } from '@/components/ui/dialog';
 import { Pen, PlusCircle, Trash, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getSpecies, createSpecies, updateSpecies, deleteSpecies } from '@/lib/data-store';
+import { useUser, useOrganization } from '@clerk/nextjs';
 
-interface SpeciesManagementProps {
-  initialSpecies: string[];
+async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
 }
 
+interface SpeciesItem { id: string; name: string; scientificName?: string | null; description?: string | null; careRequirements?: string | null }
+interface SpeciesManagementProps { initialSpecies: string[] }
+
 export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
-  const [species, setSpecies] = useState<string[]>(initialSpecies);
+  const { user } = useUser();
+  const { organization } = useOrganization();
+  const [species, setSpecies] = useState<SpeciesItem[]>([]);
   const [newSpecies, setNewSpecies] = useState('');
-  const [editingSpecies, setEditingSpecies] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [editingSpecies, setEditingSpecies] = useState<SpeciesItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editScientificName, setEditScientificName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCareRequirements, setEditCareRequirements] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [speciesToDelete, setSpeciesToDelete] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Refresh species list from data store
+  // Add dialog state
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [addName, setAddName] = useState('');
+  const [addScientificName, setAddScientificName] = useState('');
+  const [addDescription, setAddDescription] = useState('');
+  const [addCareRequirements, setAddCareRequirements] = useState('');
+
   const refreshSpecies = async () => {
     try {
-      const updatedSpecies = await getSpecies();
+      const orgId = organization?.id || 'default-org';
+      const updatedSpecies = await apiJson<SpeciesItem[]>(`/api/species?orgId=${orgId}`);
       setSpecies(updatedSpecies);
     } catch (error) {
       console.error('Error refreshing species:', error);
@@ -56,67 +73,78 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
 
   useEffect(() => {
     refreshSpecies();
-  }, []);
+  }, [organization]);
+
+  const openAddDialog = () => {
+    setAddName(newSpecies.trim());
+    setAddScientificName('');
+    setAddDescription('');
+    setAddCareRequirements('');
+    setIsAddDialogOpen(true);
+  };
 
   const handleAddSpecies = async () => {
-    if (!newSpecies.trim()) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error', 
-        description: 'Species name cannot be empty.' 
-      });
+    if (!addName.trim()) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Species name cannot be empty.' });
       return;
     }
-
     setLoading(true);
     try {
-      await createSpecies(newSpecies.trim());
-      setNewSpecies('');
-      await refreshSpecies();
-      toast({ 
-        title: 'Success', 
-        description: `Species "${newSpecies.trim()}" added.` 
+      await apiJson(`/api/species`, { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+          name: addName.trim(),
+          scientificName: addScientificName || null,
+          description: addDescription || null,
+          careRequirements: addCareRequirements || null,
+          clerkOrganizationId: organization?.id 
+        }) 
       });
+      setNewSpecies('');
+      setIsAddDialogOpen(false);
+      setAddName('');
+      setAddScientificName('');
+      setAddDescription('');
+      setAddCareRequirements('');
+      await refreshSpecies();
+      toast({ title: 'Success', description: `Species "${addName.trim()}" added.` });
     } catch (error) {
       console.error('Error adding species:', error);
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error', 
-        description: error instanceof Error ? error.message : 'Failed to add species.' 
-      });
+      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to add species.' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleEditSpecies = async () => {
-    if (!editingSpecies || !editValue.trim()) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error', 
-        description: 'Species name cannot be empty.' 
-      });
+    if (!editingSpecies || !editName.trim()) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Species name cannot be empty.' });
       return;
     }
-
     setLoading(true);
     try {
-      await updateSpecies(editingSpecies, editValue.trim());
+      await apiJson(`/api/species`, { 
+        method: 'PATCH', 
+        body: JSON.stringify({ 
+          oldName: editingSpecies.name, 
+          newName: editName.trim(), 
+          scientificName: editScientificName || null,
+          description: editDescription || null,
+          careRequirements: editCareRequirements || null,
+          orgId: organization?.id 
+        }) 
+      });
       setEditingSpecies(null);
-      setEditValue('');
+      setEditName('');
+      setEditScientificName('');
+      setEditDescription('');
+      setEditCareRequirements('');
       setIsEditDialogOpen(false);
       await refreshSpecies();
-      toast({ 
-        title: 'Success', 
-        description: `Species "${editingSpecies}" updated to "${editValue.trim()}".` 
-      });
+      toast({ title: 'Success', description: `Species updated.` });
     } catch (error) {
       console.error('Error updating species:', error);
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error', 
-        description: error instanceof Error ? error.message : 'Failed to update species.' 
-      });
+      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to update species.' });
     } finally {
       setLoading(false);
     }
@@ -124,32 +152,27 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
 
   const handleDeleteSpecies = async () => {
     if (!speciesToDelete) return;
-
     setLoading(true);
     try {
-      await deleteSpecies(speciesToDelete);
+      await apiJson(`/api/species`, { method: 'DELETE', body: JSON.stringify({ name: speciesToDelete, orgId: organization?.id }) });
       setSpeciesToDelete(null);
       setIsDeleteDialogOpen(false);
       await refreshSpecies();
-      toast({ 
-        title: 'Success', 
-        description: `Species "${speciesToDelete}" deleted.` 
-      });
+      toast({ title: 'Success', description: `Species "${speciesToDelete}" deleted.` });
     } catch (error) {
       console.error('Error deleting species:', error);
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error', 
-        description: error instanceof Error ? error.message : 'Failed to delete species.' 
-      });
+      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to delete species.' });
     } finally {
       setLoading(false);
     }
   };
 
-  const openEditDialog = (speciesName: string) => {
-    setEditingSpecies(speciesName);
-    setEditValue(speciesName);
+  const openEditDialog = (item: SpeciesItem) => {
+    setEditingSpecies(item);
+    setEditName(item.name);
+    setEditScientificName(item.scientificName || '');
+    setEditDescription(item.description || '');
+    setEditCareRequirements(item.careRequirements || '');
     setIsEditDialogOpen(true);
   };
 
@@ -165,12 +188,12 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
           placeholder="New species name..."
           value={newSpecies}
           onChange={(e) => setNewSpecies(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleAddSpecies()}
+          onKeyPress={(e) => e.key === 'Enter' && openAddDialog()}
           disabled={loading}
         />
-        <Button onClick={handleAddSpecies} disabled={loading || !newSpecies.trim()}>
+        <Button onClick={openAddDialog} disabled={loading}>
           <PlusCircle className="mr-2 h-4 w-4" /> 
-          {loading ? 'Adding...' : 'Add Species'}
+          Add Species
         </Button>
       </div>
 
@@ -184,8 +207,8 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
           </TableHeader>
           <TableBody>
             {species.map((s) => (
-              <TableRow key={s}>
-                <TableCell>{s}</TableCell>
+              <TableRow key={s.id}>
+                <TableCell>{s.name}</TableCell>
                 <TableCell className="text-right">
                   <Button 
                     variant="ghost" 
@@ -198,7 +221,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => openDeleteDialog(s)}
+                    onClick={() => openDeleteDialog(s.name)}
                     disabled={loading}
                   >
                     <Trash className="h-4 w-4" />
@@ -217,22 +240,62 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
         </Table>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      {/* Add Species Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Species</DialogTitle>
+            <DialogTitle>Add Species</DialogTitle>
             <DialogDescription>
-              Update the species name. This will also update all animals using this species.
+              Provide details for the new species.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
-              placeholder="Species name..."
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleEditSpecies()}
+              placeholder="Name"
+              value={addName}
+              onChange={(e) => setAddName(e.target.value)}
             />
+            <Input
+              placeholder="Scientific Name (optional)"
+              value={addScientificName}
+              onChange={(e) => setAddScientificName(e.target.value)}
+            />
+            <Input
+              placeholder="Description (optional)"
+              value={addDescription}
+              onChange={(e) => setAddDescription(e.target.value)}
+            />
+            <Input
+              placeholder="Care Requirements (optional)"
+              value={addCareRequirements}
+              onChange={(e) => setAddCareRequirements(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={loading}>
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button onClick={handleAddSpecies} disabled={loading}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Save Species
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog (full fields) */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Species</DialogTitle>
+            <DialogDescription>Update species details.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input placeholder="Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+            <Input placeholder="Scientific Name (optional)" value={editScientificName} onChange={(e) => setEditScientificName(e.target.value)} />
+            <Input placeholder="Description (optional)" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+            <Input placeholder="Care Requirements (optional)" value={editCareRequirements} onChange={(e) => setEditCareRequirements(e.target.value)} />
           </div>
           <DialogFooter>
             <Button 
@@ -245,7 +308,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
             </Button>
             <Button 
               onClick={handleEditSpecies} 
-              disabled={loading || !editValue.trim() || editValue === editingSpecies}
+              disabled={loading || !editName.trim()}
             >
               <Save className="mr-2 h-4 w-4" />
               {loading ? 'Saving...' : 'Save Changes'}

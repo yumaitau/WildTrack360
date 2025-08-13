@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Animal } from "@/lib/types";
+import { Animal } from "@prisma/client";
 import { Users, CheckCircle, ArrowRightCircle } from "lucide-react";
 import { subDays } from "date-fns";
 
@@ -11,27 +11,26 @@ interface DashboardStatsProps {
 }
 
 export default function DashboardStats({ animals }: DashboardStatsProps) {
-  // Debug: Log the animals data to see what we're working with
   console.log('DashboardStats - animals data:', {
     totalAnimals: animals.length,
-    inCareCount: animals.filter(a => a.status === 'In Care').length,
-    releasedCount: animals.filter(a => a.status === 'Released').length,
-    deceasedCount: animals.filter(a => a.status === 'Deceased').length,
-    transferredCount: animals.filter(a => a.status === 'Transferred').length,
-    releasedAnimals: animals.filter(a => a.status === 'Released').map(a => ({
+    inCareCount: animals.filter(a => a.status === 'IN_CARE').length,
+    releasedCount: animals.filter(a => a.status === 'RELEASED').length,
+    deceasedCount: animals.filter(a => a.status === 'DECEASED').length,
+    transferredCount: animals.filter(a => a.status === 'TRANSFERRED').length,
+    releasedAnimals: animals.filter(a => a.status === 'RELEASED').map(a => ({
       name: a.name,
       outcomeDate: a.outcomeDate,
       status: a.status
     })),
-    releasedWithoutOutcomeDate: animals.filter(a => a.status === 'Released' && !a.outcomeDate).map(a => ({
+    releasedWithoutOutcomeDate: animals.filter(a => a.status === 'RELEASED' && !a.outcomeDate).map(a => ({
       name: a.name,
       outcomeDate: a.outcomeDate,
       status: a.status
     }))
   });
 
-  const inCareCount = animals.filter(a => a.status === 'In Care').length;
-  const releasedCount = animals.filter(a => a.status === 'Released').length;
+  const inCareCount = animals.filter(a => a.status === 'IN_CARE').length;
+  const releasedCount = animals.filter(a => a.status === 'RELEASED').length;
 
   const sevenDaysAgo = subDays(new Date(), 7);
   const newlyAdmittedCount = animals.filter(a => new Date(a.dateFound) >= sevenDaysAgo).length;

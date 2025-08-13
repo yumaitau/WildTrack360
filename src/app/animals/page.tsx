@@ -1,15 +1,31 @@
-import { getAnimals, getSpecies, getCarers, initializeDataStores } from '@/lib/data-store';
 import AnimalsClient from './animals-client';
 import { Suspense } from 'react';
+import { prisma } from '@/lib/prisma';
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
 
 export default async function AnimalsPage() {
-  // Initialize data stores on app startup
-  await initializeDataStores();
-  
-  // Get initial data for fallback (in case client-side loading fails)
-  const animals = await getAnimals();
-  const species = await getSpecies();
-  const carers = await getCarers();
+  const { userId, orgId } = await auth();
+  if (!userId) redirect('/sign-in');
+  const organizationId = orgId || '';
+
+  const [animals, speciesRows, carersRows] = await Promise.all([
+    prisma.animal.findMany({
+      where: { clerkUserId: userId, clerkOrganizationId: organizationId },
+      orderBy: { dateFound: 'desc' },
+    }),
+    prisma.species.findMany({
+      where: { clerkUserId: userId, clerkOrganizationId: organizationId },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.carer.findMany({
+      where: { clerkUserId: userId, clerkOrganizationId: organizationId },
+      orderBy: { name: 'asc' },
+    }),
+  ]);
+
+  const species = speciesRows.map(s => s.name);
+  const carers = carersRows.map(c => c.name);
   
   return (
     <Suspense fallback={<div>Loading...</div>}>

@@ -7,10 +7,16 @@ import { Animal } from '@/lib/types';
 import { AnimalTable } from '@/components/animal-table';
 import { useState, useEffect } from 'react';
 import { AddAnimalDialog } from '@/components/add-animal-dialog';
-import { updateAnimal, createAnimal, getAnimals, getSpecies, getCarers } from '@/lib/data-store';
 import AnimalCard from '@/components/animal-card';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { useUser, useOrganization } from '@clerk/nextjs';
 
 interface AnimalsClientProps {
   initialAnimals: Animal[];
@@ -28,22 +34,25 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [speciesFilter, setSpeciesFilter] = useState<string>('all');
-
-  // Load data from data store on component mount
+  const { user } = useUser();
+  const { organization } = useOrganization();
+  // Load data via API on component mount/org change
   useEffect(() => {
     const loadData = async () => {
       try {
+        if (!organization) return;
+        const orgId = organization.id;
         const [animalsData, speciesData, carersData] = await Promise.all([
-          getAnimals(),
-          getSpecies(),
-          getCarers()
+          fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/species?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/carers?orgId=${orgId}`).then(r => r.json()),
         ]);
         
         setAnimals(animalsData.sort((a: Animal, b: Animal) => 
           new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
         ));
-        setSpeciesList(speciesData);
-        setCarersList(carersData);
+        setSpeciesList(speciesData.map((s: any) => s.name || ''));
+        setCarersList(carersData.map((c: any) => c.name || ''));
       } catch (error) {
         console.error('Error loading data from data store:', error);
         // Fallback to initial props if data store fails
@@ -54,25 +63,27 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
     };
 
     loadData();
-  }, [initialAnimals, species, carers]);
+  }, [initialAnimals, species, carers, organization]);
 
-  // Listen for localStorage changes to refresh data
+  // Listen for localStorage changes to refresh data (legacy support); refetch via API
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'wildtrack360-animals' || e.key === 'wildtrack360-records') {
         const refreshData = async () => {
           try {
+            if (!organization) return;
+            const orgId = organization.id;
             const [animalsData, speciesData, carersData] = await Promise.all([
-              getAnimals(),
-              getSpecies(),
-              getCarers()
+              fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
+              fetch(`/api/species?orgId=${orgId}`).then(r => r.json()),
+              fetch(`/api/carers?orgId=${orgId}`).then(r => r.json()),
             ]);
             
             setAnimals(animalsData.sort((a: Animal, b: Animal) => 
               new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
             ));
-            setSpeciesList(speciesData);
-            setCarersList(carersData);
+            setSpeciesList(speciesData.map((s: any) => s.name || ''));
+            setCarersList(carersData.map((c: any) => c.name || ''));
           } catch (error) {
             console.error('Error refreshing data from data store:', error);
           }
@@ -95,18 +106,49 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
     setAddDialogOpen(true);
   }
 
+  // Adapter for AddAnimalDialog (create-only)
+  const handleAnimalAdd = async (animalData: any) => {
+    if (!user || !organization) return;
+    try {
+      await fetch('/api/animals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...animalData, clerkOrganizationId: organization.id })
+      });
+      const [animalsData, speciesData, carersData] = await Promise.all([
+        fetch(`/api/animals?orgId=${organization.id}`).then(r => r.json()),
+        fetch(`/api/species?orgId=${organization.id}`).then(r => r.json()),
+        fetch(`/api/carers?orgId=${organization.id}`).then(r => r.json()),
+      ]);
+      setAnimals(animalsData.sort((a: Animal, b: Animal) => new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()));
+      setSpeciesList(speciesData.map((s: any) => s.name || ''));
+      setCarersList(carersData.map((c: any) => c.name || ''));
+      setAddDialogOpen(false);
+    } catch (error) {
+      console.error('Error adding animal via API:', error);
+    }
+  };
+
   const handleAnimalSubmit = async (submittedAnimal: Animal) => {
     const isEditing = animals.some(animal => animal.id === submittedAnimal.id);
     
     if (isEditing) {
       try {
-        await updateAnimal(submittedAnimal.id, submittedAnimal);
+        await fetch(`/api/animals/${submittedAnimal.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submittedAnimal),
+        });
       } catch (error) {
         console.error('Error updating animal:', error);
       }
     } else {
       try {
-        await createAnimal(submittedAnimal);
+        await fetch('/api/animals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submittedAnimal),
+        });
       } catch (error) {
         console.error('Error creating animal:', error);
       }
@@ -115,17 +157,18 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
     // Refresh animals from data store
     const refreshData = async () => {
       try {
+        const orgId = organization?.id;
         const [animalsData, speciesData, carersData] = await Promise.all([
-          getAnimals(),
-          getSpecies(),
-          getCarers()
+          fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/species?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/carers?orgId=${orgId}`).then(r => r.json()),
         ]);
         
         setAnimals(animalsData.sort((a: Animal, b: Animal) => 
           new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
         ));
-        setSpeciesList(speciesData);
-        setCarersList(carersData);
+        setSpeciesList(speciesData.map((s: any) => s.name || ''));
+        setCarersList(carersData.map((c: any) => c.name || ''));
       } catch (error) {
         console.error('Error refreshing data:', error);
       }
@@ -250,10 +293,10 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
       <AddAnimalDialog 
         isOpen={isAddDialogOpen}
         setIsOpen={setAddDialogOpen}
-        onAnimalAdd={handleAnimalSubmit}
+        onAnimalAdd={handleAnimalAdd}
         animalToEdit={animalToEdit}
-        speciesOptions={speciesList}
-        carerOptions={carersList}
+        species={speciesList}
+        carers={carersList}
       />
     </div>
   );

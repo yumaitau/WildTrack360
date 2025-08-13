@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle, MapPin, Calendar, Download, Plus, AlertTriangle, ArrowLeft } from "lucide-react";
-import { getReleaseChecklists, getAnimals } from "@/lib/data-store";
+import { useOrganization } from '@clerk/nextjs';
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';
@@ -13,13 +13,16 @@ import jsPDF from 'jspdf';
 export default function ReleaseChecklistPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { organization } = useOrganization();
 
   useEffect(() => {
     async function loadData() {
       try {
+        if (!organization) return;
+        const orgId = organization.id;
         const [releaseChecklists, animals] = await Promise.all([
-          getReleaseChecklists(),
-          getAnimals()
+          fetch(`/api/release-checklists?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
         ]);
         setData({ releaseChecklists, animals });
       } catch (error) {
@@ -30,7 +33,7 @@ export default function ReleaseChecklistPage() {
     }
     
     loadData();
-  }, []);
+  }, [organization]);
 
   if (loading) {
     return (
@@ -55,12 +58,12 @@ export default function ReleaseChecklistPage() {
   const { releaseChecklists, animals } = data;
 
   const getAnimalName = (animalId: string) => {
-    const animal = animals.find((a: any) => a.animalId === animalId);
+    const animal = animals.find((a: any) => a.id === animalId);
     return animal?.name || 'Unknown';
   };
 
   const getAnimalSpecies = (animalId: string) => {
-    const animal = animals.find((a: any) => a.animalId === animalId);
+    const animal = animals.find((a: any) => a.id === animalId);
     return animal?.species || 'Unknown';
   };
 

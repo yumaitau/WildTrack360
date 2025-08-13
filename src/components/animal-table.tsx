@@ -35,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Animal, AnimalStatus } from "@/lib/types"
+import { Animal } from "@prisma/client"
 import { StatusBadge } from "./status-badge"
 import {
   Select,
@@ -120,9 +120,13 @@ export function AnimalTable({ animals, onEdit }: AnimalTableProps) {
       cell: ({ row }) => new Date(row.getValue("dateFound")).toLocaleDateString('en-CA'),
     },
     {
-      accessorKey: "carer",
+      id: "carer",
       header: "Carer",
-      cell: ({ row }) => <div>{row.getValue("carer")}</div>,
+      cell: ({ row }) => {
+        const original: any = row.original as any;
+        const carerName = original?.carer?.name || original?.carerName || "—";
+        return <div>{carerName}</div>;
+      },
     },
     {
       id: "actions",
@@ -179,7 +183,9 @@ export function AnimalTable({ animals, onEdit }: AnimalTableProps) {
     },
   })
 
-  const statusOptions: AnimalStatus[] = ["In Care", "Released", "Deceased"]
+  const statusOptions: ("ADMITTED"|"IN_CARE"|"READY_FOR_RELEASE"|"RELEASED"|"DECEASED"|"TRANSFERRED")[] = [
+    "ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED"
+  ];
 
   return (
     <div className="w-full">

@@ -6,29 +6,36 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, PawPrint, User, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getSpecies, getCarers, getAssets } from '@/lib/data-store';
+import { Asset } from '@prisma/client';
 import { SpeciesManagement } from './species-management';
 import { CarerManagement } from './carer-management';
 import { AssetManagement } from './asset-management';
-import { Asset } from '@/lib/types';
+import { useUser, useOrganization } from '@clerk/nextjs';
+
+async function apiJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
 
 export default function AdminPage() {
   const [species, setSpecies] = useState<string[]>([]);
   const [carers, setCarers] = useState<string[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const { user } = useUser();
+  const { organization } = useOrganization();
   useEffect(() => {
     const loadData = async () => {
       try {
+        const orgId = organization?.id || 'default-org';
         const [speciesData, carersData, assetsData] = await Promise.all([
-          getSpecies(),
-          getCarers(),
-          getAssets()
+          apiJson<any[]>(`/api/species?orgId=${orgId}`),
+          apiJson<any[]>(`/api/carers?orgId=${orgId}`),
+          apiJson<Asset[]>(`/api/assets?orgId=${orgId}`)
         ]);
-        
-        setSpecies(speciesData);
-        setCarers(carersData);
+        setSpecies(speciesData.map(s => s.name));
+        setCarers(carersData.map(c => c.name));
         setAssets(assetsData);
       } catch (error) {
         console.error('Error loading admin data:', error);
@@ -38,7 +45,7 @@ export default function AdminPage() {
     };
 
     loadData();
-  }, []);
+  }, [organization]);
 
   if (loading) {
     return (

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, Search, Plus, Filter, ArrowLeft } from "lucide-react";
-import { getAnimals, getSpecies, getCarers } from "@/lib/data-store";
+import { useOrganization } from '@clerk/nextjs';
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';
@@ -15,14 +15,17 @@ import jsPDF from 'jspdf';
 export default function WildlifeRegisterPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { organization } = useOrganization();
 
   useEffect(() => {
     async function loadData() {
       try {
+        if (!organization) return;
+        const orgId = organization.id;
         const [animals, species, carers] = await Promise.all([
-          getAnimals(),
-          getSpecies(),
-          getCarers()
+          fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/species?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/carers?orgId=${orgId}`).then(r => r.json()),
         ]);
         setData({ animals, species, carers });
       } catch (error) {
@@ -33,7 +36,7 @@ export default function WildlifeRegisterPage() {
     }
     
     loadData();
-  }, []);
+  }, [organization]);
 
   if (loading) {
     return (
@@ -79,16 +82,16 @@ export default function WildlifeRegisterPage() {
             onClick={() => {
               // Generate CSV export
               const csvContent = [
-                ['Animal ID', 'Name', 'Species', 'Sex', 'Age Class', 'Rescue Location', 'Rescue Date', 'Carer', 'Status'],
+                 ['Animal ID', 'Name', 'Species', 'Sex', 'Age Class', 'Rescue Location', 'Rescue Date', 'Carer', 'Status'],
                 ...animals.map((animal: any) => [
-                  animal.animalId,
+                  animal.id,
                   animal.name,
                   animal.species,
-                  animal.sex,
-                  animal.ageClass,
+                  animal.sex || '',
+                  animal.ageClass || '',
                   animal.rescueLocation,
-                  animal.rescueDate,
-                  animal.carer,
+                  new Date(animal.dateFound).toISOString().split('T')[0],
+                  animal.carer?.name || '',
                   animal.status
                 ])
               ].map(row => row.join(',')).join('\n');
@@ -175,7 +178,7 @@ export default function WildlifeRegisterPage() {
               yPosition += 5;
               
               // Table data
-              animals.slice(0, 20).forEach((animal: any) => {
+               animals.slice(0, 20).forEach((animal: any) => {
                 if (yPosition > 250) {
                   doc.addPage();
                   yPosition = 20;
@@ -183,23 +186,23 @@ export default function WildlifeRegisterPage() {
                 
                 xPos = margin;
                 doc.setFont('helvetica', 'normal');
-                doc.text(animal.animalId, xPos, yPosition);
+                doc.text(animal.id, xPos, yPosition);
                 xPos += colWidths[0];
                 doc.text(animal.name, xPos, yPosition);
                 xPos += colWidths[1];
                 doc.text(animal.species, xPos, yPosition);
                 xPos += colWidths[2];
-                doc.text(animal.sex, xPos, yPosition);
+                doc.text(String(animal.sex || ''), xPos, yPosition);
                 xPos += colWidths[3];
-                doc.text(animal.ageClass, xPos, yPosition);
+                doc.text(String(animal.ageClass || ''), xPos, yPosition);
                 xPos += colWidths[4];
-                doc.text(animal.rescueLocation.substring(0, 20), xPos, yPosition);
+                doc.text(String(animal.rescueLocation || '').substring(0, 20), xPos, yPosition);
                 xPos += colWidths[5];
-                doc.text(animal.rescueDate, xPos, yPosition);
+                doc.text(new Date(animal.dateFound).toISOString().split('T')[0], xPos, yPosition);
                 xPos += colWidths[6];
-                doc.text(animal.carer, xPos, yPosition);
+                doc.text(String(animal.carer?.name || ''), xPos, yPosition);
                 xPos += colWidths[7];
-                doc.text(animal.status, xPos, yPosition);
+                doc.text(String(animal.status), xPos, yPosition);
                 
                 yPosition += 5;
               });
@@ -257,8 +260,8 @@ export default function WildlifeRegisterPage() {
                 <SelectContent>
                   <SelectItem value="all">All species</SelectItem>
                   {species.map((s: any) => (
-                    <SelectItem key={s} value={s.toLowerCase()}>
-                      {s}
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -288,8 +291,8 @@ export default function WildlifeRegisterPage() {
                 <SelectContent>
                   <SelectItem value="all">All carers</SelectItem>
                   {carers.map((c: any) => (
-                    <SelectItem key={c} value={c.toLowerCase()}>
-                      {c}
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -379,7 +382,7 @@ export default function WildlifeRegisterPage() {
                     {animal.rescueLocation}
                   </TableCell>
                   <TableCell>{animal.rescueDate}</TableCell>
-                  <TableCell>{animal.carer}</TableCell>
+                  <TableCell>{animal.carer?.name || ''}</TableCell>
                   <TableCell>
                     <Badge 
                       variant={

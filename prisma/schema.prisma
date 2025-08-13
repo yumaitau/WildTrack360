@@ -1,0 +1,297 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Core Wildlife Management Models
+model Animal {
+  id          String   @id @default(cuid())
+  name        String
+  species     String
+  sex         String?
+  ageClass    String?
+  age         String?
+  dateOfBirth DateTime?
+  status      AnimalStatus
+  dateFound   DateTime
+  dateReleased DateTime?
+  outcomeDate DateTime?
+  outcome     String?
+  photo       String?
+  notes       String?
+  rescueLocation String?
+  rescueCoordinates Json? // { lat: number, lng: number }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Clerk Relations
+  clerkUserId         String
+  clerkOrganizationId String
+
+  // Other Relations
+  carerId String
+  carer   Carer @relation(fields: [carerId], references: [id])
+
+  records       Record[]
+  photos        Photo[]
+  releaseChecklists ReleaseChecklist[]
+  incidentReports   IncidentReport[]
+
+  @@map("animals")
+}
+
+model Record {
+  id          String      @id @default(cuid())
+  type        RecordType
+  date        DateTime
+  description String
+  location    String?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Clerk Relations
+  clerkUserId         String
+  clerkOrganizationId String
+
+  // Animal Relation
+  animalId String
+  animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  @@map("records")
+}
+
+model Photo {
+  id          String   @id @default(cuid())
+  url         String
+  description String
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Clerk Relations
+  clerkUserId         String
+  clerkOrganizationId String
+
+  // Animal Relation
+  animalId String
+  animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  @@map("photos")
+}
+
+model Species {
+  id          String   @id @default(cuid())
+  name        String
+  scientificName String?
+  description String?
+  careRequirements String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Clerk Relations
+  clerkUserId         String
+  clerkOrganizationId String
+
+  @@map("species")
+}
+
+model Carer {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  licenseNumber String?
+  licenseExpiry DateTime?
+  jurisdiction String?
+  specialties String[] // Array of specialty areas
+  notes       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Clerk Relations
+  clerkUserId         String
+  clerkOrganizationId String
+
+  // Animal Relations
+  animals Animal[]
+
+  // Training Relations
+  trainings CarerTraining[]
+
+  // Hygiene Logs
+  hygieneLogs HygieneLog[]
+
+  @@map("carers")
+}
+
+model CarerTraining {
+  id          String   @id @default(cuid())
+  carerId     String
+  carer       Carer    @relation(fields: [carerId], references: [id], onDelete: Cascade)
+  courseName  String
+  provider    String?
+  date        DateTime
+  expiryDate  DateTime?
+  certificateUrl String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Clerk Relations
+  clerkUserId         String
+  clerkOrganizationId String
+
+  @@map("carer_trainings")
+}
+
+model HygieneLog {
+  id          String   @id @default(cuid())
+  date        DateTime
+  type        String
+  description String
+  completed   Boolean  @default(false)
+  // Checklist fields
+  enclosureCleaned        Boolean  @default(false)
+  ppeUsed                 Boolean  @default(false)
+  handwashAvailable       Boolean  @default(false)
+  feedingBowlsDisinfected Boolean  @default(false)
+  quarantineSignsPresent  Boolean  @default(false)
+  // Attachments (array of URLs or objects)
+  photos      Json?
+  // Relations
+  carerId     String
+  carer       Carer    @relation(fields: [carerId], references: [id])
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Clerk Relations
+  clerkUserId         String
+  clerkOrganizationId String
+
+  @@map("hygiene_logs")
+}
+
+model IncidentReport {
+  id          String   @id @default(cuid())
+  date        DateTime
+  type        String
+  description String
+  severity    IncidentSeverity
+  resolved    Boolean  @default(false)
+  resolution  String?
+  personInvolved String?
+  reportedTo     String?
+  actionTaken    String?
+  location       String?
+  animalId       String?
+  animal         Animal? @relation(fields: [animalId], references: [id])
+  notes          String?
+  attachments    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Clerk Relations
+  clerkUserId         String
+  clerkOrganizationId String
+
+  @@map("incident_reports")
+}
+
+model ReleaseChecklist {
+  id               String   @id @default(cuid())
+  releaseDate      DateTime
+  animalId         String
+  releaseLocation  String
+  releaseCoordinates Json?
+  within10km       Boolean  @default(false)
+  releaseType      ReleaseType
+  fitnessIndicators String[]
+  vetSignOff       Json?
+  photos           Json?
+  completed        Boolean  @default(false)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Clerk Relations
+  clerkUserId         String
+  clerkOrganizationId String
+
+  // Animal Relation
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  @@map("release_checklists")
+}
+
+model Asset {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  description String?
+  status      AssetStatus
+  location    String?
+  assignedTo  String?
+  purchaseDate DateTime?
+  lastMaintenance DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Clerk Relations
+  clerkUserId         String
+  clerkOrganizationId String
+
+  @@map("assets")
+}
+
+// Enums
+enum AnimalStatus {
+  ADMITTED
+  IN_CARE
+  READY_FOR_RELEASE
+  RELEASED
+  DECEASED
+  TRANSFERRED
+}
+
+enum RecordType {
+  FEEDING
+  MEDICAL
+  BEHAVIOR
+  LOCATION
+  WEIGHT
+  RELEASE
+  OTHER
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AssetStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  RETIRED
+  LOST
+}
+
+enum ReleaseType {
+  HARD
+  SOFT
+  PASSIVE
+}

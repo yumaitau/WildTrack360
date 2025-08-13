@@ -15,7 +15,7 @@ import {
   ChartTooltipContent,
   ChartConfig,
 } from "@/components/ui/chart"
-import { Animal } from "@/lib/types"
+import { Animal } from "@prisma/client"
 import { subDays, format } from 'date-fns';
 import { useRouter } from "next/navigation";
 

@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, Calendar, Download, Plus, FileText, User, MapPin, ArrowLeft } from "lucide-react";
-import { getIncidentReports, getAnimals } from "@/lib/data-store";
+import { AlertTriangle, Calendar, Download, Plus, FileText, User, MapPin, ArrowLeft, Home } from "lucide-react";
+import { useOrganization } from '@clerk/nextjs';
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';
@@ -13,13 +13,16 @@ import jsPDF from 'jspdf';
 export default function IncidentReportsPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { organization } = useOrganization();
 
   useEffect(() => {
     async function loadData() {
       try {
+        if (!organization) return;
+        const orgId = organization.id;
         const [incidentReports, animals] = await Promise.all([
-          getIncidentReports(),
-          getAnimals()
+          fetch(`/api/incidents?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
         ]);
         setData({ incidentReports, animals });
       } catch (error) {
@@ -30,7 +33,7 @@ export default function IncidentReportsPage() {
     }
     
     loadData();
-  }, []);
+  }, [organization]);
 
   if (loading) {
     return (
@@ -56,7 +59,7 @@ export default function IncidentReportsPage() {
 
   const getAnimalName = (animalId?: string) => {
     if (!animalId) return 'N/A';
-    const animal = animals.find((a: any) => a.animalId === animalId);
+    const animal = animals.find((a: any) => a.id === animalId);
     return animal?.name || 'Unknown';
   };
 
@@ -82,6 +85,11 @@ export default function IncidentReportsPage() {
           <Link href="/compliance">
             <Button variant="outline" size="icon">
               <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Link href="/">
+            <Button variant="outline" size="icon">
+              <Home className="h-4 w-4" />
             </Button>
           </Link>
           <div>
@@ -305,7 +313,7 @@ export default function IncidentReportsPage() {
                   <TableCell className="font-mono text-sm">
                     {incident.id}
                   </TableCell>
-                  <TableCell>{incident.date}</TableCell>
+                   <TableCell>{new Date(incident.date).toISOString().split('T')[0]}</TableCell>
                   <TableCell>
                     <Badge variant={getIncidentTypeColor(incident.type)} className="text-xs">
                       {incident.type}

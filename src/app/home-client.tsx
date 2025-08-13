@@ -4,315 +4,378 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { PawPrint, PlusCircle, Download, Settings, List, LayoutGrid, Shield, User, RefreshCw } from 'lucide-react';
-import { Animal } from '@/lib/types';
+import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, User, RefreshCw, LogOut, Building } from 'lucide-react';
+import { Animal } from '@prisma/client';
+
+// Local type for create-animal payload
+type CreateAnimalData = {
+  name: string;
+  species: string;
+  status: 'ADMITTED' | 'IN_CARE' | 'READY_FOR_RELEASE' | 'RELEASED' | 'DECEASED' | 'TRANSFERRED';
+  dateFound: Date;
+  dateReleased: Date | null;
+  outcomeDate: Date | null;
+  outcome: string | null;
+  photo: string | null;
+  notes: string | null;
+  rescueLocation: string | null;
+  rescueCoordinates: { lat: number; lng: number } | null;
+  carerId: string;
+};
 import { AnimalTable } from '@/components/animal-table';
 import { useState, useEffect } from 'react';
 import { AddAnimalDialog } from '@/components/add-animal-dialog';
-import { updateAnimal, createAnimal, getAnimals, getSpecies, getCarers } from '@/lib/data-store';
 import DashboardStats from '@/components/dashboard-stats';
 import SpeciesDistributionChart from '@/components/species-distribution-chart';
 import RecentAdmissionsChart from '@/components/recent-admissions-chart';
 import CarerDistributionChart from '@/components/carer-distribution-chart';
 import ReleasesVsAdmissionsChart from '@/components/releases-vs-admissions-chart';
-import AnimalCard from '@/components/animal-card';
-import { Input } from '@/components/ui/input';
-import { useSearchParams } from 'next/navigation';
+import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import { getCurrentJurisdiction } from '@/lib/config';
+
+async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
 
 interface HomeClientProps {
   initialAnimals: Animal[];
-  species: string[];
-  carers: string[];
+  species: any[];
+  carers: any[];
 }
 
 export default function HomeClient({ initialAnimals, species, carers }: HomeClientProps) {
-  const [animals, setAnimals] = useState<Animal[]>([]);
-  const [speciesList, setSpeciesList] = useState<string[]>(species);
-  const [carersList, setCarersList] = useState<string[]>(carers);
-
-  // Load data from data store on component mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [animalsData, speciesData, carersData] = await Promise.all([
-          getAnimals(),
-          getSpecies(),
-          getCarers()
-        ]);
-        
-        setAnimals(animalsData.sort((a: Animal, b: Animal) => 
-          new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
-        ));
-        setSpeciesList(speciesData);
-        setCarersList(carersData);
-        
-        console.log('HomeClient - loaded data from data store:', {
-          animals: animalsData.length,
-          species: speciesData.length,
-          carers: carersData.length
-        });
-      } catch (error) {
-        console.error('Error loading data from data store:', error);
-        // Fallback to initial props if data store fails
-        setAnimals(initialAnimals);
-        setSpeciesList(species);
-        setCarersList(carers);
-      }
-    };
-
-    loadData();
-  }, [initialAnimals, species, carers]);
-  const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+  const { user, isLoaded: userLoaded } = useUser();
+  const { organization, isLoaded: orgLoaded } = useOrganization();
+  const { signOut } = useClerk();
+  const { toast } = useToast();
+  const router = useRouter();
+  
+  const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
+  const [speciesList, setSpeciesList] = useState(species);
+  const [carersList, setCarersList] = useState(carers);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [animalToEdit, setAnimalToEdit] = useState<Animal | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isLoading, setIsLoading] = useState(false);
+  const [greeting, setGreeting] = useState('');
+  const [orgJurisdiction, setOrgJurisdiction] = useState<string>('');
 
-  const searchParams = useSearchParams();
-  const admissionDateFilter = searchParams.get('admissionDate');
-
-  // Hardcoded user for demo purposes - in real app this would come from auth context
-  const currentUser = {
-    name: "John Doe",
-    role: "admin" as "admin" | "carer" | "coordinator"
-  };
-
+  // Load species and carers from API for current organization
   useEffect(() => {
-    if (admissionDateFilter) {
-      setViewMode('table');
-    }
-  }, [admissionDateFilter]);
-
-  // Listen for localStorage changes to refresh data
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'wildtrack360-animals' || e.key === 'wildtrack360-records') {
-        const refreshData = async () => {
-          try {
-            const [animalsData, speciesData, carersData] = await Promise.all([
-              getAnimals(),
-              getSpecies(),
-              getCarers()
-            ]);
-            
-            setAnimals(animalsData.sort((a: Animal, b: Animal) => 
-              new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
-            ));
-            setSpeciesList(speciesData);
-            setCarersList(carersData);
-          } catch (error) {
-            console.error('Error refreshing data from data store:', error);
-          }
-        };
-        refreshData();
+    const fetchLookups = async () => {
+      if (!organization) return;
+      try {
+        const orgId = organization.id;
+        const [newSpecies, newCarers] = await Promise.all([
+          apiJson<any[]>(`/api/species?orgId=${orgId}`),
+          apiJson<any[]>(`/api/carers?orgId=${orgId}`),
+        ]);
+        setSpeciesList(newSpecies);
+        setCarersList(newCarers);
+      } catch (error) {
+        console.error('Error loading species/carers:', error);
       }
     };
+    fetchLookups();
+  }, [organization]);
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+  // Load animals from API for current organization
+  useEffect(() => {
+    const fetchAnimals = async () => {
+      if (!organization) return;
+      try {
+        const orgId = organization.id;
+        const newAnimals = await apiJson<Animal[]>(`/api/animals?orgId=${orgId}`);
+        setAnimals(newAnimals);
+      } catch (error) {
+        console.error('Error loading animals:', error);
+      }
+    };
+    fetchAnimals();
+  }, [organization]);
+
+  useEffect(() => {
+    const hourSydney = Number(
+      new Date().toLocaleString('en-AU', {
+        hour: '2-digit',
+        hour12: false,
+        timeZone: 'Australia/Sydney',
+      })
+    );
+    const msg = hourSydney < 12 ? 'Good morning' : hourSydney < 18 ? 'Good afternoon' : 'Good evening';
+    setGreeting(msg);
   }, []);
 
-  // Manual refresh function for debugging
-  const refreshAnimalsData = async () => {
+  useEffect(() => {
+    // Resolve jurisdiction from Clerk org/user public metadata or env fallback
     try {
-      const [animalsData, speciesData, carersData] = await Promise.all([
-        getAnimals(),
-        getSpecies(),
-        getCarers()
-      ]);
-      
-      setAnimals(animalsData.sort((a: Animal, b: Animal) => 
-        new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
-      ));
-      setSpeciesList(speciesData);
-      setCarersList(carersData);
-      
-      console.log('Manual refresh - data from data store:', {
-        animals: animalsData.length,
-        species: speciesData.length,
-        carers: carersData.length,
-        releasedAnimals: animalsData.filter((a: Animal) => a.status === 'Released').map((a: Animal) => a.name)
+      const j = getCurrentJurisdiction();
+      setOrgJurisdiction(j);
+    } catch {
+      setOrgJurisdiction('ACT');
+    }
+  }, []);
+
+  const handleAddAnimal = async (animalData: CreateAnimalData) => {
+    if (!user || !organization) return;
+
+    try {
+      const created = await apiJson<Animal>(`/api/animals`, {
+        method: 'POST',
+        body: JSON.stringify({
+          ...animalData,
+          clerkOrganizationId: organization.id,
+        }),
       });
+      setAnimals(prev => [created, ...prev]);
+      setIsAddDialogOpen(false);
     } catch (error) {
-      console.error('Error manually refreshing data:', error);
+      console.error('Error adding animal:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to add animal',
+        description: error instanceof Error ? error.message : 'Please try again.'
+      });
     }
   };
 
-  const handleOpenAddDialog = () => {
-    setAnimalToEdit(null);
-    setAddDialogOpen(true);
+  const handleEditAnimal = async (animal: Animal) => {
+    router.push(`/animals/${animal.id}`);
   };
-  
-  const handleOpenEditDialog = (animal: Animal) => {
-    setAnimalToEdit(animal);
-    setAddDialogOpen(true);
+
+  const handleRefresh = async () => {
+    if (!user || !organization) return;
+    
+    setIsLoading(true);
+    try {
+      const orgId = organization.id;
+      const [newAnimals, newSpecies, newCarers] = await Promise.all([
+        apiJson<Animal[]>(`/api/animals?orgId=${orgId}`),
+        apiJson<any[]>(`/api/species?orgId=${orgId}`),
+        apiJson<any[]>(`/api/carers?orgId=${orgId}`),
+      ]);
+      setAnimals(newAnimals);
+      setSpeciesList(newSpecies);
+      setCarersList(newCarers);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    signOut();
+  };
+
+  if (!userLoaded || !orgLoaded) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  const handleAnimalSubmit = async (submittedAnimal: Animal) => {
-    console.log('handleAnimalSubmit called with:', submittedAnimal);
-    const isEditing = animals.some(animal => animal.id === submittedAnimal.id);
-    
-    if (isEditing) {
-      // Update existing animal
-      try {
-        await updateAnimal(submittedAnimal.id, submittedAnimal);
-        console.log('Animal updated successfully');
-      } catch (error) {
-        console.error('Error updating animal:', error);
-      }
-    } else {
-      // Create new animal
-      try {
-        await createAnimal(submittedAnimal);
-        console.log('Animal created successfully');
-      } catch (error) {
-        console.error('Error creating animal:', error);
-      }
-    }
-    
-    // Refresh animals from data store
-    await refreshAnimalsData();
-  };
-  
-  const filteredAnimals = animals.filter(animal => {
-    const matchesSearch = animal.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          animal.species.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDate = admissionDateFilter ? animal.dateFound === admissionDateFilter : true;
-    return matchesSearch && matchesDate;
-  });
+  if (!user) {
+    return <div className="flex items-center justify-center min-h-screen">Please sign in</div>;
+  }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
+      {/* Navigation Header */}
       <header className="bg-card shadow-md">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <Link href="/" className="flex items-center gap-3">
+              <PawPrint className="h-8 w-8 text-primary" />
               <h1 className="text-3xl font-bold font-headline text-primary">
                 WildTrack360
               </h1>
             </Link>
-            <div className="flex items-center gap-3">
-              {/* Primary Actions */}
-              <div className="flex items-center gap-2">
-                <Button onClick={handleOpenAddDialog}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Animal
-                </Button>
-                <Button asChild variant="default">
-                  <Link href="/animals">
-                    <List className="mr-2 h-4 w-4" />
-                    View All Animals
-                  </Link>
-                </Button>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm font-medium">
+                    Welcome, {user.firstName} {user.lastName}
+                  </p>
+                  {organization?.name && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Building className="w-3 h-3" />
+                      {organization.name}
+                    </p>
+                  )}
+                </div>
               </div>
-
-              {/* Navigation */}
-              <div className="flex items-center gap-2">
-                <Button asChild variant="outline">
-                  <Link href="/compliance">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Compliance
-                  </Link>
+              <Link href="/admin">
+                <Button size="sm">
+                  Admin
                 </Button>
-                {currentUser.role === 'admin' && (
-                  <Button asChild variant="outline">
-                    <Link href="/admin">
-                      <User className="mr-2 h-4 w-4" />
-                      Admin
-                    </Link>
-                  </Button>
-                )}
-              </div>
-
-              {/* Utilities */}
-              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={refreshAnimalsData}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Refresh
-                </Button>
-                <Button variant="secondary">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
-              </div>
+              </Link>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
             </div>
           </div>
         </div>
       </header>
-      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
-          {/* Brandmark Logo Section */}
-          <div className="flex justify-center py-4">
-            <div className="relative h-40 w-96">
-              <Image
-                src="/Brandmark-Text-Vert.svg"
-                alt="WildTrack360 Logo"
-                fill
-                className="object-contain"
-                priority
-              />
+
+      {/* Brandmark Logo Section */}
+      <div className="flex justify-center py-4">
+        <div className="relative h-40 w-96">
+          <Image
+            src="/Brandmark-Text-Vert.svg"
+            alt="WildTrack360 Logo"
+            fill
+            className="object-contain"
+            priority
+          />
+        </div>
+      </div>
+
+      {/* User + Organization Summary under Brandmark */}
+      <div className="flex flex-col items-center gap-2 mb-2 px-4 text-center">
+        <p className="text-lg font-medium">
+          {greeting}{user?.firstName ? `, ${user.firstName} ${user.lastName || ''}` : ''}
+        </p>
+        {organization?.name && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">{organization.name}</span>
+            {orgJurisdiction && (
+              <span className="text-xs border rounded px-2 py-0.5 bg-muted text-muted-foreground">Jurisdiction: {orgJurisdiction}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Action Bar */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+          <div className="flex-1">
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add New Animal
+            </Button>
+          </div>
+          <div>
+            <Link href="/animals">
+              <Button variant="outline" className="w-full sm:w-auto">Manage Animals</Button>
+            </Link>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+        </div>
+
+        {/* Dashboard Stats */}
+        <div className="grid grid-cols-1 gap-6 mb-8">
+          <DashboardStats animals={animals} />
+        </div>
+
+        {/* Compliance Section */}
+        <div className="bg-card rounded-lg shadow-md p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">Compliance</h2>
+            <Link href="/compliance/overview">
+              <Button size="sm" variant="secondary">Open Compliance</Button>
+            </Link>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            View compliance overview, registers, hygiene logs, incident reports, and release checklists. Generate reports for your organization.
+          </p>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 gap-8 mb-8">
+          <SpeciesDistributionChart animals={animals} />
+          <RecentAdmissionsChart animals={animals} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-8 mb-8">
+          <CarerDistributionChart animals={animals} />
+          <ReleasesVsAdmissionsChart animals={animals} />
+        </div>
+
+        {/* Animals Table/Grid */}
+        <div className="bg-card rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">Animals</h2>
+            <div className="flex items-center gap-2">
+              <Link href="/animals">
+                <Button size="sm" variant="secondary">Manage Animals</Button>
+              </Link>
             </div>
           </div>
           
-          <DashboardStats animals={animals} />
-          <div className="grid gap-8 md:grid-cols-2">
-            <SpeciesDistributionChart animals={animals} />
-            <CarerDistributionChart animals={animals} />
-          </div>
-          <div className="grid gap-8 md:grid-cols-2">
-            <RecentAdmissionsChart animals={animals} />
-            <ReleasesVsAdmissionsChart animals={animals} />
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-primary">Animal Records</h2>
-                <div className="flex items-center gap-2">
-                   {(viewMode === 'grid' && !admissionDateFilter) && (
-                     <Input 
-                        placeholder="Search animals..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-48"
-                     />
-                   )}
-                    <Button asChild variant="outline">
-                      <Link href="/animals">
-                        <List className="mr-2 h-4 w-4" />
-                        View All Animals
-                      </Link>
+          {viewMode === 'list' ? (
+            <AnimalTable 
+              animals={animals} 
+              onEdit={handleEditAnimal}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {animals.map((animal) => (
+                <div key={animal.id} className="bg-background rounded-lg p-4 border">
+                  <h3 className="font-semibold text-lg">{animal.name}</h3>
+                  <p className="text-sm text-muted-foreground">{animal.species}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Status: {animal.status}
+                  </p>
+                  <div className="mt-3">
+                    <Button size="sm" variant="outline" onClick={() => handleEditAnimal(animal)}>
+                      Edit
                     </Button>
-                    <Button variant="outline" size="icon" onClick={() => setViewMode('grid')}>
-                        <LayoutGrid className={viewMode === 'grid' ? 'text-primary' : ''}/>
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => setViewMode('table')}>
-                        <List className={viewMode === 'table' ? 'text-primary' : ''}/>
-                    </Button>
+                  </div>
                 </div>
+              ))}
             </div>
-
-            {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {filteredAnimals.map(animal => (
-                        <AnimalCard key={animal.id} animal={animal} />
-                    ))}
-                </div>
-            ) : (
-                <AnimalTable animals={filteredAnimals} onEdit={handleOpenEditDialog} />
-            )}
-          </div>
+          )}
         </div>
       </main>
-       <footer className="text-center py-4 text-muted-foreground text-sm">
-        <p>&copy; {new Date().getFullYear()} WildTrack360. All rights reserved.</p>
-      </footer>
-      <AddAnimalDialog 
+
+      {/* Add Animal Dialog */}
+      <AddAnimalDialog
         isOpen={isAddDialogOpen}
-        setIsOpen={setAddDialogOpen}
-        onAnimalAdd={handleAnimalSubmit}
+        setIsOpen={setIsAddDialogOpen}
+        onAnimalAdd={handleAddAnimal}
         animalToEdit={animalToEdit}
-        speciesOptions={speciesList}
-        carerOptions={carersList}
+        species={(speciesList || []).map((s: any) => ({ value: s.name, label: s.name }))}
+        carers={(carersList || []).map((c: any) => ({ value: c.id, label: c.name }))}
       />
+
+      {/* Footer */}
+      <footer className="bg-card mt-16 py-8">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p>&copy; {new Date().getFullYear()} WildTrack360. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 }

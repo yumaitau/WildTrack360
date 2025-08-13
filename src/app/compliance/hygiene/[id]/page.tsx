@@ -2,22 +2,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Shield, 
-  Calendar, 
-  Download, 
-  ArrowLeft, 
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  User,
-  FileText,
-  Image as ImageIcon,
-  Home
-} from "lucide-react";
-import { getHygieneLogs, getUsers } from "@/lib/data-store";
+import { Shield, Calendar, Download, ArrowLeft, AlertTriangle, CheckCircle, XCircle, User, FileText, Image as ImageIcon, Home } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@clerk/nextjs/server";
 
 interface HygieneLogDetailPageProps {
   params: {
@@ -26,16 +15,16 @@ interface HygieneLogDetailPageProps {
 }
 
 export default async function HygieneLogDetailPage({ params }: HygieneLogDetailPageProps) {
-  const hygieneLogs = await getHygieneLogs();
-  const users = await getUsers();
+  const { userId, orgId } = await auth();
+  if (!userId) redirect("/sign-in");
+  const organizationId = orgId || "";
 
-  const log = hygieneLogs.find(h => h.id === params.id);
-  
-  if (!log) {
-    notFound();
-  }
-
-  const carer = users.find(u => u.id === log.carerId);
+  const log = await prisma.hygieneLog.findFirst({
+    where: { id: params.id, clerkUserId: userId, clerkOrganizationId: organizationId },
+    include: { carer: true },
+  });
+  if (!log) notFound();
+  const carer = log.carer;
 
   const getComplianceScore = (log: any) => {
     const checks = [
@@ -49,7 +38,7 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
     return Math.round((passed / checks.length) * 100);
   };
 
-  const complianceScore = getComplianceScore(log);
+  const complianceScore = getComplianceScore(log as any);
   const isFullyCompliant = complianceScore === 100;
   const isMostlyCompliant = complianceScore >= 80 && complianceScore < 100;
 
@@ -81,7 +70,7 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
           <div>
             <h1 className="text-3xl font-bold">Hygiene Log</h1>
             <p className="text-muted-foreground">
-              {carer?.fullName} • {log.date}
+              {carer?.name} • {new Date(log.date).toLocaleDateString("en-AU", { year: "numeric", month: "short", day: "numeric" })}
             </p>
           </div>
         </div>
@@ -109,20 +98,20 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Carer Name</label>
-                  <p className="text-lg font-medium">{carer?.fullName}</p>
+                  <p className="text-lg font-medium">{carer?.name}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Licence Number</label>
-                  <p className="font-mono text-sm">{carer?.licenceNumber}</p>
+                  <p className="font-mono text-sm">{carer?.licenseNumber || '—'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Date</label>
-                  <p className="text-lg">{log.date}</p>
+                  <p className="text-lg">{new Date(log.date).toLocaleDateString("en-AU", { year: "numeric", month: "long", day: "numeric" })}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Jurisdiction</label>
                   <Badge variant="outline" className="text-sm">
-                    {carer?.jurisdiction}
+                    {carer?.jurisdiction || '—'}
                   </Badge>
                 </div>
               </div>
@@ -176,31 +165,6 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
               <CardContent>
                 <div className="p-4 bg-gray-50 rounded border">
                   <p className="text-sm">{log.notes}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Photos */}
-          {log.photos && log.photos.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" />
-                  Photos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {log.photos.map((photo, index) => (
-                    <div key={index} className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-                      <img 
-                        src={photo} 
-                        alt={`Hygiene photo ${index + 1}`}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -317,11 +281,11 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Date</span>
-                <span className="font-medium">{log.date}</span>
+                <span className="font-medium">{new Date(log.date).toLocaleDateString("en-AU")}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Carer</span>
-                <span className="font-medium">{carer?.fullName}</span>
+                <span className="font-medium">{carer?.name}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Completed Items</span>
@@ -329,7 +293,7 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Photos Attached</span>
-                <span className="font-medium">{log.photos?.length || 0}</span>
+                <span className="font-medium">{Array.isArray((log as any).photos) ? ((log as any).photos as any[]).length : 0}</span>
               </div>
             </CardContent>
           </Card>

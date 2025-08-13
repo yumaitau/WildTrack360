@@ -1,365 +1,192 @@
 # WildTrack360 - Wildlife Conservation Management System
 
-WildTrack360 is a comprehensive wildlife conservation management application designed to help wildlife carers track animals throughout their entire lifecycle, from initial admission to release or unfortunate outcomes. The system also manages critical assets like GPS trackers and equipment to ensure efficient wildlife care operations, with full compliance tracking for ACT Wildlife Code of Practice requirements.
+WildTrack360 is a comprehensive wildlife conservation management application designed to help wildlife carers track animals throughout their entire lifecycle, from initial admission to release or unfortunate outcomes.
 
-## 🖼️ Screenshots
+## 🚀 Features
 
-### Main Dashboard
-The dashboard provides a comprehensive overview of your wildlife conservation operations with real-time statistics and visual data:
+- **Animal Management**: Complete lifecycle tracking from admission to release
+- **Multi-tenant Architecture**: Support for multiple organizations with data isolation
+- **User Authentication**: Secure authentication with Clerk
+- **Compliance Tracking**: Built-in compliance management for different jurisdictions
+- **Photo Management**: Comprehensive photo documentation system
+- **Reporting**: Detailed analytics and reporting capabilities
+- **Mobile Responsive**: Works seamlessly on all devices
 
-![WildTrack360 Dashboard](docs/images/dashboard.png)
+## 🏗️ Architecture
 
-**Features shown:**
-- **Summary Cards**: Quick stats showing 7 animals in care, 2 total releases, and +2 recent admissions
-- **Species Distribution Chart**: Visual breakdown of animals by species (Koala, Possum, Wombat, Turtle, Kookaburra, Echidna, Kangaroo)
-- **Carer Workload Chart**: Distribution of animals among carers (John Smith, Susan Williams, Jane Doe, Peter Jones)
-- **Action Buttons**: Add Animal, Export All, and Settings options
+- **Frontend**: Next.js 14 with TypeScript
+- **Authentication**: Clerk for user and organization management
+- **Database**: PostgreSQL with Prisma ORM
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **Charts**: Recharts for data visualization
+- **Maps**: OpenStreetMap integration for location services
 
-### ACT Wildlife Compliance Toolkit
-The compliance dashboard provides comprehensive tools for managing ACT Wildlife Code of Practice requirements:
+## 📋 Prerequisites
 
-![Compliance Dashboard](docs/images/compliance-home.png)
+- Node.js 18+ and npm
+- PostgreSQL database (local, Docker, or cloud)
+- Clerk account for authentication
 
-**Features shown:**
-- **Compliance Modules**: Wildlife Register, Release Checklist, Carer Management, Hygiene Logs, Incident Reports
-- **Compliance Status**: Real-time compliance scoring and status indicators
-- **ACT Requirements**: Section-specific compliance tracking (7.1.1, 6.1-6.3, 5.2.x, etc.)
-- **Quick Actions**: Export functionality and detailed view access
+## 🛠️ Quick Start
 
-### Wildlife Admission & Outcome Register
-Complete record keeping for all wildlife admissions with ACT compliance requirements:
-
-![Wildlife Register](docs/images/wildlife-admission-register.png)
-
-**Features shown:**
-- **Comprehensive Records**: Animal ID, species, sex, age class, rescue details
-- **Search & Filter**: Advanced filtering by species, status, carer, and date ranges
-- **Export Capability**: CSV and PDF export for compliance reporting
-- **3+ Year Retention**: Automatic record retention for regulatory compliance
-
-### Release Site Checklist
-Ensure ethical and ecologically sound releases with compliance verification:
-
-![Release Checklist](docs/images/release-site-checklist.png)
-
-**Features shown:**
-- **Distance Enforcement**: 10km distance checking with GPS coordinates
-- **Fitness Assessment**: Pre-release health and behavior indicators
-- **Veterinary Sign-off**: Required vet approval for juveniles and long-term care
-- **Release Types**: Soft, Hard, and Passive release tracking
-- **Compliance Scoring**: Real-time compliance status and ACT requirements
-
-### Carer Licence & CPD Tracker
-Manage carer licences, training, and continuing professional development:
-
-![Carer Management](docs/images/career-license-management.png)
-
-**Features shown:**
-- **Licence Management**: Expiry tracking with 30-day reminders
-- **Training History**: Course completion and certification tracking
-- **Authorised Species**: Species-specific authorization management
-- **Compliance Alerts**: Automatic notifications for expiring licences
-- **Performance Tracking**: Carer workload and outcome monitoring
-
-### Daily Hygiene & Biosecurity Log
-Track daily cleaning protocols and biosecurity compliance:
-
-![Hygiene Management](docs/images/daily-hygine-management.png)
-
-**Features shown:**
-- **Daily Protocols**: Enclosure cleaning, PPE usage, handwashing verification
-- **Compliance Scoring**: Real-time compliance percentage calculation
-- **Biosecurity Tracking**: Quarantine procedures and disease prevention
-- **Photo Documentation**: Visual evidence of cleaning procedures
-- **Weekly Reports**: Automated compliance reporting
-
-### Incident Report Log
-Comprehensive incident tracking and reporting for regulatory compliance:
-
-![Incident Reports](docs/images/incident-report-logs.png)
-
-**Features shown:**
-- **Incident Classification**: Escape, Injury, Disease Outbreak, Improper Handling
-- **Critical Incident Alerts**: Immediate notification for serious incidents
-- **Authority Reporting**: Automatic escalation to relevant authorities
-- **Timeline Tracking**: Incident occurrence, action taken, and follow-up
-- **Documentation**: Complete audit trail with attachments
-
-### Recent Admissions & Animal Records
-Track admissions over time and browse individual animal profiles:
-
-![Recent Admissions & Animal Records](docs/images/recent-admissions.png)
-
-**Features shown:**
-- **Admissions Chart**: 30-day bar chart showing admissions on July 10th, 15th, and 16th
-- **Animal Cards**: Grid view of animals (Kimmy, Pete, Willy, Tina) with photo placeholders
-- **Search Functionality**: Search bar for finding specific animals
-- **View Options**: Toggle between grid and list views
-
-### Individual Animal Management
-Detailed view for managing individual animals and their care records:
-
-![Individual Animal Management](docs/images/animal-management.png)
-
-**Features shown:**
-- **Animal Profile**: Complete details for "Pete" (Possum) including status, carer assignment, and admission date
-- **Care Records**: Add new activity logs with record types, dates, and detailed notes
-- **Photo Gallery**: Upload and manage photos documenting the animal's journey
-- **Data Export**: Download comprehensive animal records to CSV
-
-### Administrative Panel - Species Management
-Manage the species database and track conservation efforts:
-
-![Species Management](docs/images/species-management.png)
-
-**Features shown:**
-- **Species List**: Current species (Echidna, Kangaroo, Koala) with edit/delete actions
-- **Add Species**: Input field and button for adding new species
-- **Navigation Tabs**: Switch between Species, Carers, and Assets management
-
-### Administrative Panel - Asset Management
-Track GPS trackers and equipment inventory:
-
-![Asset Management](docs/images/asset-management.png)
-
-**Features shown:**
-- **Asset List**: GPS Trackers (#A45, #A46) and Incubator with status tracking
-- **Asset Types**: Tracker and Equipment categories
-- **Status Monitoring**: Available, In Use, and Maintenance statuses
-- **Add Assets**: Input field with type dropdown for adding new assets
-
-## 🌿 Features
-
-### 📊 Dashboard Overview
-- **Real-time Statistics**: Track animals currently in care, total releases, and recent admissions
-- **Species Distribution**: Visual breakdown of animals by species with interactive charts
-- **Carer Workload Management**: Monitor animal distribution across carers to ensure balanced workloads
-- **Recent Admissions Tracking**: View admission trends over the last 30 days with interactive filtering
-
-### 🛡️ ACT Wildlife Compliance Toolkit
-- **Wildlife Admission & Outcome Register**: Complete record keeping with 3+ year retention (Section 7.1.1, 7.1.2)
-- **Release Site Checklist**: Distance enforcement, fitness assessment, and vet sign-off (Section 6.1-6.3)
-- **Carer Licence & CPD Tracker**: Licence expiry tracking and training management
-- **Daily Hygiene & Biosecurity Log**: Daily cleaning protocols and compliance scoring (Section 5.2.x)
-- **Incident Report Log**: Comprehensive incident tracking and authority reporting (Section 5.1.3, 5.2.4, 6.4)
-- **Compliance Dashboard**: Real-time compliance scoring and status monitoring
-- **Export Functionality**: PDF and CSV export for regulatory reporting
-- **Jurisdiction Awareness**: ACT-specific requirements and policy enforcement
-
-### 🐨 Animal Lifecycle Management
-- **Complete Animal Profiles**: Detailed records including species, carer assignment, and admission date
-- **Care Activity Logging**: Add detailed records for each care activity with timestamps and notes
-- **Photo Gallery**: Upload and manage photos for each animal's journey
-- **Status Tracking**: Monitor animals from "In Care" to "Released" or "Deceased"
-- **Data Export**: Export individual animal records to CSV format
-
-### 👥 Carer Management
-- **Carer Assignment**: Assign animals to specific carers with workload balancing
-- **Performance Tracking**: Monitor carer performance and animal outcomes
-- **Workload Distribution**: Visual charts showing animal distribution across carers
-- **Licence Management**: Track licence expiry dates and training requirements
-- **Authorised Species**: Manage species-specific authorizations for each carer
-
-### 🏷️ Species Management
-- **Species Database**: Maintain a comprehensive list of wildlife species
-- **Add/Edit/Delete**: Full CRUD operations for species management
-- **Species-specific Tracking**: Track animals by species for conservation insights
-
-### 📱 Asset Management
-- **GPS Tracker Management**: Track GPS devices assigned to animals
-- **Equipment Inventory**: Manage incubators, medical equipment, and other assets
-- **Status Monitoring**: Track asset availability (Available, In Use, Maintenance)
-- **Asset Assignment**: Link assets to specific animals or carers
-
-### 🔍 Search and Filtering
-- **Animal Search**: Find specific animals by name or characteristics
-- **Grid/List Views**: Toggle between different viewing modes
-- **Date-based Filtering**: Filter records by admission dates and time periods
-- **Compliance Filtering**: Filter by compliance status and requirements
-
-### 📋 Compliance Features
-- **Real-time Compliance Scoring**: Automatic calculation of compliance percentages
-- **ACT Code Reference**: Direct links to relevant sections of ACT Wildlife Code
-- **Alert System**: Notifications for non-compliance and expiring items
-- **Audit Trail**: Complete documentation for regulatory inspections
-- **Multi-tenant Support**: Jurisdiction-aware feature toggling
-- **Jurisdiction Configuration**: Dynamic compliance requirements based on jurisdiction
-
-### 🌍 Multi-Jurisdiction Support
-WildTrack360 supports multiple jurisdictions with different compliance requirements:
-
-**ACT (Australian Capital Territory)**
-- **Enabled Forms**: Release Checklist, Incident Log, Hygiene Log, Carer Licence
-- **Templates**: ACT Register, ACT Release Checklist
-- **Release Distance**: Enforced (10km rule)
-- **Vet Sign-off**: Required for juveniles and long-term care
-- **Record Retention**: 3+ years
-
-**NSW (New South Wales)**
-- **Enabled Forms**: Release Checklist, Incident Log
-- **Templates**: NSW Register
-- **Release Distance**: Not enforced
-- **Vet Sign-off**: Not required
-- **Record Retention**: 2+ years
-
-**Jurisdiction Configuration System**
-- **Dynamic Feature Toggling**: Forms and requirements automatically adjust based on jurisdiction
-- **Template Management**: Jurisdiction-specific templates and forms
-- **Compliance Enforcement**: Automatic enforcement of jurisdiction-specific rules
-- **Scalable Architecture**: Easy addition of new jurisdictions and requirements
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- Modern web browser
-- Google AI API key (for AI features)
-- Firebase project setup (for database)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/wildtrack360.git
-   cd wildtrack360
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env.local
-   ```
-   Edit `.env.local` with your configuration values.
-
-4. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-   This starts the development server with Turbopack on port 9002.
-
-5. **Open your browser**
-   Navigate to [http://localhost:9002](http://localhost:9002)
-
-### Building for Production
+### 1. Clone the Repository
 
 ```bash
-npm run build
-npm start
+git clone https://github.com/your-username/wildtrack360.git
+cd wildtrack360
 ```
 
-### Available Scripts
+### 2. Install Dependencies
 
-- `npm run dev` - Start development server with Turbopack on port 9002
-- `npm run build` - Build the application for production
-- `npm run start` - Start the production server
-- `npm run lint` - Run ESLint
-- `npm run typecheck` - Run TypeScript type checking
-- `npm run genkit:dev` - Start Genkit AI development server
-- `npm run genkit:watch` - Start Genkit AI with watch mode
-
-## 🏗️ Project Structure
-
-```
-WildTrack360/
-├── src/
-│   ├── app/                    # Next.js app directory
-│   │   ├── admin/             # Admin panel pages
-│   │   ├── animals/           # Animal management pages
-│   │   ├── compliance/        # ACT Compliance Toolkit pages
-│   │   │   ├── carers/        # Carer management and licensing
-│   │   │   ├── hygiene/       # Daily hygiene and biosecurity logs
-│   │   │   ├── incidents/     # Incident reporting and tracking
-│   │   │   ├── register/      # Wildlife admission register
-│   │   │   └── release-checklist/ # Release site compliance
-│   │   └── layout.tsx         # Root layout
-│   ├── components/            # Reusable UI components
-│   │   ├── ui/               # Base UI components
-│   │   └── *.tsx             # Feature-specific components
-│   ├── lib/                  # Utility functions and data
-│   └── hooks/                # Custom React hooks
-├── public/                   # Static assets
-└── docs/                     # Documentation
+```bash
+npm install
 ```
 
-## 🛠️ Technology Stack
+### 3. Set Up Database
 
-- **Framework**: Next.js 15.3.3 with App Router and Turbopack
-- **Styling**: Tailwind CSS 3.4.1 with animations
-- **UI Components**: Radix UI primitives with custom shadcn/ui components
-- **Charts**: Recharts 2.15.1 for data visualization
-- **Icons**: Lucide React 0.475.0
-- **TypeScript**: Full type safety with React 18.3.1
-- **Forms**: React Hook Form 7.54.2 with Zod validation
-- **Tables**: TanStack React Table 8.19.3
-- **AI Integration**: Genkit 1.14.1 with Google AI
-- **Database**: Firebase 11.9.1
-- **Date Handling**: date-fns 3.6.0
-- **Carousel**: Embla Carousel React 8.6.0
-- **Configuration Management**: Environment-based jurisdiction configuration for multi-organization deployment
+#### Option A: Docker (Recommended for development)
 
-## 🌍 Multi-Jurisdiction Deployment
+```bash
+# Start PostgreSQL and pgAdmin
+docker-compose up -d
 
-WildTrack360 supports deployment for multiple organizations across different Australian jurisdictions. Each organization can have its own configuration through environment variables.
+# The database will be available at localhost:5432
+# pgAdmin will be available at http://localhost:8080
+```
 
-### Environment Configuration
+#### Option B: Local PostgreSQL
 
-1. **Copy the example environment file:**
-   ```bash
-   cp env.example .env.local
-   ```
+```bash
+# Install PostgreSQL (macOS)
+brew install postgresql
+brew services start postgresql
 
-2. **Configure your jurisdiction and organization:**
-   ```bash
-   # Jurisdiction (ACT, NSW, VIC, QLD, WA, SA, TAS, NT)
-   NEXT_PUBLIC_JURISDICTION=ACT
-   
-   # Organization details
-   NEXT_PUBLIC_ORGANIZATION_NAME=ACT Wildlife
-   NEXT_PUBLIC_ORGANIZATION_CONTACT=contact@actwildlife.org.au
-   NEXT_PUBLIC_ORGANIZATION_LOGO=/act-logo.png
-   ```
+# Create database
+createdb wildtrack360
+```
 
-### Supported Jurisdictions
+#### Option C: Cloud Database
 
-Each jurisdiction has different compliance requirements:
+Use services like Supabase, Neon, or Railway for cloud-hosted PostgreSQL.
 
-- **ACT**: Full compliance toolkit (all forms enabled)
-- **NSW**: Basic compliance (release checklist, incident log)
-- **VIC**: Standard compliance (release checklist, incident log, hygiene log)
-- **QLD**: Enhanced compliance (release checklist, incident log, carer licence)
-- **WA**: Full compliance toolkit
-- **SA**: Standard compliance with distance enforcement
-- **TAS**: Basic compliance
-- **NT**: Enhanced compliance with distance enforcement
+### 4. Configure Environment Variables
 
-### Deployment per Organization
+```bash
+# Copy environment template
+cp env.example .env.local
 
-To deploy for a new organization:
+# Update with your values
+# - Clerk authentication keys
+# - Database connection string
+# - Organization details
+```
 
-1. Set up a new deployment environment
-2. Configure the environment variables for that organization
-3. Deploy the same codebase with different environment settings
+### 5. Set Up Clerk Authentication
 
-This allows you to maintain a single codebase while serving multiple organizations with their specific jurisdiction requirements.
+1. Create an account at [clerk.com](https://clerk.com)
+2. Create a new application
+3. Get your API keys and update `.env.local`
+4. Configure sign-in and sign-up URLs
 
-## 📋 Key Components
+### 6. Initialize Database
 
-- **Dashboard Stats**: Real-time statistics and metrics using Recharts
-- **Animal Cards**: Individual animal profile displays with responsive design
-- **Charts**: Species distribution and carer workload visualizations with Recharts
-- **Forms**: Add animal, record, and asset management forms with React Hook Form and Zod validation
-- **Tables**: Data display for animals, species, and assets using TanStack React Table
-- **Dialogs**: Modal interfaces for adding/editing records with Radix UI
-- **AI Integration**: Genkit-powered features for enhanced functionality
-- **Carousel**: Image galleries and content sliders with Embla Carousel
-- **Compliance Components**: Compliance scoring, status badges, and requirement tracking
-- **Navigation**: Consistent home and back navigation throughout the application
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Create and apply migrations
+npx prisma migrate dev --name init
+
+# (Optional) Open Prisma Studio to view database
+npx prisma studio
+```
+
+### 7. Start Development Server
+
+```bash
+npm run dev
+```
+
+Visit [http://localhost:3000](http://localhost:3000) to see your application.
+
+## 🗄️ Database Schema
+
+WildTrack360 uses a comprehensive database schema with the following key models:
+
+- **Animals**: Core wildlife records with status tracking
+- **Records**: Detailed activity logs (feeding, medical, behavior)
+- **Photos**: Photo documentation system
+- **Species**: Species catalog with care requirements
+- **Carers**: Wildlife carer information and licensing
+- **Compliance**: Hygiene logs, incident reports, release checklists
+- **Assets**: Equipment and asset management
+
+All data is properly isolated by organization and user for security and privacy.
+
+## 🔐 Authentication & Security
+
+- **Clerk Integration**: Professional authentication with organization support
+- **Multi-tenant**: Data isolation between organizations
+- **User Management**: Role-based access control
+- **Secure API**: Protected routes with middleware
+- **Data Privacy**: User-specific data access
+
+## 📱 User Interface
+
+- **Modern Design**: Clean, intuitive interface built with shadcn/ui
+- **Responsive Layout**: Works perfectly on desktop, tablet, and mobile
+- **Dark Mode**: Built-in dark/light theme support
+- **Accessibility**: WCAG compliant design patterns
+- **Performance**: Optimized for fast loading and smooth interactions
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+### Other Platforms
+
+- **Netlify**: Static site hosting
+- **Railway**: Full-stack deployment with database
+- **AWS**: EC2 with RDS for database
+- **Docker**: Containerized deployment
+
+## 📚 Documentation
+
+- [Database Setup Guide](DATABASE_SETUP.md)
+- [Clerk Authentication Setup](CLERK_SETUP.md)
+- [API Documentation](docs/api.md)
+- [User Guide](docs/user-guide.md)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: Check the docs folder and setup guides
+- **Issues**: Report bugs and feature requests via GitHub Issues
+- **Discussions**: Join community discussions on GitHub Discussions
+
+## 🙏 Acknowledgments
+
+- Built with [Next.js](https://nextjs.org/)
+- Styled with [Tailwind CSS](https://tailwindcss.com/)
+- Components from [shadcn/ui](https://ui.shadcn.com/)
+- Authentication by [Clerk](https://clerk.com/)
+- Database powered by [Prisma](https://www.prisma.io/)
+
+---
+
+**WildTrack360** - Empowering wildlife conservation through technology.

@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Shield, Calendar, CheckCircle, XCircle, Download, Plus, AlertTriangle, ArrowLeft } from "lucide-react";
-import { getHygieneLogs, getUsers } from "@/lib/data-store";
+import { Shield, Calendar, CheckCircle, XCircle, Download, Plus, AlertTriangle, ArrowLeft, Home } from "lucide-react";
+import { useOrganization } from '@clerk/nextjs';
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';
@@ -13,15 +13,18 @@ import jsPDF from 'jspdf';
 export default function HygieneLogPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { organization } = useOrganization();
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [hygieneLogs, users] = await Promise.all([
-          getHygieneLogs(),
-          getUsers()
+        if (!organization) return;
+        const orgId = organization.id;
+        const [hygieneLogs, carers] = await Promise.all([
+          fetch(`/api/hygiene?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/carers?orgId=${orgId}`).then(r => r.json())
         ]);
-        setData({ hygieneLogs, users });
+        setData({ hygieneLogs, users: carers });
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -30,7 +33,7 @@ export default function HygieneLogPage() {
     }
     
     loadData();
-  }, []);
+  }, [organization]);
 
   if (loading) {
     return (
@@ -56,7 +59,7 @@ export default function HygieneLogPage() {
 
   const getCarerName = (carerId: string) => {
     const carer = users.find((u: any) => u.id === carerId);
-    return carer?.fullName || 'Unknown';
+    return carer?.name || 'Unknown';
   };
 
   const getComplianceScore = (log: any) => {
@@ -84,6 +87,11 @@ export default function HygieneLogPage() {
           <Link href="/compliance">
             <Button variant="outline" size="icon">
               <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Link href="/">
+            <Button variant="outline" size="icon">
+              <Home className="h-4 w-4" />
             </Button>
           </Link>
           <div>
@@ -212,7 +220,7 @@ export default function HygieneLogPage() {
                 
                 xPos = margin;
                 doc.setFont('helvetica', 'normal');
-                doc.text(log.date, xPos, yPosition);
+                 doc.text(new Date(log.date).toISOString().split('T')[0], xPos, yPosition);
                 xPos += colWidths[0];
                 doc.text(getCarerName(log.carerId), xPos, yPosition);
                 xPos += colWidths[1];
