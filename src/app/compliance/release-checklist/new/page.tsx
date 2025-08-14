@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { getJurisdictionComplianceConfig, isFormRequired } from '@/lib/complianc
 import { LocationPicker } from '@/components/location-picker';
 import LocationMap from '@/components/location-map';
 
-export default function NewReleaseChecklistPage() {
+function NewReleaseChecklistForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const jurisdiction = getCurrentJurisdiction();
@@ -500,5 +500,36 @@ export default function NewReleaseChecklistPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+// Loading component for Suspense fallback
+function LoadingForm() {
+  return (
+    <div className="container mx-auto px-6 py-8">
+      <div className="animate-pulse">
+        <div className="h-8 w-64 bg-gray-200 rounded mb-4"></div>
+        <div className="h-4 w-96 bg-gray-200 rounded mb-8"></div>
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-48 bg-gray-200 rounded"></div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-32 bg-gray-200 rounded"></div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// Main exported component with Suspense wrapper
+export default function NewReleaseChecklistPage() {
+  return (
+    <Suspense fallback={<LoadingForm />}>
+      <NewReleaseChecklistForm />
+    </Suspense>
   );
 } 
