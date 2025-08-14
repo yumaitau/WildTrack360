@@ -26,12 +26,12 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
   const organizationId = orgId || '';
 
   const carer = await prisma.carer.findFirst({
-    where: { id: id, clerkUserId: userId, clerkOrganizationId: organizationId },
+    where: { id: id, clerkOrganizationId: organizationId },
   });
   if (!carer) notFound();
 
   const carerAnimals = await prisma.animal.findMany({
-    where: { carerId: carer.id, clerkUserId: userId, clerkOrganizationId: organizationId },
+    where: { carerId: carer.id, clerkOrganizationId: organizationId },
     orderBy: { dateFound: 'desc' },
   });
   const animalsInCare = carerAnimals.filter(a => a.status === 'IN_CARE');

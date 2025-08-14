@@ -4,7 +4,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, User, RefreshCw, LogOut, Building } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, User, RefreshCw, LogOut, Building, AlertTriangle } from 'lucide-react';
 import { Animal } from '@prisma/client';
 
 // Local type for create-animal payload
@@ -20,7 +21,7 @@ type CreateAnimalData = {
   notes: string | null;
   rescueLocation: string | null;
   rescueCoordinates: { lat: number; lng: number } | null;
-  carerId: string;
+  carerId: string | null;
 };
 import { AnimalTable } from '@/components/animal-table';
 import { useState, useEffect } from 'react';
@@ -301,6 +302,50 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         <div className="grid grid-cols-1 gap-6 mb-8">
           <DashboardStats animals={animals} />
         </div>
+
+        {/* Animals Without Carers Alert */}
+        {animals.filter(a => !a.carerId).length > 0 && (
+          <Card className="border-orange-200 bg-orange-50 mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-800">
+                <AlertTriangle className="h-5 w-5" />
+                Animals Without Assigned Carers
+              </CardTitle>
+              <CardDescription>
+                These animals need a carer assigned for proper care and compliance tracking
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {animals.filter(a => !a.carerId).slice(0, 6).map((animal) => (
+                  <div key={animal.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div className="flex-1">
+                      <div className="font-medium">{animal.name}</div>
+                      <div className="text-sm text-muted-foreground">{animal.species}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Status: {animal.status.replace(/_/g, ' ')}
+                      </div>
+                    </div>
+                    <Link href={`/animals/${animal.id}`}>
+                      <Button variant="outline" size="sm">
+                        Assign Carer
+                      </Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+              {animals.filter(a => !a.carerId).length > 6 && (
+                <div className="mt-4 text-center">
+                  <Link href="/animals">
+                    <Button variant="outline">
+                      View All {animals.filter(a => !a.carerId).length} Animals Without Carers
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Compliance Section */}
         <div className="bg-card rounded-lg shadow-md p-6 mb-8">

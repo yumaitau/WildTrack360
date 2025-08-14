@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpeciesIcon } from "@/components/icons";
 import RecordTimeline from "@/components/record-timeline";
-import { ArrowLeft, User, CalendarDays, MapPin, Rocket } from "lucide-react";
+import { ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { AddRecordForm } from "@/components/add-record-form";
 import LocationMap from "@/components/location-map";
@@ -15,7 +15,10 @@ import React, { useState, useMemo, useEffect } from "react";
 import { getCurrentJurisdiction } from "@/lib/config";
 import { AnimalStatus, RecordType } from "@prisma/client";
 import { AddAnimalDialog } from "@/components/add-animal-dialog";
+import { DeleteAnimalDialog } from "@/components/delete-animal-dialog";
 import { useOrganization } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 interface AnimalDetailClientProps {
   initialAnimal: Animal;
@@ -35,8 +38,11 @@ export default function AnimalDetailClient({
   const [photos, setPhotos] = useState<Photo[]>([]);
   const { organization } = useOrganization();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [speciesOptions, setSpeciesOptions] = useState<any[]>([]);
   const [carerOptions, setCarerOptions] = useState<any[]>([]);
+  const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadLookups = async () => {
@@ -153,6 +159,35 @@ export default function AnimalDetailClient({
     }
   };
 
+  // Function to delete animal
+  const handleDeleteAnimal = async () => {
+    try {
+      const response = await fetch(`/api/animals/${animal.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete animal');
+      }
+      
+      toast({
+        title: "Animal Deleted",
+        description: `${animal.name} has been permanently deleted.`,
+      });
+      
+      router.push('/');
+    } catch (error) {
+      console.error('Error deleting animal:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete animal. Please try again.",
+      });
+      throw error;
+    }
+  };
+
   // Debug: Log animal data to see what's available
   console.log('Animal data:', {
     id: animal.id,
@@ -174,12 +209,12 @@ export default function AnimalDetailClient({
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         <div className="mb-6">
-          <Button asChild variant="ghost">
-             <Link href="/" className="flex items-center gap-2 text-primary">
+          <Link href="/">
+            <Button variant="ghost" className="flex items-center gap-2 text-primary">
               <ArrowLeft className="h-4 w-4" />
               Back to All Animals
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         </div>
         
         <main>
@@ -283,6 +318,13 @@ export default function AnimalDetailClient({
                       Release Animal
                     </Button>
                   )}
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => setIsDeleteOpen(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
                 </div>
               </div>
             </div>
@@ -382,6 +424,14 @@ export default function AnimalDetailClient({
         animalToEdit={animal as any}
         species={speciesOptions}
         carers={carerOptions}
+      />
+      
+      {/* Delete Animal Dialog */}
+      <DeleteAnimalDialog
+        isOpen={isDeleteOpen}
+        setIsOpen={setIsDeleteOpen}
+        animalName={animal.name}
+        onConfirm={handleDeleteAnimal}
       />
     </div>
   );

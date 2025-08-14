@@ -58,21 +58,23 @@ type CreateAnimalData = {
   notes: string | null;
   rescueLocation: string | null;
   rescueCoordinates: { lat: number; lng: number } | null;
-  carerId: string;
+  carerId: string | null;
 };
 import { LocationPicker } from "@/components/location-picker"
 
 const addAnimalSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters."),
-  species: z.string().min(1, "Species is required."),
+  name: z.string().min(1, "Name is required").min(2, "Name must be at least 2 characters"),
+  species: z.string().min(1, "Species is required"),
   sex: z.string().optional(),
   ageClass: z.string().optional(),
   age: z.string().optional(),
   dateOfBirth: z.date().optional().nullable(),
-  dateFound: z.date({ required_error: "Date found is required." }),
-  carer: z.string().optional().default("default-carer"),
-  status: z.enum(["ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED"]),
-  rescueLocation: z.string().optional().default("Unknown location"),
+  dateFound: z.date({ required_error: "Date found is required" }),
+  carer: z.string().optional(),
+  status: z.enum(["ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED"], {
+    required_error: "Status is required"
+  }),
+  rescueLocation: z.string().optional(),
   rescueCoordinates: z.object({ lat: z.number(), lng: z.number() }).optional(),
 })
 
@@ -118,7 +120,7 @@ export function AddAnimalDialog({
       ageClass: animalToEdit.ageClass || undefined,
       age: animalToEdit.age || undefined,
       dateOfBirth: animalToEdit.dateOfBirth ? new Date(animalToEdit.dateOfBirth) : undefined,
-      carer: animalToEdit.carerId || 'default-carer',
+      carer: animalToEdit.carerId || '',
       status: animalToEdit.status,
       dateFound: new Date(animalToEdit.dateFound),
       rescueLocation: animalToEdit.rescueLocation || 'Canberra ACT, Australia',
@@ -142,8 +144,8 @@ export function AddAnimalDialog({
     if (isOpen) {
       if (animalToEdit) {
           // Ensure we have valid values for all fields
-          const carerValue = animalToEdit.carerId || (carers && carers.length > 0 ? carers[0].value : 'default-carer');
-          const speciesValue = animalToEdit.species || (species && species.length > 0 ? species[0].value : 'Other');
+          const carerValue = animalToEdit.carerId || '';
+          const speciesValue = animalToEdit.species || '';
           
           form.reset({
               name: animalToEdit.name,
@@ -165,17 +167,14 @@ export function AddAnimalDialog({
             address: animalToEdit.rescueLocation || 'Canberra ACT, Australia'
           });
       } else {
-          const defaultCarer = carers && carers.length > 0 ? carers[0].value : '';
-          const defaultSpecies = species && species.length > 0 ? species[0].value : '';
-          
           form.reset({
               name: "",
-              species: defaultSpecies,
+              species: "",
               sex: undefined,
               ageClass: undefined,
               age: undefined,
               dateOfBirth: undefined,
-              carer: defaultCarer,
+              carer: "",
               status: "IN_CARE",
               dateFound: new Date(),
               rescueLocation: "Canberra ACT, Australia",
@@ -209,9 +208,9 @@ export function AddAnimalDialog({
       outcome: null,
       photo: null,
       notes: null,
-      rescueLocation: locationData.address,
-      rescueCoordinates: { lat: locationData.lat, lng: locationData.lng },
-      carerId: data.carer || 'default-carer',
+      rescueLocation: data.rescueLocation || locationData.address || null,
+      rescueCoordinates: locationData ? { lat: locationData.lat, lng: locationData.lng } : null,
+      carerId: data.carer || null,
     };
 
     await onAnimalAdd(payload)
@@ -225,8 +224,13 @@ export function AddAnimalDialog({
     setIsOpen(false)
   }
 
-  const statusOptions: ("ADMITTED"|"IN_CARE"|"READY_FOR_RELEASE"|"RELEASED"|"DECEASED"|"TRANSFERRED")[] = [
-    "ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED"
+  const statusOptions = [
+    { value: "ADMITTED", label: "Admitted" },
+    { value: "IN_CARE", label: "In Care" },
+    { value: "READY_FOR_RELEASE", label: "Ready for Release" },
+    { value: "RELEASED", label: "Released" },
+    { value: "DECEASED", label: "Deceased" },
+    { value: "TRANSFERRED", label: "Transferred" }
   ];
 
   return (
@@ -472,7 +476,11 @@ export function AddAnimalDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      {statusOptions.map(s => (
+                        <SelectItem key={s.value} value={s.value}>
+                          {s.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

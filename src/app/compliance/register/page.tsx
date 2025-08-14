@@ -438,7 +438,12 @@ export default function WildlifeRegisterPage() {
                         animal.status === 'DECEASED' ? 'destructive' : 'outline'
                       }
                     >
-                      {animal.status}
+                      {animal.status === 'IN_CARE' ? 'In Care' :
+                       animal.status === 'RELEASED' ? 'Released' :
+                       animal.status === 'DECEASED' ? 'Deceased' :
+                       animal.status === 'READY_FOR_RELEASE' ? 'Ready for Release' :
+                       animal.status === 'TRANSFERRED' ? 'Transferred' :
+                       animal.status}
                     </Badge>
                   </TableCell>
                   <TableCell>

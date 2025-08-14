@@ -10,22 +10,22 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
   const organizationId = orgId || "";
 
   const animal = await prisma.animal.findFirst({
-    where: { id: id, clerkUserId: userId, clerkOrganizationId: organizationId },
+    where: { id: id, clerkOrganizationId: organizationId },
     include: { carer: true },
   });
   if (!animal) notFound();
 
   const [records, photos, releaseChecklist] = await Promise.all([
     prisma.record.findMany({
-      where: { animalId: id, clerkUserId: userId, clerkOrganizationId: organizationId },
+      where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { date: "desc" },
     }),
     prisma.photo.findMany({
-      where: { animalId: id, clerkUserId: userId, clerkOrganizationId: organizationId },
+      where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { date: "desc" },
     }),
     prisma.releaseChecklist.findFirst({
-      where: { animalId: id, clerkUserId: userId, clerkOrganizationId: organizationId },
+      where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { releaseDate: "desc" },
     }),
   ]);

@@ -190,12 +190,12 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-4">
-              <Button asChild variant="outline" size="sm">
-                <Link href="/">
+              <Link href="/">
+                <Button variant="outline" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Home
-                </Link>
-              </Button>
+                </Button>
+              </Link>
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary rounded-full">
                   <PawPrint className="h-6 w-6 text-primary-foreground" />

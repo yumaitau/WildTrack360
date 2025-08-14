@@ -1,67 +1,38 @@
-"use client";
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, Calendar, Download, Plus, FileText, User, MapPin, ArrowLeft, Home } from "lucide-react";
-import { useOrganization } from '@clerk/nextjs';
+import { AlertTriangle, Calendar, Plus, FileText, User, MapPin, ArrowLeft, Home } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import jsPDF from 'jspdf';
+import { auth } from "@clerk/nextjs/server";
+import { prisma } from '@/lib/prisma';
+import { redirect } from "next/navigation";
+import { ExportPDFButton } from "@/components/export-pdf-button";
+import { ViewButton } from "@/components/view-button";
 
-export default function IncidentReportsPage() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const { organization } = useOrganization();
+export default async function IncidentReportsPage() {
+  const { userId, orgId } = await auth();
+  if (!userId || !orgId) redirect('/sign-in');
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        if (!organization) return;
-        const orgId = organization.id;
-        const [incidentReports, animals] = await Promise.all([
-          fetch(`/api/incidents?orgId=${orgId}`).then(r => r.json()),
-          fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
-        ]);
-        setData({ incidentReports, animals });
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    loadData();
-  }, [organization]);
+  const [incidentReports, animals] = await Promise.all([
+    prisma.incidentReport.findMany({
+      where: { clerkOrganizationId: orgId },
+      orderBy: { date: 'desc' },
+    }),
+    prisma.animal.findMany({
+      where: { clerkOrganizationId: orgId },
+    }),
+  ]);
 
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading incident data...</div>
-        </div>
-      </div>
-    );
-  }
+  const totalIncidents = incidentReports.length;
+  const criticalIncidents = incidentReports.filter((i: any) => i.severity === 'CRITICAL').length;
+  const last30Days = incidentReports.filter((i: any) => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return new Date(i.date) >= thirtyDaysAgo;
+  }).length;
 
-  if (!data) {
-    return (
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-red-600">Error loading data</div>
-        </div>
-      </div>
-    );
-  }
-
-  const { incidentReports, animals } = data;
-
-  const getAnimalName = (animalId?: string) => {
-    if (!animalId) return 'N/A';
-    const animal = animals.find((a: any) => a.id === animalId);
-    return animal?.name || 'Unknown';
-  };
+  const unreportedIncidents = incidentReports.filter((i: any) => !i.reportedTo).length;
 
   const getIncidentTypeColor = (type: string) => {
     switch (type) {
@@ -72,6 +43,21 @@ export default function IncidentReportsPage() {
       case 'Disease Outbreak':
         return 'outline';
       case 'Improper Handling':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'CRITICAL':
+        return 'destructive';
+      case 'HIGH':
+        return 'destructive';
+      case 'MEDIUM':
+        return 'outline';
+      case 'LOW':
         return 'secondary';
       default:
         return 'outline';
@@ -95,157 +81,19 @@ export default function IncidentReportsPage() {
           <div>
             <h1 className="text-3xl font-bold">Incident Report Log</h1>
             <p className="text-muted-foreground">
-              Section 5.1.3, 5.2.4, 6.4 - Log major incidents and escalations
+              Track and document all wildlife care incidents
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={() => {
-              // Generate CSV export
-              const csvContent = [
-                ['Incident ID', 'Date', 'Type', 'Animal', 'Person Involved', 'Description', 'Reported To', 'Action Taken'],
-                ...incidentReports.map((incident: any) => [
-                  incident.id,
-                  incident.date,
-                  incident.type,
-                  incident.animalId ? getAnimalName(incident.animalId) : 'N/A',
-                  incident.personInvolved,
-                  incident.description,
-                  incident.reportedTo || 'Not reported',
-                  incident.actionTaken
-                ])
-              ].map(row => row.join(',')).join('\n');
-              
-              const blob = new Blob([csvContent], { type: 'text/csv' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `incident-reports-${new Date().toISOString().split('T')[0]}.csv`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            }}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={() => {
-              // Generate PDF export
-              const doc = new jsPDF();
-              const pageWidth = doc.internal.pageSize.getWidth();
-              const margin = 20;
-              let yPosition = 20;
-              
-              // Header
-              doc.setFontSize(20);
-              doc.setFont('helvetica', 'bold');
-              doc.text('Incident Report Log', pageWidth / 2, yPosition, { align: 'center' });
-              
-              yPosition += 15;
-              doc.setFontSize(12);
-              doc.setFont('helvetica', 'normal');
-              doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
-              
-              yPosition += 20;
-              
-              // Statistics
-              doc.setFontSize(14);
-              doc.setFont('helvetica', 'bold');
-              doc.text('Summary Statistics', margin, yPosition);
-              
-              yPosition += 10;
-              doc.setFontSize(10);
-              doc.setFont('helvetica', 'normal');
-              
-              const totalIncidents = incidentReports.length;
-              const criticalIncidents = incidentReports.filter((i: any) => i.severity === 'CRITICAL' || i.severity === 'HIGH').length;
-              const diseaseOutbreaks = incidentReports.filter((i: any) => i.type === 'Disease Outbreak').length;
-              const handlingIssues = incidentReports.filter((i: any) => i.type === 'Improper Handling').length;
-              
-              doc.text(`Total Incidents: ${totalIncidents}`, margin + 10, yPosition);
-              yPosition += 7;
-              doc.text(`High/Critical Severity: ${criticalIncidents}`, margin + 10, yPosition);
-              yPosition += 7;
-              doc.text(`Disease Outbreaks: ${diseaseOutbreaks}`, margin + 10, yPosition);
-              yPosition += 7;
-              doc.text(`Handling Issues: ${handlingIssues}`, margin + 10, yPosition);
-              
-              yPosition += 15;
-              
-              // Incident entries table
-              doc.setFontSize(14);
-              doc.setFont('helvetica', 'bold');
-              doc.text('Incident Reports', margin, yPosition);
-              
-              yPosition += 10;
-              doc.setFontSize(8);
-              doc.setFont('helvetica', 'normal');
-              
-              // Table headers
-              const headers = ['Date', 'Type', 'Animal', 'Person', 'Status'];
-              const colWidths = [25, 30, 40, 35, 20];
-              let xPos = margin;
-              
-              headers.forEach((header, index) => {
-                doc.setFont('helvetica', 'bold');
-                doc.text(header, xPos, yPosition);
-                xPos += colWidths[index];
-              });
-              
-              yPosition += 5;
-              
-              // Table data
-              incidentReports.slice(0, 20).forEach((incident: any) => {
-                if (yPosition > 250) {
-                  doc.addPage();
-                  yPosition = 20;
-                }
-                
-                xPos = margin;
-                doc.setFont('helvetica', 'normal');
-                doc.text(incident.date, xPos, yPosition);
-                xPos += colWidths[0];
-                doc.text(incident.type, xPos, yPosition);
-                xPos += colWidths[1];
-                doc.text(incident.animalId ? getAnimalName(incident.animalId) : 'N/A', xPos, yPosition);
-                xPos += colWidths[2];
-                doc.text(incident.personInvolved, xPos, yPosition);
-                xPos += colWidths[3];
-                doc.text(incident.reportedTo ? 'Reported' : 'Not reported', xPos, yPosition);
-                
-                yPosition += 5;
-              });
-              
-              if (incidentReports.length > 20) {
-                yPosition += 5;
-                doc.text(`... and ${incidentReports.length - 20} more entries`, margin, yPosition);
-              }
-              
-              // Footer
-              doc.addPage();
-              yPosition = 20;
-              doc.setFontSize(10);
-              doc.setFont('helvetica', 'italic');
-              doc.text('This report was generated automatically by WildTrack360 Compliance System.', margin, yPosition);
-              yPosition += 7;
-              doc.text('For questions or concerns, please contact your compliance coordinator.', margin, yPosition);
-              
-              // Save the PDF
-              doc.save(`incident-reports-${new Date().toISOString().split('T')[0]}.pdf`);
-            }}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export PDF
-          </Button>
+          <ExportPDFButton 
+            data={{ incidentReports, animals }} 
+            type="incidents"
+          />
           <Link href="/compliance/incidents/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              New Incident
+              New Incident Report
             </Button>
           </Link>
         </div>
@@ -255,134 +103,181 @@ export default function IncidentReportsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold">{incidentReports.length}</div>
+            <div className="text-2xl font-bold">{totalIncidents}</div>
             <div className="text-sm text-muted-foreground">Total Incidents</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-red-600">
-              {incidentReports.filter((i: any) => i.severity === 'CRITICAL' || i.severity === 'HIGH').length}
-            </div>
-            <div className="text-sm text-muted-foreground">High/Critical Severity</div>
+            <div className="text-2xl font-bold text-red-600">{criticalIncidents}</div>
+            <div className="text-sm text-muted-foreground">Critical Severity</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-orange-600">
-              {incidentReports.filter((i: any) => i.type === 'Disease Outbreak').length}
-            </div>
-            <div className="text-sm text-muted-foreground">Disease Outbreaks</div>
+            <div className="text-2xl font-bold">{last30Days}</div>
+            <div className="text-sm text-muted-foreground">Last 30 Days</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-600">
-              {incidentReports.filter((i: any) => i.type === 'Improper Handling').length}
-            </div>
-            <div className="text-sm text-muted-foreground">Handling Issues</div>
+            <div className="text-2xl font-bold text-orange-600">{unreportedIncidents}</div>
+            <div className="text-sm text-muted-foreground">Unreported</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Incident Reports Table */}
+      {/* Critical Incidents Alert */}
+      {criticalIncidents > 0 && (
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-800">
+              <AlertTriangle className="h-5 w-5" />
+              Critical Incidents Requiring Immediate Attention
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {incidentReports
+                .filter((i: any) => i.severity === 'CRITICAL')
+                .slice(0, 3)
+                .map((incident: any) => {
+                  const animal = animals.find((a: any) => a.id === incident.animalId);
+                  return (
+                    <div key={incident.id} className="flex items-center justify-between p-2 bg-white rounded">
+                      <div>
+                        <span className="font-medium">{incident.type}</span>
+                        {animal && (
+                          <span className="text-muted-foreground ml-2">
+                            - {animal.name} ({animal.species})
+                          </span>
+                        )}
+                        <div className="text-sm text-muted-foreground">
+                          {new Date(incident.date).toLocaleDateString()} - {incident.personInvolved}
+                        </div>
+                      </div>
+                      <ViewButton 
+                        href={`/compliance/incidents/${incident.id}`} 
+                        label="View Details"
+                      />
+                    </div>
+                  );
+                })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Incidents Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Incident Reports</CardTitle>
+          <CardTitle>All Incident Reports</CardTitle>
           <CardDescription>
-            Complete record of all major incidents and escalations
+            Complete log of all incidents requiring documentation
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Incident ID</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Animal</TableHead>
+                <TableHead>Severity</TableHead>
                 <TableHead>Person Involved</TableHead>
-                <TableHead>Description</TableHead>
                 <TableHead>Reported To</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {incidentReports.map((incident: any) => (
-                <TableRow key={incident.id}>
-                  <TableCell className="font-mono text-sm">
-                    {incident.id}
-                  </TableCell>
-                   <TableCell>{new Date(incident.date).toISOString().split('T')[0]}</TableCell>
-                  <TableCell>
-                    <Badge variant={getIncidentTypeColor(incident.type)} className="text-xs">
-                      {incident.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {incident.animalId ? (
-                      <Link href={`/animals/${incident.animalId}`} className="text-blue-600 hover:underline">
-                        {getAnimalName(incident.animalId)}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground">N/A</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{incident.personInvolved}</TableCell>
-                  <TableCell className="max-w-[300px] truncate">
-                    {incident.description}
-                  </TableCell>
-                  <TableCell>
-                    {incident.reportedTo ? (
-                      <Badge variant="outline" className="text-xs">
-                        {incident.reportedTo}
+              {incidentReports.map((incident: any) => {
+                const animal = animals.find((a: any) => a.id === incident.animalId);
+                return (
+                  <TableRow key={incident.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {new Date(incident.date).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getIncidentTypeColor(incident.type) as any} className="text-xs">
+                        {incident.type}
                       </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">Not reported</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Link href={`/compliance/incidents/${incident.id}`}>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </Link>
+                    </TableCell>
+                    <TableCell>
+                      {animal ? (
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{animal.name}</div>
+                            <div className="text-xs text-muted-foreground">{animal.species}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getSeverityColor(incident.severity) as any} className="text-xs">
+                        {incident.severity}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{incident.personInvolved}</TableCell>
+                    <TableCell>
+                      {incident.reportedTo ? (
+                        <Badge variant="secondary" className="text-xs">
+                          {incident.reportedTo}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">Not reported</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <ViewButton href={`/compliance/incidents/${incident.id}`} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {incidentReports.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    No incident reports found. This is good news!
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-
 
       {/* Compliance Requirements */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Incident Reporting Requirements
+              <FileText className="h-5 w-5" />
+              Reporting Requirements
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h4 className="font-semibold mb-2">Section 5.1.3 - Incident Reporting</h4>
+              <h4 className="font-semibold mb-2">Immediate Reporting (within 1 hour)</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• All escapes must be reported immediately</li>
-                <li>• Injuries to animals or humans documented</li>
-                <li>• Disease outbreaks reported to authorities</li>
-                <li>• Improper handling incidents logged</li>
-                <li>• Follow-up actions documented</li>
+                <li>• Animal escapes</li>
+                <li>• Serious injuries to animals or humans</li>
+                <li>• Death of an animal in care</li>
+                <li>• Suspected disease outbreak</li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-2">Reporting Timeline</h4>
-              <div className="text-sm text-muted-foreground">
-                <p><strong>Immediate (within 1 hour):</strong> Escapes, serious injuries</p>
-                <p><strong>Within 24 hours:</strong> Disease outbreaks, minor injuries</p>
-                <p><strong>Within 48 hours:</strong> Improper handling, other incidents</p>
-              </div>
+              <h4 className="font-semibold mb-2">24-Hour Reporting</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Minor injuries</li>
+                <li>• Property damage</li>
+                <li>• Medication errors</li>
+                <li>• Equipment failures</li>
+              </ul>
             </div>
           </CardContent>
         </Card>
@@ -390,95 +285,36 @@ export default function IncidentReportsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Documentation Standards
+              <MapPin className="h-5 w-5" />
+              Incident Categories
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <h4 className="font-semibold mb-2">Required Information</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Incident type and severity classification</li>
-                <li>• Date, time, and location of incident</li>
-                <li>• Animals and people involved</li>
-                <li>• Detailed description of what occurred</li>
-                <li>• Actions taken and follow-up required</li>
-                <li>• Authority notifications made</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-2">Record Keeping</h4>
-              <div className="text-sm text-muted-foreground">
-                <p>• All incidents retained for minimum 3 years</p>
-                <p>• Available for inspection by authorities</p>
-                <p>• Regular review and trend analysis</p>
-                <p>• Annual incident report to management</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Escape</span>
+                <Badge variant="destructive" className="text-xs">Critical</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Injury</span>
+                <Badge variant="destructive" className="text-xs">High</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Disease Outbreak</span>
+                <Badge variant="outline" className="text-xs">Medium</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Improper Handling</span>
+                <Badge variant="secondary" className="text-xs">Low</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Other</span>
+                <Badge variant="outline" className="text-xs">Variable</Badge>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Incident Types Explanation */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Incident Type Classifications</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-semibold mb-2">Severity Levels</h4>
-              <div className="space-y-3">
-                <div>
-                  <Badge variant="destructive" className="mb-1">CRITICAL</Badge>
-                  <p className="text-sm text-muted-foreground">
-                    Emergency situations requiring immediate action and notification 
-                    to authorities.
-                  </p>
-                </div>
-                <div>
-                  <Badge variant="destructive" className="mb-1">HIGH</Badge>
-                  <p className="text-sm text-muted-foreground">
-                    Serious incidents requiring immediate attention and follow-up 
-                    within 24 hours.
-                  </p>
-                </div>
-                <div>
-                  <Badge variant="outline" className="mb-1">MEDIUM</Badge>
-                  <p className="text-sm text-muted-foreground">
-                    Incidents requiring attention within 24-48 hours.
-                  </p>
-                </div>
-                <div>
-                  <Badge variant="secondary" className="mb-1">LOW</Badge>
-                  <p className="text-sm text-muted-foreground">
-                    Minor issues that should be addressed but don't require immediate action.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-2">Other Incidents</h4>
-              <div className="space-y-3">
-                <div>
-                  <Badge variant="outline" className="mb-1">Disease Outbreak</Badge>
-                  <p className="text-sm text-muted-foreground">
-                    Suspected or confirmed disease affecting multiple animals 
-                    or requiring quarantine procedures.
-                  </p>
-                </div>
-                <div>
-                  <Badge variant="secondary" className="mb-1">Improper Handling</Badge>
-                  <p className="text-sm text-muted-foreground">
-                    Incidents involving improper handling techniques, 
-                    unauthorised handling, or protocol violations.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
-} 
+}

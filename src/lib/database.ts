@@ -21,15 +21,25 @@ export async function getAnimals(organizationId: string): Promise<Animal[]> {
 }
 
 export async function createAnimal(animalData: any): Promise<Animal> {
+	// Convert empty string carerId to null
+	const data = {
+		...animalData,
+		carerId: animalData.carerId || null
+	};
 	return await prisma.animal.create({
-		data: animalData as any,
+		data: data as any,
 	});
 }
 
 export async function updateAnimal(id: string, animalData: any): Promise<Animal> {
+	// Convert empty string carerId to null
+	const data = {
+		...animalData,
+		carerId: animalData.carerId || null
+	};
 	return await prisma.animal.update({
 		where: { id },
-		data: animalData as any,
+		data: data as any,
 	});
 }
 

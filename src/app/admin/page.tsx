@@ -75,12 +75,12 @@ export default function AdminPage() {
       <header className="bg-card shadow-sm">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Admin Panel</h1>
-          <Button asChild variant="ghost">
-            <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
+            <Button variant="ghost">
               <ArrowLeft className="h-4 w-4" />
               Back to Home
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         </div>
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">

@@ -40,8 +40,8 @@ model Animal {
   clerkOrganizationId String
 
   // Other Relations
-  carerId String
-  carer   Carer @relation(fields: [carerId], references: [id])
+  carerId String?
+  carer   Carer? @relation(fields: [carerId], references: [id])
 
   records       Record[]
   photos        Photo[]

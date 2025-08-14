@@ -15,7 +15,8 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
-  Home
+  Home,
+  ArrowLeft
 } from "lucide-react";
 import { useOrganization } from '@clerk/nextjs';
 import { getCurrentJurisdiction, getJurisdictionConfig, getOrganizationName } from '@/lib/config';
@@ -154,18 +155,25 @@ export default function ComplianceOverviewPage() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
+          <Link href="/compliance">
+            <Button variant="outline" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
           <Link href="/">
             <Button variant="outline" size="icon">
               <Home className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Compliance Overview</h1>
-          <p className="text-muted-foreground">
-            {jurisdiction} Wildlife Compliance Status Dashboard
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Based on {complianceConfig.codeOfPractice}
-          </p>
+          <div>
+            <h1 className="text-3xl font-bold">Compliance Overview</h1>
+            <p className="text-muted-foreground">
+              {jurisdiction} Wildlife Compliance Status Dashboard
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Based on {complianceConfig.codeOfPractice}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button 

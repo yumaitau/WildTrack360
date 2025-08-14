@@ -16,7 +16,6 @@ export async function GET(
     const carer = await prisma.carer.findFirst({
       where: {
         id,
-        clerkUserId: userId,
         clerkOrganizationId: orgId,
       },
       include: {
