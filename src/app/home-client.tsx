@@ -306,7 +306,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         <div className="bg-card rounded-lg shadow-md p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">Compliance</h2>
-            <Link href="/compliance/overview">
+            <Link href="/compliance">
               <Button size="sm" variant="secondary">Open Compliance</Button>
             </Link>
           </div>
