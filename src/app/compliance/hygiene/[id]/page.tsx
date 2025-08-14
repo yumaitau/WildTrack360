@@ -9,18 +9,19 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
 interface HygieneLogDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function HygieneLogDetailPage({ params }: HygieneLogDetailPageProps) {
+  const { id } = await params;
   const { userId, orgId } = await auth();
   if (!userId) redirect("/sign-in");
   const organizationId = orgId || "";
 
   const log = await prisma.hygieneLog.findFirst({
-    where: { id: params.id, clerkUserId: userId, clerkOrganizationId: organizationId },
+    where: { id: id, clerkUserId: userId, clerkOrganizationId: organizationId },
     include: { carer: true },
   });
   if (!log) notFound();
@@ -79,7 +80,9 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
-          <Button>Edit Log</Button>
+          <Link href={`/compliance/hygiene/${id}/edit`}>
+            <Button>Edit Log</Button>
+          </Link>
         </div>
       </div>
 

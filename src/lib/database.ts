@@ -4,10 +4,9 @@ import { prisma } from './prisma';
 import type { Animal, Record, Photo, Species, Carer, HygieneLog, IncidentReport, ReleaseChecklist, Asset } from '@prisma/client';
 
 // Animal Management
-export async function getAnimals(userId: string, organizationId: string): Promise<Animal[]> {
+export async function getAnimals(organizationId: string): Promise<Animal[]> {
 	return await prisma.animal.findMany({
 		where: {
-			clerkUserId: userId,
 			clerkOrganizationId: organizationId,
 		},
 		include: {
@@ -41,10 +40,9 @@ export async function deleteAnimal(id: string): Promise<void> {
 }
 
 // Record Management
-export async function getRecords(userId: string, organizationId: string): Promise<Record[]> {
+export async function getRecords(organizationId: string): Promise<Record[]> {
 	return await prisma.record.findMany({
 		where: {
-			clerkUserId: userId,
 			clerkOrganizationId: organizationId,
 		},
 		include: {
@@ -63,10 +61,9 @@ export async function createRecord(recordData: any): Promise<Record> {
 }
 
 // Photo Management
-export async function getPhotos(userId: string, organizationId: string): Promise<Photo[]> {
+export async function getPhotos(organizationId: string): Promise<Photo[]> {
 	return await prisma.photo.findMany({
 		where: {
-			clerkUserId: userId,
 			clerkOrganizationId: organizationId,
 		},
 		include: {
@@ -85,10 +82,9 @@ export async function createPhoto(photoData: any): Promise<Photo> {
 }
 
 // Species Management
-export async function getSpecies(userId: string, organizationId: string): Promise<Species[]> {
+export async function getSpecies(organizationId: string): Promise<Species[]> {
 	return await prisma.species.findMany({
 		where: {
-			clerkUserId: userId,
 			clerkOrganizationId: organizationId,
 		},
 		orderBy: {
@@ -117,11 +113,13 @@ export async function deleteSpecies(id: string): Promise<void> {
 }
 
 // Carer Management
-export async function getCarers(userId: string, organizationId: string): Promise<Carer[]> {
+export async function getCarers(organizationId: string): Promise<Carer[]> {
 	return await prisma.carer.findMany({
 		where: {
-			clerkUserId: userId,
 			clerkOrganizationId: organizationId,
+		},
+		include: {
+			trainings: true,
 		},
 		orderBy: {
 			name: 'asc',
@@ -149,10 +147,9 @@ export async function deleteCarer(id: string): Promise<void> {
 }
 
 // Compliance Management
-export async function getHygieneLogs(userId: string, organizationId: string): Promise<HygieneLog[]> {
+export async function getHygieneLogs(organizationId: string): Promise<HygieneLog[]> {
 	return await prisma.hygieneLog.findMany({
 		where: {
-			clerkUserId: userId,
 			clerkOrganizationId: organizationId,
 		},
 		orderBy: {
@@ -167,10 +164,9 @@ export async function createHygieneLog(logData: any): Promise<HygieneLog> {
 	});
 }
 
-export async function getIncidentReports(userId: string, organizationId: string): Promise<IncidentReport[]> {
+export async function getIncidentReports(organizationId: string): Promise<IncidentReport[]> {
 	return await prisma.incidentReport.findMany({
 		where: {
-			clerkUserId: userId,
 			clerkOrganizationId: organizationId,
 		},
 		orderBy: {
@@ -185,10 +181,9 @@ export async function createIncidentReport(reportData: any): Promise<IncidentRep
 	});
 }
 
-export async function getReleaseChecklists(userId: string, organizationId: string): Promise<ReleaseChecklist[]> {
+export async function getReleaseChecklists(organizationId: string): Promise<ReleaseChecklist[]> {
 	return await prisma.releaseChecklist.findMany({
 		where: {
-			clerkUserId: userId,
 			clerkOrganizationId: organizationId,
 		},
 		include: {
@@ -207,10 +202,9 @@ export async function createReleaseChecklist(checklistData: any): Promise<Releas
 }
 
 // Asset Management
-export async function getAssets(userId: string, organizationId: string): Promise<Asset[]> {
+export async function getAssets(organizationId: string): Promise<Asset[]> {
 	return await prisma.asset.findMany({
 		where: {
-			clerkUserId: userId,
 			clerkOrganizationId: organizationId,
 		},
 		orderBy: {

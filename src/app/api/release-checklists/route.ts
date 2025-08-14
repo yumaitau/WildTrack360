@@ -7,10 +7,18 @@ export async function GET(request: Request) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { searchParams } = new URL(request.url)
   const orgId = searchParams.get('orgId') || activeOrgId || undefined
+  const animalId = searchParams.get('animalId')
+  const completed = searchParams.get('completed')
+  
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
+  
   try {
+    const where: any = { clerkUserId: userId, clerkOrganizationId: orgId }
+    if (animalId) where.animalId = animalId
+    if (completed !== null) where.completed = completed === 'true'
+    
     const checklists = await prisma.releaseChecklist.findMany({
-      where: { clerkUserId: userId, clerkOrganizationId: orgId },
+      where,
       orderBy: { releaseDate: 'desc' },
     })
     return NextResponse.json(checklists)

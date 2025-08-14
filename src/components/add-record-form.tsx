@@ -64,6 +64,7 @@ interface AddRecordFormProps {
 
 export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
   const { toast } = useToast();
+  const [isCheckingRelease, setIsCheckingRelease] = React.useState(false);
   const [locationData, setLocationData] = React.useState<{
     lat: number;
     lng: number;
@@ -87,6 +88,15 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
   const recordType = form.watch("type");
 
   async function onSubmit(data: AddRecordFormValues) {
+    // Check if this is a release and show notification
+    if (data.type === 'Release') {
+      setIsCheckingRelease(true);
+      toast({
+        title: "Starting Release Process",
+        description: "Redirecting to the release checklist to ensure compliance before releasing this animal...",
+      });
+    }
+    
     const details: { [key: string]: string | number } = {};
     if (data.type === 'Growth') {
         if (data.weight) details.weight = data.weight;
@@ -125,9 +135,13 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
       notes: data.notes,
       details: Object.keys(details).length > 0 ? details : undefined,
       location: data.type === 'Release' ? locationData.address : undefined,
+      coordinates: data.type === 'Release' ? { lat: locationData.lat, lng: locationData.lng } : undefined,
     };
 
     await onRecordAdd(newRecord);
+    
+    // Reset checking state if we didn't redirect
+    setIsCheckingRelease(false);
 
     toast({
       title: "Record Added",
@@ -165,14 +179,14 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
                     <FormLabel>Record Type</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger disabled={isCheckingRelease}>
                           <SelectValue placeholder="Select a record type" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {recordTypes.map((type) => (
                           <SelectItem key={type} value={type}>
-                            {type}
+                            {type === 'Release' ? 'Release (Start Checklist)' : type}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -343,9 +357,9 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
             />
 
             <div className="flex justify-end">
-              <Button type="submit">
+              <Button type="submit" disabled={isCheckingRelease}>
                 <PlusCircle className="mr-2" />
-                Add Record
+                {isCheckingRelease ? 'Checking Release Requirements...' : 'Add Record'}
               </Button>
             </div>
           </form>

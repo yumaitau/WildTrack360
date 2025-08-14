@@ -1,13 +1,63 @@
+'use client';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, ArrowLeft, Home } from "lucide-react";
+import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, Home } from "lucide-react";
 import Link from "next/link";
 import { getCurrentJurisdiction, getJurisdictionConfig } from '@/lib/config';
+import { useOrganization } from '@clerk/nextjs';
+import { useEffect, useState } from 'react';
 
 export default function CompliancePage() {
   const jurisdiction = getCurrentJurisdiction();
   const config = getJurisdictionConfig();
+  const { organization } = useOrganization();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        if (!organization) return;
+        const orgId = organization.id;
+        const [animals, carers, releaseChecklists, incidents] = await Promise.all([
+          fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/carers?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/release-checklists?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/incidents?orgId=${orgId}`).then(r => r.json()),
+        ]);
+        setData({ animals, carers, releaseChecklists, incidents });
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadData();
+  }, [organization]);
+
+  // Calculate metrics
+  const activeCarers = data?.carers?.filter((c: any) => c.active !== false).length || 0;
+  const pendingReleases = data?.releaseChecklists?.filter((r: any) => !r.completed).length || 0;
+  const recentIncidents = data?.incidents?.filter((i: any) => {
+    const incidentDate = new Date(i.date);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return incidentDate > thirtyDaysAgo;
+  }).length || 0;
+  
+  const expiringLicences = data?.carers?.filter((c: any) => {
+    if (!c.licenseExpiry) return false;
+    const daysUntil = Math.ceil((new Date(c.licenseExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return daysUntil <= 30 && daysUntil > 0;
+  }).length || 0;
+  
+  // Simple compliance rate calculation
+  const complianceRate = loading ? 0 : Math.min(100, Math.max(0, 
+    100 - (expiringLicences * 5) - (recentIncidents * 10)
+  ));
   
   return (
     <div className="container mx-auto px-6 py-8 space-y-8">
@@ -295,33 +345,48 @@ export default function CompliancePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-6 text-center">
-              <div>
-                <div className="text-3xl font-bold text-green-600 mb-1">95%</div>
-                <div className="text-sm text-muted-foreground">Compliance Rate</div>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Loading data...
               </div>
-              <div>
-                <div className="text-3xl font-bold text-blue-600 mb-1">12</div>
-                <div className="text-sm text-muted-foreground">Active Carers</div>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span>Licences Expiring Soon</span>
-                <Badge variant="destructive">2</Badge>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span>Pending Releases</span>
-                <Badge variant="outline">3</Badge>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span>Recent Incidents</span>
-                <Badge variant="outline">1</Badge>
-              </div>
-            </div>
-            <Link href="/compliance/overview">
-              <Button variant="outline" className="w-full mt-4">View Details</Button>
-            </Link>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-6 text-center">
+                  <div>
+                    <div className={`text-3xl font-bold mb-1 ${
+                      complianceRate >= 90 ? 'text-green-600' : 
+                      complianceRate >= 75 ? 'text-yellow-600' : 'text-red-600'
+                    }`}>{complianceRate}%</div>
+                    <div className="text-sm text-muted-foreground">Compliance Rate</div>
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-blue-600 mb-1">{activeCarers}</div>
+                    <div className="text-sm text-muted-foreground">Active Carers</div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Licences Expiring Soon</span>
+                    <Badge variant={expiringLicences > 0 ? "destructive" : "secondary"}>
+                      {expiringLicences}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Pending Releases</span>
+                    <Badge variant="outline">{pendingReleases}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Recent Incidents (30d)</span>
+                    <Badge variant={recentIncidents > 0 ? "destructive" : "outline"}>
+                      {recentIncidents}
+                    </Badge>
+                  </div>
+                </div>
+                <Link href="/compliance/overview">
+                  <Button variant="outline" className="w-full mt-4">View Details</Button>
+                </Link>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -55,8 +55,8 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
   const router = useRouter();
   
   const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
-  const [speciesList, setSpeciesList] = useState(species);
-  const [carersList, setCarersList] = useState(carers);
+  const [speciesList, setSpeciesList] = useState(species || []);
+  const [carersList, setCarersList] = useState(carers || []);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [animalToEdit, setAnimalToEdit] = useState<Animal | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -74,10 +74,13 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
           apiJson<any[]>(`/api/species?orgId=${orgId}`),
           apiJson<any[]>(`/api/carers?orgId=${orgId}`),
         ]);
-        setSpeciesList(newSpecies);
-        setCarersList(newCarers);
+        setSpeciesList(newSpecies || []);
+        setCarersList(newCarers || []);
       } catch (error) {
         console.error('Error loading species/carers:', error);
+        // Set empty arrays on error to avoid undefined
+        setSpeciesList([]);
+        setCarersList([]);
       }
     };
     fetchLookups();
@@ -366,8 +369,14 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         setIsOpen={setIsAddDialogOpen}
         onAnimalAdd={handleAddAnimal}
         animalToEdit={animalToEdit}
-        species={(speciesList || []).map((s: any) => ({ value: s.name, label: s.name }))}
-        carers={(carersList || []).map((c: any) => ({ value: c.id, label: c.name }))}
+        species={(speciesList || []).map((s: any) => ({ 
+          value: s.name, 
+          label: s.name 
+        }))}
+        carers={(carersList || []).map((c: any) => ({ 
+          value: c.id, 
+          label: c.name 
+        }))}
       />
 
       {/* Footer */}

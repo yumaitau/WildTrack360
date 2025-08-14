@@ -10,11 +10,12 @@ export async function GET(request: Request) {
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
   try {
     const incidents = await prisma.incidentReport.findMany({
-      where: { clerkUserId: userId, clerkOrganizationId: orgId },
+      where: { clerkOrganizationId: orgId },
       orderBy: { date: 'desc' },
     })
     return NextResponse.json(incidents)
-  } catch {
+  } catch (error) {
+    console.error('Error fetching incident reports:', error);
     return NextResponse.json({ error: 'Failed to fetch incident reports' }, { status: 500 })
   }
 }
@@ -23,8 +24,10 @@ export async function POST(request: Request) {
   const { userId, orgId: activeOrgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await request.json()
+  console.log('Received incident report data:', body);
   const orgId = body.clerkOrganizationId || activeOrgId || undefined
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
+  console.log('Using organization ID:', orgId);
   try {
     const created = await prisma.incidentReport.create({
       data: {
@@ -39,12 +42,14 @@ export async function POST(request: Request) {
         actionTaken: body.actionTaken ?? null,
         location: body.location ?? null,
         animalId: body.animalId ?? null,
+        notes: body.notes ?? null,
         clerkUserId: userId,
         clerkOrganizationId: orgId,
       }
     })
     return NextResponse.json(created, { status: 201 })
-  } catch {
+  } catch (error) {
+    console.error('Error creating incident report:', error);
     return NextResponse.json({ error: 'Failed to create incident report' }, { status: 500 })
   }
 }

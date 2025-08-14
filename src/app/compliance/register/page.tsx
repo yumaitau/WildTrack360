@@ -11,11 +11,19 @@ import { useOrganization } from '@clerk/nextjs';
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';
+import { getCurrentJurisdiction, getJurisdictionConfig } from '@/lib/config';
+import { AddAnimalDialog } from '@/components/add-animal-dialog';
+import { useRouter } from 'next/navigation';
 
 export default function WildlifeRegisterPage() {
+  const jurisdiction = getCurrentJurisdiction();
+  const config = getJurisdictionConfig();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isAddAnimalOpen, setIsAddAnimalOpen] = useState(false);
   const { organization } = useOrganization();
+  // Router available if needed for navigation
+  // const router = useRouter();
 
   useEffect(() => {
     async function loadData() {
@@ -59,6 +67,47 @@ export default function WildlifeRegisterPage() {
   }
 
   const { animals, species, carers } = data;
+  
+  // Format species and carers for the dialog
+  const speciesOptions = species?.map((s: any) => ({ value: s.name, label: s.name })) || [
+    { value: 'Kangaroo', label: 'Kangaroo' },
+    { value: 'Koala', label: 'Koala' },
+    { value: 'Wombat', label: 'Wombat' },
+    { value: 'Other', label: 'Other' }
+  ];
+  
+  const carerOptions = carers?.map((c: any) => ({ value: c.id, label: c.name })) || [
+    { value: 'default-carer', label: 'Default Carer' }
+  ];
+  
+  const handleAddAnimal = async (animalData: any) => {
+    try {
+      const response = await fetch('/api/animals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...animalData,
+          clerkOrganizationId: organization?.id
+        }),
+      });
+      
+      if (response.ok) {
+        // Reload the data to show the new animal
+        const orgId = organization?.id;
+        if (orgId) {
+          const [animals, species, carers] = await Promise.all([
+            fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
+            fetch(`/api/species?orgId=${orgId}`).then(r => r.json()),
+            fetch(`/api/carers?orgId=${orgId}`).then(r => r.json()),
+          ]);
+          setData({ animals, species, carers });
+        }
+        setIsAddAnimalOpen(false);
+      }
+    } catch (error) {
+      console.error('Error adding animal:', error);
+    }
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -70,9 +119,9 @@ export default function WildlifeRegisterPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">Wildlife Admission & Outcome Register</h1>
+            <h1 className="text-3xl font-bold">{jurisdiction} Wildlife Admission & Outcome Register</h1>
             <p className="text-muted-foreground">
-              Section 7.1.1, 7.1.2 - Maintain records of all wildlife in care
+              Maintain records of all wildlife in care - {config.codeOfPractice}
             </p>
           </div>
         </div>
@@ -122,7 +171,7 @@ export default function WildlifeRegisterPage() {
               // Header
               doc.setFontSize(20);
               doc.setFont('helvetica', 'bold');
-              doc.text('Wildlife Admission & Outcome Register', pageWidth / 2, yPosition, { align: 'center' });
+              doc.text(`${jurisdiction} Wildlife Admission & Outcome Register`, pageWidth / 2, yPosition, { align: 'center' });
               
               yPosition += 15;
               doc.setFontSize(12);
@@ -141,9 +190,9 @@ export default function WildlifeRegisterPage() {
               doc.setFont('helvetica', 'normal');
               
               const totalAnimals = animals.length;
-              const inCare = animals.filter((a: any) => a.status === 'In Care').length;
-              const released = animals.filter((a: any) => a.status === 'Released').length;
-              const deceased = animals.filter((a: any) => a.status === 'Deceased').length;
+              const inCare = animals.filter((a: any) => a.status === 'IN_CARE').length;
+              const released = animals.filter((a: any) => a.status === 'RELEASED').length;
+              const deceased = animals.filter((a: any) => a.status === 'DECEASED').length;
               
               doc.text(`Total Animals: ${totalAnimals}`, margin + 10, yPosition);
               yPosition += 7;
@@ -228,12 +277,10 @@ export default function WildlifeRegisterPage() {
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
-          <Link href="/animals/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Animal
-            </Button>
-          </Link>
+          <Button onClick={() => setIsAddAnimalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Animal
+          </Button>
         </div>
       </div>
 
@@ -313,7 +360,7 @@ export default function WildlifeRegisterPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-blue-600">
-              {animals.filter((a: any) => a.status === 'In Care').length}
+              {animals.filter((a: any) => a.status === 'IN_CARE').length}
             </div>
             <div className="text-sm text-muted-foreground">Currently in Care</div>
           </CardContent>
@@ -321,7 +368,7 @@ export default function WildlifeRegisterPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">
-              {animals.filter((a: any) => a.status === 'Released').length}
+              {animals.filter((a: any) => a.status === 'RELEASED').length}
             </div>
             <div className="text-sm text-muted-foreground">Successfully Released</div>
           </CardContent>
@@ -329,7 +376,7 @@ export default function WildlifeRegisterPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-red-600">
-              {animals.filter((a: any) => a.status === 'Deceased').length}
+              {animals.filter((a: any) => a.status === 'DECEASED').length}
             </div>
             <div className="text-sm text-muted-foreground">Deceased</div>
           </CardContent>
@@ -364,7 +411,7 @@ export default function WildlifeRegisterPage() {
               {animals.map((animal: any) => (
                 <TableRow key={animal.id}>
                   <TableCell className="font-mono text-sm">
-                    {animal.animalId}
+                    {animal.id.substring(0, 8)}
                   </TableCell>
                   <TableCell className="font-medium">{animal.name}</TableCell>
                   <TableCell>{animal.species}</TableCell>
@@ -381,14 +428,14 @@ export default function WildlifeRegisterPage() {
                   <TableCell className="max-w-[200px] truncate">
                     {animal.rescueLocation}
                   </TableCell>
-                  <TableCell>{animal.rescueDate}</TableCell>
+                  <TableCell>{new Date(animal.dateFound).toLocaleDateString()}</TableCell>
                   <TableCell>{animal.carer?.name || ''}</TableCell>
                   <TableCell>
                     <Badge 
                       variant={
-                        animal.status === 'In Care' ? 'default' :
-                        animal.status === 'Released' ? 'secondary' :
-                        animal.status === 'Deceased' ? 'destructive' : 'outline'
+                        animal.status === 'IN_CARE' ? 'default' :
+                        animal.status === 'RELEASED' ? 'secondary' :
+                        animal.status === 'DECEASED' ? 'destructive' : 'outline'
                       }
                     >
                       {animal.status}
@@ -411,12 +458,12 @@ export default function WildlifeRegisterPage() {
       {/* Compliance Notes */}
       <Card>
         <CardHeader>
-          <CardTitle>Compliance Requirements</CardTitle>
+          <CardTitle>{jurisdiction} Compliance Requirements</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h4 className="font-semibold mb-2">Required Fields (Section 7.1.1)</h4>
+              <h4 className="font-semibold mb-2">Required Fields</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Animal identification number</li>
                 <li>• Species and sex</li>
@@ -429,18 +476,27 @@ export default function WildlifeRegisterPage() {
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-2">Record Keeping (Section 7.1.2)</h4>
+              <h4 className="font-semibold mb-2">Record Keeping</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Maintain records for minimum 3 years</li>
+                <li>• Maintain records for minimum {config.maxRetentionYears} years</li>
                 <li>• Available for inspection by authorities</li>
                 <li>• Regular updates as status changes</li>
                 <li>• Secure storage and backup</li>
                 <li>• Export capability for reporting</li>
+                {config.requireVetSignOff && <li>• Veterinary sign-off required</li>}
               </ul>
             </div>
           </div>
         </CardContent>
       </Card>
+      {/* Add Animal Dialog */}
+      <AddAnimalDialog
+        isOpen={isAddAnimalOpen}
+        setIsOpen={setIsAddAnimalOpen}
+        onAnimalAdd={handleAddAnimal}
+        species={speciesOptions}
+        carers={carerOptions}
+      />
     </div>
   );
 } 

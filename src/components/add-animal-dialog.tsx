@@ -45,6 +45,10 @@ import { Animal } from '@prisma/client';
 type CreateAnimalData = {
   name: string;
   species: string;
+  sex?: string | null;
+  ageClass?: string | null;
+  age?: string | null;
+  dateOfBirth?: Date | null;
   status: 'ADMITTED' | 'IN_CARE' | 'READY_FOR_RELEASE' | 'RELEASED' | 'DECEASED' | 'TRANSFERRED';
   dateFound: Date;
   dateReleased: Date | null;
@@ -61,10 +65,14 @@ import { LocationPicker } from "@/components/location-picker"
 const addAnimalSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   species: z.string().min(1, "Species is required."),
+  sex: z.string().optional(),
+  ageClass: z.string().optional(),
+  age: z.string().optional(),
+  dateOfBirth: z.date().optional().nullable(),
   dateFound: z.date({ required_error: "Date found is required." }),
-  carer: z.string().min(1, "Carer is required."),
+  carer: z.string().optional().default("default-carer"),
   status: z.enum(["ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED"]),
-  rescueLocation: z.string().min(1, "Rescue location is required."),
+  rescueLocation: z.string().optional().default("Unknown location"),
   rescueCoordinates: z.object({ lat: z.number(), lng: z.number() }).optional(),
 })
 
@@ -75,8 +83,8 @@ interface AddAnimalDialogProps {
   setIsOpen: (isOpen: boolean) => void
   onAnimalAdd: (animalData: CreateAnimalData) => Promise<void>
   animalToEdit?: Animal | null;
-  species: any[];
-  carers: any[];
+  species?: any[];
+  carers?: any[];
 }
 
 export function AddAnimalDialog({
@@ -103,17 +111,25 @@ export function AddAnimalDialog({
 
   const form = useForm<AddAnimalFormValues>({
     resolver: zodResolver(addAnimalSchema),
-    defaultValues: isEditMode ? {
+    defaultValues: isEditMode && animalToEdit ? {
       name: animalToEdit.name,
-      species: animalToEdit.species,
-      carer: animalToEdit.carerId,
+      species: animalToEdit.species || 'Other',
+      sex: animalToEdit.sex || undefined,
+      ageClass: animalToEdit.ageClass || undefined,
+      age: animalToEdit.age || undefined,
+      dateOfBirth: animalToEdit.dateOfBirth ? new Date(animalToEdit.dateOfBirth) : undefined,
+      carer: animalToEdit.carerId || 'default-carer',
       status: animalToEdit.status,
-      dateFound: animalToEdit.dateFound,
+      dateFound: new Date(animalToEdit.dateFound),
       rescueLocation: animalToEdit.rescueLocation || 'Canberra ACT, Australia',
       rescueCoordinates: (animalToEdit.rescueCoordinates as { lat: number; lng: number }) || { lat: -35.2809, lng: 149.1300 }
     } : {
       name: "",
       species: "",
+      sex: undefined,
+      ageClass: undefined,
+      age: undefined,
+      dateOfBirth: undefined,
       carer: "",
       status: "IN_CARE",
       dateFound: new Date(),
@@ -125,12 +141,20 @@ export function AddAnimalDialog({
   React.useEffect(() => {
     if (isOpen) {
       if (animalToEdit) {
+          // Ensure we have valid values for all fields
+          const carerValue = animalToEdit.carerId || (carers && carers.length > 0 ? carers[0].value : 'default-carer');
+          const speciesValue = animalToEdit.species || (species && species.length > 0 ? species[0].value : 'Other');
+          
           form.reset({
               name: animalToEdit.name,
-              species: animalToEdit.species,
-              carer: animalToEdit.carerId,
+              species: speciesValue,
+              sex: animalToEdit.sex || undefined,
+              ageClass: animalToEdit.ageClass || undefined,
+              age: animalToEdit.age || undefined,
+              dateOfBirth: animalToEdit.dateOfBirth ? new Date(animalToEdit.dateOfBirth) : undefined,
+              carer: carerValue,
               status: animalToEdit.status,
-              dateFound: animalToEdit.dateFound,
+              dateFound: new Date(animalToEdit.dateFound),
               rescueLocation: animalToEdit.rescueLocation || 'Canberra ACT, Australia',
               rescueCoordinates: (animalToEdit.rescueCoordinates as { lat: number; lng: number }) || { lat: -35.2809, lng: 149.1300 }
           });
@@ -141,10 +165,17 @@ export function AddAnimalDialog({
             address: animalToEdit.rescueLocation || 'Canberra ACT, Australia'
           });
       } else {
+          const defaultCarer = carers && carers.length > 0 ? carers[0].value : '';
+          const defaultSpecies = species && species.length > 0 ? species[0].value : '';
+          
           form.reset({
               name: "",
-              species: "",
-              carer: "",
+              species: defaultSpecies,
+              sex: undefined,
+              ageClass: undefined,
+              age: undefined,
+              dateOfBirth: undefined,
+              carer: defaultCarer,
               status: "IN_CARE",
               dateFound: new Date(),
               rescueLocation: "Canberra ACT, Australia",
@@ -157,7 +188,7 @@ export function AddAnimalDialog({
           });
       }
     }
-  }, [animalToEdit, isOpen, form]);
+  }, [animalToEdit, isOpen, form, species, carers]);
 
 
   async function onSubmit(data: AddAnimalFormValues) {
@@ -167,6 +198,10 @@ export function AddAnimalDialog({
     const payload: CreateAnimalData = {
       name: data.name,
       species: data.species,
+      sex: data.sex || null,
+      ageClass: data.ageClass || null,
+      age: data.age || null,
+      dateOfBirth: data.dateOfBirth || null,
       status: data.status,
       dateFound: data.dateFound,
       dateReleased: null,
@@ -176,7 +211,7 @@ export function AddAnimalDialog({
       notes: null,
       rescueLocation: locationData.address,
       rescueCoordinates: { lat: locationData.lat, lng: locationData.lng },
-      carerId: data.carer,
+      carerId: data.carer || 'default-carer',
     };
 
     await onAnimalAdd(payload)
@@ -231,13 +266,130 @@ export function AddAnimalDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {species.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                      {species && species.length > 0 ? (
+                        species.map(s => (
+                          <SelectItem key={s.value || s} value={s.value || s}>
+                            {s.label || s.value || s}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="Other">Other</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            
+            {/* Sex Field */}
+            <FormField
+              control={form.control}
+              name="sex"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sex</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select sex" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Unknown">Unknown</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Age Class Field */}
+            <FormField
+              control={form.control}
+              name="ageClass"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Age Class</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select age class" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Neonate">Neonate</SelectItem>
+                      <SelectItem value="Juvenile">Juvenile</SelectItem>
+                      <SelectItem value="Adult">Adult</SelectItem>
+                      <SelectItem value="Geriatric">Geriatric</SelectItem>
+                      <SelectItem value="Unknown">Unknown</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Age Field */}
+            <FormField
+              control={form.control}
+              name="age"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Age (optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., 6 months, 2 years" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Date of Birth Field */}
+            <FormField
+              control={form.control}
+              name="dateOfBirth"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Date of Birth (optional)</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value || undefined}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
              <FormField
               control={form.control}
               name="carer"
@@ -251,7 +403,15 @@ export function AddAnimalDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {carers.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                      {carers && carers.length > 0 ? (
+                        carers.map(c => (
+                          <SelectItem key={c.value || 'default'} value={c.value || 'default'}>
+                            {c.label || c.value || 'Default Carer'}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="default">Default Carer</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -2,240 +2,208 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   CheckCircle, 
   MapPin, 
-  Calendar, 
-  Download, 
-  ArrowLeft, 
-  AlertTriangle,
-  User,
-  FileText,
-  Image as ImageIcon,
+  AlertTriangle, 
+  ArrowLeft,
   Home
 } from "lucide-react";
-import { prisma } from '@/lib/prisma'
-import { auth } from '@clerk/nextjs/server'
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { prisma } from '@/lib/prisma';
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { getCurrentJurisdiction } from '@/lib/config';
 
-interface ReleaseChecklistDetailPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default async function ReleaseChecklistDetailPage({ params }: ReleaseChecklistDetailPageProps) {
-  const { userId, orgId } = await auth()
-  if (!userId || !orgId) notFound()
+export default async function ReleaseChecklistDetailPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  const { id } = await params;
+  const { userId, orgId } = await auth();
+  
+  if (!userId || !orgId) {
+    redirect('/sign-in');
+  }
 
   const checklist = await prisma.releaseChecklist.findFirst({
-    where: { id: params.id, clerkUserId: userId, clerkOrganizationId: orgId },
-  })
-  if (!checklist) notFound()
+    where: {
+      id: id,
+      clerkOrganizationId: orgId,
+    },
+    include: {
+      animal: true,
+    },
+  });
 
-  const animal = await prisma.animal.findFirst({ where: { id: checklist.animalId, clerkUserId: userId, clerkOrganizationId: orgId } })
+  if (!checklist) {
+    redirect('/compliance/release-checklist');
+  }
+
+  const jurisdiction = getCurrentJurisdiction();
+
+  // Helper function to safely access JSON fields
+  const getJsonValue = (value: any, key: string) => {
+    if (value && typeof value === 'object' && key in value) {
+      return value[key];
+    }
+    return null;
+  };
+
+  // Format dates
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-AU', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  // Get release coordinates (if needed for future features)
+  // const releaseCoords = checklist.releaseCoordinates as any;
+  // const rescueCoords = checklist.animal?.rescueCoordinates as any;
 
   return (
-    <div className="container mx-auto px-6 py-8 space-y-8">
-      {/* Header */}
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex gap-2">
-            <Link href="/">
-              <Button variant="outline" size="icon">
-                <Home className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/compliance/release-checklist">
-              <Button variant="outline" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
+          <Link href="/compliance/release-checklist">
+            <Button variant="outline" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
           <div>
             <h1 className="text-3xl font-bold">Release Checklist</h1>
             <p className="text-muted-foreground">
-              {animal?.name} ({animal?.species}) - {new Date(checklist.releaseDate).toISOString().split('T')[0]}
+              {checklist.animal?.name} - {checklist.animal?.species}
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export PDF
-          </Button>
-          <Button>Edit Checklist</Button>
+          <Link href="/">
+            <Button variant="outline" size="icon">
+              <Home className="h-4 w-4" />
+            </Button>
+          </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Animal Information */}
+          {/* Basic Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Animal Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Animal Name</label>
-                  <p className="text-lg font-medium">{animal?.name}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Species</label>
-                  <p className="text-lg">{animal?.species}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Animal ID</label>
-                   <p className="font-mono text-sm">{checklist.animalId}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Age Class</label>
-                   <Badge variant="outline">{animal?.ageClass}</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Release Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Release Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Release Date</label>
-                   <p className="text-lg font-medium">{new Date(checklist.releaseDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Release Type</label>
-                  <Badge 
-                     variant={checklist.releaseType === 'SOFT' ? 'default' : checklist.releaseType === 'HARD' ? 'secondary' : 'outline'}
-                    className="text-sm"
-                  >
-                    {checklist.releaseType}
-                  </Badge>
-                </div>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Release Location</label>
-                <p className="text-lg">{checklist.releaseLocation}</p>
-                {checklist.releaseCoordinates && (checklist.releaseCoordinates as any).lat && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Coordinates: {(checklist.releaseCoordinates as any).lat}, {(checklist.releaseCoordinates as any).lng}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Distance Check</label>
-                <div className="flex items-center gap-2 mt-1">
-                  {checklist.within10km ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-green-600 font-medium">Within 10km of rescue location</span>
-                    </>
-                  ) : (
-                    <>
-                      <AlertTriangle className="h-4 w-4 text-orange-600" />
-                      <span className="text-orange-600 font-medium">Outside 10km - justification required</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Fitness Assessment */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5" />
-                Fitness Assessment
-              </CardTitle>
+              <CardTitle>Release Information</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">Fitness Indicators</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {checklist.fitnessIndicators.map((indicator: string, index: number) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span className="text-sm">{indicator}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {checklist.notes && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Assessment Notes</label>
-                    <p className="text-sm mt-1">{checklist.notes}</p>
-                  </div>
-                )}
-              </div>
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">Animal</TableCell>
+                    <TableCell>{checklist.animal?.name}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Species</TableCell>
+                    <TableCell>{checklist.animal?.species}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Release Date</TableCell>
+                    <TableCell>{formatDate(checklist.releaseDate)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Release Location</TableCell>
+                    <TableCell>{checklist.releaseLocation}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Release Type</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {checklist.releaseType}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Distance Check</TableCell>
+                    <TableCell>
+                      <Badge variant={checklist.within10km ? "default" : "secondary"}>
+                        {checklist.within10km ? "Within 10km" : "Outside 10km"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
 
-          {/* Veterinary Sign-off */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Veterinary Sign-off
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {checklist.vetSignOff && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Veterinarian</label>
-                    <p className="font-medium">{(checklist.vetSignOff as any).name}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Sign-off Date</label>
-                    <p className="font-medium">{(checklist.vetSignOff as any).date}</p>
-                  </div>
-                </div>
-                )}
-                
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Signature</label>
-                  {checklist.vetSignOff && (
-                    <div className="mt-2 p-3 bg-gray-50 rounded border">
-                      <p className="font-mono text-sm">{(checklist.vetSignOff as any).signature}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Photos */}
-          {Array.isArray(checklist.photos as any) && (checklist.photos as any).length > 0 && (
+          {/* Fitness Indicators */}
+          {checklist.fitnessIndicators && Array.isArray(checklist.fitnessIndicators) && checklist.fitnessIndicators.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" />
-                  Release Photos
-                </CardTitle>
+                <CardTitle>Fitness Indicators</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(checklist.photos as any).map((photo: string, index: number) => (
-                    <div key={index} className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                <div className="flex flex-wrap gap-2">
+                  {(checklist.fitnessIndicators as string[]).map((indicator: string, index: number) => (
+                    <Badge key={index} variant="outline">
+                      {indicator}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Vet Sign-off */}
+          {checklist.vetSignOff && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Veterinary Sign-off</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Veterinarian:</span>
+                    <span>{getJsonValue(checklist.vetSignOff, 'name')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Date:</span>
+                    <span>{getJsonValue(checklist.vetSignOff, 'date')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">License:</span>
+                    <span>{getJsonValue(checklist.vetSignOff, 'license')}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Notes */}
+          {checklist.notes && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Notes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm">{checklist.notes}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Photos */}
+          {checklist.photos && Array.isArray(checklist.photos) && checklist.photos.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Release Photos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {(checklist.photos as string[]).map((photo: string, index: number) => (
+                    <div key={index} className="aspect-square rounded-lg overflow-hidden">
                       <img 
                         src={photo} 
                         alt={`Release photo ${index + 1}`}
@@ -289,10 +257,10 @@ export default async function ReleaseChecklistDetailPage({ params }: ReleaseChec
             </CardContent>
           </Card>
 
-          {/* ACT Requirements */}
+          {/* Jurisdiction Requirements */}
           <Card>
             <CardHeader>
-              <CardTitle>ACT Requirements</CardTitle>
+              <CardTitle>{jurisdiction} Requirements</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="text-sm space-y-2">
@@ -312,26 +280,6 @@ export default async function ReleaseChecklistDetailPage({ params }: ReleaseChec
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
-                <Download className="h-4 w-4 mr-2" />
-                Export PDF
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <FileText className="h-4 w-4 mr-2" />
-                Print Checklist
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Calendar className="h-4 w-4 mr-2" />
-                Schedule Follow-up
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

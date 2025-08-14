@@ -2,33 +2,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Download, ArrowLeft, Mail, Award, Shield, Home, Calendar, Table } from "lucide-react";
+import { User, Download, ArrowLeft, Award, Shield, Home, Calendar } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { TableHead, TableHeader } from "@/components/ui/table";
-import { TableRow } from "@/components/ui/table";
-import { TableCell } from "@/components/ui/table";
-import { TableBody } from "@/components/ui/table";
+import { Table, TableHead, TableHeader, TableRow, TableCell, TableBody } from "@/components/ui/table";
 import { FileText } from "lucide-react";
 import { XCircle } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { CheckCircle } from "lucide-react";
 
 interface CarerDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function CarerDetailPage({ params }: CarerDetailPageProps) {
+  const { id } = await params;
   const { userId, orgId } = await auth();
   if (!userId) redirect('/sign-in');
   const organizationId = orgId || '';
 
   const carer = await prisma.carer.findFirst({
-    where: { id: params.id, clerkUserId: userId, clerkOrganizationId: organizationId },
+    where: { id: id, clerkUserId: userId, clerkOrganizationId: organizationId },
   });
   if (!carer) notFound();
 
@@ -87,10 +85,6 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <Mail className="h-4 w-4 mr-2" />
-            Send Reminder
-          </Button>
           <Link href={`/compliance/carers/${carer.id}/edit`}>
             <Button>Edit Carer</Button>
           </Link>
@@ -342,26 +336,6 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
-                <Mail className="h-4 w-4 mr-2" />
-                Send Reminder
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Download className="h-4 w-4 mr-2" />
-                Export Report
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Calendar className="h-4 w-4 mr-2" />
-                Schedule Renewal
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

@@ -20,22 +20,23 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 interface IncidentReportDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function IncidentReportDetailPage({ params }: IncidentReportDetailPageProps) {
+  const { id } = await params;
   const { userId, orgId } = await auth()
   if (!userId || !orgId) notFound()
 
   const incident = await prisma.incidentReport.findFirst({
-    where: { id: params.id, clerkUserId: userId, clerkOrganizationId: orgId },
+    where: { id: id, clerkOrganizationId: orgId },
   })
   if (!incident) notFound()
 
   const animal = incident.animalId
-    ? await prisma.animal.findFirst({ where: { id: incident.animalId, clerkUserId: userId, clerkOrganizationId: orgId } })
+    ? await prisma.animal.findFirst({ where: { id: incident.animalId, clerkOrganizationId: orgId } })
     : null
 
   const getIncidentTypeColor = (type: string) => {
@@ -53,7 +54,6 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
     }
   };
 
-  const isCritical = incident.type === 'Escape' || incident.type === 'Injury';
 
   return (
     <div className="container mx-auto px-6 py-8 space-y-8">
@@ -84,7 +84,9 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
-          <Button>Edit Report</Button>
+          <Link href={`/compliance/incidents/${id}/edit`}>
+            <Button>Edit Report</Button>
+          </Link>
         </div>
       </div>
 
@@ -107,11 +109,22 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
                     <Badge variant={getIncidentTypeColor(incident.type)} className="text-sm">
                       {incident.type}
                     </Badge>
-                    {isCritical && (
-                      <Badge variant="destructive" className="text-xs">
-                        Critical
-                      </Badge>
-                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Severity</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge 
+                      variant={
+                        incident.severity === 'CRITICAL' ? 'destructive' : 
+                        incident.severity === 'HIGH' ? 'destructive' :
+                        incident.severity === 'MEDIUM' ? 'outline' : 
+                        'secondary'
+                      } 
+                      className="text-sm"
+                    >
+                      {incident.severity}
+                    </Badge>
                   </div>
                 </div>
                 <div>
@@ -295,15 +308,17 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Severity</span>
-                  {isCritical ? (
-                    <Badge variant="destructive" className="text-xs">
-                      Critical
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs">
-                      Standard
-                    </Badge>
-                  )}
+                  <Badge 
+                    variant={
+                      incident.severity === 'CRITICAL' ? 'destructive' : 
+                      incident.severity === 'HIGH' ? 'destructive' :
+                      incident.severity === 'MEDIUM' ? 'outline' : 
+                      'secondary'
+                    } 
+                    className="text-xs"
+                  >
+                    {incident.severity}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Reported to Authorities</span>
@@ -328,8 +343,15 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
               <Separator />
               
               <div className="text-center">
-                <div className={`text-2xl font-bold ${isCritical ? 'text-red-600' : 'text-orange-600'}`}>
-                  {isCritical ? 'High' : 'Medium'}
+                <div className={`text-2xl font-bold ${
+                  incident.severity === 'CRITICAL' ? 'text-red-600' : 
+                  incident.severity === 'HIGH' ? 'text-red-600' :
+                  incident.severity === 'MEDIUM' ? 'text-orange-600' : 
+                  'text-green-600'
+                }`}>
+                  {incident.severity === 'CRITICAL' ? 'Critical' : 
+                   incident.severity === 'HIGH' ? 'High' :
+                   incident.severity === 'MEDIUM' ? 'Medium' : 'Low'}
                 </div>
                 <div className="text-sm text-muted-foreground">Priority Level</div>
               </div>
@@ -384,41 +406,9 @@ export default async function IncidentReportDetailPage({ params }: IncidentRepor
                 <FileText className="h-4 w-4 mr-2" />
                 Print Report
               </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Calendar className="h-4 w-4 mr-2" />
-                Schedule Follow-up
-              </Button>
-              {!incident.reportedTo && (
-                <Button variant="destructive" className="w-full justify-start">
-                  <AlertTriangle className="h-4 w-4 mr-2" />
-                  Report to Authorities
-                </Button>
-              )}
             </CardContent>
           </Card>
 
-          {/* Critical Incident Alert */}
-          {isCritical && (
-            <Card className="border-red-200 bg-red-50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-800">
-                  <AlertTriangle className="h-5 w-5" />
-                  Critical Incident
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm text-red-800 space-y-2">
-                  <p>• This is a critical incident requiring immediate attention</p>
-                  <p>• Authorities must be notified within 1 hour</p>
-                  <p>• Follow-up investigation required</p>
-                  <p>• Review of procedures may be necessary</p>
-                </div>
-                <Button variant="outline" className="w-full mt-3" size="sm">
-                  Escalate Incident
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>

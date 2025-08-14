@@ -28,9 +28,9 @@ export default async function Home() {
 
   try {
     const [animals, species, carers] = await Promise.all([
-      getAnimals(userId, organizationId),
-      getSpecies(userId, organizationId),
-      getCarers(userId, organizationId),
+      getAnimals(organizationId),
+      getSpecies(organizationId),
+      getCarers(organizationId),
     ]);
 
     const showOnboarding = animals.length === 0 || species.length === 0;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import LocationMap from '@/components/location-map';
 
 export default function NewReleaseChecklistPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const jurisdiction = getCurrentJurisdiction();
   const complianceConfig = getJurisdictionComplianceConfig(jurisdiction);
   const { organization } = useOrganization();
@@ -27,8 +28,11 @@ export default function NewReleaseChecklistPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Get animalId from URL parameters if provided
+  const urlAnimalId = searchParams.get('animalId');
+
   // Form state with validation
-  const [selectedAnimalId, setSelectedAnimalId] = useState<string>('');
+  const [selectedAnimalId, setSelectedAnimalId] = useState<string>(urlAnimalId || '');
   const [releaseDate, setReleaseDate] = useState<string>('');
   const [releaseLocation, setReleaseLocation] = useState<{
     lat: number;
@@ -69,12 +73,19 @@ export default function NewReleaseChecklistPage() {
         const orgId = organization.id;
         const animalsData = await fetch(`/api/animals?orgId=${orgId}`).then(r => r.json());
         // Filter for animals that are suitable for release based on enum statuses
+        // If we have a specific animal ID from URL, include it regardless of status
         const availableAnimals = animalsData.filter((animal: any) =>
-          (animal.status === 'IN_CARE' || animal.status === 'READY_FOR_RELEASE') &&
+          (animal.id === urlAnimalId) ||
+          ((animal.status === 'IN_CARE' || animal.status === 'READY_FOR_RELEASE') &&
           animal.species &&
-          animal.name
+          animal.name)
         );
         setAnimals(availableAnimals);
+        
+        // If we have an animal ID from URL, set it as selected
+        if (urlAnimalId && !selectedAnimalId) {
+          setSelectedAnimalId(urlAnimalId);
+        }
       } catch (error) {
         console.error('Error loading animals:', error);
       } finally {
@@ -83,7 +94,7 @@ export default function NewReleaseChecklistPage() {
     };
 
     loadAnimals();
-  }, [organization]);
+  }, [organization, urlAnimalId]);
 
   const fitnessOptions = [
     'Good body condition',
@@ -157,12 +168,52 @@ export default function NewReleaseChecklistPage() {
         vetSignOff: complianceConfig.vetRequirements.signOffRequired ? vetSignOff : null,
         notes,
       };
-      await fetch('/api/release-checklists', {
+      const response = await fetch('/api/release-checklists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      router.push('/compliance/release-checklist');
+      
+      if (response.ok) {
+        // If we came from an animal detail page, complete the release process
+        if (urlAnimalId) {
+          // Update animal status to RELEASED and save release details
+          await fetch(`/api/animals/${urlAnimalId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              status: 'RELEASED',
+              dateReleased: new Date(releaseDate),
+              releaseLocation: releaseLocation!.address,
+              releaseCoordinates: { lat: releaseLocation!.lat, lng: releaseLocation!.lng },
+              releaseNotes: notes || 'Released after completing checklist',
+              outcome: 'Successfully released',
+              outcomeDate: new Date(releaseDate)
+            }),
+          });
+          
+          // Create a release record to track in the timeline
+          await fetch('/api/records', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              animalId: urlAnimalId,
+              type: 'RELEASE',
+              date: releaseDate,
+              description: `Animal released at ${releaseLocation!.address}`,
+              location: releaseLocation!.address,
+              notes: notes || 'Released after completing compliance checklist'
+            }),
+          });
+          
+          // Redirect back to the animal detail page
+          router.push(`/animals/${urlAnimalId}`);
+        } else {
+          router.push('/compliance/release-checklist');
+        }
+      } else {
+        throw new Error('Failed to save release checklist');
+      }
     } catch (error) {
       console.error('Error saving release checklist:', error);
       alert('Error saving release checklist');

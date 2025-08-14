@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { updateAnimal, deleteAnimal } from '@/lib/database'
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { userId, orgId: activeOrgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const id = params.id
+  const { id } = await params
   const body = await request.json()
   const requestedOrgId = body.clerkOrganizationId || activeOrgId || undefined
   if (!requestedOrgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
@@ -18,10 +18,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const id = params.id
+  const { id } = await params
   try {
     await deleteAnimal(id)
     return NextResponse.json({ ok: true })

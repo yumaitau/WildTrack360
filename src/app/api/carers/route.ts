@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 	const orgId = searchParams.get('orgId') || activeOrgId || undefined
 	try {
 		if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
-		const carers = await getCarers(userId, orgId)
+		const carers = await getCarers(orgId)
 		return NextResponse.json(carers)
 	} catch {
 		return NextResponse.json({ error: 'Failed to fetch carers' }, { status: 500 })
@@ -38,7 +38,7 @@ export async function PATCH(request: Request) {
 	try {
 		if (!orgId || (activeOrgId && orgId !== activeOrgId)) return NextResponse.json({ error: !orgId ? 'Organization ID is required' : 'Forbidden' }, { status: !orgId ? 400 : 403 })
 		const updated = await prisma.carer.updateMany({
-			where: { name: oldName, clerkUserId: userId, clerkOrganizationId: orgId || 'default-org' },
+			where: { name: oldName, clerkOrganizationId: orgId || 'default-org' },
 			data: { name: newName }
 		})
 		return NextResponse.json({ count: updated.count })
@@ -54,7 +54,7 @@ export async function DELETE(request: Request) {
 	try {
 		if (!orgId || (activeOrgId && orgId !== activeOrgId)) return NextResponse.json({ error: !orgId ? 'Organization ID is required' : 'Forbidden' }, { status: !orgId ? 400 : 403 })
 		const deleted = await prisma.carer.deleteMany({
-			where: { name, clerkUserId: userId, clerkOrganizationId: orgId || 'default-org' }
+			where: { name, clerkOrganizationId: orgId || 'default-org' }
 		})
 		return NextResponse.json({ count: deleted.count })
 	} catch {

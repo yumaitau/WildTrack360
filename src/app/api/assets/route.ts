@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 	const orgId = searchParams.get('orgId') || activeOrgId || undefined
 	try {
 		if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
-		const assets = await getAssets(userId, orgId)
+		const assets = await getAssets(orgId)
 		return NextResponse.json(assets)
 	} catch (e) {
 		return NextResponse.json({ error: 'Failed to fetch assets' }, { status: 500 })

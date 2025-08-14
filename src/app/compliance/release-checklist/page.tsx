@@ -5,26 +5,31 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle, MapPin, Calendar, Download, Plus, AlertTriangle, ArrowLeft } from "lucide-react";
-import { useOrganization } from '@clerk/nextjs';
 import Link from "next/link";
+import { useOrganization } from '@clerk/nextjs';
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';
+import { getCurrentJurisdiction, getJurisdictionConfig } from '@/lib/config';
 
 export default function ReleaseChecklistPage() {
-  const [data, setData] = useState<any>(null);
+  const [releaseChecklists, setReleaseChecklists] = useState<any[]>([]);
+  const [animals, setAnimals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { organization } = useOrganization();
+  const jurisdiction = getCurrentJurisdiction();
+  const config = getJurisdictionConfig();
 
   useEffect(() => {
     async function loadData() {
       try {
         if (!organization) return;
         const orgId = organization.id;
-        const [releaseChecklists, animals] = await Promise.all([
+        const [checklists, animalsData] = await Promise.all([
           fetch(`/api/release-checklists?orgId=${orgId}`).then(r => r.json()),
           fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
         ]);
-        setData({ releaseChecklists, animals });
+        setReleaseChecklists(checklists);
+        setAnimals(animalsData);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -39,32 +44,136 @@ export default function ReleaseChecklistPage() {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading release data...</div>
+          <div className="text-lg">Loading release checklists...</div>
         </div>
       </div>
     );
   }
-
-  if (!data) {
-    return (
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-red-600">Error loading data</div>
-        </div>
-      </div>
-    );
-  }
-
-  const { releaseChecklists, animals } = data;
 
   const getAnimalName = (animalId: string) => {
-    const animal = animals.find((a: any) => a.id === animalId);
-    return animal?.name || 'Unknown';
+    const animal = animals.find(a => a.id === animalId);
+    return animal ? animal.name : 'Unknown Animal';
   };
 
   const getAnimalSpecies = (animalId: string) => {
-    const animal = animals.find((a: any) => a.id === animalId);
-    return animal?.species || 'Unknown';
+    const animal = animals.find(a => a.id === animalId);
+    return animal ? animal.species : 'Unknown Species';
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
+      'PENDING': 'outline',
+      'COMPLETED': 'default',
+      'CANCELLED': 'destructive'
+    };
+    
+    return (
+      <Badge variant={variants[status] || 'outline'}>
+        {status}
+      </Badge>
+    );
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    let yPosition = 20;
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${jurisdiction} Release Checklists`, pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 15;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 20;
+    
+    // Summary
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Summary', margin, yPosition);
+    
+    yPosition += 10;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    
+    const total = releaseChecklists.length;
+    const completed = releaseChecklists.filter((c: any) => c.completed).length;
+    const pending = total - completed;
+    
+    doc.text(`Total Checklists: ${total}`, margin + 10, yPosition);
+    yPosition += 7;
+    doc.text(`Completed: ${completed}`, margin + 10, yPosition);
+    yPosition += 7;
+    doc.text(`Pending: ${pending}`, margin + 10, yPosition);
+    
+    yPosition += 15;
+    
+    // Table
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Release Checklists', margin, yPosition);
+    
+    yPosition += 10;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    
+    const headers = ['Animal', 'Species', 'Release Date', 'Location', 'Status'];
+    const colWidths = [40, 35, 30, 40, 25];
+    let xPos = margin;
+    
+    headers.forEach((header, index) => {
+      doc.setFont('helvetica', 'bold');
+      doc.text(header, xPos, yPosition);
+      xPos += colWidths[index];
+    });
+    
+    yPosition += 5;
+    
+    releaseChecklists.slice(0, 20).forEach((checklist: any) => {
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      xPos = margin;
+      doc.setFont('helvetica', 'normal');
+      doc.text(getAnimalName(checklist.animalId), xPos, yPosition);
+      xPos += colWidths[0];
+      doc.text(getAnimalSpecies(checklist.animalId), xPos, yPosition);
+      xPos += colWidths[1];
+      doc.text(formatDate(checklist.releaseDate), xPos, yPosition);
+      xPos += colWidths[2];
+      doc.text(checklist.releaseLocation.substring(0, 25), xPos, yPosition);
+      xPos += colWidths[3];
+      doc.text(checklist.completed ? 'Completed' : 'Pending', xPos, yPosition);
+      
+      yPosition += 5;
+    });
+    
+    if (releaseChecklists.length > 20) {
+      yPosition += 5;
+      doc.text(`... and ${releaseChecklists.length - 20} more entries`, margin, yPosition);
+    }
+    
+    // Footer
+    doc.addPage();
+    yPosition = 20;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'italic');
+    doc.text(`This report was generated automatically by WildTrack360 Compliance System.`, margin, yPosition);
+    yPosition += 7;
+    doc.text('For questions or concerns, please contact your compliance coordinator.', margin, yPosition);
+    
+    doc.save(`${jurisdiction.toLowerCase()}-release-checklists-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (
@@ -77,155 +186,16 @@ export default function ReleaseChecklistPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">Release Site Checklist</h1>
+            <h1 className="text-3xl font-bold">{jurisdiction} Release Checklists</h1>
             <p className="text-muted-foreground">
-              Section 6.1 – 6.3 - Ensure ethical and ecologically sound releases
+              Manage and track wildlife release procedures
             </p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button 
             variant="outline"
-            onClick={() => {
-              // Generate CSV export
-              const csvContent = [
-                ['Animal', 'Species', 'Release Date', 'Release Location', 'Distance Check', 'Release Type', 'Fitness Indicators', 'Vet Sign-off'],
-                ...releaseChecklists.map((checklist: any) => [
-                  getAnimalName(checklist.animalId),
-                  getAnimalSpecies(checklist.animalId),
-                  checklist.releaseDate,
-                  checklist.releaseLocation,
-                  checklist.within10km ? 'Within 10km' : 'Outside 10km',
-                  checklist.releaseType,
-                  checklist.fitnessIndicators.join('; '),
-                  `${checklist.vetSignOff.name} (${checklist.vetSignOff.date})`
-                ])
-              ].map(row => row.join(',')).join('\n');
-              
-              const blob = new Blob([csvContent], { type: 'text/csv' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `release-checklists-${new Date().toISOString().split('T')[0]}.csv`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            }}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={() => {
-              // Generate PDF export
-              const doc = new jsPDF();
-              const pageWidth = doc.internal.pageSize.getWidth();
-              const margin = 20;
-              let yPosition = 20;
-              
-              // Header
-              doc.setFontSize(20);
-              doc.setFont('helvetica', 'bold');
-              doc.text('Release Site Checklist Report', pageWidth / 2, yPosition, { align: 'center' });
-              
-              yPosition += 15;
-              doc.setFontSize(12);
-              doc.setFont('helvetica', 'normal');
-              doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
-              
-              yPosition += 20;
-              
-              // Statistics
-              doc.setFontSize(14);
-              doc.setFont('helvetica', 'bold');
-              doc.text('Summary Statistics', margin, yPosition);
-              
-              yPosition += 10;
-              doc.setFontSize(10);
-              doc.setFont('helvetica', 'normal');
-              
-              const totalReleases = releaseChecklists.length;
-              const within10km = releaseChecklists.filter((r: any) => r.within10km).length;
-              const softReleases = releaseChecklists.filter((r: any) => r.releaseType === 'Soft').length;
-              const hardReleases = releaseChecklists.filter((r: any) => r.releaseType === 'Hard').length;
-              
-              doc.text(`Total Releases: ${totalReleases}`, margin + 10, yPosition);
-              yPosition += 7;
-              doc.text(`Within 10km: ${within10km}`, margin + 10, yPosition);
-              yPosition += 7;
-              doc.text(`Soft Releases: ${softReleases}`, margin + 10, yPosition);
-              yPosition += 7;
-              doc.text(`Hard Releases: ${hardReleases}`, margin + 10, yPosition);
-              
-              yPosition += 15;
-              
-              // Release entries table
-              doc.setFontSize(14);
-              doc.setFont('helvetica', 'bold');
-              doc.text('Release Checklists', margin, yPosition);
-              
-              yPosition += 10;
-              doc.setFontSize(8);
-              doc.setFont('helvetica', 'normal');
-              
-              // Table headers
-              const headers = ['Animal', 'Species', 'Date', 'Location', 'Distance', 'Type', 'Vet'];
-              const colWidths = [30, 25, 25, 40, 20, 20, 30];
-              let xPos = margin;
-              
-              headers.forEach((header, index) => {
-                doc.setFont('helvetica', 'bold');
-                doc.text(header, xPos, yPosition);
-                xPos += colWidths[index];
-              });
-              
-              yPosition += 5;
-              
-              // Table data
-              releaseChecklists.slice(0, 20).forEach((checklist: any) => {
-                if (yPosition > 250) {
-                  doc.addPage();
-                  yPosition = 20;
-                }
-                
-                xPos = margin;
-                doc.setFont('helvetica', 'normal');
-                doc.text(getAnimalName(checklist.animalId), xPos, yPosition);
-                xPos += colWidths[0];
-                doc.text(getAnimalSpecies(checklist.animalId), xPos, yPosition);
-                xPos += colWidths[1];
-                doc.text(checklist.releaseDate, xPos, yPosition);
-                xPos += colWidths[2];
-                doc.text(checklist.releaseLocation.substring(0, 25), xPos, yPosition);
-                xPos += colWidths[3];
-                doc.text(checklist.within10km ? 'Within 10km' : 'Outside', xPos, yPosition);
-                xPos += colWidths[4];
-                doc.text(checklist.releaseType, xPos, yPosition);
-                xPos += colWidths[5];
-                doc.text(checklist.vetSignOff.name, xPos, yPosition);
-                
-                yPosition += 5;
-              });
-              
-              if (releaseChecklists.length > 20) {
-                yPosition += 5;
-                doc.text(`... and ${releaseChecklists.length - 20} more entries`, margin, yPosition);
-              }
-              
-              // Footer
-              doc.addPage();
-              yPosition = 20;
-              doc.setFontSize(10);
-              doc.setFont('helvetica', 'italic');
-              doc.text('This report was generated automatically by WildTrack360 Compliance System.', margin, yPosition);
-              yPosition += 7;
-              doc.text('For questions or concerns, please contact your compliance coordinator.', margin, yPosition);
-              
-              // Save the PDF
-              doc.save(`release-checklists-${new Date().toISOString().split('T')[0]}.pdf`);
-            }}
+            onClick={exportToPDF}
           >
             <Download className="h-4 w-4 mr-2" />
             Export PDF
@@ -233,7 +203,7 @@ export default function ReleaseChecklistPage() {
           <Link href="/compliance/release-checklist/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              New Release
+              New Checklist
             </Button>
           </Link>
         </div>
@@ -244,31 +214,31 @@ export default function ReleaseChecklistPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">{releaseChecklists.length}</div>
-            <div className="text-sm text-muted-foreground">Total Releases</div>
+            <div className="text-sm text-muted-foreground">Total Checklists</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">
-              {releaseChecklists.filter((r: any) => r.within10km).length}
+              {releaseChecklists.filter((c: any) => c.completed).length}
             </div>
-            <div className="text-sm text-muted-foreground">Within 10km</div>
+            <div className="text-sm text-muted-foreground">Completed</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-blue-600">
-              {releaseChecklists.filter((r: any) => r.releaseType === 'Soft').length}
+              {releaseChecklists.filter((c: any) => !c.completed).length}
             </div>
-            <div className="text-sm text-muted-foreground">Soft Releases</div>
+            <div className="text-sm text-muted-foreground">Pending</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-orange-600">
-              {releaseChecklists.filter((r: any) => r.releaseType === 'Hard').length}
+              {releaseChecklists.filter((c: any) => c.within10km).length}
             </div>
-            <div className="text-sm text-muted-foreground">Hard Releases</div>
+            <div className="text-sm text-muted-foreground">Within 10km</div>
           </CardContent>
         </Card>
       </div>
@@ -278,7 +248,7 @@ export default function ReleaseChecklistPage() {
         <CardHeader>
           <CardTitle>Release Checklists</CardTitle>
           <CardDescription>
-            Complete record of all wildlife releases with compliance verification
+            Track the status of all release procedures
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -289,10 +259,8 @@ export default function ReleaseChecklistPage() {
                 <TableHead>Species</TableHead>
                 <TableHead>Release Date</TableHead>
                 <TableHead>Release Location</TableHead>
-                <TableHead>Distance Check</TableHead>
-                <TableHead>Release Type</TableHead>
-                <TableHead>Fitness Indicators</TableHead>
-                <TableHead>Vet Sign-off</TableHead>
+                <TableHead>Distance</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -303,53 +271,17 @@ export default function ReleaseChecklistPage() {
                     {getAnimalName(checklist.animalId)}
                   </TableCell>
                   <TableCell>{getAnimalSpecies(checklist.animalId)}</TableCell>
-                  <TableCell>{checklist.releaseDate}</TableCell>
+                  <TableCell>{formatDate(checklist.releaseDate)}</TableCell>
                   <TableCell className="max-w-[200px] truncate">
                     {checklist.releaseLocation}
                   </TableCell>
                   <TableCell>
-                    {checklist.within10km ? (
-                      <Badge variant="secondary" className="text-xs">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Within 10km
-                      </Badge>
-                    ) : (
-                      <Badge variant="destructive" className="text-xs">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Outside 10km
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={
-                        checklist.releaseType === 'Soft' ? 'default' :
-                        checklist.releaseType === 'Hard' ? 'secondary' : 'outline'
-                      }
-                      className="text-xs"
-                    >
-                      {checklist.releaseType}
+                    <Badge variant={checklist.within10km ? "default" : "secondary"}>
+                      {checklist.within10km ? "Within 10km" : "Outside 10km"}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {checklist.fitnessIndicators.slice(0, 2).map((indicator: any, index: any) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {indicator}
-                        </Badge>
-                      ))}
-                      {checklist.fitnessIndicators.length > 2 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{checklist.fitnessIndicators.length - 2} more
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-xs">
-                      <div className="font-medium">{checklist.vetSignOff.name}</div>
-                      <div className="text-muted-foreground">{checklist.vetSignOff.date}</div>
-                    </div>
+                    {getStatusBadge(checklist.completed ? 'COMPLETED' : 'PENDING')}
                   </TableCell>
                   <TableCell>
                     <Link href={`/compliance/release-checklist/${checklist.id}`}>
@@ -365,7 +297,7 @@ export default function ReleaseChecklistPage() {
         </CardContent>
       </Card>
 
-      {/* Compliance Requirements */}
+      {/* Requirements Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -390,7 +322,7 @@ export default function ReleaseChecklistPage() {
               <div className="text-sm text-muted-foreground">
                 <p>GPS coordinates are automatically checked against rescue location.</p>
                 <p className="mt-2">
-                  <strong>Current ACT Policy:</strong> Releases within 10km are preferred, 
+                  <strong>Current {jurisdiction} Policy:</strong> Releases within 10km are preferred, 
                   exceptions require documented justification.
                 </p>
               </div>
@@ -422,7 +354,7 @@ export default function ReleaseChecklistPage() {
                 <p><strong>Required for:</strong></p>
                 <ul className="mt-1 space-y-1">
                   <li>• Juvenile animals</li>
-                                     <li>• Animals in care &gt; 30 days</li>
+                  <li>• Animals in care &gt; 30 days</li>
                   <li>• Animals with previous injuries</li>
                   <li>• Endangered species</li>
                 </ul>

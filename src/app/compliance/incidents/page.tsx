@@ -163,13 +163,13 @@ export default function IncidentReportsPage() {
               doc.setFont('helvetica', 'normal');
               
               const totalIncidents = incidentReports.length;
-              const criticalIncidents = incidentReports.filter((i: any) => i.type === 'Escape' || i.type === 'Injury').length;
+              const criticalIncidents = incidentReports.filter((i: any) => i.severity === 'CRITICAL' || i.severity === 'HIGH').length;
               const diseaseOutbreaks = incidentReports.filter((i: any) => i.type === 'Disease Outbreak').length;
               const handlingIssues = incidentReports.filter((i: any) => i.type === 'Improper Handling').length;
               
               doc.text(`Total Incidents: ${totalIncidents}`, margin + 10, yPosition);
               yPosition += 7;
-              doc.text(`Critical Incidents: ${criticalIncidents}`, margin + 10, yPosition);
+              doc.text(`High/Critical Severity: ${criticalIncidents}`, margin + 10, yPosition);
               yPosition += 7;
               doc.text(`Disease Outbreaks: ${diseaseOutbreaks}`, margin + 10, yPosition);
               yPosition += 7;
@@ -262,9 +262,9 @@ export default function IncidentReportsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-red-600">
-              {incidentReports.filter((i: any) => i.type === 'Escape' || i.type === 'Injury').length}
+              {incidentReports.filter((i: any) => i.severity === 'CRITICAL' || i.severity === 'HIGH').length}
             </div>
-            <div className="text-sm text-muted-foreground">Critical Incidents</div>
+            <div className="text-sm text-muted-foreground">High/Critical Severity</div>
           </CardContent>
         </Card>
         <Card>
@@ -355,52 +355,6 @@ export default function IncidentReportsPage() {
         </CardContent>
       </Card>
 
-      {/* Recent Critical Incidents */}
-      {incidentReports.filter((i: any) => i.type === 'Escape' || i.type === 'Injury').length > 0 && (
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-800">
-              <AlertTriangle className="h-5 w-5" />
-              Recent Critical Incidents
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {incidentReports
-                .filter((i: any) => i.type === 'Escape' || i.type === 'Injury')
-                .slice(0, 3)
-                .map((incident: any) => (
-                  <div key={incident.id} className="p-4 bg-white rounded border">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="destructive" className="text-xs">
-                            {incident.type}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">{incident.date}</span>
-                        </div>
-                        <h4 className="font-medium mb-1">
-                          {incident.animalId ? getAnimalName(incident.animalId) : 'General Incident'}
-                        </h4>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {incident.description}
-                        </p>
-                        <div className="text-xs text-muted-foreground">
-                          <span className="font-medium">Action taken:</span> {incident.actionTaken}
-                        </div>
-                      </div>
-                      <Link href={`/compliance/incidents/${incident.id}`}>
-                        <Button variant="outline" size="sm">
-                          View Details
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Compliance Requirements */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -473,20 +427,32 @@ export default function IncidentReportsPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h4 className="font-semibold mb-2">Critical Incidents</h4>
+              <h4 className="font-semibold mb-2">Severity Levels</h4>
               <div className="space-y-3">
                 <div>
-                  <Badge variant="destructive" className="mb-1">Escape</Badge>
+                  <Badge variant="destructive" className="mb-1">CRITICAL</Badge>
                   <p className="text-sm text-muted-foreground">
-                    Any animal escaping from care or enclosure. Requires immediate 
-                    notification and search procedures.
+                    Emergency situations requiring immediate action and notification 
+                    to authorities.
                   </p>
                 </div>
                 <div>
-                  <Badge variant="destructive" className="mb-1">Injury</Badge>
+                  <Badge variant="destructive" className="mb-1">HIGH</Badge>
                   <p className="text-sm text-muted-foreground">
-                    Injuries to animals in care or humans during handling. 
-                    Includes both minor and serious injuries.
+                    Serious incidents requiring immediate attention and follow-up 
+                    within 24 hours.
+                  </p>
+                </div>
+                <div>
+                  <Badge variant="outline" className="mb-1">MEDIUM</Badge>
+                  <p className="text-sm text-muted-foreground">
+                    Incidents requiring attention within 24-48 hours.
+                  </p>
+                </div>
+                <div>
+                  <Badge variant="secondary" className="mb-1">LOW</Badge>
+                  <p className="text-sm text-muted-foreground">
+                    Minor issues that should be addressed but don't require immediate action.
                   </p>
                 </div>
               </div>

@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 	try {
 		if (!requestedOrgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
 		if (activeOrgId && requestedOrgId !== activeOrgId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-		const animals = await getAnimals(userId, requestedOrgId)
+		const animals = await getAnimals(requestedOrgId)
 		return NextResponse.json(animals)
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Failed to fetch animals'

@@ -12,18 +12,22 @@ export default async function CarerManagementPage() {
   const { userId, orgId } = await auth();
   if (!userId) redirect('/sign-in');
   const organizationId = orgId || '';
-  const carers = await getCarers(userId, organizationId);
+  const carers = await getCarers(organizationId);
 
-  const getDaysUntilExpiry = (expiryDate: string) => {
+  const getDaysUntilExpiry = (expiryDate: string | null | undefined) => {
+    if (!expiryDate) return null;
     const today = new Date();
     const expiry = new Date(expiryDate);
+    if (isNaN(expiry.getTime())) return null;
     const diffTime = expiry.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
 
-  const getExpiryStatus = (expiryDate: string) => {
+  const getExpiryStatus = (expiryDate: string | null | undefined) => {
+    if (!expiryDate) return 'no-license';
     const daysUntil = getDaysUntilExpiry(expiryDate);
+    if (daysUntil === null) return 'no-license';
     if (daysUntil < 0) return 'expired';
     if (daysUntil <= 30) return 'expiring-soon';
     return 'valid';
@@ -75,7 +79,7 @@ export default async function CarerManagementPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">
-              {carers.filter((c: any) => getExpiryStatus(c.licenceExpiry || '') === 'valid').length}
+              {carers.filter((c: any) => getExpiryStatus(c.licenseExpiry) === 'valid').length}
             </div>
             <div className="text-sm text-muted-foreground">Valid Licences</div>
           </CardContent>
@@ -83,7 +87,7 @@ export default async function CarerManagementPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-orange-600">
-              {carers.filter((c: any) => getExpiryStatus(c.licenceExpiry || '') === 'expiring-soon').length}
+              {carers.filter((c: any) => getExpiryStatus(c.licenseExpiry) === 'expiring-soon').length}
             </div>
             <div className="text-sm text-muted-foreground">Expiring Soon</div>
           </CardContent>
@@ -91,7 +95,7 @@ export default async function CarerManagementPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-red-600">
-              {carers.filter((c: any) => getExpiryStatus(c.licenceExpiry || '') === 'expired').length}
+              {carers.filter((c: any) => getExpiryStatus(c.licenseExpiry) === 'expired').length}
             </div>
             <div className="text-sm text-muted-foreground">Expired</div>
           </CardContent>
@@ -121,8 +125,8 @@ export default async function CarerManagementPage() {
             </TableHeader>
             <TableBody>
               {carers.map((carer: any) => {
-                const expiryStatus = getExpiryStatus(carer.licenceExpiry || '');
-                const daysUntil = getDaysUntilExpiry(carer.licenceExpiry || '');
+                const expiryStatus = getExpiryStatus(carer.licenseExpiry);
+                const daysUntil = getDaysUntilExpiry(carer.licenseExpiry);
                 
                 return (
                   <TableRow key={carer.id}>
@@ -137,8 +141,8 @@ export default async function CarerManagementPage() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div>{carer.licenceExpiry}</div>
-                        {expiryStatus !== 'valid' && (
+                        <div>{carer.licenseExpiry || 'No license recorded'}</div>
+                        {expiryStatus !== 'valid' && expiryStatus !== 'no-license' && daysUntil !== null && (
                           <div className="text-sm text-muted-foreground">
                             {expiryStatus === 'expired' 
                               ? `${Math.abs(daysUntil)} days overdue`
@@ -149,7 +153,11 @@ export default async function CarerManagementPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {expiryStatus === 'valid' ? (
+                      {expiryStatus === 'no-license' ? (
+                        <Badge variant="outline" className="text-xs">
+                          No License
+                        </Badge>
+                      ) : expiryStatus === 'valid' ? (
                         <Badge variant="secondary" className="text-xs">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Valid
@@ -168,24 +176,32 @@ export default async function CarerManagementPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {carer.authorisedSpecies.slice(0, 2).map((species: any, index: any) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {species}
-                          </Badge>
-                        ))}
-                        {carer.specialties.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{carer.specialties.length - 2} more
-                          </Badge>
+                        {carer.specialties && carer.specialties.length > 0 ? (
+                          <>
+                            {carer.specialties.slice(0, 2).map((specialty: any, index: any) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {specialty}
+                              </Badge>
+                            ))}
+                            {carer.specialties.length > 2 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{carer.specialties.length - 2} more
+                              </Badge>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">No specialties</span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div>{carer.trainings.length} courses</div>
-                        <div className="text-muted-foreground">
-                          Latest: {carer.trainings[0]?.courseName}
-                        </div>
+                        <div>{carer.trainings?.length || 0} courses</div>
+                        {carer.trainings && carer.trainings.length > 0 && (
+                          <div className="text-muted-foreground">
+                            Latest: {carer.trainings[0]?.courseName || 'Unknown'}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -211,7 +227,7 @@ export default async function CarerManagementPage() {
       </Card>
 
       {/* Alerts for Expiring Licences */}
-      {carers.filter((c: any) => getExpiryStatus(c.licenceExpiry || '') === 'expiring-soon').length > 0 && (
+      {carers.filter((c: any) => getExpiryStatus(c.licenseExpiry) === 'expiring-soon').length > 0 && (
         <Card className="border-orange-200 bg-orange-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-orange-800">
@@ -222,13 +238,13 @@ export default async function CarerManagementPage() {
           <CardContent>
             <div className="space-y-2">
               {carers
-                .filter((c: any) => getExpiryStatus(c.licenceExpiry || '') === 'expiring-soon')
+                .filter((c: any) => getExpiryStatus(c.licenseExpiry) === 'expiring-soon')
                 .map((carer: any) => (
                   <div key={carer.id} className="flex items-center justify-between p-2 bg-white rounded">
                     <div>
                       <span className="font-medium">{carer.fullName}</span>
                       <span className="text-muted-foreground ml-2">
-                        expires {carer.licenceExpiry} ({getDaysUntilExpiry(carer.licenceExpiry || '')} days)
+                        expires {carer.licenseExpiry} ({getDaysUntilExpiry(carer.licenseExpiry)} days)
                       </span>
                     </div>
                     <Button variant="outline" size="sm">
