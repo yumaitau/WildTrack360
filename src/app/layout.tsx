@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ClerkProvider } from '@clerk/nextjs';
-import { NavigationProgress } from '@/components/navigation-progress';
-import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'WildTrack360',
@@ -23,9 +21,6 @@ export default function RootLayout({
           <link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
         </head>
         <body className="font-body antialiased min-h-screen">
-          <Suspense fallback={null}>
-            <NavigationProgress />
-          </Suspense>
           {children}
         </body>
       </html>
