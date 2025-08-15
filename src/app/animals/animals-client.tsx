@@ -2,20 +2,12 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PawPrint, PlusCircle, ArrowLeft, List, LayoutGrid, Search } from 'lucide-react';
+import { PawPrint, PlusCircle, ArrowLeft, List, LayoutGrid } from 'lucide-react';
 import { Animal } from '@/lib/types';
 import { AnimalTable } from '@/components/animal-table';
 import { useState, useEffect } from 'react';
 import { AddAnimalDialog } from '@/components/add-animal-dialog';
 import AnimalCard from '@/components/animal-card';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 import { useUser, useOrganization } from '@clerk/nextjs';
 
 interface AnimalsClientProps {
@@ -31,9 +23,6 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [animalToEdit, setAnimalToEdit] = useState<Animal | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [speciesFilter, setSpeciesFilter] = useState<string>('all');
   const { user } = useUser();
   const { organization } = useOrganization();
   // Load data via API on component mount/org change
@@ -175,14 +164,6 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
     };
     await refreshData();
   };
-  
-  const filteredAnimals = animals.filter(animal => {
-    const matchesSearch = animal.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          animal.species.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || animal.status === statusFilter;
-    const matchesSpecies = speciesFilter === 'all' || animal.species === speciesFilter;
-    return matchesSearch && matchesStatus && matchesSpecies;
-  });
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -215,72 +196,34 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
 
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          {/* Filters and Search */}
-          <div className="bg-card p-6 rounded-lg shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input 
-                  placeholder="Search animals..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="In Care">In Care</SelectItem>
-                  <SelectItem value="Released">Released</SelectItem>
-                  <SelectItem value="Deceased">Deceased</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={speciesFilter} onValueChange={setSpeciesFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by species" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Species</SelectItem>
-                  {speciesList.map(species => (
-                    <SelectItem key={species} value={species}>{species}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={() => setViewMode('grid')}>
-                  <LayoutGrid className={viewMode === 'grid' ? 'text-primary' : ''}/>
-                </Button>
-                <Button variant="outline" size="icon" onClick={() => setViewMode('table')}>
-                  <List className={viewMode === 'table' ? 'text-primary' : ''}/>
-                </Button>
-              </div>
+          {/* View Mode Toggle */}
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Animals</h2>
+            <div className="flex items-center gap-2">
+              <Button variant={viewMode === 'grid' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('grid')}>
+                <LayoutGrid className="h-4 w-4"/>
+              </Button>
+              <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('table')}>
+                <List className="h-4 w-4"/>
+              </Button>
             </div>
           </div>
 
-          {/* Results Summary */}
-          <div className="flex justify-between items-center">
-            <p className="text-muted-foreground">
-              Showing {filteredAnimals.length} of {animals.length} animals
-            </p>
-          </div>
 
           {/* Animal Records */}
           {viewMode === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredAnimals.map(animal => (
+              {animals.map(animal => (
                 <AnimalCard key={animal.id} animal={animal} />
               ))}
             </div>
           ) : (
             <div className="bg-card rounded-lg shadow-sm">
-              <AnimalTable animals={filteredAnimals} onEdit={handleOpenEditDialog} />
+              <AnimalTable animals={animals} onEdit={handleOpenEditDialog} />
             </div>
           )}
 
-          {filteredAnimals.length === 0 && (
+          {animals.length === 0 && (
             <div className="text-center py-12">
               <PawPrint className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-muted-foreground mb-2">No animals found</h3>

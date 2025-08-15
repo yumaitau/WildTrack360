@@ -80,6 +80,10 @@ export function AnimalTable({ animals, onEdit }: AnimalTableProps) {
         )
       },
       cell: ({ row }) => <Link className="font-medium text-primary hover:underline" href={`/animals/${row.original.id}`}>{row.getValue("name")}</Link>,
+      filterFn: (row, id, value) => {
+        const rowValue = row.getValue(id) as string;
+        return rowValue.toLowerCase().includes(value.toLowerCase());
+      },
     },
     {
       accessorKey: "species",
@@ -95,13 +99,18 @@ export function AnimalTable({ animals, onEdit }: AnimalTableProps) {
         )
       },
       cell: ({ row }) => <div>{row.getValue("species")}</div>,
+      filterFn: (row, id, value) => {
+        if (!value || value === "all") return true;
+        return row.getValue(id) === value;
+      },
     },
     {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
       filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id))
+        if (!value || value === "all") return true;
+        return row.getValue(id) === value;
       },
     },
     {
@@ -183,9 +192,19 @@ export function AnimalTable({ animals, onEdit }: AnimalTableProps) {
     },
   })
 
-  const statusOptions: ("ADMITTED"|"IN_CARE"|"READY_FOR_RELEASE"|"RELEASED"|"DECEASED"|"TRANSFERRED")[] = [
-    "ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED"
+  const statusOptions = [
+    { value: "IN_CARE", label: "In Care" },
+    { value: "READY_FOR_RELEASE", label: "Ready for Release" },
+    { value: "RELEASED", label: "Released" },
+    { value: "DECEASED", label: "Deceased" },
+    { value: "TRANSFERRED", label: "Transferred" },
   ];
+
+  // Get unique species from animals
+  const speciesOptions = React.useMemo(() => {
+    const uniqueSpecies = Array.from(new Set(animals.map(a => a.species).filter(Boolean)));
+    return uniqueSpecies.sort();
+  }, [animals]);
 
   return (
     <div className="w-full">
@@ -215,8 +234,30 @@ export function AnimalTable({ animals, onEdit }: AnimalTableProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            {statusOptions.map((status) => (
-                <SelectItem key={status} value={status}>{status}</SelectItem>
+            {statusOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+            value={
+                (table.getColumn("species")?.getFilterValue() as string) ?? "all"
+            }
+            onValueChange={(value) => {
+                if (value === "all") {
+                    table.getColumn("species")?.setFilterValue(undefined);
+                } else {
+                    table.getColumn("species")?.setFilterValue(value);
+                }
+            }}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by species" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Species</SelectItem>
+            {speciesOptions.map((species) => (
+                <SelectItem key={species} value={species}>{species}</SelectItem>
             ))}
           </SelectContent>
         </Select>
