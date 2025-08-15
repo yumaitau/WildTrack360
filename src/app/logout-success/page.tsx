@@ -49,12 +49,6 @@ export default function LogoutSuccessPage() {
             </div>
             
             <div className="pt-4 space-y-3">
-              <SignInButton mode="modal" forceRedirectUrl="/">
-                <Button className="w-full" size="lg">
-                  Sign In Again
-                </Button>
-              </SignInButton>
-              
               <Link href="/landing" className="block">
                 <Button variant="outline" className="w-full" size="lg">
                   <ArrowLeft className="h-4 w-4 mr-2" />

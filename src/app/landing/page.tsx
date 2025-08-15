@@ -1,12 +1,13 @@
 "use client";
 
-import { SignInButton, SignUpButton, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { PawPrint, Shield, BarChart3, Users, CheckCircle, ArrowRight } from "lucide-react";
+import { PawPrint, Shield, BarChart3, Users, CheckCircle, LogIn } from "lucide-react";
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -30,18 +31,12 @@ export default function LandingPage() {
                 WildTrack360
               </h1>
             </div>
-            <div className="flex items-center gap-3">
-              <SignInButton mode="modal" forceRedirectUrl="/">
-                <Button variant="outline" size="lg">
-                  Sign In
-                </Button>
-              </SignInButton>
-              <SignUpButton mode="modal" forceRedirectUrl="/">
-                <Button size="lg">
-                  Get Started
-                </Button>
-              </SignUpButton>
-            </div>
+            <Link href="/sign-in">
+              <Button size="lg">
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -74,22 +69,17 @@ export default function LandingPage() {
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
-            <SignUpButton mode="modal" forceRedirectUrl="/">
-              <Button size="lg" className="text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all">
-                Start Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </SignUpButton>
-            <SignInButton mode="modal" forceRedirectUrl="/">
-              <Button variant="outline" size="lg" className="text-lg px-8 py-6">
+          <div className="flex justify-center pt-4">
+            <Link href="/sign-in">
+              <Button size="lg" className="text-lg px-10 py-6 shadow-lg hover:shadow-xl transition-all">
+                <LogIn className="mr-2 h-5 w-5" />
                 Sign In to Dashboard
               </Button>
-            </SignInButton>
+            </Link>
           </div>
           
-          <p className="text-sm text-muted-foreground">
-            No credit card required • 30-day free trial • Cancel anytime
+          <p className="text-sm text-muted-foreground pt-4">
+            Contact your organization administrator for access
           </p>
         </div>
         
@@ -159,27 +149,11 @@ export default function LandingPage() {
             </CardContent>
           </Card>
         </div>
-        
-        {/* CTA Section */}
-        <div className="text-center py-16 px-6 bg-card rounded-2xl shadow-lg">
-          <h2 className="text-3xl font-bold mb-4">Ready to streamline your wildlife care?</h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join wildlife organizations across Australia using WildTrack360 to improve animal outcomes 
-            and simplify compliance.
-          </p>
-          <SignUpButton mode="modal" forceRedirectUrl="/">
-            <Button size="lg" className="text-lg px-10 py-6 shadow-lg">
-              Start Your Free Trial
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </SignUpButton>
-        </div>
       </main>
       
       <footer className="text-center py-8 text-muted-foreground border-t mt-16">
         <div className="container mx-auto px-4">
           <p>&copy; {new Date().getFullYear()} WildTrack360. All rights reserved.</p>
-          <p className="text-sm mt-2">Built for wildlife carers, by wildlife carers.</p>
         </div>
       </footer>
     </div>
