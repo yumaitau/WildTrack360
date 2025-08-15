@@ -172,8 +172,8 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
     }
   };
 
-  const handleSignOut = () => {
-    signOut();
+  const handleSignOut = async () => {
+    await signOut({ redirectUrl: '/logout-success' });
   };
 
   if (!userLoaded || !orgLoaded) {

@@ -9,7 +9,7 @@ export default async function Home() {
   const user = await currentUser();
   
   if (!userId) {
-    redirect("/sign-in");
+    redirect("/landing");
   }
 
   // Use the active Clerk organization
