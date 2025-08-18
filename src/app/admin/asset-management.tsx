@@ -371,14 +371,14 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
 
       {/* Add Asset Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Add Asset</DialogTitle>
             <DialogDescription>
               Provide details for the new asset.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 max-h-[60vh] px-1">
             <div className="space-y-2">
               <Label>Name</Label>
               <Input placeholder="Asset name..." value={addName} onChange={(e) => setAddName(e.target.value)} />
@@ -440,7 +440,7 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
               <Textarea placeholder="Notes (optional)" value={addNotes} onChange={(e) => setAddNotes(e.target.value)} />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={loading}>
               <X className="mr-2 h-4 w-4" />
               Cancel
