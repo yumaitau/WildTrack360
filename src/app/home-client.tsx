@@ -303,6 +303,42 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
           <DashboardStats animals={animals} />
         </div>
 
+        {/* Animals Table/Grid */}
+        <div className="bg-card rounded-lg shadow-md p-6 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">Animals</h2>
+            <div className="flex items-center gap-2">
+              <Link href="/animals">
+                <Button size="sm" variant="secondary">Manage Animals</Button>
+              </Link>
+            </div>
+          </div>
+          
+          {viewMode === 'list' ? (
+            <AnimalTable 
+              animals={animals} 
+              onEdit={handleEditAnimal}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {animals.map((animal) => (
+                <div key={animal.id} className="bg-background rounded-lg p-4 border">
+                  <h3 className="font-semibold text-lg">{animal.name}</h3>
+                  <p className="text-sm text-muted-foreground">{animal.species}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Status: {animal.status}
+                  </p>
+                  <div className="mt-3">
+                    <Button size="sm" variant="outline" onClick={() => handleEditAnimal(animal)}>
+                      Edit
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Animals Without Carers Alert */}
         {animals.filter(a => !a.carerId).length > 0 && (
           <Card className="border-orange-200 bg-orange-50 mb-8">
@@ -369,42 +405,6 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         <div className="grid grid-cols-1 gap-8 mb-8">
           <CarerDistributionChart animals={animals} />
           <ReleasesVsAdmissionsChart animals={animals} />
-        </div>
-
-        {/* Animals Table/Grid */}
-        <div className="bg-card rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Animals</h2>
-            <div className="flex items-center gap-2">
-              <Link href="/animals">
-                <Button size="sm" variant="secondary">Manage Animals</Button>
-              </Link>
-            </div>
-          </div>
-          
-          {viewMode === 'list' ? (
-            <AnimalTable 
-              animals={animals} 
-              onEdit={handleEditAnimal}
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {animals.map((animal) => (
-                <div key={animal.id} className="bg-background rounded-lg p-4 border">
-                  <h3 className="font-semibold text-lg">{animal.name}</h3>
-                  <p className="text-sm text-muted-foreground">{animal.species}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Status: {animal.status}
-                  </p>
-                  <div className="mt-3">
-                    <Button size="sm" variant="outline" onClick={() => handleEditAnimal(animal)}>
-                      Edit
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </main>
 

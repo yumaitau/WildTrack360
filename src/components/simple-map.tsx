@@ -1,6 +1,15 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { Button } from '@/components/ui/button';
+import { Map, Satellite, Expand } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface SimpleMapProps {
   center: { lat: number; lng: number };
@@ -8,125 +17,140 @@ interface SimpleMapProps {
   initialMarker?: { lat: number; lng: number };
 }
 
+const mapContainerStyle = {
+  width: '100%',
+  height: '256px',
+  borderTopLeftRadius: '0.5rem',
+  borderTopRightRadius: '0.5rem'
+};
+
+const options = {
+  disableDefaultUI: false,
+  zoomControl: true,
+  streetViewControl: false,
+  mapTypeControl: false,
+  fullscreenControl: false,
+};
+
 const SimpleMap: React.FC<SimpleMapProps> = ({ center, onLocationChange, initialMarker }) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markerInstanceRef = useRef<any>(null);
-  const leafletRef = useRef<any>(null);
-  const isInitializedRef = useRef(false);
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [markerPosition, setMarkerPosition] = useState<{ lat: number; lng: number } | null>(
+    initialMarker || null
+  );
+  const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '',
+    libraries: ['places']
+  });
+
+  const handleMapClick = useCallback((event: google.maps.MapMouseEvent) => {
+    if (event.latLng) {
+      const lat = event.latLng.lat();
+      const lng = event.latLng.lng();
+      setMarkerPosition({ lat, lng });
+      onLocationChange(lat, lng);
+    }
+  }, [onLocationChange]);
+
+  const handleMarkerDragEnd = useCallback((event: google.maps.MapMouseEvent) => {
+    if (event.latLng) {
+      const lat = event.latLng.lat();
+      const lng = event.latLng.lng();
+      setMarkerPosition({ lat, lng });
+      onLocationChange(lat, lng);
+    }
+  }, [onLocationChange]);
 
   useEffect(() => {
-    // Only load Leaflet on the client side
-    if (typeof window === 'undefined') return;
-
-    // Prevent multiple initializations
-    if (isInitializedRef.current) return;
-
-    // Load Leaflet CSS if not already loaded
-    if (!document.querySelector('link[href*="leaflet"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
+    if (initialMarker) {
+      setMarkerPosition(initialMarker);
     }
+  }, [initialMarker]);
 
-    const loadMap = async () => {
-      try {
-        const L = await import('leaflet');
-        // CSS is loaded via CDN to avoid module resolution issues
+  if (!isLoaded) {
+    return (
+      <div className="w-full h-64 rounded-t-lg bg-muted flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <p className="text-sm text-muted-foreground">Loading map...</p>
+        </div>
+      </div>
+    );
+  }
 
-        // Store Leaflet instance
-        leafletRef.current = L;
-
-        // Fix for default markers in Leaflet with Next.js
-        delete (L.Icon.Default.prototype as any)._getIconUrl;
-        L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-        });
-
-        if (!mapRef.current || mapInstanceRef.current) return;
-
-        // Initialize map
-        const map = L.map(mapRef.current).setView([center.lat, center.lng], 12);
-
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors',
-          maxZoom: 19,
-        }).addTo(map);
-
-        mapInstanceRef.current = map;
-
-        // Add initial marker if provided
-        if (initialMarker) {
-          const marker = L.marker([initialMarker.lat, initialMarker.lng], {
-            draggable: true,
-            title: 'Rescue Location',
-          }).addTo(map);
-          markerInstanceRef.current = marker;
-
-          // Handle marker drag
-          marker.on('dragend', (event: any) => {
-            const position = event.target.getLatLng();
-            onLocationChange(position.lat, position.lng);
-          });
-        }
-
-        // Handle map click
-        map.on('click', (event: any) => {
-          const { lat, lng } = event.latlng;
-          
-          // Remove existing marker
-          if (markerInstanceRef.current) {
-            map.removeLayer(markerInstanceRef.current);
-          }
-
-          // Add new marker
-          const marker = L.marker([lat, lng], {
-            draggable: true,
-            title: 'Rescue Location',
-          }).addTo(map);
-          markerInstanceRef.current = marker;
-
-          // Handle marker drag
-          marker.on('dragend', (event: any) => {
-            const position = event.target.getLatLng();
-            onLocationChange(position.lat, position.lng);
-          });
-
-          onLocationChange(lat, lng);
-        });
-
-        setIsMapLoaded(true);
-        isInitializedRef.current = true;
-      } catch (error) {
-        console.error('Error loading map:', error);
-      }
-    };
-
-    loadMap();
-
-    // Cleanup function
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-        markerInstanceRef.current = null;
-        isInitializedRef.current = false;
-      }
-    };
-  }, []); // Empty dependency array - only run once
+  const MapView = ({ containerStyle }: { containerStyle: React.CSSProperties }) => (
+    <GoogleMap
+      mapContainerStyle={containerStyle}
+      center={markerPosition || center}
+      zoom={12}
+      onClick={handleMapClick}
+      options={{
+        ...options,
+        mapTypeId: mapType
+      }}
+    >
+      {markerPosition && (
+        <Marker
+          position={markerPosition}
+          draggable={true}
+          onDragEnd={handleMarkerDragEnd}
+          title="Rescue Location"
+        />
+      )}
+    </GoogleMap>
+  );
 
   return (
-    <div
-      ref={mapRef}
-      className="w-full h-64 rounded-t-lg"
-      style={{ minHeight: '256px' }}
-    />
+    <>
+      <div className="relative">
+        <MapView containerStyle={mapContainerStyle} />
+        <div className="absolute top-2 right-2 z-10 flex gap-1">
+          <Button
+            onClick={() => setIsFullscreen(true)}
+            size="sm"
+            variant="secondary"
+          >
+            <Expand className="h-4 w-4" />
+          </Button>
+          <Button
+            onClick={() => setMapType(mapType === 'roadmap' ? 'satellite' : 'roadmap')}
+            size="sm"
+            variant="secondary"
+          >
+            {mapType === 'roadmap' ? (
+              <><Satellite className="h-4 w-4 mr-1" /> Satellite</>
+            ) : (
+              <><Map className="h-4 w-4 mr-1" /> Street</>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <DialogContent className="max-w-[95vw] w-full h-[95vh] p-0 flex flex-col">
+          <DialogHeader className="p-4 pb-2 shrink-0">
+            <DialogTitle>Map View</DialogTitle>
+          </DialogHeader>
+          <div className="relative flex-1 p-4 pt-2">
+            <MapView containerStyle={{ width: '100%', height: '100%', borderRadius: '0.5rem' }} />
+            <Button
+              onClick={() => setMapType(mapType === 'roadmap' ? 'satellite' : 'roadmap')}
+              size="sm"
+              variant="secondary"
+              className="absolute top-4 right-6 z-10"
+            >
+              {mapType === 'roadmap' ? (
+                <><Satellite className="h-4 w-4 mr-1" /> Satellite</>
+              ) : (
+                <><Map className="h-4 w-4 mr-1" /> Street</>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
-export default SimpleMap; 
+export default SimpleMap;

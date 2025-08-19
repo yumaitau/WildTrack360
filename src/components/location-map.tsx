@@ -1,9 +1,17 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MapPin, Navigation, AlertTriangle } from 'lucide-react';
+import { MapPin, AlertTriangle, Map, Satellite, Expand } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { GoogleMap, Marker, useJsApiLoader, Polyline } from '@react-google-maps/api';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface LocationMapProps {
   rescueLocation?: { lat: number; lng: number; address: string };
@@ -12,9 +20,8 @@ interface LocationMapProps {
   jurisdiction?: string;
 }
 
-// Calculate distance between two coordinates using Haversine formula
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-  const R = 6371; // Earth's radius in kilometers
+  const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
@@ -25,23 +32,31 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
-const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocation, animalName, jurisdiction }) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const isInitializedRef = useRef(false);
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [initTick, setInitTick] = useState(0);
+const mapContainerStyle = {
+  width: '100%',
+  height: '320px',
+  borderBottomLeftRadius: '0.5rem',
+  borderBottomRightRadius: '0.5rem'
+};
 
-  // Debug: Log location data
-  console.log('LocationMap props:', {
-    rescueLocation,
-    releaseLocation,
-    animalName,
-    jurisdiction
+const options = {
+  disableDefaultUI: false,
+  zoomControl: true,
+  streetViewControl: false,
+  mapTypeControl: false,
+  fullscreenControl: false,
+};
+
+const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocation, animalName, jurisdiction }) => {
+  const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '',
+    libraries: ['places']
   });
 
-  // Check compliance for ACT jurisdiction
-  const isNonCompliant = React.useMemo(() => {
+  const isNonCompliant = useMemo(() => {
     if (jurisdiction !== 'ACT' || !rescueLocation || !releaseLocation) {
       return false;
     }
@@ -51,152 +66,48 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
       releaseLocation.lat, 
       releaseLocation.lng
     );
-    return distance < 10; // Less than 10km is non-compliant for ACT
+    return distance < 10;
   }, [jurisdiction, rescueLocation, releaseLocation]);
 
-  useEffect(() => {
-    // Only load Leaflet on the client side
-    if (typeof window === 'undefined') return;
-
-    // Prevent multiple initializations
-    if (isInitializedRef.current) return;
-
-    // Require a visible container and at least one valid location
-    const hasValidRescue = !!(rescueLocation && typeof rescueLocation.lat === 'number' && typeof rescueLocation.lng === 'number');
-    const hasValidRelease = !!(releaseLocation && typeof releaseLocation.lat === 'number' && typeof releaseLocation.lng === 'number');
-    if (!mapRef.current || (!hasValidRescue && !hasValidRelease)) return;
-    if (mapRef.current.clientHeight === 0 || mapRef.current.clientWidth === 0) {
-      // Defer init until container is laid out
-      const t = setTimeout(() => setInitTick((v) => v + 1), 100);
-      return () => clearTimeout(t);
+  const center = useMemo(() => {
+    if (rescueLocation) {
+      return { lat: rescueLocation.lat, lng: rescueLocation.lng };
+    } else if (releaseLocation) {
+      return { lat: releaseLocation.lat, lng: releaseLocation.lng };
+    } else {
+      return { lat: -35.2809, lng: 149.1300 };
     }
+  }, [rescueLocation, releaseLocation]);
 
-    // Load Leaflet CSS if not already loaded
-    if (!document.querySelector('link[href*="leaflet"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
+
+  const pathCoordinates = useMemo(() => {
+    if (rescueLocation && releaseLocation) {
+      return [
+        { lat: rescueLocation.lat, lng: rescueLocation.lng },
+        { lat: releaseLocation.lat, lng: releaseLocation.lng }
+      ];
     }
+    return [];
+  }, [rescueLocation, releaseLocation]);
 
-    const loadMap = async () => {
-      try {
-        const L = await import('leaflet');
-
-        // Fix for default markers in Leaflet with Next.js
-        delete (L.Icon.Default.prototype as any)._getIconUrl;
-        L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-        });
-
-        if (!mapRef.current || mapInstanceRef.current) return;
-
-        // Determine map center based on available locations
-        let center: [number, number];
-        if (rescueLocation) {
-          center = [rescueLocation.lat, rescueLocation.lng];
-        } else if (releaseLocation) {
-          center = [releaseLocation.lat, releaseLocation.lng];
-        } else {
-          // Default to Canberra if no locations
-          center = [-35.2809, 149.1300];
-        }
-
-        // Initialize map
-        const map = L.map(mapRef.current).setView(center, 10);
-
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors',
-          maxZoom: 19,
-        }).addTo(map);
-
-        mapInstanceRef.current = map;
-
-        // Add rescue location marker
-        if (rescueLocation && rescueLocation.lat && rescueLocation.lng) {
-          console.log('Adding rescue marker at:', rescueLocation.lat, rescueLocation.lng);
-          const rescueIcon = L.divIcon({
-            className: 'custom-marker rescue-marker',
-            html: '<div style="background-color: #ef4444; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">R</div>',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
-          });
-
-          const rescueMarker = L.marker([rescueLocation.lat, rescueLocation.lng], {
-            icon: rescueIcon,
-            title: 'Rescue Location',
-          }).addTo(map);
-
-          rescueMarker.bindPopup(`
-            <div style="text-align: center;">
-              <strong style="color: #ef4444;">🆘 Rescue Location</strong><br>
-              <strong>${animalName}</strong><br>
-              ${rescueLocation.address}
-            </div>
-          `);
-        } else {
-          console.log('Rescue location data missing or invalid:', rescueLocation);
-        }
-
-        // Add release location marker
-        if (releaseLocation && releaseLocation.lat && releaseLocation.lng) {
-          console.log('Adding release marker at:', releaseLocation.lat, releaseLocation.lng);
-          const releaseIcon = L.divIcon({
-            className: 'custom-marker release-marker',
-            html: '<div style="background-color: #10b981; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">H</div>',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
-          });
-
-          const releaseMarker = L.marker([releaseLocation.lat, releaseLocation.lng], {
-            icon: releaseIcon,
-            title: 'Release Location',
-          }).addTo(map);
-
-          releaseMarker.bindPopup(`
-            <div style="text-align: center;">
-              <strong style="color: #10b981;">🏠 Release Location</strong><br>
-              <strong>${animalName}</strong><br>
-              ${releaseLocation.address}
-            </div>
-          `);
-        } else {
-          console.log('Release location data missing or invalid:', releaseLocation);
-        }
-
-        // Fit bounds if both locations exist, or zoom to rescue location if only rescue exists
-        if (rescueLocation && releaseLocation) {
-          const bounds = L.latLngBounds([
-            [rescueLocation.lat, rescueLocation.lng],
-            [releaseLocation.lat, releaseLocation.lng]
-          ]);
-          map.fitBounds(bounds, { padding: [20, 20] });
-        } else if (rescueLocation && rescueLocation.lat && rescueLocation.lng) {
-          // If only rescue location exists, center on it with appropriate zoom
-          map.setView([rescueLocation.lat, rescueLocation.lng], 12);
-        }
-
-        setIsMapLoaded(true);
-        isInitializedRef.current = true;
-      } catch (error) {
-        console.error('Error loading map:', error);
-      }
-    };
-
-    loadMap();
-
-    // Cleanup function
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-        isInitializedRef.current = false;
-      }
-    };
-  }, [rescueLocation, releaseLocation, animalName, initTick]);
+  const zoom = useMemo(() => {
+    // Calculate appropriate zoom level based on whether we have both locations
+    if (rescueLocation && releaseLocation) {
+      const distance = calculateDistance(
+        rescueLocation.lat, 
+        rescueLocation.lng, 
+        releaseLocation.lat, 
+        releaseLocation.lng
+      );
+      // Adjust zoom based on distance
+      if (distance < 5) return 14;
+      if (distance < 10) return 13;
+      if (distance < 20) return 12;
+      if (distance < 50) return 11;
+      return 10;
+    }
+    return 12;
+  }, [rescueLocation, releaseLocation]);
 
   if (!rescueLocation && !releaseLocation) {
     return (
@@ -216,28 +127,139 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
     );
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MapPin className="h-5 w-5" />
-          Location Map
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div
-          ref={mapRef}
-          className="w-full h-80 rounded-b-lg"
-          style={{ minHeight: '320px' }}
-        />
-        {!isMapLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted rounded-b-lg">
+  if (!isLoaded) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Location Map
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="w-full h-80 rounded-b-lg bg-muted flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
               <p className="text-sm text-muted-foreground">Loading map...</p>
             </div>
           </div>
-        )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const MapView = ({ containerStyle, showZoomControls = false }: { containerStyle: React.CSSProperties, showZoomControls?: boolean }) => (
+    <GoogleMap
+      mapContainerStyle={containerStyle}
+      center={center}
+      zoom={zoom}
+      options={{
+        ...options,
+        mapTypeId: mapType,
+        zoomControl: showZoomControls || options.zoomControl
+      }}
+    >
+      {rescueLocation && (
+        <Marker
+          position={{ lat: rescueLocation.lat, lng: rescueLocation.lng }}
+          title={`Rescue Location: ${animalName}`}
+          label={{
+            text: 'R',
+            color: 'white',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 15,
+            fillColor: '#ef4444',
+            fillOpacity: 1,
+            strokeColor: 'white',
+            strokeWeight: 2,
+          }}
+        />
+      )}
+      
+      {releaseLocation && (
+        <Marker
+          position={{ lat: releaseLocation.lat, lng: releaseLocation.lng }}
+          title={`Release Location: ${animalName}`}
+          label={{
+            text: 'H',
+            color: 'white',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 15,
+            fillColor: '#10b981',
+            fillOpacity: 1,
+            strokeColor: 'white',
+            strokeWeight: 2,
+          }}
+        />
+      )}
+      
+      {rescueLocation && releaseLocation && (
+        <>
+          <Polyline
+            path={pathCoordinates}
+            options={{
+              strokeColor: '#ffffff',
+              strokeOpacity: 1,
+              strokeWeight: 5,
+              geodesic: true,
+            }}
+          />
+          <Polyline
+            path={pathCoordinates}
+            options={{
+              strokeColor: '#3b82f6',
+              strokeOpacity: 1,
+              strokeWeight: 3,
+              geodesic: true,
+            }}
+          />
+        </>
+      )}
+    </GoogleMap>
+  );
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Location Map
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="relative">
+            <MapView
+containerStyle={mapContainerStyle} />
+            <div className="absolute top-2 right-2 z-10 flex gap-1">
+              <Button
+                onClick={() => setIsFullscreen(true)}
+                size="sm"
+                variant="secondary"
+              >
+                <Expand className="h-4 w-4" />
+              </Button>
+              <Button
+                onClick={() => setMapType(mapType === 'roadmap' ? 'satellite' : 'roadmap')}
+                size="sm"
+                variant="secondary"
+              >
+                {mapType === 'roadmap' ? (
+                  <><Satellite className="h-4 w-4 mr-1" /> Satellite</>
+                ) : (
+                  <><Map className="h-4 w-4 mr-1" /> Street</>
+                )}
+              </Button>
+            </div>
+        </div>
         
         <div className="p-4 space-y-3">
           {isNonCompliant && (
@@ -292,7 +314,56 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
         </div>
       </CardContent>
     </Card>
+
+    <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+      <DialogContent className="max-w-[95vw] w-full h-[95vh] p-0 flex flex-col">
+        <DialogHeader className="p-4 pb-2 shrink-0">
+          <DialogTitle>Location Map - {animalName}</DialogTitle>
+        </DialogHeader>
+        <div className="relative flex-1 p-4 pt-2">
+          <MapView containerStyle={{ width: '100%', height: '100%', borderRadius: '0.5rem' }} showZoomControls={true} />
+          <Button
+            onClick={() => setMapType(mapType === 'roadmap' ? 'satellite' : 'roadmap')}
+            size="sm"
+            variant="secondary"
+            className="absolute top-4 right-6 z-10"
+          >
+            {mapType === 'roadmap' ? (
+              <><Satellite className="h-4 w-4 mr-1" /> Satellite</>
+            ) : (
+              <><Map className="h-4 w-4 mr-1" /> Street</>
+            )}
+          </Button>
+          {/* Location legend overlay */}
+          <div className="absolute bottom-4 left-6 right-6 flex gap-4 flex-wrap">
+            {rescueLocation && (
+              <div className="flex items-center gap-2 bg-white/90 backdrop-blur px-3 py-1.5 rounded-md shadow-sm">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span className="text-sm font-medium">Rescue</span>
+              </div>
+            )}
+            {releaseLocation && (
+              <div className="flex items-center gap-2 bg-white/90 backdrop-blur px-3 py-1.5 rounded-md shadow-sm">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="text-sm font-medium">Release</span>
+              </div>
+            )}
+            {rescueLocation && releaseLocation && (
+              <div className="flex items-center gap-2 bg-white/90 backdrop-blur px-3 py-1.5 rounded-md shadow-sm">
+                <span className="text-sm font-medium">Distance: {calculateDistance(
+                  rescueLocation.lat, 
+                  rescueLocation.lng, 
+                  releaseLocation.lat, 
+                  releaseLocation.lng
+                ).toFixed(2)} km</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 };
 
-export default LocationMap; 
+export default LocationMap;

@@ -41,7 +41,9 @@ export default function CarerDistributionChart({ animals }: CarerDistributionCha
     const carerCount = animals
       .filter(a => a.status === 'IN_CARE')
       .reduce((acc, animal) => {
-          acc[animal.carerId] = (acc[animal.carerId] || 0) + 1;
+          if (animal.carerId) {
+            acc[animal.carerId] = (acc[animal.carerId] || 0) + 1;
+          }
           return acc;
         }, {} as { [key: string]: number });
 
