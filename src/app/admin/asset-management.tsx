@@ -271,7 +271,23 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
               <TableRow key={asset.id}>
                 <TableCell>{asset.name}</TableCell>
                 <TableCell>{asset.type}</TableCell>
-                <TableCell>{asset.status}</TableCell>
+                <TableCell>
+                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                    asset.status === 'AVAILABLE' ? 'bg-green-100 text-green-700' :
+                    asset.status === 'IN_USE' ? 'bg-blue-100 text-blue-700' :
+                    asset.status === 'MAINTENANCE' ? 'bg-yellow-100 text-yellow-700' :
+                    asset.status === 'RETIRED' ? 'bg-gray-100 text-gray-700' :
+                    asset.status === 'LOST' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {asset.status === 'AVAILABLE' ? 'Available' :
+                     asset.status === 'IN_USE' ? 'In Use' :
+                     asset.status === 'MAINTENANCE' ? 'Maintenance' :
+                     asset.status === 'RETIRED' ? 'Retired' :
+                     asset.status === 'LOST' ? 'Lost' :
+                     asset.status}
+                  </span>
+                </TableCell>
                 <TableCell className="text-right">
                   <Button 
                     variant="ghost" 

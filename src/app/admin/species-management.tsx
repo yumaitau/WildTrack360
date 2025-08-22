@@ -23,6 +23,8 @@ import {
 import { Pen, PlusCircle, Trash, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useOrganization } from '@clerk/nextjs';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -45,7 +47,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
   const [editCareRequirements, setEditCareRequirements] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [speciesToDelete, setSpeciesToDelete] = useState<string | null>(null);
+  const [speciesToDelete, setSpeciesToDelete] = useState<SpeciesItem | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -123,15 +125,13 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
     }
     setLoading(true);
     try {
-      await apiJson(`/api/species`, { 
+      await apiJson(`/api/species/${editingSpecies.id}`, { 
         method: 'PATCH', 
         body: JSON.stringify({ 
-          oldName: editingSpecies.name, 
-          newName: editName.trim(), 
+          name: editName.trim(), 
           scientificName: editScientificName || null,
           description: editDescription || null,
-          careRequirements: editCareRequirements || null,
-          orgId: organization?.id 
+          careRequirements: editCareRequirements || null
         }) 
       });
       setEditingSpecies(null);
@@ -141,7 +141,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
       setEditCareRequirements('');
       setIsEditDialogOpen(false);
       await refreshSpecies();
-      toast({ title: 'Success', description: `Species updated.` });
+      toast({ title: 'Success', description: `Species "${editName.trim()}" updated.` });
     } catch (error) {
       console.error('Error updating species:', error);
       toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to update species.' });
@@ -154,11 +154,11 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
     if (!speciesToDelete) return;
     setLoading(true);
     try {
-      await apiJson(`/api/species`, { method: 'DELETE', body: JSON.stringify({ name: speciesToDelete, orgId: organization?.id }) });
+      await apiJson(`/api/species/${speciesToDelete.id}`, { method: 'DELETE' });
       setSpeciesToDelete(null);
       setIsDeleteDialogOpen(false);
       await refreshSpecies();
-      toast({ title: 'Success', description: `Species "${speciesToDelete}" deleted.` });
+      toast({ title: 'Success', description: `Species "${speciesToDelete.name}" deleted.` });
     } catch (error) {
       console.error('Error deleting species:', error);
       toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to delete species.' });
@@ -176,8 +176,8 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
     setIsEditDialogOpen(true);
   };
 
-  const openDeleteDialog = (speciesName: string) => {
-    setSpeciesToDelete(speciesName);
+  const openDeleteDialog = (species: SpeciesItem) => {
+    setSpeciesToDelete(species);
     setIsDeleteDialogOpen(true);
   };
 
@@ -201,14 +201,34 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Species Name</TableHead>
+              <TableHead>Common Name</TableHead>
+              <TableHead>Scientific Name</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Care Requirements</TableHead>
               <TableHead className="w-[120px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {species.map((s) => (
               <TableRow key={s.id}>
-                <TableCell>{s.name}</TableCell>
+                <TableCell className="font-medium">{s.name}</TableCell>
+                <TableCell>
+                  {s.scientificName ? (
+                    <span className="italic text-muted-foreground">{s.scientificName}</span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm text-muted-foreground line-clamp-2">
+                    {s.description || '-'}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm text-muted-foreground line-clamp-2">
+                    {s.careRequirements || '-'}
+                  </span>
+                </TableCell>
                 <TableCell className="text-right">
                   <Button 
                     variant="ghost" 
@@ -221,7 +241,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => openDeleteDialog(s.name)}
+                    onClick={() => openDeleteDialog(s)}
                     disabled={loading}
                   >
                     <Trash className="h-4 w-4" />
@@ -231,7 +251,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
             ))}
             {species.length === 0 && (
               <TableRow>
-                <TableCell colSpan={2} className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No species found. Add your first species above.
                 </TableCell>
               </TableRow>
@@ -242,34 +262,53 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
 
       {/* Add Species Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Add Species</DialogTitle>
             <DialogDescription>
               Provide details for the new species.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              placeholder="Name"
-              value={addName}
-              onChange={(e) => setAddName(e.target.value)}
-            />
-            <Input
-              placeholder="Scientific Name (optional)"
-              value={addScientificName}
-              onChange={(e) => setAddScientificName(e.target.value)}
-            />
-            <Input
-              placeholder="Description (optional)"
-              value={addDescription}
-              onChange={(e) => setAddDescription(e.target.value)}
-            />
-            <Input
-              placeholder="Care Requirements (optional)"
-              value={addCareRequirements}
-              onChange={(e) => setAddCareRequirements(e.target.value)}
-            />
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="space-y-2">
+              <Label htmlFor="add-name">Common Name *</Label>
+              <Input
+                id="add-name"
+                placeholder="e.g., Eastern Grey Kangaroo"
+                value={addName}
+                onChange={(e) => setAddName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-scientific">Scientific Name</Label>
+              <Input
+                id="add-scientific"
+                placeholder="e.g., Macropus giganteus"
+                value={addScientificName}
+                onChange={(e) => setAddScientificName(e.target.value)}
+                className="italic"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-description">Description</Label>
+              <Textarea
+                id="add-description"
+                placeholder="General description of the species..."
+                value={addDescription}
+                onChange={(e) => setAddDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-care">Care Requirements</Label>
+              <Textarea
+                id="add-care"
+                placeholder="Specific care requirements, dietary needs, habitat requirements..."
+                value={addCareRequirements}
+                onChange={(e) => setAddCareRequirements(e.target.value)}
+                rows={4}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={loading}>
@@ -286,16 +325,51 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
 
       {/* Edit Dialog (full fields) */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Edit Species</DialogTitle>
             <DialogDescription>Update species details.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <Input placeholder="Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
-            <Input placeholder="Scientific Name (optional)" value={editScientificName} onChange={(e) => setEditScientificName(e.target.value)} />
-            <Input placeholder="Description (optional)" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
-            <Input placeholder="Care Requirements (optional)" value={editCareRequirements} onChange={(e) => setEditCareRequirements(e.target.value)} />
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Common Name *</Label>
+              <Input 
+                id="edit-name"
+                placeholder="e.g., Eastern Grey Kangaroo" 
+                value={editName} 
+                onChange={(e) => setEditName(e.target.value)} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-scientific">Scientific Name</Label>
+              <Input 
+                id="edit-scientific"
+                placeholder="e.g., Macropus giganteus" 
+                value={editScientificName} 
+                onChange={(e) => setEditScientificName(e.target.value)}
+                className="italic" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea 
+                id="edit-description"
+                placeholder="General description of the species..." 
+                value={editDescription} 
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={3} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-care">Care Requirements</Label>
+              <Textarea 
+                id="edit-care"
+                placeholder="Specific care requirements, dietary needs, habitat requirements..." 
+                value={editCareRequirements} 
+                onChange={(e) => setEditCareRequirements(e.target.value)}
+                rows={4} 
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button 
@@ -323,7 +397,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
           <DialogHeader>
             <DialogTitle>Delete Species</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{speciesToDelete}"? This action cannot be undone.
+              Are you sure you want to delete "{speciesToDelete?.name}"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
