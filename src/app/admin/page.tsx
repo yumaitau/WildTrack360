@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PawPrint, User, Package } from 'lucide-react';
+import { ArrowLeft, PawPrint, User, Package, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Asset } from '@prisma/client';
 import { SpeciesManagement } from './species-management';
 import { CarerManagement } from './carer-management';
 import { AssetManagement } from './asset-management';
+import { UserManagement } from './user-management';
 import { useUser, useOrganization } from '@clerk/nextjs';
 
 async function apiJson<T>(url: string): Promise<T> {
@@ -85,7 +86,7 @@ export default function AdminPage() {
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
         <Tabs defaultValue="species">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="species">
               <PawPrint className="mr-2 h-4 w-4" />
               Manage Species
@@ -97,6 +98,10 @@ export default function AdminPage() {
             <TabsTrigger value="assets">
               <Package className="mr-2 h-4 w-4" />
               Manage Assets
+            </TabsTrigger>
+            <TabsTrigger value="users">
+              <Users className="mr-2 h-4 w-4" />
+              Manage Users
             </TabsTrigger>
           </TabsList>
           <TabsContent value="species">
@@ -128,6 +133,9 @@ export default function AdminPage() {
                 <AssetManagement initialAssets={assets} />
               </CardContent>
             </Card>
+          </TabsContent>
+          <TabsContent value="users">
+            <UserManagement />
           </TabsContent>
         </Tabs>
       </main>

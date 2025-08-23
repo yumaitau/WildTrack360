@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ClerkProvider } from '@clerk/nextjs';
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
   title: 'WildTrack360',
@@ -22,6 +23,7 @@ export default function RootLayout({
         </head>
         <body className="font-body antialiased min-h-screen">
           {children}
+          <Toaster richColors position="top-right" />
         </body>
       </html>
     </ClerkProvider>
