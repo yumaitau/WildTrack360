@@ -250,19 +250,128 @@ const ACT_COMPLIANCE_RULES: ComplianceSection[] = [
   }
 ];
 
+// NSW Encounter Types (official DCCEEW list)
+export const NSW_ENCOUNTER_TYPES = {
+  'Attacks & Collisions': [
+    'Attack – bird',
+    'Attack – cat',
+    'Attack – dog',
+    'Attack – fox',
+    'Attack – same species',
+    'Attack – suspected-other',
+    'Collision – building',
+    'Collision – motor vehicle',
+    'Collision – other',
+    'Collision – vessel strike'
+  ],
+  'Dependency & Diseases': [
+    'Abandoned/orphaned',
+    'Dependent on parent taken into care',
+    'Disease – botulism',
+    'Disease – chlamydia',
+    'Disease – external parasite',
+    'Disease – internal parasite',
+    'Disease – mange',
+    'Disease – other',
+    'Disease – PBFD'
+  ],
+  'Domestic Pets': [
+    'Domestic pet – escaped',
+    'Domestic pet – seized',
+    'Domestic pet – surrendered'
+  ],
+  'Electrocution & Entanglement': [
+    'Electrocution',
+    'Entanglement – marine debris',
+    'Entanglement – netting',
+    'Entanglement – other',
+    'Entanglement – wire',
+    'Entrapment'
+  ],
+  'Events & Environmental': [
+    'Event – drought',
+    'Event – extreme heat',
+    'Event – fire',
+    'Event – flood',
+    'Event – storm',
+    'Fallen from nest or tree',
+    'Fouled by substance',
+    'Human impact – habitat alteration/tree felling'
+  ],
+  'Human Actions & Other': [
+    'Human impact – intentional harm',
+    'Human impact – interference',
+    'Ingestion of a foreign object',
+    'Poisoned',
+    'Negative interaction',
+    'Stranded/haul-out',
+    'Unsuitable environment',
+    'Unknown'
+  ]
+};
+
+// NSW Fate Options (official DCCEEW list)
+export const NSW_FATE_OPTIONS = [
+  'Advice provided',
+  'Could not locate for rescue',
+  'Dead prior to rescuer arriving',
+  'Died in care',
+  'Escaped from care',
+  'Euthanased by rehabilitation group',
+  'Euthanased by vet',
+  'Euthanased by police',
+  'Euthanased by other',
+  'Evaded capture',
+  'In care',
+  'Left and observed',
+  'Permanent care – companion (approved)',
+  'Permanent care – external/community education (approved)',
+  'Permanent care – internal training (approved)',
+  'Permanent care – research (approved)',
+  'Rehomed',
+  'Released',
+  'Relocated',
+  'Resolved by vets',
+  'Returned to owner',
+  'Reunited with parents',
+  'Transferred to an authorised animal park/zoo',
+  'Transferred to other wildlife rehabilitation organisation'
+];
+
+// NSW Pouch Conditions (marsupials only)
+export const NSW_POUCH_CONDITIONS = [
+  'Lactating',
+  'Non-lactating',
+  'Pinkie attached',
+  'Pouch young',
+  'Back young',
+  'NA'
+];
+
+// NSW Animal Condition Options
+export const NSW_ANIMAL_CONDITIONS = [
+  'Dehydrated',
+  'Emaciated',
+  'Good',
+  'Moribund',
+  'Multiple health issues',
+  'Poor',
+  'Fair'
+];
+
 // NSW Wildlife Rehabilitation Compliance Rules
 const NSW_COMPLIANCE_RULES: ComplianceSection[] = [
   {
     id: 'section-14',
     title: 'Record Keeping Requirements',
-    description: 'Standards and guidelines for maintaining records of protected fauna',
+    description: 'Standards and guidelines for maintaining records of protected fauna per DCCEEW requirements',
     jurisdictions: ['NSW'],
     rules: [
       {
         id: '14.1.1',
         section: '14.1.1',
         title: 'Individual Animal Records',
-        description: 'Maintain individual records for each animal including rescue details, assessment, care, and fate',
+        description: 'Maintain individual records with unique org ID, species, encounter date/type, location, condition, sex, life stage',
         required: true,
         jurisdictions: ['NSW'],
         category: 'record-keeping',
@@ -270,10 +379,70 @@ const NSW_COMPLIANCE_RULES: ComplianceSection[] = [
         retentionYears: 2
       },
       {
+        id: '14.1.1a',
+        section: '14.1.1a',
+        title: 'Initial Weight Recording',
+        description: 'Record the first weight taken on entry to care in grams',
+        required: true,
+        jurisdictions: ['NSW'],
+        category: 'record-keeping',
+        formType: 'wildlife-register'
+      },
+      {
+        id: '14.1.1b',
+        section: '14.1.1b',
+        title: 'Encounter Type Recording',
+        description: 'Use official DCCEEW encounter type list for immediate cause of rescue',
+        required: true,
+        jurisdictions: ['NSW'],
+        category: 'record-keeping',
+        formType: 'wildlife-register'
+      },
+      {
+        id: '14.1.1c',
+        section: '14.1.1c',
+        title: 'Animal Condition Assessment',
+        description: 'Record animal condition using official NSW categories',
+        required: true,
+        jurisdictions: ['NSW'],
+        category: 'record-keeping',
+        formType: 'wildlife-register'
+      },
+      {
+        id: '14.1.1d',
+        section: '14.1.1d',
+        title: 'Pouch Condition (Marsupials)',
+        description: 'Record pouch condition for marsupials using one of six official values',
+        required: true,
+        jurisdictions: ['NSW'],
+        category: 'record-keeping',
+        formType: 'wildlife-register'
+      },
+      {
+        id: '14.1.1e',
+        section: '14.1.1e',
+        title: 'Fate Recording',
+        description: 'Record fate using official DCCEEW fate list with date and details',
+        required: true,
+        jurisdictions: ['NSW'],
+        category: 'record-keeping',
+        formType: 'wildlife-register'
+      },
+      {
         id: '14.1.2',
         section: '14.1.2',
         title: 'Record Transfer',
-        description: 'When animals are transferred, copies of records must be transferred with them',
+        description: 'Track transfers with your ID, receiving org ID, entity details, and transfer date to avoid duplicates',
+        required: true,
+        jurisdictions: ['NSW'],
+        category: 'record-keeping',
+        formType: 'wildlife-register'
+      },
+      {
+        id: '14.1.2a',
+        section: '14.1.2a',
+        title: 'Transfer Register',
+        description: 'Maintain transfer register with unique IDs for cross-referencing between organizations',
         required: true,
         jurisdictions: ['NSW'],
         category: 'record-keeping',
@@ -333,7 +502,7 @@ const NSW_COMPLIANCE_RULES: ComplianceSection[] = [
         id: '14.2.5',
         section: '14.2.5',
         title: 'Release Information',
-        description: 'Record release type (hard or soft) and animal condition at release',
+        description: 'Record release type, date, exact address, distance from rescue, tags/bands, and microchip if used',
         required: false,
         jurisdictions: ['NSW'],
         category: 'record-keeping',

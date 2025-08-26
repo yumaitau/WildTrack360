@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, Home } from "lucide-react";
+import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, Home, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from '@/lib/prisma';
@@ -103,6 +103,19 @@ export default async function CompliancePage() {
       color: "text-indigo-600"
     }
   ];
+
+  // Add NSW-specific report module if in NSW jurisdiction
+  if (jurisdiction === 'NSW') {
+    complianceModules.push({
+      title: "NSW Annual Report",
+      description: "Generate NSW Wildlife Rehabilitation Combined Report",
+      icon: FileSpreadsheet,
+      href: "/compliance/nsw-report",
+      status: "compliant",
+      count: 0,
+      color: "text-blue-600"
+    });
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">

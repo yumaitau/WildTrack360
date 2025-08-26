@@ -29,9 +29,31 @@ model Animal {
   notes       String?
   rescueLocation String?
   rescueCoordinates Json? // { lat: number, lng: number }
+  
+  // Detailed rescue address fields (required for NSW reporting)
+  rescueAddress String? @map("rescue_address")      // Street address where animal was found
+  rescueSuburb String? @map("rescue_suburb")        // Suburb/town where animal was found
+  rescuePostcode String? @map("rescue_postcode")    // Postcode of rescue location
+  
   releaseLocation String?
   releaseCoordinates Json? // { lat: number, lng: number }
   releaseNotes String?
+  
+  // Detailed release address fields
+  releaseAddress String? @map("release_address")    // Street address where animal was released
+  releaseSuburb String? @map("release_suburb")      // Suburb/town where animal was released  
+  releasePostcode String? @map("release_postcode")  // Postcode of release location
+  
+  // NSW-specific fields
+  encounterType String? @map("encounter_type")
+  initialWeightGrams Int? @map("initial_weight_grams")
+  weightUnit String? @default("g") @map("weight_unit")
+  animalCondition String? @map("animal_condition")
+  pouchCondition String? @map("pouch_condition")
+  fate String?
+  markBandMicrochip String? @map("mark_band_microchip")
+  lifeStage String? @map("life_stage")
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -47,6 +69,9 @@ model Animal {
   photos        Photo[]
   releaseChecklists ReleaseChecklist[]
   incidentReports   IncidentReport[]
+  transfers     AnimalTransfer[]
+  permanentCare PermanentCareApproval?
+  preservedSpecimen PreservedSpecimen?
 
   @@map("animals")
 }
@@ -118,6 +143,20 @@ model Carer {
   specialties String[] // Array of specialty areas
   notes       String?
   active      Boolean  @default(true)
+  
+  // NSW-specific fields
+  streetAddress String? @map("street_address")
+  suburb String?
+  state String? @default("NSW")
+  postcode String?
+  executivePosition String? @map("executive_position")
+  speciesCoordinatorFor String? @map("species_coordinator_for")
+  rehabilitatesKoala Boolean @default(false) @map("rehabilitates_koala")
+  rehabilitatesFlyingFox Boolean @default(false) @map("rehabilitates_flying_fox")
+  rehabilitatesBirdOfPrey Boolean @default(false) @map("rehabilitates_bird_of_prey")
+  memberSince DateTime? @map("member_since")
+  trainingLevel String? @map("training_level")
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -297,4 +336,201 @@ enum ReleaseType {
   HARD
   SOFT
   PASSIVE
+}
+
+// NSW-specific models for compliance reporting
+model AnimalTransfer {
+  id String @id @default(cuid())
+  animalId String
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  
+  transferDate DateTime
+  reasonForTransfer String
+  
+  // Receiving entity details
+  receivingEntity String
+  receivingEntityType String? // organisation, zoo, vet, individual
+  receivingLicense String?
+  receivingContactName String?
+  receivingContactPhone String?
+  receivingContactEmail String?
+  receivingOrgAnimalId String? // Their unique ID for the same animal
+  
+  // Address details
+  receivingAddress String?
+  receivingSuburb String?
+  receivingState String?
+  receivingPostcode String?
+  
+  // Additional tracking
+  transferAuthorizedBy String?
+  transferNotes String?
+  documents Json? // Array of document URLs/references
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  clerkUserId String
+  clerkOrganizationId String
+  
+  @@map("animal_transfers")
+}
+
+model PermanentCareApproval {
+  id String @id @default(cuid())
+  animalId String @unique
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  
+  // Approval details
+  npwsApprovalDate DateTime
+  npwsApprovalNumber String
+  approvalCategory PermanentCareCategory
+  
+  // Facility/keeper details
+  facilityName String
+  licenseNumber String
+  keeperName String?
+  address String
+  suburb String
+  state String @default("NSW")
+  postcode String
+  
+  // Status tracking
+  status PermanentCareStatus @default(ALIVE)
+  statusLastUpdated DateTime?
+  deathDate DateTime?
+  deathReason String?
+  
+  // Documentation
+  approvalDocumentUrl String?
+  notes String?
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  clerkUserId String
+  clerkOrganizationId String
+  
+  @@map("permanent_care_approvals")
+}
+
+model PreservedSpecimen {
+  id String @id @default(cuid())
+  animalId String? @unique
+  animal Animal? @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  
+  // Specimen details
+  species String
+  registerReferenceNumber String @unique
+  specimenDescription String
+  preservationMethod String?
+  preservationDate DateTime?
+  
+  // Storage location
+  facilityName String
+  facilityLicense String?
+  storageAddress String
+  storageSuburb String
+  storageState String @default("NSW")
+  storagePostcode String
+  
+  // Additional info
+  scientificPurpose String?
+  authorizedBy String?
+  notes String?
+  photos Json?
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  clerkUserId String
+  clerkOrganizationId String
+  
+  @@map("preserved_specimens")
+}
+
+model NSWReportMetadata {
+  id String @id @default(cuid())
+  reportYear Int
+  reportPeriodStart DateTime
+  reportPeriodEnd DateTime
+  
+  // Organization details at time of report
+  organizationName String
+  licenseNumber String
+  contactName String
+  contactEmail String
+  contactPhone String?
+  
+  // Report submission details
+  submittedDate DateTime?
+  submittedBy String?
+  nilReturn Boolean @default(false)
+  
+  // Report statistics snapshot
+  totalAnimals Int @default(0)
+  totalTransfers Int @default(0)
+  totalPermanentCare Int @default(0)
+  totalPreservedSpecimens Int @default(0)
+  totalMembers Int @default(0)
+  
+  // File reference
+  reportFileUrl String?
+  reportHash String? // For integrity checking
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  clerkOrganizationId String
+  
+  @@map("nsw_report_metadata")
+}
+
+// NSW Lookup Tables (read-only reference)
+model NSWEncounterType {
+  key String @id
+  category String
+  displayOrder Int @default(0)
+  
+  @@map("nsw_encounter_types")
+}
+
+model NSWFate {
+  key String @id
+  displayOrder Int @default(0)
+  
+  @@map("nsw_fates")
+}
+
+model NSWPouchCondition {
+  key String @id
+  displayOrder Int @default(0)
+  
+  @@map("nsw_pouch_conditions")
+}
+
+model NSWAnimalCondition {
+  key String @id
+  displayOrder Int @default(0)
+  
+  @@map("nsw_animal_conditions")
+}
+
+model NSWLifeStage {
+  key String @id
+  displayOrder Int @default(0)
+  
+  @@map("nsw_life_stages")
+}
+
+// Additional enums for NSW models
+enum PermanentCareCategory {
+  EDUCATION
+  COMPANION
+  RESEARCH
+}
+
+enum PermanentCareStatus {
+  ALIVE
+  DEAD
 }

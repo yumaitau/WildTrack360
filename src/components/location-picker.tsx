@@ -9,14 +9,23 @@ import { MapPin, Crosshair } from 'lucide-react';
 import SimpleMap from './simple-map';
 
 interface LocationPickerProps {
-  onLocationChange: (location: { lat: number; lng: number; address: string }) => void;
+  onLocationChange: (location: { 
+    lat: number; 
+    lng: number; 
+    address: string;
+    // Structured address components
+    streetAddress?: string;
+    suburb?: string;
+    postcode?: string;
+    state?: string;
+  }) => void;
   initialLocation?: { lat: number; lng: number; address: string };
 }
 
 export function LocationPicker({ onLocationChange, initialLocation }: LocationPickerProps) {
-  const [lat, setLat] = useState(initialLocation?.lat || -35.2809);
-  const [lng, setLng] = useState(initialLocation?.lng || 149.1300);
-  const [address, setAddress] = useState(initialLocation?.address || '');
+  const [lat, setLat] = useState<number>(initialLocation?.lat || -35.2809);
+  const [lng, setLng] = useState<number>(initialLocation?.lng || 149.1300);
+  const [address, setAddress] = useState<string>(initialLocation?.address || '');
   const [isLoading, setIsLoading] = useState(false);
 
   // Canberra ACT coordinates
@@ -40,13 +49,53 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
       if (data.display_name) {
         const newAddress = data.display_name;
         setAddress(newAddress);
-        onLocationChange({ lat, lng, address: newAddress });
+        
+        // Extract structured address components from Nominatim response
+        const addr = data.address || {};
+        
+        // Build street address (house number + road)
+        let streetAddress = '';
+        if (addr.house_number) {
+          streetAddress = addr.house_number;
+        }
+        if (addr.road) {
+          streetAddress = streetAddress ? `${streetAddress} ${addr.road}` : addr.road;
+        } else if (addr.street) {
+          streetAddress = streetAddress ? `${streetAddress} ${addr.street}` : addr.street;
+        }
+        
+        // Get suburb/town (try multiple fields in order of preference)
+        const suburb = addr.suburb || addr.town || addr.city || addr.locality || addr.village || '';
+        
+        // Get postcode
+        const postcode = addr.postcode || '';
+        
+        // Get state
+        const state = addr.state || addr.territory || 'NSW';
+        
+        onLocationChange({ 
+          lat, 
+          lng, 
+          address: newAddress,
+          streetAddress,
+          suburb,
+          postcode,
+          state
+        });
       }
     } catch (error) {
       console.error('Geocoding error:', error);
       const fallbackAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       setAddress(fallbackAddress);
-      onLocationChange({ lat, lng, address: fallbackAddress });
+      onLocationChange({ 
+        lat, 
+        lng, 
+        address: fallbackAddress,
+        streetAddress: '',
+        suburb: '',
+        postcode: '',
+        state: 'NSW'
+      });
     }
   };
 
@@ -133,7 +182,7 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
             id="latitude"
             type="number"
             step="any"
-            value={lat}
+            value={lat || ''}
             onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
             onBlur={handleCoordinateChange}
             placeholder="-35.2809"
@@ -145,7 +194,7 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
             id="longitude"
             type="number"
             step="any"
-            value={lng}
+            value={lng || ''}
             onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
             onBlur={handleCoordinateChange}
             placeholder="149.1300"
@@ -157,7 +206,7 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
         <Label htmlFor="address" className="text-sm font-medium">Address</Label>
         <Input
           id="address"
-          value={address}
+          value={address || ''}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="Enter or select location on map"
         />

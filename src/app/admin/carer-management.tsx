@@ -42,6 +42,11 @@ interface Carer {
   specialties?: string[];
   notes?: string | null;
   active: boolean;
+  // Address fields for NSW reporting
+  streetAddress?: string | null;
+  suburb?: string | null;
+  state?: string | null;
+  postcode?: string | null;
 }
 
 interface CarerManagementProps {
@@ -69,6 +74,11 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
   const [addSpecialtiesText, setAddSpecialtiesText] = useState('');
   const [addNotes, setAddNotes] = useState('');
   const [addActive, setAddActive] = useState(true);
+  // Address fields
+  const [addStreetAddress, setAddStreetAddress] = useState('');
+  const [addSuburb, setAddSuburb] = useState('');
+  const [addState, setAddState] = useState('NSW');
+  const [addPostcode, setAddPostcode] = useState('');
 
   // Edit dialog state
   const [editingCarer, setEditingCarer] = useState<Carer | null>(null);
@@ -80,6 +90,11 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
   const [editSpecialtiesText, setEditSpecialtiesText] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editActive, setEditActive] = useState(true);
+  // Address fields
+  const [editStreetAddress, setEditStreetAddress] = useState('');
+  const [editSuburb, setEditSuburb] = useState('');
+  const [editState, setEditState] = useState('NSW');
+  const [editPostcode, setEditPostcode] = useState('');
 
   // Refresh carers list from data store
   const refreshCarers = async () => {
@@ -106,6 +121,11 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
     setAddSpecialtiesText('');
     setAddNotes('');
     setAddActive(true);
+    // Address fields
+    setAddStreetAddress('');
+    setAddSuburb('');
+    setAddState('NSW');
+    setAddPostcode('');
     setIsAddDialogOpen(true);
   };
 
@@ -131,6 +151,11 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
           specialties,
           notes: addNotes || null,
           active: addActive,
+          // Address fields
+          streetAddress: addStreetAddress || null,
+          suburb: addSuburb || null,
+          state: addState || null,
+          postcode: addPostcode || null,
           clerkOrganizationId: organization?.id
         }) 
       });
@@ -164,6 +189,11 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
     setEditSpecialtiesText((carer.specialties || []).join(', '));
     setEditNotes(carer.notes || '');
     setEditActive(carer.active);
+    // Address fields
+    setEditStreetAddress(carer.streetAddress || '');
+    setEditSuburb(carer.suburb || '');
+    setEditState(carer.state || 'NSW');
+    setEditPostcode(carer.postcode || '');
     setIsEditDialogOpen(true);
   };
 
@@ -189,7 +219,12 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
           jurisdiction: editJurisdiction || null,
           specialties,
           notes: editNotes || null,
-          active: editActive
+          active: editActive,
+          // Address fields
+          streetAddress: editStreetAddress || null,
+          suburb: editSuburb || null,
+          state: editState || null,
+          postcode: editPostcode || null
         }) 
       });
       
@@ -363,6 +398,40 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
               />
             </div>
             
+            {/* Address Fields */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">Address Details (Required for NSW Reporting)</h4>
+              <div className="space-y-2">
+                <Label htmlFor="edit-street">Street Address</Label>
+                <Input 
+                  id="edit-street"
+                  placeholder="e.g., 123 Main Street" 
+                  value={editStreetAddress} 
+                  onChange={(e) => setEditStreetAddress(e.target.value)} 
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="edit-suburb">Suburb/Town</Label>
+                  <Input 
+                    id="edit-suburb"
+                    placeholder="e.g., Sydney" 
+                    value={editSuburb} 
+                    onChange={(e) => setEditSuburb(e.target.value)} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-postcode">Postcode</Label>
+                  <Input 
+                    id="edit-postcode"
+                    placeholder="e.g., 2000" 
+                    value={editPostcode} 
+                    onChange={(e) => setEditPostcode(e.target.value)} 
+                  />
+                </div>
+              </div>
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="edit-specialties">Specialties (comma-separated)</Label>
               <Textarea 
@@ -473,6 +542,40 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
                 value={addJurisdiction} 
                 onChange={(e) => setAddJurisdiction(e.target.value)} 
               />
+            </div>
+            
+            {/* Address Fields */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">Address Details (Required for NSW Reporting)</h4>
+              <div className="space-y-2">
+                <Label htmlFor="add-street">Street Address</Label>
+                <Input 
+                  id="add-street"
+                  placeholder="e.g., 123 Main Street" 
+                  value={addStreetAddress} 
+                  onChange={(e) => setAddStreetAddress(e.target.value)} 
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="add-suburb">Suburb/Town</Label>
+                  <Input 
+                    id="add-suburb"
+                    placeholder="e.g., Sydney" 
+                    value={addSuburb} 
+                    onChange={(e) => setAddSuburb(e.target.value)} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-postcode">Postcode</Label>
+                  <Input 
+                    id="add-postcode"
+                    placeholder="e.g., 2000" 
+                    value={addPostcode} 
+                    onChange={(e) => setAddPostcode(e.target.value)} 
+                  />
+                </div>
+              </div>
             </div>
             
             <div className="space-y-2">

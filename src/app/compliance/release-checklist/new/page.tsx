@@ -38,6 +38,10 @@ function NewReleaseChecklistForm() {
     lat: number;
     lng: number;
     address: string;
+    streetAddress?: string;
+    suburb?: string;
+    postcode?: string;
+    state?: string;
   } | null>(null);
   const [within10km, setWithin10km] = useState<boolean>(false);
   const [fitnessIndicators, setFitnessIndicators] = useState<string[]>([]);
@@ -177,7 +181,7 @@ function NewReleaseChecklistForm() {
       if (response.ok) {
         // If we came from an animal detail page, complete the release process
         if (urlAnimalId) {
-          // Update animal status to RELEASED and save release details
+          // Update animal status to RELEASED and save release details including structured address
           await fetch(`/api/animals/${urlAnimalId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -186,6 +190,10 @@ function NewReleaseChecklistForm() {
               dateReleased: new Date(releaseDate),
               releaseLocation: releaseLocation!.address,
               releaseCoordinates: { lat: releaseLocation!.lat, lng: releaseLocation!.lng },
+              // Auto-populate structured address fields from map selection
+              releaseAddress: releaseLocation!.streetAddress || '',
+              releaseSuburb: releaseLocation!.suburb || '',
+              releasePostcode: releaseLocation!.postcode || '',
               releaseNotes: notes || 'Released after completing checklist',
               outcome: 'Successfully released',
               outcomeDate: new Date(releaseDate)

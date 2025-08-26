@@ -219,14 +219,8 @@ export default function AnimalDetailClient({
         
         <main>
           <Card className="mb-8 overflow-hidden shadow-lg">
-            <div className="md:flex">
-              <div className="md:w-1/3 relative h-64 md:h-auto">
-                {/* Image removed per request (no upload/photo UI here) */}
-                <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground">
-                  {animal.name}
-                </div>
-              </div>
-              <div className="md:w-2/3 p-6 flex flex-col justify-between">
+            <div>
+              <div className="p-6 flex flex-col justify-between">
                 <div>
                   <StatusBadge status={animal.status} className="mb-4" />
                   <h1 className="font-headline text-4xl lg:text-5xl font-bold text-primary flex items-center gap-4">
@@ -303,6 +297,149 @@ export default function AnimalDetailClient({
                       )}
                     </div>
                   )}
+                  
+                  {/* Detailed Animal Information */}
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Basic Details */}
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-lg mb-2">Basic Details</h3>
+                      {animal.sex && (
+                        <div className="flex items-start gap-2">
+                          <span className="font-medium text-muted-foreground">Sex:</span>
+                          <span>{animal.sex}</span>
+                        </div>
+                      )}
+                      {animal.ageClass && (
+                        <div className="flex items-start gap-2">
+                          <span className="font-medium text-muted-foreground">Age Class:</span>
+                          <span>{animal.ageClass}</span>
+                        </div>
+                      )}
+                      {animal.age && (
+                        <div className="flex items-start gap-2">
+                          <span className="font-medium text-muted-foreground">Age:</span>
+                          <span>{animal.age}</span>
+                        </div>
+                      )}
+                      {animal.dateOfBirth && (
+                        <div className="flex items-start gap-2">
+                          <span className="font-medium text-muted-foreground">Date of Birth:</span>
+                          <span>{new Date(animal.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                        </div>
+                      )}
+                      {animal.outcomeDate && (
+                        <div className="flex items-start gap-2">
+                          <span className="font-medium text-muted-foreground">Outcome Date:</span>
+                          <span>{new Date(animal.outcomeDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                        </div>
+                      )}
+                      {animal.outcome && (
+                        <div className="flex items-start gap-2">
+                          <span className="font-medium text-muted-foreground">Outcome:</span>
+                          <span>{animal.outcome}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* NSW Compliance Fields */}
+                    {jurisdiction === 'NSW' && (
+                      <div className="space-y-2">
+                        <h3 className="font-semibold text-lg mb-2">NSW Compliance Data</h3>
+                        {animal.encounterType && (
+                          <div className="flex items-start gap-2">
+                            <span className="font-medium text-muted-foreground">Encounter Type:</span>
+                            <span>{animal.encounterType}</span>
+                          </div>
+                        )}
+                        {animal.initialWeightGrams !== null && animal.initialWeightGrams !== undefined && (
+                          <div className="flex items-start gap-2">
+                            <span className="font-medium text-muted-foreground">Initial Weight:</span>
+                            <span>{animal.initialWeightGrams}g</span>
+                          </div>
+                        )}
+                        {animal.animalCondition && (
+                          <div className="flex items-start gap-2">
+                            <span className="font-medium text-muted-foreground">Animal Condition:</span>
+                            <span>{animal.animalCondition}</span>
+                          </div>
+                        )}
+                        {animal.pouchCondition && (
+                          <div className="flex items-start gap-2">
+                            <span className="font-medium text-muted-foreground">Pouch Condition:</span>
+                            <span>{animal.pouchCondition}</span>
+                          </div>
+                        )}
+                        {animal.fate && (
+                          <div className="flex items-start gap-2">
+                            <span className="font-medium text-muted-foreground">Fate:</span>
+                            <span>{animal.fate}</span>
+                          </div>
+                        )}
+                        {animal.markBandMicrochip && (
+                          <div className="flex items-start gap-2">
+                            <span className="font-medium text-muted-foreground">Mark/Band/Microchip:</span>
+                            <span>{animal.markBandMicrochip}</span>
+                          </div>
+                        )}
+                        {animal.lifeStage && (
+                          <div className="flex items-start gap-2">
+                            <span className="font-medium text-muted-foreground">Life Stage:</span>
+                            <span>{animal.lifeStage}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Address Details */}
+                    {(animal.rescueAddress || animal.rescueSuburb || animal.rescuePostcode || 
+                      animal.releaseAddress || animal.releaseSuburb || animal.releasePostcode) && (
+                      <div className="space-y-2 md:col-span-2">
+                        <h3 className="font-semibold text-lg mb-2">Address Details</h3>
+                        
+                        {(animal.rescueAddress || animal.rescueSuburb || animal.rescuePostcode) && (
+                          <div className="mb-3">
+                            <h4 className="font-medium text-muted-foreground mb-1">Rescue Address:</h4>
+                            <div className="ml-4 space-y-1">
+                              {animal.rescueAddress && <div>{animal.rescueAddress}</div>}
+                              {(animal.rescueSuburb || animal.rescuePostcode) && (
+                                <div>
+                                  {animal.rescueSuburb && <span>{animal.rescueSuburb}</span>}
+                                  {animal.rescueSuburb && animal.rescuePostcode && <span>, </span>}
+                                  {animal.rescuePostcode && <span>{animal.rescuePostcode}</span>}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {(animal.releaseAddress || animal.releaseSuburb || animal.releasePostcode) && (
+                          <div>
+                            <h4 className="font-medium text-muted-foreground mb-1">Release Address:</h4>
+                            <div className="ml-4 space-y-1">
+                              {animal.releaseAddress && <div>{animal.releaseAddress}</div>}
+                              {(animal.releaseSuburb || animal.releasePostcode) && (
+                                <div>
+                                  {animal.releaseSuburb && <span>{animal.releaseSuburb}</span>}
+                                  {animal.releaseSuburb && animal.releasePostcode && <span>, </span>}
+                                  {animal.releasePostcode && <span>{animal.releasePostcode}</span>}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {animal.notes && (
+                      <div className="space-y-2 md:col-span-2">
+                        <h3 className="font-semibold text-lg mb-2">Notes</h3>
+                        <div className="p-3 bg-muted rounded-lg">
+                          <p className="text-sm whitespace-pre-wrap">{animal.notes}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                  <div className="mt-6 flex gap-2">
                   <Button variant="outline" onClick={() => setIsEditOpen(true)}>Edit Animal</Button>
