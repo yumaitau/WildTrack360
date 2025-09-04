@@ -1,6 +1,44 @@
 import { PrismaClient } from '@prisma/client';
+import { speciesSeedData } from './species-seed-data';
 
 const prisma = new PrismaClient();
+
+async function seedSpeciesForOrganization(clerkUserId: string, clerkOrganizationId: string) {
+  console.log(`  📚 Seeding ${speciesSeedData.length} species...`);
+  
+  const species = await Promise.all(
+    speciesSeedData.map(async (speciesData) => {
+      const id = `species-${speciesData.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+      
+      // Build description with category and type info
+      let description = `${speciesData.type}`;
+      if (speciesData.subtype) {
+        description += ` - ${speciesData.subtype}`;
+      }
+      description += `. Category: ${speciesData.category}`;
+      if (speciesData.speciesCode) {
+        description += `. Species Code: ${speciesData.speciesCode}`;
+      }
+      
+      return prisma.species.upsert({
+        where: { id },
+        update: {},
+        create: {
+          id,
+          name: speciesData.name,
+          scientificName: speciesData.scientificName,
+          description,
+          careRequirements: null, // Can be added later based on species type
+          clerkUserId,
+          clerkOrganizationId,
+        },
+      });
+    })
+  );
+  
+  console.log(`  ✅ Created ${species.length} species`);
+  return species;
+}
 
 async function main() {
   console.log('🌱 Starting database seed...');
@@ -30,48 +68,8 @@ async function main() {
     },
   });
 
-  // Create sample species
-  const species = await Promise.all([
-    prisma.species.upsert({
-      where: { id: 'species-1' },
-      update: {},
-      create: {
-        id: 'species-1',
-        name: 'Koala',
-        scientificName: 'Phascolarctos cinereus',
-        description: 'Tree-dwelling marsupial native to Australia',
-        careRequirements: 'Eucalyptus leaves, tree climbing space, temperature control',
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
-      },
-    }),
-    prisma.species.upsert({
-      where: { id: 'species-2' },
-      update: {},
-      create: {
-        id: 'species-2',
-        name: 'Eastern Grey Kangaroo',
-        scientificName: 'Macropus giganteus',
-        description: 'Large marsupial found in eastern Australia',
-        careRequirements: 'Grass diet, large enclosure, social interaction',
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
-      },
-    }),
-    prisma.species.upsert({
-      where: { id: 'species-3' },
-      update: {},
-      create: {
-        id: 'species-3',
-        name: 'Common Brushtail Possum',
-        scientificName: 'Trichosurus vulpecula',
-        description: 'Nocturnal marsupial common in urban areas',
-        careRequirements: 'Nocturnal housing, varied diet, climbing structures',
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
-      },
-    }),
-  ]);
+  // Seed all species for the default organization
+  const species = await seedSpeciesForOrganization(defaultUser.id, defaultOrg.id);
 
   // Create sample carers
   const carers = await Promise.all([
@@ -210,7 +208,10 @@ async function main() {
   ]);
 
   console.log('✅ Database seeded successfully!');
-  console.log(`📊 Created ${species.length} species, ${carers.length} carers, ${animals.length} animals`);
+  console.log(`📊 Summary:`);
+  console.log(`   - ${species.length} species (native Australian wildlife)`);
+  console.log(`   - ${carers.length} carers`);
+  console.log(`   - ${animals.length} sample animals`);
 }
 
 main()

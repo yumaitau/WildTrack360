@@ -20,11 +20,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Pen, PlusCircle, Trash, Save, X } from 'lucide-react';
+import { Pen, PlusCircle, Trash, Save, X, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -50,6 +57,10 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
   const [speciesToDelete, setSpeciesToDelete] = useState<SpeciesItem | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  
+  // Add search/filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
 
   // Add dialog state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -57,6 +68,27 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
   const [addScientificName, setAddScientificName] = useState('');
   const [addDescription, setAddDescription] = useState('');
   const [addCareRequirements, setAddCareRequirements] = useState('');
+
+  // Filter species based on search term and type
+  const filteredSpecies = species.filter(s => {
+    const matchesSearch = searchTerm === '' || 
+      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.scientificName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+    const matchesType = filterType === 'all' || (() => {
+      const desc = s.description?.toLowerCase() || '';
+      switch (filterType) {
+        case 'mammal': return desc.includes('mammal');
+        case 'bird': return desc.includes('bird');
+        case 'reptile': return desc.includes('reptile');
+        case 'amphibian': return desc.includes('amphibian');
+        default: return true;
+      }
+    })();
+    
+    return matchesSearch && matchesType;
+  });
 
   const refreshSpecies = async () => {
     try {
@@ -183,6 +215,32 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
 
   return (
     <div className="space-y-4">
+      {/* Search and Filter Bar */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search species by name, scientific name, or description..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Filter by type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="mammal">Mammals</SelectItem>
+            <SelectItem value="bird">Birds</SelectItem>
+            <SelectItem value="reptile">Reptiles</SelectItem>
+            <SelectItem value="amphibian">Amphibians</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Add Species Bar */}
       <div className="flex space-x-2">
         <Input
           placeholder="New species name..."
@@ -195,6 +253,13 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
           <PlusCircle className="mr-2 h-4 w-4" /> 
           Add Species
         </Button>
+      </div>
+      
+      {/* Results Count */}
+      <div className="text-sm text-muted-foreground">
+        Showing {filteredSpecies.length} of {species.length} species
+        {searchTerm && ` matching "${searchTerm}"`}
+        {filterType !== 'all' && ` (${filterType}s only)`}
       </div>
 
       <div className="rounded-md border">
@@ -209,7 +274,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {species.map((s) => (
+            {filteredSpecies.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.name}</TableCell>
                 <TableCell>
@@ -249,10 +314,15 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
                 </TableCell>
               </TableRow>
             ))}
-            {species.length === 0 && (
+            {filteredSpecies.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  No species found. Add your first species above.
+                  {species.length === 0 
+                    ? "No species found. Add your first species above."
+                    : searchTerm || filterType !== 'all'
+                    ? "No species match your search criteria. Try adjusting your filters."
+                    : "No species found."
+                  }
                 </TableCell>
               </TableRow>
             )}
