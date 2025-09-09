@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SpeciesCombobox } from '@/components/species-combobox';
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -39,17 +40,17 @@ async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-interface SpeciesItem { id: string; name: string; scientificName?: string | null; description?: string | null; careRequirements?: string | null }
+interface SpeciesItem { id: string; name: string; scientificName?: string | null; type?: string | null; description?: string | null; careRequirements?: string | null }
 interface SpeciesManagementProps { initialSpecies: string[] }
 
 export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
   const { user } = useUser();
   const { organization } = useOrganization();
   const [species, setSpecies] = useState<SpeciesItem[]>([]);
-  const [newSpecies, setNewSpecies] = useState('');
   const [editingSpecies, setEditingSpecies] = useState<SpeciesItem | null>(null);
   const [editName, setEditName] = useState('');
   const [editScientificName, setEditScientificName] = useState('');
+  const [editType, setEditType] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCareRequirements, setEditCareRequirements] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -66,6 +67,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [addName, setAddName] = useState('');
   const [addScientificName, setAddScientificName] = useState('');
+  const [addType, setAddType] = useState('');
   const [addDescription, setAddDescription] = useState('');
   const [addCareRequirements, setAddCareRequirements] = useState('');
 
@@ -77,12 +79,12 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
       s.description?.toLowerCase().includes(searchTerm.toLowerCase());
       
     const matchesType = filterType === 'all' || (() => {
-      const desc = s.description?.toLowerCase() || '';
+      const speciesType = s.type?.toLowerCase() || '';
       switch (filterType) {
-        case 'mammal': return desc.includes('mammal');
-        case 'bird': return desc.includes('bird');
-        case 'reptile': return desc.includes('reptile');
-        case 'amphibian': return desc.includes('amphibian');
+        case 'mammal': return speciesType === 'mammal';
+        case 'bird': return speciesType === 'bird';
+        case 'reptile': return speciesType === 'reptile';
+        case 'amphibian': return speciesType === 'amphibian';
         default: return true;
       }
     })();
@@ -110,8 +112,9 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
   }, [organization]);
 
   const openAddDialog = () => {
-    setAddName(newSpecies.trim());
+    setAddName('');
     setAddScientificName('');
+    setAddType('');
     setAddDescription('');
     setAddCareRequirements('');
     setIsAddDialogOpen(true);
@@ -129,15 +132,16 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
         body: JSON.stringify({ 
           name: addName.trim(),
           scientificName: addScientificName || null,
+          type: addType || null,
           description: addDescription || null,
           careRequirements: addCareRequirements || null,
           clerkOrganizationId: organization?.id 
         }) 
       });
-      setNewSpecies('');
       setIsAddDialogOpen(false);
       setAddName('');
       setAddScientificName('');
+      setAddType('');
       setAddDescription('');
       setAddCareRequirements('');
       await refreshSpecies();
@@ -162,6 +166,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
         body: JSON.stringify({ 
           name: editName.trim(), 
           scientificName: editScientificName || null,
+          type: editType || null,
           description: editDescription || null,
           careRequirements: editCareRequirements || null
         }) 
@@ -169,6 +174,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
       setEditingSpecies(null);
       setEditName('');
       setEditScientificName('');
+      setEditType('');
       setEditDescription('');
       setEditCareRequirements('');
       setIsEditDialogOpen(false);
@@ -203,6 +209,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
     setEditingSpecies(item);
     setEditName(item.name);
     setEditScientificName(item.scientificName || '');
+    setEditType(item.type || '');
     setEditDescription(item.description || '');
     setEditCareRequirements(item.careRequirements || '');
     setIsEditDialogOpen(true);
@@ -241,14 +248,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
       </div>
 
       {/* Add Species Bar */}
-      <div className="flex space-x-2">
-        <Input
-          placeholder="New species name..."
-          value={newSpecies}
-          onChange={(e) => setNewSpecies(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && openAddDialog()}
-          disabled={loading}
-        />
+      <div className="flex justify-end">
         <Button onClick={openAddDialog} disabled={loading}>
           <PlusCircle className="mr-2 h-4 w-4" /> 
           Add Species
@@ -268,6 +268,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
             <TableRow>
               <TableHead>Common Name</TableHead>
               <TableHead>Scientific Name</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Care Requirements</TableHead>
               <TableHead className="w-[120px] text-right">Actions</TableHead>
@@ -280,6 +281,15 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
                 <TableCell>
                   {s.scientificName ? (
                     <span className="italic text-muted-foreground">{s.scientificName}</span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {s.type ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                      {s.type}
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">-</span>
                   )}
@@ -316,7 +326,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
             ))}
             {filteredSpecies.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   {species.length === 0 
                     ? "No species found. Add your first species above."
                     : searchTerm || filterType !== 'all'
@@ -332,7 +342,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
 
       {/* Add Species Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[600px] mx-auto">
           <DialogHeader>
             <DialogTitle>Add Species</DialogTitle>
             <DialogDescription>
@@ -342,12 +352,24 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
             <div className="space-y-2">
               <Label htmlFor="add-name">Common Name *</Label>
-              <Input
-                id="add-name"
-                placeholder="e.g., Eastern Grey Kangaroo"
-                value={addName}
-                onChange={(e) => setAddName(e.target.value)}
-              />
+              <div className="space-y-2">
+                <SpeciesCombobox
+                  value={addName}
+                  onValueChange={setAddName}
+                  onSpeciesSelect={(species) => {
+                    setAddName(species.name);
+                    if (species.scientificName) setAddScientificName(species.scientificName);
+                    if (species.type) setAddType(species.type);
+                  }}
+                  placeholder="Select from existing species..."
+                />
+                <Input
+                  id="add-name"
+                  placeholder="Or enter a custom species name"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="add-scientific">Scientific Name</Label>
@@ -358,6 +380,20 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
                 onChange={(e) => setAddScientificName(e.target.value)}
                 className="italic"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-type">Species Type</Label>
+              <Select value={addType} onValueChange={setAddType}>
+                <SelectTrigger id="add-type">
+                  <SelectValue placeholder="Select species type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Mammal">Mammal</SelectItem>
+                  <SelectItem value="Bird">Bird</SelectItem>
+                  <SelectItem value="Reptile">Reptile</SelectItem>
+                  <SelectItem value="Amphibian">Amphibian</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="add-description">Description</Label>
@@ -395,7 +431,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
 
       {/* Edit Dialog (full fields) */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[600px] mx-auto">
           <DialogHeader>
             <DialogTitle>Edit Species</DialogTitle>
             <DialogDescription>Update species details.</DialogDescription>
@@ -419,6 +455,20 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
                 onChange={(e) => setEditScientificName(e.target.value)}
                 className="italic" 
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-type">Species Type</Label>
+              <Select value={editType} onValueChange={setEditType}>
+                <SelectTrigger id="edit-type">
+                  <SelectValue placeholder="Select species type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Mammal">Mammal</SelectItem>
+                  <SelectItem value="Bird">Bird</SelectItem>
+                  <SelectItem value="Reptile">Reptile</SelectItem>
+                  <SelectItem value="Amphibian">Amphibian</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-description">Description</Label>

@@ -31,6 +31,7 @@ import SpeciesDistributionChart from '@/components/species-distribution-chart';
 import RecentAdmissionsChart from '@/components/recent-admissions-chart';
 import CarerDistributionChart from '@/components/carer-distribution-chart';
 import ReleasesVsAdmissionsChart from '@/components/releases-vs-admissions-chart';
+import { TrainingExpiryAlerts } from '@/components/training-expiry-alerts';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -301,6 +302,11 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         {/* Dashboard Stats */}
         <div className="grid grid-cols-1 gap-6 mb-8">
           <DashboardStats animals={animals} />
+        </div>
+
+        {/* Training Alerts */}
+        <div className="mb-8">
+          <TrainingExpiryAlerts />
         </div>
 
         {/* Animals Table/Grid */}

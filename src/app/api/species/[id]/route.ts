@@ -44,12 +44,25 @@ export async function PATCH(
   try {
     const body = await request.json();
     
+    // First, verify the species belongs to the user's organization
+    const existingSpecies = await prisma.species.findFirst({
+      where: {
+        id,
+        clerkOrganizationId: orgId || 'default-org',
+      },
+    });
+
+    if (!existingSpecies) {
+      return NextResponse.json({ error: 'Species not found or access denied' }, { status: 404 });
+    }
+    
     // Remove fields that shouldn't be updated
     const { id: bodyId, createdAt, updatedAt, clerkUserId, clerkOrganizationId, ...updateData } = body;
     
     const species = await prisma.species.update({
       where: {
         id,
+        clerkOrganizationId: orgId || 'default-org', // Double-check in update
       },
       data: updateData,
     });
@@ -72,9 +85,22 @@ export async function DELETE(
   }
 
   try {
+    // First, verify the species belongs to the user's organization
+    const existingSpecies = await prisma.species.findFirst({
+      where: {
+        id,
+        clerkOrganizationId: orgId || 'default-org',
+      },
+    });
+
+    if (!existingSpecies) {
+      return NextResponse.json({ error: 'Species not found or access denied' }, { status: 404 });
+    }
+
     await prisma.species.delete({
       where: {
         id,
+        clerkOrganizationId: orgId || 'default-org', // Double-check in delete
       },
     });
 

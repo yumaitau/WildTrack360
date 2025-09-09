@@ -120,6 +120,7 @@ model Species {
   id          String   @id @default(cuid())
   name        String
   scientificName String?
+  type        String?  // 'Mammal', 'Bird', 'Reptile', 'Amphibian'
   description String?
   careRequirements String?
   createdAt   DateTime @default(now())
@@ -180,12 +181,23 @@ model CarerTraining {
   id          String   @id @default(cuid())
   carerId     String
   carer       Carer    @relation(fields: [carerId], references: [id], onDelete: Cascade)
-  courseName  String
-  provider    String?
-  date        DateTime
-  expiryDate  DateTime?
-  certificateUrl String?
-  notes       String?
+  
+  // Training details
+  courseName  String   // e.g., "Wildlife First Aid", "Koala Handling"
+  provider    String?  // e.g., "NSW Wildlife Council", "TAFE NSW"
+  date        DateTime // Date training was completed
+  expiryDate  DateTime? // When certification expires
+  
+  // Documentation
+  certificateUrl String? // Link to certificate document
+  certificateNumber String? // Certificate ID/number if applicable
+  
+  // Additional fields
+  trainingType String? // e.g., "Mandatory", "Specialist", "Refresher"
+  trainingHours Int?   // Duration of training in hours
+  notes       String?  // Any additional notes
+  
+  // Metadata
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -193,6 +205,9 @@ model CarerTraining {
   clerkUserId         String
   clerkOrganizationId String
 
+  @@index([carerId])
+  @@index([expiryDate])
+  @@index([clerkOrganizationId])
   @@map("carer_trainings")
 }
 

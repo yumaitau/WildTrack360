@@ -47,15 +47,27 @@ export async function PATCH(
   try {
     const body = await request.json();
     
+    // First, verify the carer belongs to the user's organization
+    const existingCarer = await prisma.carer.findFirst({
+      where: {
+        id,
+        clerkOrganizationId: orgId,
+      },
+    });
+
+    if (!existingCarer) {
+      return NextResponse.json({ error: 'Carer not found or access denied' }, { status: 404 });
+    }
+    
+    // Remove fields that shouldn't be updated
+    const { id: bodyId, createdAt, updatedAt, clerkUserId, clerkOrganizationId, ...updateData } = body;
+    
     const carer = await prisma.carer.update({
       where: {
         id,
+        clerkOrganizationId: orgId, // Double-check in update
       },
-      data: {
-        ...body,
-        clerkUserId: userId,
-        clerkOrganizationId: orgId,
-      },
+      data: updateData,
     });
 
     return NextResponse.json(carer);
@@ -76,9 +88,22 @@ export async function DELETE(
   }
 
   try {
+    // First, verify the carer belongs to the user's organization
+    const existingCarer = await prisma.carer.findFirst({
+      where: {
+        id,
+        clerkOrganizationId: orgId,
+      },
+    });
+
+    if (!existingCarer) {
+      return NextResponse.json({ error: 'Carer not found or access denied' }, { status: 404 });
+    }
+
     await prisma.carer.delete({
       where: {
         id,
+        clerkOrganizationId: orgId, // Double-check in delete
       },
     });
 
