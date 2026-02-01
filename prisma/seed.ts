@@ -43,33 +43,15 @@ async function seedSpeciesForOrganization(clerkUserId: string, clerkOrganization
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  // Create default organization
-  const defaultOrg = await prisma.clerkOrganization.upsert({
-    where: { id: 'default-org' },
-    update: {},
-    create: {
-      id: 'default-org',
-      name: 'WildTrack360 Demo Organization',
-      slug: 'wildtrack360-demo',
-      imageUrl: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=400&fit=crop&crop=center',
-    },
-  });
-
-  // Create default user
-  const defaultUser = await prisma.clerkUser.upsert({
-    where: { id: 'default-user' },
-    update: {},
-    create: {
-      id: 'default-user',
-      email: 'demo@wildtrack360.org',
-      firstName: 'Demo',
-      lastName: 'User',
-      imageUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=center',
-    },
-  });
+  // These are placeholder IDs used to satisfy the clerkUserId and
+  // clerkOrganizationId fields required on every model. In production,
+  // these values come from Clerk authentication. For seeding, we use
+  // fixed strings so the demo data is consistent and queryable.
+  const defaultUserId = 'seed-demo-user';
+  const defaultOrgId = 'seed-demo-org';
 
   // Seed all species for the default organization
-  const species = await seedSpeciesForOrganization(defaultUser.id, defaultOrg.id);
+  const species = await seedSpeciesForOrganization(defaultUserId, defaultOrgId);
 
   // Create sample carers
   const carers = await Promise.all([
@@ -79,14 +61,14 @@ async function main() {
       create: {
         id: 'carer-1',
         name: 'Dr. Sarah Johnson',
-        email: 'sarah.johnson@wildtrack360.org',
+        email: 'sarah.johnson@wildtrack360.com.au',
         phone: '+61 400 123 456',
         licenseNumber: 'ACT-WC-001',
         jurisdiction: 'ACT',
         specialties: ['Koalas', 'Marsupials', 'Emergency Care'],
         active: true,
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
+        clerkUserId: defaultUserId,
+        clerkOrganizationId: defaultOrgId,
       },
     }),
     prisma.carer.upsert({
@@ -95,14 +77,14 @@ async function main() {
       create: {
         id: 'carer-2',
         name: 'Michael Chen',
-        email: 'michael.chen@wildtrack360.org',
+        email: 'michael.chen@wildtrack360.com.au',
         phone: '+61 400 234 567',
         licenseNumber: 'ACT-WC-002',
         jurisdiction: 'ACT',
         specialties: ['Kangaroos', 'Large Mammals', 'Rehabilitation'],
         active: true,
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
+        clerkUserId: defaultUserId,
+        clerkOrganizationId: defaultOrgId,
       },
     }),
   ]);
@@ -117,8 +99,8 @@ async function main() {
         dateFound: new Date('2024-01-15'),
         notes: 'Found dehydrated near road, responding well to treatment',
         photo: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=400&fit=crop&crop=center',
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
+        clerkUserId: defaultUserId,
+        clerkOrganizationId: defaultOrgId,
         carerId: carers[0].id,
       },
     }),
@@ -130,8 +112,8 @@ async function main() {
         dateFound: new Date('2024-01-20'),
         notes: 'Orphaned joey found in pouch after mother hit by car',
         photo: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=400&fit=crop&crop=center',
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
+        clerkUserId: defaultUserId,
+        clerkOrganizationId: defaultOrgId,
         carerId: carers[1].id,
       },
     }),
@@ -143,8 +125,8 @@ async function main() {
         dateFound: new Date('2024-01-10'),
         notes: 'Young possum found in garden, ready for release',
         photo: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=400&fit=crop&crop=center',
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
+        clerkUserId: defaultUserId,
+        clerkOrganizationId: defaultOrgId,
         carerId: carers[0].id,
       },
     }),
@@ -159,8 +141,8 @@ async function main() {
         description: 'Initial health assessment - dehydrated, started IV fluids',
         location: 'Admission Room A',
         notes: 'Patient responding well to treatment',
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
+        clerkUserId: defaultUserId,
+        clerkOrganizationId: defaultOrgId,
         animalId: animals[0].id,
       },
     }),
@@ -171,8 +153,8 @@ async function main() {
         description: 'First solid food - eucalyptus leaves',
         location: 'Enclosure 1',
         notes: 'Good appetite, eating well',
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
+        clerkUserId: defaultUserId,
+        clerkOrganizationId: defaultOrgId,
         animalId: animals[0].id,
       },
     }),
@@ -189,8 +171,8 @@ async function main() {
         location: 'Enclosure 1',
         assignedTo: animals[0].id,
         purchaseDate: new Date('2023-12-01'),
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
+        clerkUserId: defaultUserId,
+        clerkOrganizationId: defaultOrgId,
       },
     }),
     prisma.asset.create({
@@ -201,8 +183,8 @@ async function main() {
         status: 'AVAILABLE',
         location: 'Medical Room',
         purchaseDate: new Date('2023-11-15'),
-        clerkUserId: defaultUser.id,
-        clerkOrganizationId: defaultOrg.id,
+        clerkUserId: defaultUserId,
+        clerkOrganizationId: defaultOrgId,
       },
     }),
   ]);

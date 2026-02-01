@@ -117,7 +117,7 @@ export const getOrganizationName = (): string => {
 
 // Get organization contact from environment
 export const getOrganizationContact = (): string => {
-  return process.env.NEXT_PUBLIC_ORGANIZATION_CONTACT || process.env.ORGANIZATION_CONTACT || 'contact@wildtrack360.org';
+  return process.env.NEXT_PUBLIC_ORGANIZATION_CONTACT || process.env.ORGANIZATION_CONTACT || 'contact@wildtrack360.com.au';
 };
 
 // Get organization logo from environment

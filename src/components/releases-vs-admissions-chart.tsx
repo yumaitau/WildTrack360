@@ -10,22 +10,6 @@ interface ReleasesVsAdmissionsChartProps {
 }
 
 export default function ReleasesVsAdmissionsChart({ animals }: ReleasesVsAdmissionsChartProps) {
-  console.log('ReleasesVsAdmissionsChart - animals data:', {
-    totalAnimals: animals.length,
-    releasedAnimals: animals.filter(a => a.status === 'RELEASED').length,
-    animalsWithOutcomeDate: animals.filter(a => a.outcomeDate).length,
-    releasedAnimalsWithDates: animals.filter(a => a.status === 'RELEASED' && a.outcomeDate).map(a => ({
-      name: a.name,
-      outcomeDate: a.outcomeDate,
-      status: a.status
-    })),
-    releasedWithoutOutcomeDate: animals.filter(a => a.status === 'RELEASED' && !a.outcomeDate).map(a => ({
-      name: a.name,
-      outcomeDate: a.outcomeDate,
-      status: a.status
-    }))
-  });
-
   const chartData = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const months = [
@@ -54,11 +38,6 @@ export default function ReleasesVsAdmissionsChart({ animals }: ReleasesVsAdmissi
 
     const totalAdmissions = monthlyData.reduce((sum, month) => sum + month.admissions, 0);
     const totalReleases = monthlyData.reduce((sum, month) => sum + month.releases, 0);
-    console.log('ReleasesVsAdmissionsChart - totals:', {
-      totalAdmissions,
-      totalReleases,
-      totalReleasedAnimals: animals.filter(a => a.status === 'RELEASED').length
-    });
     return monthlyData;
   }, [animals]);
 

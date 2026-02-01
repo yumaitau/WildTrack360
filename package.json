@@ -1,7 +1,16 @@
 {
-  "name": "nextn",
+  "name": "wildtrack360",
   "version": "0.1.0",
-  "private": true,
+  "description": "Wildlife conservation management system for tracking animal lifecycle, carer compliance, and regulatory reporting across Australian jurisdictions",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yumaitau/WildHub.git"
+  },
+  "homepage": "https://github.com/yumaitau/WildHub",
+  "bugs": {
+    "url": "https://github.com/yumaitau/WildHub/issues"
+  },
   "scripts": {
     "dev": "next dev",
     "genkit:dev": "genkit dev",
@@ -9,6 +18,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
@@ -55,7 +66,6 @@
     "date-fns": "^3.6.0",
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.6.0",
-    "firebase": "^11.9.1",
     "genkit": "^1.14.1",
     "jspdf": "^3.0.1",
     "lucide-react": "^0.475.0",
@@ -75,6 +85,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -82,6 +93,7 @@
     "eslint-config-next": "^15.4.6",
     "genkit-cli": "^1.14.1",
     "postcss": "^8",
+    "prettier": "^3.8.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }

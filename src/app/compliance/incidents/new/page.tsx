@@ -110,8 +110,6 @@ export default function NewIncidentReportPage() {
         clerkOrganizationId: organization?.id
       };
       
-      console.log('Submitting incident report:', payload);
-      
       const response = await fetch('/api/incidents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

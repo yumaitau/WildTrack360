@@ -24,10 +24,8 @@ export async function POST(request: Request) {
   const { userId, orgId: activeOrgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await request.json()
-  console.log('Received incident report data:', body);
   const orgId = body.clerkOrganizationId || activeOrgId || undefined
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
-  console.log('Using organization ID:', orgId);
   try {
     const created = await prisma.incidentReport.create({
       data: {

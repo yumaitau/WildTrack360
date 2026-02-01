@@ -98,16 +98,6 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
 
-    console.log('Validating form...', {
-      orgName,
-      licenseNumber,
-      contactName,
-      contactEmail,
-      contactPhone,
-      startDate,
-      endDate
-    });
-
     // Organization validation
     if (!orgName || orgName.trim().length < 2) {
       newErrors.orgName = "Organization name is required (min 2 characters)";
@@ -165,18 +155,14 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
   };
 
   const generateReport = async () => {
-    console.log('Generate report clicked');
-    
     // Clear previous errors
     setErrors({});
     
     // Validate form
     if (!validateForm()) {
-      console.log('Validation failed');
       return;
     }
 
-    console.log('Validation passed, generating report...');
     setLoading(true);
     
     try {

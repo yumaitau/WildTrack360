@@ -14,7 +14,8 @@ export default async function ComplianceOverviewPage() {
   
   if (orgId) {
     try {
-      const organization = await clerkClient().organizations.getOrganization({
+      const client = await clerkClient();
+      const organization = await client.organizations.getOrganization({
         organizationId: orgId,
       });
       
@@ -27,12 +28,9 @@ export default async function ComplianceOverviewPage() {
           jurisdiction = upperJurisdiction;
         }
       }
-      console.log(`Compliance page - Organization ${orgId} jurisdiction: ${jurisdiction}`);
     } catch (error) {
       console.error('Error fetching organization jurisdiction:', error);
     }
-  } else {
-    console.log('Compliance page - No organization ID, using default jurisdiction: ACT');
   }
 
   return <ComplianceOverviewClient jurisdiction={jurisdiction} organizationId={orgId || ''} />;

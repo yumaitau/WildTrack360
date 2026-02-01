@@ -147,7 +147,6 @@ export default function AnimalDetailClient({
       });
       
       if (response.ok) {
-        console.log('Animal status updated in data store');
         return true;
       } else {
         console.error('Failed to update animal status:', response.status);
@@ -187,23 +186,6 @@ export default function AnimalDetailClient({
       throw error;
     }
   };
-
-  // Debug: Log animal data to see what's available
-  console.log('Animal data:', {
-    id: animal.id,
-    name: animal.name,
-    rescueLocation: animal.rescueLocation,
-    rescueCoordinates: animal.rescueCoordinates,
-    rescueCoordinatesType: typeof animal.rescueCoordinates,
-    rescueCoordinatesStringified: JSON.stringify(animal.rescueCoordinates),
-    releaseLocation: animal.releaseLocation || releaseChecklist?.releaseLocation,
-    releaseCoordinates: animal.releaseCoordinates || releaseChecklist?.releaseCoordinates,
-    releaseNotes: animal.releaseNotes,
-    dateReleased: animal.dateReleased,
-    status: animal.status,
-    hasReleaseRecord: !!releaseRecord,
-    releaseRecordDate: releaseRecord?.date
-  });
 
   return (
     <div className="min-h-screen bg-background">
