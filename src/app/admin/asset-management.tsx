@@ -475,7 +475,7 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
           <DialogHeader>
             <DialogTitle>Delete Asset</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{assetToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{assetToDelete?.name}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

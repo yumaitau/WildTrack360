@@ -396,13 +396,13 @@ export default function HygieneLogPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Today's Compliance Summary
+            Today&apos;s Compliance Summary
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h4 className="font-semibold mb-4">Today's Entries</h4>
+              <h4 className="font-semibold mb-4">Today&apos;s Entries</h4>
               <div className="space-y-3">
                 {hygieneLogs
                   .filter((log: any) => log.date === new Date().toISOString().split('T')[0])

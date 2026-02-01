@@ -1,7 +1,6 @@
 import { Animal, Carer } from '@prisma/client';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
-import { NSW_FATE_OPTIONS } from './compliance-rules';
 
 export interface NSWReportData {
   reportingPeriod: {
@@ -85,13 +84,19 @@ export class NSWReportGenerator {
     this.data = data;
   }
 
-  /**
-   * Generate the complete NSW Combined Report workbook
-   */
-  generateReport(): XLSX.WorkBook {
-    const wb = XLSX.utils.book_new();
+  private addRowsToSheet(ws: ExcelJS.Worksheet, rows: (string | number | undefined)[][]) {
+    for (const row of rows) {
+      ws.addRow(row.length === 0 ? [''] : row);
+    }
+  }
 
-    // Add each required sheet
+  private setColumnWidths(ws: ExcelJS.Worksheet, widths: number[]) {
+    ws.columns = widths.map(width => ({ width }));
+  }
+
+  generateReport(): ExcelJS.Workbook {
+    const wb = new ExcelJS.Workbook();
+
     this.addNilReturnSheet(wb);
     this.addTransferredAnimalRegister(wb);
     this.addPermanentCareRegister(wb);
@@ -102,12 +107,9 @@ export class NSWReportGenerator {
     return wb;
   }
 
-  /**
-   * Add Nil Return sheet
-   */
-  private addNilReturnSheet(wb: XLSX.WorkBook) {
-    const isNilReturn = this.data.animals.length === 0 && 
-                       this.data.transfers.length === 0 && 
+  private addNilReturnSheet(wb: ExcelJS.Workbook) {
+    const isNilReturn = this.data.animals.length === 0 &&
+                       this.data.transfers.length === 0 &&
                        this.data.permanentCare.length === 0;
 
     const sheetData = [
@@ -124,14 +126,11 @@ export class NSWReportGenerator {
       [`Nil Return: ${isNilReturn ? 'YES' : 'NO'}`]
     ];
 
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Nil Return');
+    const ws = wb.addWorksheet('Nil Return');
+    this.addRowsToSheet(ws, sheetData);
   }
 
-  /**
-   * Add Transferred Animal Register
-   */
-  private addTransferredAnimalRegister(wb: XLSX.WorkBook) {
+  private addTransferredAnimalRegister(wb: ExcelJS.Workbook) {
     const headers = [
       ['TRANSFERRED ANIMAL REGISTER'],
       [`${format(this.data.reportingPeriod.startDate, 'do MMMM yyyy')} to ${format(this.data.reportingPeriod.endDate, 'do MMMM yyyy')}`],
@@ -166,23 +165,12 @@ export class NSWReportGenerator {
       transfer.recipientPostcode
     ]);
 
-    const sheetData = [...headers, ...dataRows];
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 15 },
-      { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 20 },
-      { wch: 30 }, { wch: 20 }, { wch: 10 }
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Transferred Animal Register');
+    const ws = wb.addWorksheet('Transferred Animal Register');
+    this.addRowsToSheet(ws, [...headers, ...dataRows]);
+    this.setColumnWidths(ws, [20, 20, 20, 15, 20, 25, 15, 20, 30, 20, 10]);
   }
 
-  /**
-   * Add Permanent Care Register
-   */
-  private addPermanentCareRegister(wb: XLSX.WorkBook) {
+  private addPermanentCareRegister(wb: ExcelJS.Workbook) {
     const headers = [
       ['PERMANENT CARE REGISTER'],
       [`${format(this.data.reportingPeriod.startDate, 'do MMMM yyyy')} to ${format(this.data.reportingPeriod.endDate, 'do MMMM yyyy')}`],
@@ -219,23 +207,12 @@ export class NSWReportGenerator {
       record.status
     ]);
 
-    const sheetData = [...headers, ...dataRows];
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 30 },
-      { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 10 },
-      { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 12 }
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Permanent Care Register');
+    const ws = wb.addWorksheet('Permanent Care Register');
+    this.addRowsToSheet(ws, [...headers, ...dataRows]);
+    this.setColumnWidths(ws, [20, 20, 20, 30, 15, 30, 20, 10, 15, 20, 25, 12]);
   }
 
-  /**
-   * Add Preserved Specimen Register
-   */
-  private addPreservedSpecimenRegister(wb: XLSX.WorkBook) {
+  private addPreservedSpecimenRegister(wb: ExcelJS.Workbook) {
     const headers = [
       ['PRESERVED SPECIMEN REGISTER'],
       [`${format(this.data.reportingPeriod.startDate, 'do MMMM yyyy')} to ${format(this.data.reportingPeriod.endDate, 'do MMMM yyyy')}`],
@@ -262,22 +239,12 @@ export class NSWReportGenerator {
       specimen.postcode
     ]);
 
-    const sheetData = [...headers, ...dataRows];
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 30 },
-      { wch: 30 }, { wch: 20 }, { wch: 10 }
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Preserved Specimen Register');
+    const ws = wb.addWorksheet('Preserved Specimen Register');
+    this.addRowsToSheet(ws, [...headers, ...dataRows]);
+    this.setColumnWidths(ws, [20, 20, 25, 30, 30, 20, 10]);
   }
 
-  /**
-   * Add Register of Members
-   */
-  private addRegisterOfMembers(wb: XLSX.WorkBook) {
+  private addRegisterOfMembers(wb: ExcelJS.Workbook) {
     const headers = [
       ['REGISTER OF MEMBERS'],
       [`${format(this.data.reportingPeriod.startDate, 'do MMMM yyyy')} to ${format(this.data.reportingPeriod.endDate, 'do MMMM yyyy')}`],
@@ -299,7 +266,7 @@ export class NSWReportGenerator {
       ['', '', '', '', '', '', '', '', '', '', '', 'Koala', 'Flying-Fox', 'Bird of Prey', '']
     ];
 
-    const dataRows = this.data.carers.map((carer: any, index) => {
+    const dataRows = this.data.carers.map((carer: any) => {
       const memberRecord: MemberRecord = {
         memberId: carer.id,
         firstName: carer.name.split(' ')[0] || carer.name,
@@ -336,24 +303,12 @@ export class NSWReportGenerator {
       ];
     });
 
-    const sheetData = [...headers, ...dataRows];
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
-      { wch: 20 }, { wch: 8 }, { wch: 10 }, { wch: 25 },
-      { wch: 15 }, { wch: 25 }, { wch: 30 }, { wch: 10 },
-      { wch: 12 }, { wch: 14 }, { wch: 5 }
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Register of Members');
+    const ws = wb.addWorksheet('Register of Members');
+    this.addRowsToSheet(ws, [...headers, ...dataRows]);
+    this.setColumnWidths(ws, [12, 15, 15, 25, 20, 8, 10, 25, 15, 25, 30, 10, 12, 14, 5]);
   }
 
-  /**
-   * Add Privacy Notice
-   */
-  private addPrivacyNotice(wb: XLSX.WorkBook) {
+  private addPrivacyNotice(wb: ExcelJS.Workbook) {
     const privacyText = [
       [],
       [],
@@ -369,24 +324,19 @@ export class NSWReportGenerator {
        'Personal information will be handled in accordance with the Privacy and Personal Information Protection Act 1998.']
     ];
 
-    const ws = XLSX.utils.aoa_to_sheet(privacyText);
-    XLSX.utils.book_append_sheet(wb, ws, 'Privacy Notice');
+    const ws = wb.addWorksheet('Privacy Notice');
+    this.addRowsToSheet(ws, privacyText);
   }
 
-  /**
-   * Export the report to Excel file
-   */
-  exportToExcel(filename: string = `NSW_Wildlife_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`) {
+  async exportToExcel(filename: string = `NSW_Wildlife_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`) {
     const wb = this.generateReport();
-    XLSX.writeFile(wb, filename);
+    await wb.xlsx.writeFile(filename);
     return filename;
   }
 
-  /**
-   * Get report as buffer for download
-   */
-  getReportBuffer(): ArrayBuffer {
+  async getReportBuffer(): Promise<ArrayBuffer> {
     const wb = this.generateReport();
-    return XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const nodeBuffer = await wb.xlsx.writeBuffer();
+    return nodeBuffer as ArrayBuffer;
   }
 }

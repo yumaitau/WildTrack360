@@ -165,7 +165,7 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
           <CardHeader>
             <CardTitle>Basic Information</CardTitle>
             <CardDescription>
-              Update carer's personal and contact information
+              Update carer&apos;s personal and contact information
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

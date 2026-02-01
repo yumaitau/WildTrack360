@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { NSWReportGenerator, NSWReportData, TransferRecord, PermanentCareRecord, PreservedSpecimenRecord } from '@/lib/nsw-report-generator';
-import * as XLSX from 'xlsx';
 import { NSW_FATE_OPTIONS } from '@/lib/compliance-rules';
 import { useOrganization, useUser } from '@clerk/nextjs';
 
@@ -219,7 +218,7 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
 
       // Generate report
       const generator = new NSWReportGenerator(reportData);
-      const buffer = generator.getReportBuffer();
+      const buffer = await generator.getReportBuffer();
       
       // Create download link
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

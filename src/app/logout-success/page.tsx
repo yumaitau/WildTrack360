@@ -42,7 +42,7 @@ export default function LogoutSuccessPage() {
             </div>
             
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold">You've been signed out</h1>
+              <h1 className="text-2xl font-bold">You&apos;ve been signed out</h1>
               <p className="text-muted-foreground">
                 Thank you for using WildTrack360. Your session has been securely ended.
               </p>

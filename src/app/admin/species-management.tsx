@@ -517,7 +517,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
           <DialogHeader>
             <DialogTitle>Delete Species</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{speciesToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{speciesToDelete?.name}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

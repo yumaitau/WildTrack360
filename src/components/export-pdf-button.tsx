@@ -15,7 +15,7 @@ export function ExportPDFButton({ data, type, className }: ExportPDFButtonProps)
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
-    let yPosition = 20;
+    const yPosition = 20;
     
     // Generate PDF based on type
     switch(type) {

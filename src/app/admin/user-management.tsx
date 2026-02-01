@@ -269,7 +269,7 @@ export function UserManagement() {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          No organization found. Please ensure you're part of an organization.
+          No organization found. Please ensure you&apos;re part of an organization.
         </AlertDescription>
       </Alert>
     );

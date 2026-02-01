@@ -61,7 +61,7 @@ export default function SignInPage() {
               <div className="text-center">
                 <h2 className="text-3xl font-bold mb-2">Welcome Back</h2>
                 <p className="text-muted-foreground">
-                  Choose how you'd like to sign in to your account
+                  Choose how you&apos;d like to sign in to your account
                 </p>
               </div>
               
