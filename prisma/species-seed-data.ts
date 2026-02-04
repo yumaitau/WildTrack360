@@ -27,6 +27,11 @@ export const speciesSeedData: SpeciesData[] = [
   { name: 'Tammar wallaby', scientificName: 'Macropus eugenii eugenii', speciesCode: 'C05889', category: 'Basic', type: 'Mammal', subtype: 'Wallabies' },
   { name: 'Tasmanian pademelon', scientificName: 'Thylogale billardierii', speciesCode: 'G01235', category: 'Basic', type: 'Mammal', subtype: 'Wallabies' },
 
+  // Mammals - Wombats
+  { name: 'Common wombat', scientificName: 'Vombatus ursinus', category: 'Basic', type: 'Mammal', subtype: 'Wombats' },
+  { name: 'Northern hairy-nosed wombat', scientificName: 'Lasiorhinus krefftii', category: 'Basic', type: 'Mammal', subtype: 'Wombats' },
+  { name: 'Southern hairy-nosed wombat', scientificName: 'Lasiorhinus latifrons', category: 'Basic', type: 'Mammal', subtype: 'Wombats' },
+
   // Amphibians
   { name: 'Southern bell frog', scientificName: 'Litoria raniformis', speciesCode: 'G03207', category: 'Basic', type: 'Amphibian' },
   { name: 'Smooth frog', scientificName: 'Geocrinia laevis', speciesCode: 'C03029', category: 'Basic', type: 'Amphibian' },
