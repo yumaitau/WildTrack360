@@ -7,7 +7,14 @@ export default async function CarerManagementPage() {
   const { userId, orgId } = await auth();
   if (!userId) redirect('/sign-in');
   const organizationId = orgId || '';
-  const carers = await getCarers(organizationId);
+
+  let carers;
+  try {
+    carers = await getCarers(organizationId);
+  } catch (error) {
+    console.error('Error loading carers:', error);
+    throw new Error('Unable to load carers. Please try again later.');
+  }
 
   return <CarerManagementClient carers={carers} />;
 }

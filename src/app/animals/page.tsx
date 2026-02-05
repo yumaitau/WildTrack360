@@ -9,27 +9,32 @@ export default async function AnimalsPage() {
   if (!userId) redirect('/sign-in');
   const organizationId = orgId || '';
 
-  const [animals, speciesRows, carersRows] = await Promise.all([
-    prisma.animal.findMany({
-      where: { clerkUserId: userId, clerkOrganizationId: organizationId },
-      orderBy: { dateFound: 'desc' },
-    }),
-    prisma.species.findMany({
-      where: { clerkUserId: userId, clerkOrganizationId: organizationId },
-      orderBy: { name: 'asc' },
-    }),
-    prisma.carer.findMany({
-      where: { clerkUserId: userId, clerkOrganizationId: organizationId },
-      orderBy: { name: 'asc' },
-    }),
-  ]);
+  try {
+    const [animals, speciesRows, carersRows] = await Promise.all([
+      prisma.animal.findMany({
+        where: { clerkUserId: userId, clerkOrganizationId: organizationId },
+        orderBy: { dateFound: 'desc' },
+      }),
+      prisma.species.findMany({
+        where: { clerkUserId: userId, clerkOrganizationId: organizationId },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.carer.findMany({
+        where: { clerkUserId: userId, clerkOrganizationId: organizationId },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
 
-  const species = speciesRows.map(s => s.name);
-  const carers = carersRows.map(c => c.name);
-  
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <AnimalsClient initialAnimals={animals} species={species} carers={carers} />
-    </Suspense>
-  );
+    const species = speciesRows.map(s => s.name);
+    const carers = carersRows.map(c => c.name);
+
+    return (
+      <Suspense fallback={<div>Loading...</div>}>
+        <AnimalsClient initialAnimals={animals} species={species} carers={carers} />
+      </Suspense>
+    );
+  } catch (error) {
+    console.error('Error loading animals page:', error);
+    throw new Error('Unable to load animals. Please try again later.');
+  }
 } 

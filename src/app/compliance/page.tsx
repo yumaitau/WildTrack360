@@ -17,20 +17,26 @@ export default async function CompliancePage() {
   const config = await getServerJurisdictionConfig(orgId);
 
   // Fetch all data server-side
-  const [animals, carers, releaseChecklists, incidents] = await Promise.all([
-    prisma.animal.findMany({
-      where: { clerkOrganizationId: orgId },
-    }),
-    prisma.carer.findMany({
-      where: { clerkOrganizationId: orgId },
-    }),
-    prisma.releaseChecklist.findMany({
-      where: { clerkOrganizationId: orgId },
-    }),
-    prisma.incidentReport.findMany({
-      where: { clerkOrganizationId: orgId },
-    }),
-  ]);
+  let animals, carers, releaseChecklists, incidents;
+  try {
+    [animals, carers, releaseChecklists, incidents] = await Promise.all([
+      prisma.animal.findMany({
+        where: { clerkOrganizationId: orgId },
+      }),
+      prisma.carer.findMany({
+        where: { clerkOrganizationId: orgId },
+      }),
+      prisma.releaseChecklist.findMany({
+        where: { clerkOrganizationId: orgId },
+      }),
+      prisma.incidentReport.findMany({
+        where: { clerkOrganizationId: orgId },
+      }),
+    ]);
+  } catch (error) {
+    console.error('Error loading compliance data:', error);
+    throw new Error('Unable to load compliance data. Please try again later.');
+  }
 
   const activeCarers = carers.filter((c: any) => c.active).length;
   const totalAnimals = animals.length;

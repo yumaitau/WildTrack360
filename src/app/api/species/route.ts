@@ -13,9 +13,11 @@ export async function GET(request: Request) {
 		const species = await getSpecies(orgId)
 		return NextResponse.json(species)
 	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Failed to fetch species'
-		const status = message === 'Forbidden' ? 403 : message === 'Organization ID is required' ? 400 : 500
-		return NextResponse.json({ error: message }, { status })
+		const message = err instanceof Error ? err.message : ''
+		if (message === 'Forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+		if (message === 'Organization ID is required') return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
+		console.error('Error fetching species:', err)
+		return NextResponse.json({ error: 'Failed to fetch species' }, { status: 500 })
 	}
 }
 
@@ -41,8 +43,7 @@ export async function POST(request: Request) {
 		return NextResponse.json(created, { status: 201 })
 	} catch (error) {
 		console.error('Error creating species:', error)
-		const message = error instanceof Error ? error.message : 'Failed to create species'
-		return NextResponse.json({ error: message }, { status: 500 })
+		return NextResponse.json({ error: 'Failed to create species' }, { status: 500 })
 	}
 }
 
