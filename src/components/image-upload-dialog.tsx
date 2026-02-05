@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { useFormState, useFormStatus } from "react-dom";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { getImageDescriptionAction } from "@/lib/actions";
-import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Photo } from "@prisma/client";
 
@@ -27,21 +24,6 @@ interface ImageUploadDialogProps {
   animalId: string;
 }
 
-const initialState = {
-  message: "",
-  description: "",
-};
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      Save Photo
-    </Button>
-  );
-}
-
 export default function ImageUploadDialog({
   isOpen,
   setIsOpen,
@@ -50,36 +32,17 @@ export default function ImageUploadDialog({
 }: ImageUploadDialogProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [description, setDescription] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onloadend = async () => {
+    reader.onloadend = () => {
       const dataUri = reader.result as string;
       setPreview(dataUri);
-      setIsGenerating(true);
-      setDescription("Generating description...");
-
-      const formData = new FormData();
-      formData.append("photoDataUri", dataUri);
-
-      try {
-        const result = await getImageDescriptionAction(initialState, formData);
-        if (result.message === "success") {
-          setDescription(result.description);
-        } else {
-          setDescription(`Error: ${result.message}`);
-        }
-      } catch (error) {
-        setDescription("An unexpected error occurred.");
-      } finally {
-        setIsGenerating(false);
-      }
     };
     reader.readAsDataURL(file);
   };
@@ -120,7 +83,7 @@ export default function ImageUploadDialog({
         <DialogHeader>
           <DialogTitle>Add New Photo</DialogTitle>
           <DialogDescription>
-            Upload an image and the AI will automatically generate a description for you.
+            Upload an image and add a description.
           </DialogDescription>
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit} className="grid gap-4 py-4">
@@ -137,21 +100,14 @@ export default function ImageUploadDialog({
 
           <div className="grid w-full gap-1.5">
             <Label htmlFor="description">Description</Label>
-            <div className="relative">
-              <Textarea
-                placeholder="A brief description of the photo..."
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                required
-              />
-              {isGenerating && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                </div>
-              )}
-            </div>
+            <Textarea
+              placeholder="A brief description of the photo..."
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              required
+            />
           </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
