@@ -1,0 +1,25 @@
+name: Database Keepalive
+
+on:
+  schedule:
+    # Run every 12 hours (at midnight and noon AEST/QLD time = 2pm and 2am UTC)
+    - cron: '0 2,14 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping keepalive endpoint
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -H "x-api-key: ${{ secrets.KEEPALIVE_API_KEY }}" "${{ secrets.KEEPALIVE_URL }}/api/keepalive")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Response: $body"
+          echo "HTTP Status: $http_code"
+
+          if [ "$http_code" -ne 200 ]; then
+            echo "Keepalive failed with status $http_code"
+            exit 1
+          fi
