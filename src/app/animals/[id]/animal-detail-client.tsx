@@ -16,7 +16,7 @@ import { getCurrentJurisdiction } from "@/lib/config";
 import { AnimalStatus, RecordType } from "@prisma/client";
 import { AddAnimalDialog } from "@/components/add-animal-dialog";
 import { DeleteAnimalDialog } from "@/components/delete-animal-dialog";
-import { useOrganization } from "@clerk/nextjs";
+import { useOrganization, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,18 +25,22 @@ interface AnimalDetailClientProps {
   initialRecords: Record[];
   initialPhotos: Photo[];
   releaseChecklist?: any;
+  userMap?: { [clerkUserId: string]: string };
 }
 
-export default function AnimalDetailClient({ 
-  initialAnimal, 
-  initialRecords, 
+export default function AnimalDetailClient({
+  initialAnimal,
+  initialRecords,
   initialPhotos,
-  releaseChecklist 
+  releaseChecklist,
+  userMap = {},
 }: AnimalDetailClientProps) {
   const [animal, setAnimal] = useState<Animal>(initialAnimal);
   const [records, setRecords] = useState<Record[]>(initialRecords);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const { organization } = useOrganization();
+  const { user } = useUser();
+  const [liveUserMap, setLiveUserMap] = useState<{ [clerkUserId: string]: string }>(userMap);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [speciesOptions, setSpeciesOptions] = useState<any[]>([]);
@@ -121,9 +125,17 @@ export default function AnimalDetailClient({
       console.error('Failed to save record');
       return;
     }
-    
-    // Update local state
-    setRecords(prevRecords => [newRecord, ...prevRecords].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+
+    const savedRecord = await recordResponse.json();
+
+    // Ensure the current user is in the user map for "Recorded by" display
+    if (savedRecord.clerkUserId && user && !liveUserMap[savedRecord.clerkUserId]) {
+      const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.emailAddresses?.[0]?.emailAddress || "Unknown";
+      setLiveUserMap(prev => ({ ...prev, [savedRecord.clerkUserId]: name }));
+    }
+
+    // Update local state with the full server record (includes id, createdAt, clerkUserId, etc.)
+    setRecords(prevRecords => [savedRecord, ...prevRecords].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
   };
 
   // Find the most recent release record
@@ -484,8 +496,9 @@ export default function AnimalDetailClient({
                   </CardContent>
                 </Card>
               )}
-              <RecordTimeline 
-                records={records} 
+              <RecordTimeline
+                records={records}
+                userMap={liveUserMap}
                 rescueLocation={((): { lat: number; lng: number; address: string } | undefined => {
                   const rc = animal.rescueCoordinates as unknown as { lat?: number; lng?: number } | null;
                   if (rc && typeof rc.lat === 'number' && typeof rc.lng === 'number') {
