@@ -226,7 +226,7 @@ export default function AnimalDetailClient({
                   <div className="flex flex-wrap gap-4 mt-6 text-foreground">
                     <div className="flex items-center gap-2">
                       <User className="h-5 w-5 text-accent"/>
-                      <span className="font-semibold">Carer:</span> {(animal as any)?.carer?.name ?? '—'}
+                      <span className="font-semibold">Carer:</span> {carerOptions.find(c => c.value === animal.carerId)?.label ?? '—'}
                     </div>
                     <div className="flex items-center gap-2">
                       <CalendarDays className="h-5 w-5 text-accent"/>

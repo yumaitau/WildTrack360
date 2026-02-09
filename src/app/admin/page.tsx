@@ -21,7 +21,6 @@ async function apiJson<T>(url: string): Promise<T> {
 
 export default function AdminPage() {
   const [species, setSpecies] = useState<string[]>([]);
-  const [carers, setCarers] = useState<string[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useUser();
@@ -30,13 +29,11 @@ export default function AdminPage() {
     const loadData = async () => {
       try {
         const orgId = organization?.id || 'default-org';
-        const [speciesData, carersData, assetsData] = await Promise.all([
+        const [speciesData, assetsData] = await Promise.all([
           apiJson<any[]>(`/api/species?orgId=${orgId}`),
-          apiJson<any[]>(`/api/carers?orgId=${orgId}`),
           apiJson<Asset[]>(`/api/assets?orgId=${orgId}`)
         ]);
         setSpecies(speciesData.map(s => s.name));
-        setCarers(carersData.map(c => c.name));
         setAssets(assetsData);
       } catch (error) {
         console.error('Error loading admin data:', error);
@@ -93,7 +90,7 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="carers">
               <User className="mr-2 h-4 w-4" />
-              Manage Carers
+              Carer Profiles
             </TabsTrigger>
             <TabsTrigger value="assets">
               <Package className="mr-2 h-4 w-4" />
@@ -117,10 +114,10 @@ export default function AdminPage() {
           <TabsContent value="carers">
             <Card>
               <CardHeader>
-                <CardTitle>Carer List</CardTitle>
+                <CardTitle>Carer Profiles</CardTitle>
               </CardHeader>
               <CardContent>
-                <CarerManagement initialCarers={carers} />
+                <CarerManagement />
               </CardContent>
             </Card>
           </TabsContent>

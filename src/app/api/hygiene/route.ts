@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   try {
     const logs = await prisma.hygieneLog.findMany({
       where: { clerkUserId: userId, clerkOrganizationId: orgId },
-      include: { carer: true },
+      include: { carer: true }, // CarerProfile relation
       orderBy: { date: 'desc' },
     })
     return NextResponse.json(logs)

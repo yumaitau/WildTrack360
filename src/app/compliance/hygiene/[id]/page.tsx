@@ -6,7 +6,7 @@ import { Shield, Calendar, Download, ArrowLeft, AlertTriangle, CheckCircle, XCir
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 
 interface HygieneLogDetailPageProps {
   params: Promise<{
@@ -25,7 +25,18 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
     include: { carer: true },
   });
   if (!log) notFound();
-  const carer = log.carer;
+  const carerProfile = log.carer;
+
+  // Resolve carer name from Clerk
+  let carerName = carerProfile?.id || '—';
+  if (carerProfile?.id) {
+    try {
+      const client = await clerkClient();
+      const clerkUser = await client.users.getUser(carerProfile.id);
+      carerName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || clerkUser.emailAddresses[0]?.emailAddress || carerProfile.id;
+    } catch { /* fallback to ID */ }
+  }
+  const carer = { ...carerProfile, name: carerName };
 
   const getComplianceScore = (log: any) => {
     const checks = [

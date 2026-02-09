@@ -13,13 +13,13 @@ import { useUser, useOrganization } from '@clerk/nextjs';
 interface AnimalsClientProps {
   initialAnimals: Animal[];
   species: string[];
-  carers: string[];
+  carers: { value: string; label: string }[];
 }
 
 export default function AnimalsClient({ initialAnimals, species, carers }: AnimalsClientProps) {
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [speciesList, setSpeciesList] = useState<string[]>(species);
-  const [carersList, setCarersList] = useState<string[]>(carers);
+  const [carersList, setCarersList] = useState<{ value: string; label: string }[]>(carers);
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [animalToEdit, setAnimalToEdit] = useState<Animal | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
@@ -41,13 +41,13 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
           new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
         ));
         setSpeciesList(speciesData.map((s: any) => s.name || ''));
-        setCarersList(carersData.map((c: any) => c.name || ''));
+        setCarersList(carersData.map((c: any) => ({ value: c.id, label: c.name })));
       } catch (error) {
         console.error('Error loading data from data store:', error);
         // Fallback to initial props if data store fails
         setAnimals(initialAnimals);
         setSpeciesList(species);
-        setCarersList(carers);
+        setCarersList(carers || []);
       }
     };
 
@@ -72,7 +72,7 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
               new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
             ));
             setSpeciesList(speciesData.map((s: any) => s.name || ''));
-            setCarersList(carersData.map((c: any) => c.name || ''));
+            setCarersList(carersData.map((c: any) => ({ value: c.id, label: c.name })));
           } catch (error) {
             console.error('Error refreshing data from data store:', error);
           }
@@ -157,7 +157,7 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
           new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
         ));
         setSpeciesList(speciesData.map((s: any) => s.name || ''));
-        setCarersList(carersData.map((c: any) => c.name || ''));
+        setCarersList(carersData.map((c: any) => ({ value: c.id, label: c.name })));
       } catch (error) {
         console.error('Error refreshing data:', error);
       }
@@ -219,7 +219,7 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
             </div>
           ) : (
             <div className="bg-card rounded-lg shadow-sm">
-              <AnimalTable animals={animals} onEdit={handleOpenEditDialog} />
+              <AnimalTable animals={animals} onEdit={handleOpenEditDialog} carerMap={Object.fromEntries((carersList || []).map(c => [c.value, c.label]))} />
             </div>
           )}
 

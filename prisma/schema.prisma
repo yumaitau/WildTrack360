@@ -63,7 +63,7 @@ model Animal {
 
   // Other Relations
   carerId String?
-  carer   Carer? @relation(fields: [carerId], references: [id])
+  carer   CarerProfile? @relation(fields: [carerId], references: [id])
 
   records       Record[]
   photos        Photo[]
@@ -133,10 +133,8 @@ model Species {
   @@map("species")
 }
 
-model Carer {
-  id          String   @id @default(cuid())
-  name        String
-  email       String
+model CarerProfile {
+  id          String   @id // Clerk user ID — single source of truth for identity
   phone       String?
   licenseNumber String?
   licenseExpiry DateTime?
@@ -144,7 +142,7 @@ model Carer {
   specialties String[] // Array of specialty areas
   notes       String?
   active      Boolean  @default(true)
-  
+
   // NSW-specific fields
   streetAddress String? @map("street_address")
   suburb String?
@@ -157,12 +155,11 @@ model Carer {
   rehabilitatesBirdOfPrey Boolean @default(false) @map("rehabilitates_bird_of_prey")
   memberSince DateTime? @map("member_since")
   trainingLevel String? @map("training_level")
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Clerk Relations
-  clerkUserId         String
   clerkOrganizationId String
 
   // Animal Relations
@@ -180,7 +177,7 @@ model Carer {
 model CarerTraining {
   id          String   @id @default(cuid())
   carerId     String
-  carer       Carer    @relation(fields: [carerId], references: [id], onDelete: Cascade)
+  carer       CarerProfile @relation(fields: [carerId], references: [id], onDelete: Cascade)
   
   // Training details
   courseName  String   // e.g., "Wildlife First Aid", "Koala Handling"
@@ -227,7 +224,7 @@ model HygieneLog {
   photos      Json?
   // Relations
   carerId     String
-  carer       Carer    @relation(fields: [carerId], references: [id])
+  carer       CarerProfile @relation(fields: [carerId], references: [id])
   notes       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

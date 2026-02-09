@@ -13,24 +13,36 @@ interface Training {
   id: string;
   courseName: string;
   expiryDate: string | null;
+  carerId: string;
   carer: {
-    name: string;
+    id: string;
   };
 }
 
 export function TrainingExpiryAlerts() {
   const { organization } = useOrganization();
   const [trainings, setTrainings] = useState<Training[]>([]);
+  const [carerMap, setCarerMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchTrainings = async () => {
+    const fetchData = async () => {
       try {
         const orgId = organization?.id || 'default-org';
-        const res = await fetch(`/api/carer-training?orgId=${orgId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setTrainings(data);
+        const [trainingsRes, carersRes] = await Promise.all([
+          fetch(`/api/carer-training?orgId=${orgId}`),
+          fetch(`/api/carers?orgId=${orgId}`),
+        ]);
+        if (trainingsRes.ok) {
+          setTrainings(await trainingsRes.json());
+        }
+        if (carersRes.ok) {
+          const carers = await carersRes.json();
+          const map: Record<string, string> = {};
+          for (const c of carers) {
+            map[c.id] = c.name;
+          }
+          setCarerMap(map);
         }
       } catch (error) {
         console.error('Error fetching trainings:', error);
@@ -39,7 +51,7 @@ export function TrainingExpiryAlerts() {
       }
     };
 
-    fetchTrainings();
+    fetchData();
   }, [organization]);
 
   const getExpiringTrainings = () => {
@@ -144,7 +156,7 @@ export function TrainingExpiryAlerts() {
                 className="flex items-center justify-between p-2 rounded-lg border"
               >
                 <div className="flex-1">
-                  <p className="font-medium text-sm">{training.carer.name}</p>
+                  <p className="font-medium text-sm">{carerMap[training.carerId] || training.carer.id}</p>
                   <p className="text-xs text-muted-foreground">{training.courseName}</p>
                 </div>
                 <div className="flex items-center gap-2">

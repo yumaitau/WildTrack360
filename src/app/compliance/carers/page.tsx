@@ -1,4 +1,4 @@
-import { getCarers } from "@/lib/database";
+import { getEnrichedCarers } from "@/lib/carer-helpers";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import CarerManagementClient from "./carer-management-client";
@@ -10,7 +10,7 @@ export default async function CarerManagementPage() {
 
   let carers;
   try {
-    carers = await getCarers(organizationId);
+    carers = await getEnrichedCarers(organizationId);
   } catch (error) {
     console.error('Error loading carers:', error);
     throw new Error('Unable to load carers. Please try again later.');

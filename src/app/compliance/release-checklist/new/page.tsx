@@ -304,7 +304,7 @@ function NewReleaseChecklistForm() {
                   <div><strong>Name:</strong> {selectedAnimal.name}</div>
                   <div><strong>Species:</strong> {selectedAnimal.species}</div>
                   <div><strong>Date Found:</strong> {new Date(selectedAnimal.dateFound).toISOString().split('T')[0]}</div>
-                  <div><strong>Carer:</strong> {selectedAnimal.carer?.name || ''}</div>
+                  <div><strong>Status:</strong> {selectedAnimal.status}</div>
                 </div>
               </div>
             )}

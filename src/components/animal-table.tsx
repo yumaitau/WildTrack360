@@ -49,9 +49,10 @@ import {
 interface AnimalTableProps {
     animals: Animal[];
     onEdit: (animal: Animal) => void;
+    carerMap?: Record<string, string>;
 }
 
-export function AnimalTable({ animals, onEdit }: AnimalTableProps) {
+export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
   const [data, setData] = React.useState(animals)
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -133,7 +134,7 @@ export function AnimalTable({ animals, onEdit }: AnimalTableProps) {
       header: "Carer",
       cell: ({ row }) => {
         const original: any = row.original as any;
-        const carerName = original?.carer?.name || original?.carerName || "—";
+        const carerName = (original?.carerId && carerMap?.[original.carerId]) || "—";
         return <div>{carerName}</div>;
       },
     },

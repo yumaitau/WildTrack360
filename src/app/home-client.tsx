@@ -321,9 +321,10 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
           </div>
           
           {viewMode === 'list' ? (
-            <AnimalTable 
-              animals={animals} 
+            <AnimalTable
+              animals={animals}
               onEdit={handleEditAnimal}
+              carerMap={Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name]))}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -389,6 +390,47 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
           </Card>
         )}
 
+        {/* Incomplete Carer Profiles Alert */}
+        {(carersList || []).filter((c: any) => !c.hasProfile).length > 0 && (
+          <Card className="border-orange-200 bg-orange-50 mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-800">
+                <AlertTriangle className="h-5 w-5" />
+                Carers With Incomplete Profiles
+              </CardTitle>
+              <CardDescription>
+                These organisation members need their carer profile completed before animals can be assigned to them
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(carersList || []).filter((c: any) => !c.hasProfile).slice(0, 6).map((carer: any) => (
+                  <div key={carer.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div className="flex-1">
+                      <div className="font-medium">{carer.name}</div>
+                      <div className="text-sm text-muted-foreground">{carer.email}</div>
+                    </div>
+                    <Link href="/admin">
+                      <Button variant="outline" size="sm">
+                        Complete Profile
+                      </Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+              {(carersList || []).filter((c: any) => !c.hasProfile).length > 6 && (
+                <div className="mt-4 text-center">
+                  <Link href="/admin">
+                    <Button variant="outline">
+                      View All {(carersList || []).filter((c: any) => !c.hasProfile).length} Incomplete Profiles
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Compliance Section */}
         <div className="bg-card rounded-lg shadow-md p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -409,7 +451,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         </div>
 
         <div className="grid grid-cols-1 gap-8 mb-8">
-          <CarerDistributionChart animals={animals} />
+          <CarerDistributionChart animals={animals} carerMap={Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name]))} />
           <ReleasesVsAdmissionsChart animals={animals} />
         </div>
       </main>
@@ -424,9 +466,9 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
           value: s.name, 
           label: s.name 
         }))}
-        carers={(carersList || []).map((c: any) => ({ 
-          value: c.id, 
-          label: c.name 
+        carers={(carersList || []).map((c: any) => ({
+          value: c.id,
+          label: c.name
         }))}
       />
 

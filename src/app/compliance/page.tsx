@@ -7,6 +7,7 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from '@/lib/prisma';
 import { redirect } from "next/navigation";
 import { getServerJurisdiction, getServerJurisdictionConfig } from '@/lib/server-config';
+import { getEnrichedCarers } from '@/lib/carer-helpers';
 
 export default async function CompliancePage() {
   const { userId, orgId } = await auth();
@@ -23,9 +24,7 @@ export default async function CompliancePage() {
       prisma.animal.findMany({
         where: { clerkOrganizationId: orgId },
       }),
-      prisma.carer.findMany({
-        where: { clerkOrganizationId: orgId },
-      }),
+      getEnrichedCarers(orgId),
       prisma.releaseChecklist.findMany({
         where: { clerkOrganizationId: orgId },
       }),

@@ -140,7 +140,7 @@ export default function WildlifeRegisterPage() {
                   animal.ageClass || '',
                   animal.rescueLocation,
                   new Date(animal.dateFound).toISOString().split('T')[0],
-                  animal.carer?.name || '',
+                  carerOptions.find((c: any) => c.value === animal.carerId)?.label || '',
                   animal.status
                 ])
               ].map(row => row.join(',')).join('\n');
@@ -249,7 +249,7 @@ export default function WildlifeRegisterPage() {
                 xPos += colWidths[5];
                 doc.text(new Date(animal.dateFound).toISOString().split('T')[0], xPos, yPosition);
                 xPos += colWidths[6];
-                doc.text(String(animal.carer?.name || ''), xPos, yPosition);
+                doc.text(String(carerOptions.find((c: any) => c.value === animal.carerId)?.label || ''), xPos, yPosition);
                 xPos += colWidths[7];
                 doc.text(String(animal.status), xPos, yPosition);
                 
@@ -429,7 +429,7 @@ export default function WildlifeRegisterPage() {
                     {animal.rescueLocation}
                   </TableCell>
                   <TableCell>{new Date(animal.dateFound).toLocaleDateString()}</TableCell>
-                  <TableCell>{animal.carer?.name || ''}</TableCell>
+                  <TableCell>{carerOptions.find((c: any) => c.value === animal.carerId)?.label || ''}</TableCell>
                   <TableCell>
                     <Badge 
                       variant={

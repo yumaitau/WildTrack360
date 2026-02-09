@@ -7,11 +7,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
 import { Table, TableHead, TableHeader, TableRow, TableCell, TableBody } from "@/components/ui/table";
-import { FileText } from "lucide-react";
-import { XCircle } from "lucide-react";
-import { AlertTriangle } from "lucide-react";
-import { CheckCircle } from "lucide-react";
+import { FileText, XCircle, AlertTriangle, CheckCircle } from "lucide-react";
 
 interface CarerDetailPageProps {
   params: Promise<{
@@ -25,13 +23,23 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
   if (!userId) redirect('/sign-in');
   const organizationId = orgId || '';
 
-  const carer = await prisma.carer.findFirst({
-    where: { id: id, clerkOrganizationId: organizationId },
-  });
-  if (!carer) notFound();
+  // Fetch profile from DB and Clerk user in parallel
+  const client = await clerkClient();
+  const [profile, clerkUser] = await Promise.all([
+    prisma.carerProfile.findFirst({
+      where: { id, clerkOrganizationId: organizationId },
+    }),
+    client.users.getUser(id).catch(() => null),
+  ]);
+
+  if (!clerkUser) notFound();
+
+  const carerName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') ||
+    clerkUser.emailAddresses[0]?.emailAddress || 'Unknown';
+  const carerEmail = clerkUser.emailAddresses[0]?.emailAddress || 'No email';
 
   const carerAnimals = await prisma.animal.findMany({
-    where: { carerId: carer.id, clerkOrganizationId: organizationId },
+    where: { carerId: id, clerkOrganizationId: organizationId },
     orderBy: { dateFound: 'desc' },
   });
   const animalsInCare = carerAnimals.filter(a => a.status === 'IN_CARE');
@@ -80,13 +88,13 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
             </Link>
           </div>
           <div>
-            <h1 className="text-3xl font-bold">{carer.name}</h1>
-            <p className="text-muted-foreground">{carer.email || 'No email'}</p>
+            <h1 className="text-3xl font-bold">{carerName}</h1>
+            <p className="text-muted-foreground">{carerEmail}</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Link href={`/compliance/carers/${carer.id}/edit`}>
-            <Button>Edit Carer</Button>
+          <Link href={`/compliance/carers/${id}/edit`}>
+            <Button>Edit Profile</Button>
           </Link>
         </div>
       </div>
@@ -106,16 +114,16 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Licence Number</label>
-                  <p className="text-lg font-mono">{carer.licenseNumber || '—'}</p>
+                  <p className="text-lg font-mono">{profile?.licenseNumber || '—'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Active</label>
-                  <Badge variant="outline" className="text-sm">{carer.active ? 'Yes' : 'No'}</Badge>
+                  <Badge variant="outline" className="text-sm">{profile?.active !== false ? 'Yes' : 'No'}</Badge>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Jurisdiction</label>
                   <Badge variant="outline" className="text-sm">
-                    {carer.jurisdiction || '—'}
+                    {profile?.jurisdiction || '—'}
                   </Badge>
                 </div>
               </div>
@@ -132,7 +140,7 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {(carer.specialties || []).map((sp, index) => (
+                {(profile?.specialties || []).map((sp, index) => (
                   <Badge key={index} variant="secondary" className="text-sm">
                     {sp}
                   </Badge>
@@ -164,53 +172,7 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* @ts-expect-error: trainingHistory may not exist on carer type */}
-                  {(carer.trainingHistory ?? []).map((training: any) => {
-                    const isExpired = training.expiryDate && new Date(training.expiryDate) < new Date();
-                    const isExpiringSoon = training.expiryDate && 
-                      new Date(training.expiryDate) > new Date() && 
-                      new Date(training.expiryDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-                    return (
-                      <TableRow key={training.id}>
-                        <TableCell className="font-medium">{training.courseName}</TableCell>
-                        <TableCell>{training.provider}</TableCell>
-                        <TableCell>{training.date}</TableCell>
-                        <TableCell>
-                          {training.expiryDate ? (
-                            <div className="flex items-center gap-2">
-                              <span>{training.expiryDate}</span>
-                              {isExpired ? (
-                                <Badge variant="destructive" className="text-xs">
-                                  Expired
-                                </Badge>
-                              ) : isExpiringSoon ? (
-                                <Badge variant="outline" className="text-xs text-orange-600">
-                                  Soon
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary" className="text-xs">
-                                  Valid
-                                </Badge>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">No expiry</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {training.certificateUrl ? (
-                            <Button variant="outline" size="sm">
-                              <Download className="h-3 w-3 mr-1" />
-                              View
-                            </Button>
-                          ) : (
-                            <span className="text-muted-foreground">No certificate</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {/* Training data would need to be fetched separately */}
                 </TableBody>
               </Table>
             </CardContent>
@@ -261,9 +223,9 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Licence Status</span>
-                    {carer.licenseExpiry && new Date(carer.licenseExpiry) < new Date() ? (
+                    {profile?.licenseExpiry && new Date(profile.licenseExpiry) < new Date() ? (
                     <XCircle className="h-4 w-4 text-red-600" />
-                  ) : carer.licenseExpiry && new Date(carer.licenseExpiry) > new Date() ? (
+                  ) : profile?.licenseExpiry && new Date(profile.licenseExpiry) > new Date() ? (
                     <AlertTriangle className="h-4 w-4 text-orange-600" />
                   ) : (
                     <CheckCircle className="h-4 w-4 text-green-600" />
@@ -282,9 +244,9 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
                   <CheckCircle className="h-4 w-4 text-green-600" />
                 </div>
               </div>
-              
+
               <Separator />
-              
+
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">100%</div>
                 <div className="text-sm text-muted-foreground">Compliance Score</div>
@@ -309,7 +271,7 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{(carer.specialties || []).length}</div>
+                <div className="text-2xl font-bold text-purple-600">{(profile?.specialties || []).length}</div>
                 <div className="text-sm text-muted-foreground">Specialties</div>
               </div>
             </CardContent>
@@ -323,15 +285,15 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
             <CardContent className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Email</label>
-                <p className="text-sm">{carer.email}</p>
+                <p className="text-sm">{carerEmail}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Licence Number</label>
-                <p className="font-mono text-sm">{carer.licenseNumber || '—'}</p>
+                <p className="font-mono text-sm">{profile?.licenseNumber || '—'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Jurisdiction</label>
-                <p className="text-sm">{carer.jurisdiction || '—'}</p>
+                <p className="text-sm">{profile?.jurisdiction || '—'}</p>
               </div>
             </CardContent>
           </Card>
@@ -340,4 +302,4 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
       </div>
     </div>
   );
-} 
+}

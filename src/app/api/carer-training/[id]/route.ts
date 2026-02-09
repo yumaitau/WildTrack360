@@ -19,13 +19,11 @@ export async function GET(
         carer: {
           select: {
             id: true,
-            name: true,
-            email: true
           }
         }
       }
     });
-    
+
     if (!training) {
       return NextResponse.json({ error: 'Training not found or access denied' }, { status: 404 });
     }
@@ -80,13 +78,11 @@ export async function PATCH(
         carer: {
           select: {
             id: true,
-            name: true,
-            email: true
           }
         }
       }
     });
-    
+
     return NextResponse.json(training);
   } catch (error) {
     console.error('Error updating carer training:', error);
