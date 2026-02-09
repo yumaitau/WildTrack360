@@ -464,7 +464,498 @@ VALUES
     ('Dusky woodswallow', 'Artamus cyanopterus', 'Bird - Woodswallows. Category: Basic', 'W00547', 'Basic', 'Bird', 'Woodswallows'),
     ('Masked woodswallow', 'Artamus personatus', 'Bird - Woodswallows. Category: Basic', 'Q00544', 'Basic', 'Bird', 'Woodswallows'),
     ('White-breasted woodswallow', 'Artamus leucorhynchus', 'Bird - Woodswallows. Category: Basic', 'Z00543', 'Basic', 'Bird', 'Woodswallows'),
-    ('White-browed woodswallow', 'Artamus superciliosus', 'Bird - Woodswallows. Category: Basic', 'S00545', 'Basic', 'Bird', 'Woodswallows')
+    ('White-browed woodswallow', 'Artamus superciliosus', 'Bird - Woodswallows. Category: Basic', 'S00545', 'Basic', 'Bird', 'Woodswallows'),
+
+    -- ============================================================
+    -- NEW MAMMALS - Wombats
+    -- ============================================================
+    ('Bare-nosed Wombat', 'Vombatus ursinus', 'Mammal - Wombats. Category: Basic', NULL, 'Basic', 'Mammal', 'Wombats'),
+
+    -- NEW MAMMALS - Possum
+    ('Common Ringtail Possum', 'Pseudocheirus peregrinus', NULL, NULL, 'Protected', 'Mammal', 'Possum'),
+    ('Unidentified Possum', 'Unknown', NULL, NULL, 'Protected', 'Mammal', 'Possum'),
+
+    -- NEW MAMMALS - Gliders
+    ('Feathertail Glider', 'Acrobates pygmaeus', NULL, NULL, 'Protected', 'Mammal', 'Gliders'),
+    ('Southern Greater Glider', 'Petauroides volans', NULL, NULL, 'Protected', 'Mammal', 'Gliders'),
+    ('Unidentified Glider', 'Unknown', NULL, NULL, 'Protected', 'Mammal', 'Gliders'),
+
+    -- NEW MAMMALS - Bat
+    ('Little Red Flying-fox', 'Pteropus scapulatus', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+    ('Unidentified Flying-Fox', 'Unknown', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+    ('Lesser Long-eared Bat', 'Nyctophilus geoffroyi', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+    ('Chocolate Wattled Bat', 'Chalinolobus morio', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+    ('Gould''s Long-eared Bat', 'Nyctophilus gouldi', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+    ('Gould''s Wattled Bat', 'Chalinolobus gouldii', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+    ('Large Forest Bat', 'Vespadelus darlingtoni', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+    ('Little Forest Bat', 'Vespadelus vulturnus', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+    ('Unidentified Long-Eared Bat', 'Unknown', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+    ('Unidentified Wattled Bat', 'Unknown', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+    ('Unidentified Microbat', 'Unknown', NULL, NULL, 'Protected', 'Mammal', 'Bat'),
+
+    -- NEW MAMMALS - Dunnart
+    ('Unidentified Antechinus', 'Antechinus sp.', NULL, NULL, 'Protected', 'Mammal', 'Dunnart'),
+    ('Unidentified Dunnart', 'Sminthopsis sp.', NULL, NULL, 'Protected', 'Mammal', 'Dunnart'),
+
+    -- ============================================================
+    -- NEW MAMMALS - Macropods
+    -- ============================================================
+    ('Common Wallaroo', 'Osphranter robustus', NULL, NULL, 'Protected', 'Mammal', 'Macropod'),
+    ('Unidentified Wallaby', 'Unknown', NULL, NULL, 'Protected', 'Mammal', 'Macropod'),
+    ('Unidentified Macropod', 'Unknown', NULL, NULL, 'Protected', 'Mammal', 'Macropod'),
+
+    -- ============================================================
+    -- NEW REPTILES - Skinks
+    -- ============================================================
+    ('Eastern Blue-Tongue', 'Tiliqua scincoides', NULL, NULL, 'Protected', 'Reptile', 'Skinks'),
+    ('Shingle-back', 'Tiliqua rugosa', NULL, NULL, 'Protected', 'Reptile', 'Skinks'),
+    ('Unidentified Skink', 'Unknown', NULL, NULL, 'Protected', 'Reptile', 'Skinks'),
+
+    -- NEW REPTILES - Dragon lizards
+    ('Bearded Dragon', 'Pogona sp.', NULL, NULL, 'Protected', 'Reptile', 'Dragon lizards'),
+    ('Eastern Water Dragon', 'Intellagama lesueurii', NULL, NULL, 'Protected', 'Reptile', 'Dragon lizards'),
+    ('Unidentified Dragon', 'Unknown', NULL, NULL, 'Protected', 'Reptile', 'Dragon lizards'),
+
+    -- NEW REPTILES - Geckos
+    ('Unidentified Gecko', 'Unknown', NULL, NULL, 'Protected', 'Reptile', 'Geckos'),
+
+    -- NEW REPTILES - Turtles and tortoises
+    ('Eastern Snake-Necked Turtle', 'Chelodina longicollis', NULL, NULL, 'Protected', 'Reptile', 'Turtles and tortoises'),
+    ('Macquarie Turtle', 'Emydura macquarii', NULL, NULL, 'Protected', 'Reptile', 'Turtles and tortoises'),
+    ('Unidentified Turtle', 'Unknown', NULL, NULL, 'Protected', 'Reptile', 'Turtles and tortoises'),
+
+    -- NEW REPTILES - Monitors and goannas
+    ('Rosenberg''s Monitor', 'Varanus rosenbergi', NULL, NULL, 'Protected', 'Reptile', 'Monitors and goannas'),
+    ('Lace Monitor', 'Varanus varius', NULL, NULL, 'Protected', 'Reptile', 'Monitors and goannas'),
+    ('Unidentified Monitor', 'Unknown', NULL, NULL, 'Protected', 'Reptile', 'Monitors and goannas'),
+
+    -- NEW REPTILES - Legless lizards
+    ('Pink-tailed Legless Lizard', 'Aprasia parapulchella', NULL, NULL, 'Protected', 'Reptile', 'Legless lizards'),
+    ('Striped Legless Lizard', 'Delma impar', NULL, NULL, 'Protected', 'Reptile', 'Legless lizards'),
+    ('Unidentified Legless Lizard', 'Unknown', NULL, NULL, 'Protected', 'Reptile', 'Legless lizards'),
+
+    -- ============================================================
+    -- NEW REPTILES - Snakes
+    -- ============================================================
+    ('Red-bellied Black Snake', 'Pseudechis porphyriacus', NULL, NULL, 'Protected', 'Reptile', 'Snakes'),
+    ('Eastern Brown Snake', 'Pseudonaja textilis', NULL, NULL, 'Protected', 'Reptile', 'Snakes'),
+    ('Tiger Snake', 'Notechis scutatus', NULL, NULL, 'Protected', 'Reptile', 'Snakes'),
+    ('Unidentified Copperhead', 'Austrelaps sp.', NULL, NULL, 'Protected', 'Reptile', 'Snakes'),
+    ('Unidentified Whip Snake', 'Demansia sp.', NULL, NULL, 'Protected', 'Reptile', 'Snakes'),
+    ('Unidentified Elapid Snake', 'Unknown', NULL, NULL, 'Protected', 'Reptile', 'Snakes'),
+
+    -- ============================================================
+    -- NEW BIRDS - Various families
+    -- ============================================================
+    -- Currawongs
+    ('Pied Currawong', 'Strepera graculina', NULL, NULL, 'Protected', 'Bird', 'Currawongs'),
+
+    -- Introduced / Unprotected birds
+    ('Common Starling', 'Sturnus vulgaris', NULL, NULL, 'Unprotected', 'Bird', 'Introduced birds'),
+    ('House Sparrow', 'Passer domesticus', NULL, NULL, 'Unprotected', 'Bird', 'Introduced birds'),
+    ('Rock Dove', 'Columba livia', NULL, NULL, 'Unprotected', 'Bird', 'Introduced birds'),
+    ('Eurasian Blackbird', 'Turdus merula', NULL, NULL, 'Unprotected', 'Bird', 'Introduced birds'),
+    ('Common Myna', 'Acridotheres tristis', NULL, NULL, 'Unprotected', 'Bird', 'Introduced birds'),
+    ('Common Pheasant', 'Phasianus colchicus', NULL, NULL, 'Unprotected', 'Bird', 'Introduced birds'),
+    ('Red-whiskered Bulbul', 'Pycnonotus jocosus', NULL, NULL, 'Unprotected', 'Bird', 'Introduced birds'),
+    ('Song Thrush', 'Turdus philomelos', NULL, NULL, 'Unprotected', 'Bird', 'Introduced birds'),
+    ('Spotted Turtle-Dove', 'Spilopelia chinensis', NULL, NULL, 'Unprotected', 'Bird', 'Introduced birds'),
+    ('Muscovy Duck', 'Cairina moschata', NULL, NULL, 'Unprotected', 'Bird', 'Introduced birds'),
+
+    -- Kingfishers
+    ('Sacred Kingfisher', 'Todiramphus sanctus', NULL, NULL, 'Protected', 'Bird', 'Kingfishers'),
+    ('Azure Kingfisher', 'Ceyx azureus', NULL, NULL, 'Protected', 'Bird', 'Kingfishers'),
+    ('Forest Kingfisher', 'Todiramphus macleayii', NULL, NULL, 'Protected', 'Bird', 'Kingfishers'),
+    ('Red-backed Kingfisher', 'Todiramphus pyrrhopygius', NULL, NULL, 'Protected', 'Bird', 'Kingfishers'),
+
+    -- White-eye
+    ('Silvereye', 'Zosterops lateralis', NULL, NULL, 'Protected', 'Bird', 'White-eye'),
+
+    -- Cuckoos
+    ('Eastern Koel', 'Eudynamys orientalis', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Brush Cuckoo', 'Cacomantis variolosus', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Channel-billed Cuckoo', 'Scythrops novaehollandiae', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Fan-tailed Cuckoo', 'Cacomantis flabelliformis', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Horsfield''s Bronze-Cuckoo', 'Chalcites basalis', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Little Bronze-Cuckoo', 'Chalcites minutillus', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Long-tailed Cuckoo', 'Urodynamis taitensis', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Oriental Cuckoo', 'Cuculus optatus', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Pallid Cuckoo', 'Heteroscenes pallidus', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Shining Bronze-Cuckoo', 'Chalcites lucidus', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('White-bellied Cuckoo-shrike', 'Coracina papuensis', NULL, NULL, 'Protected', 'Bird', 'Cuckooshrike'),
+    ('Barred Cuckoo-shrike', 'Coracina lineata', NULL, NULL, 'Protected', 'Bird', 'Cuckooshrike'),
+    ('Cicadabird', 'Edolisoma tenuirostre', NULL, NULL, 'Protected', 'Bird', 'Cuckooshrike'),
+    ('Ground Cuckoo-shrike', 'Coracina maxima', NULL, NULL, 'Protected', 'Bird', 'Cuckooshrike'),
+    ('Varied Triller', 'Lalage leucomela', NULL, NULL, 'Protected', 'Bird', 'Cuckooshrike'),
+
+    -- Honeyeaters and chats
+    ('Eastern Spinebill', 'Acanthorhynchus tenuirostris', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Noisy Friarbird', 'Philemon corniculatus', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Yellow-faced Honeyeater', 'Caligavis chrysops', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Bell Miner', 'Manorina melanophrys', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Black Honeyeater', 'Sugomel nigrum', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Brown Honeyeater', 'Lichmera indistincta', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Brown-headed Honeyeater', 'Melithreptus brevirostris', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Fuscous Honeyeater', 'Ptilotula fusca', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Lewin''s Honeyeater', 'Meliphaga lewinii', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Little Friarbird', 'Philemon citreogularis', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Mangrove Honeyeater', 'Gavicalis fasciogularis', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Painted Honeyeater', 'Grantiella picta', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Regent Honeyeater', 'Anthochaera phrygia', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Singing Honeyeater', 'Gavicalis virescens', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Spiny-cheeked Honeyeater', 'Acanthagenys rufogularis', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Striped Honeyeater', 'Plectorhyncha lanceolata', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Tawny-crowned Honeyeater', 'Gliciphila melanops', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('White-cheeked Honeyeater', 'Phylidonyris niger', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('White-eared Honeyeater', 'Nesoptilotis leucotis', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('White-naped Honeyeater', 'Melithreptus lunatus', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('White-throated Honeyeater', 'Melithreptus albogularis', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Yellow-plumed Honeyeater', 'Ptilotula ornata', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Yellow-throated Miner', 'Manorina flavigula', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Yellow-tufted Honeyeater', 'Lichenostomus melanops', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+
+    -- Raptors (eagles, hawks, kites, falcons)
+    ('Wedge-tailed Eagle', 'Aquila audax', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Nankeen Kestrel', 'Falco cenchroides', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Collared Sparrowhawk', 'Accipiter cirrocephalus', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Peregrine Falcon', 'Falco peregrinus', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Brown Falcon', 'Falco berigora', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Brown Goshawk', 'Accipiter fasciatus', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Australian Hobby', 'Falco longipennis', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Black Falcon', 'Falco subniger', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Black Kite', 'Milvus migrans', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Black-shouldered Kite', 'Elanus axillaris', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Brahminy Kite', 'Haliastur indus', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Grey Falcon', 'Falco hypoleucos', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Grey Goshawk', 'Accipiter novaehollandiae', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Letter-winged Kite', 'Elanus scriptus', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Little Eagle', 'Hieraaetus morphnoides', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Red Goshawk', 'Erythrotriorchis radiatus', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Spotted Harrier', 'Circus assimilis', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Square-tailed Kite', 'Lophoictinia isura', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Swamp Harrier', 'Circus approximans', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Whistling Kite', 'Haliastur sphenurus', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+
+    -- Swallows and martins
+    ('Welcome Swallow', 'Hirundo neoxena', NULL, NULL, 'Protected', 'Bird', 'Swallows and martins'),
+    ('Barn Swallow', 'Hirundo rustica', NULL, NULL, 'Protected', 'Bird', 'Swallows and martins'),
+    ('Fairy Martin', 'Petrochelidon ariel', NULL, NULL, 'Protected', 'Bird', 'Swallows and martins'),
+    ('Tree Martin', 'Petrochelidon nigricans', NULL, NULL, 'Protected', 'Bird', 'Swallows and martins'),
+    ('White-backed Swallow', 'Cheramoeca leucosterna', NULL, NULL, 'Protected', 'Bird', 'Swallows and martins'),
+
+    -- Whistlers and shrike-thrushes
+    ('Grey Shrike-thrush', 'Colluricincla harmonica', NULL, NULL, 'Protected', 'Bird', 'Whistlers and shrike-thrushes'),
+    ('Eastern Shrike-tit', 'Falcunculus frontatus', NULL, NULL, 'Protected', 'Bird', 'Whistlers and shrike-thrushes'),
+    ('Gilbert''s Whistler', 'Pachycephala inornata', NULL, NULL, 'Protected', 'Bird', 'Whistlers and shrike-thrushes'),
+    ('Golden Whistler', 'Pachycephala pectoralis', NULL, NULL, 'Protected', 'Bird', 'Whistlers and shrike-thrushes'),
+    ('Little Shrike-thrush', 'Colluricincla megarhyncha', NULL, NULL, 'Protected', 'Bird', 'Whistlers and shrike-thrushes'),
+    ('Olive Whistler', 'Pachycephala olivacea', NULL, NULL, 'Protected', 'Bird', 'Whistlers and shrike-thrushes'),
+    ('Rufous Whistler', 'Pachycephala rufiventris', NULL, NULL, 'Protected', 'Bird', 'Whistlers and shrike-thrushes'),
+    ('Crested Bellbird', 'Oreoica gutturalis', NULL, NULL, 'Protected', 'Bird', 'Whistlers and shrike-thrushes'),
+
+    -- Choughs and apostlebirds
+    ('White-winged Chough', 'Corcorax melanorhamphos', NULL, NULL, 'Protected', 'Bird', 'Choughs and apostlebirds'),
+    ('Apostlebird', 'Struthidea cinerea', NULL, NULL, 'Protected', 'Bird', 'Choughs and apostlebirds'),
+
+    -- Ibis and spoonbills
+    ('Australian White Ibis', 'Threskiornis molucca', NULL, NULL, 'Protected', 'Bird', 'Ibis and spoonbills'),
+    ('Glossy Ibis', 'Plegadis falcinellus', NULL, NULL, 'Protected', 'Bird', 'Ibis and spoonbills'),
+    ('Straw-necked Ibis', 'Threskiornis spinicollis', NULL, NULL, 'Protected', 'Bird', 'Ibis and spoonbills'),
+
+    -- Cockatoos and parrots (new additions)
+    ('Gang-gang Cockatoo', 'Callocephalon fimbriatum', NULL, NULL, 'Protected', 'Bird', 'Cockatoos and parrots'),
+    ('South-eastern Glossy Black-Cockatoo', 'Calyptorhynchus lathami', NULL, NULL, 'Protected', 'Bird', 'Cockatoos and parrots'),
+    ('Swift Parrot', 'Lathamus discolor', NULL, NULL, 'Protected', 'Bird', 'Cockatoos and parrots'),
+    ('Yellow-tailed Black-Cockatoo', 'Zanda funerea', NULL, NULL, 'Protected', 'Bird', 'Cockatoos and parrots'),
+
+    -- Grebes
+    ('Australasian Grebe', 'Tachybaptus novaehollandiae', NULL, NULL, 'Protected', 'Bird', 'Grebes'),
+    ('Great Crested Grebe', 'Podiceps cristatus', NULL, NULL, 'Protected', 'Bird', 'Grebes'),
+    ('Hoary-headed Grebe', 'Poliocephalus poliocephalus', NULL, NULL, 'Protected', 'Bird', 'Grebes'),
+
+    -- Rails and crakes
+    ('Eurasian Coot', 'Fulica atra', NULL, NULL, 'Protected', 'Bird', 'Rails and crakes'),
+    ('Purple Swamphen', 'Porphyrio porphyrio', NULL, NULL, 'Protected', 'Bird', 'Rails and crakes'),
+    ('Buff-banded Rail', 'Gallirallus philippensis', NULL, NULL, 'Protected', 'Bird', 'Rails and crakes'),
+    ('Lewin''s Rail', 'Lewinia pectoralis', NULL, NULL, 'Protected', 'Bird', 'Rails and crakes'),
+    ('Spotless Crake', 'Zapornia tabuensis', NULL, NULL, 'Protected', 'Bird', 'Rails and crakes'),
+
+    -- Bowerbirds
+    ('Satin Bowerbird', 'Ptilonorhynchus violaceus', NULL, NULL, 'Protected', 'Bird', 'Bowerbirds'),
+    ('Regent Bowerbird', 'Sericulus chrysocephalus', NULL, NULL, 'Protected', 'Bird', 'Bowerbirds'),
+    ('Spotted Bowerbird', 'Chlamydera maculata', NULL, NULL, 'Protected', 'Bird', 'Bowerbirds'),
+
+    -- Cormorants and darters
+    ('Australasian Darter', 'Anhinga novaehollandiae', NULL, NULL, 'Protected', 'Bird', 'Cormorants and darters'),
+    ('Great Cormorant', 'Phalacrocorax carbo', NULL, NULL, 'Protected', 'Bird', 'Cormorants and darters'),
+    ('Little Black Cormorant', 'Phalacrocorax sulcirostris', NULL, NULL, 'Protected', 'Bird', 'Cormorants and darters'),
+    ('Little Pied Cormorant', 'Microcarbo melanoleucos', NULL, NULL, 'Protected', 'Bird', 'Cormorants and darters'),
+    ('Pied Cormorant', 'Phalacrocorax varius', NULL, NULL, 'Protected', 'Bird', 'Cormorants and darters'),
+
+    -- Owls and nightjars
+    ('Australian Owlet-nightjar', 'Aegotheles cristatus', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Eastern Barn Owl', 'Tyto javanica', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Barking Owl', 'Ninox connivens', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Eastern Grass Owl', 'Tyto longimembris', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Masked Owl', 'Tyto novaehollandiae', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Powerful Owl', 'Ninox strenua', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Sooty Owl', 'Tyto tenebricosa', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Spotted Nightjar', 'Eurostopodus argus', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('White-throated Nightjar', 'Eurostopodus mystacalis', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Marbled Frogmouth', 'Podargus ocellatus', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+
+    -- Fantails and flycatchers
+    ('Grey Fantail', 'Rhipidura albiscapa', NULL, NULL, 'Protected', 'Bird', 'Fantails and flycatchers'),
+    ('Willie Wagtail', 'Rhipidura leucophrys', NULL, NULL, 'Protected', 'Bird', 'Fantails and flycatchers'),
+    ('Rufous Fantail', 'Rhipidura rufifrons', NULL, NULL, 'Protected', 'Bird', 'Fantails and flycatchers'),
+    ('Leaden Flycatcher', 'Myiagra rubecula', NULL, NULL, 'Protected', 'Bird', 'Fantails and flycatchers'),
+    ('Restless Flycatcher', 'Myiagra inquieta', NULL, NULL, 'Protected', 'Bird', 'Fantails and flycatchers'),
+    ('Satin Flycatcher', 'Myiagra cyanoleuca', NULL, NULL, 'Protected', 'Bird', 'Fantails and flycatchers'),
+    ('Spectacled Monarch', 'Symposiachrus trivirgatus', NULL, NULL, 'Protected', 'Bird', 'Fantails and flycatchers'),
+
+    -- Robins (new additions)
+    ('Scarlet Robin', 'Petroica boodang', NULL, NULL, 'Protected', 'Bird', 'Robins'),
+    ('Flame Robin', 'Petroica phoenicea', NULL, NULL, 'Protected', 'Bird', 'Robins'),
+    ('Jacky Winter', 'Microeca fascinans', NULL, NULL, 'Protected', 'Bird', 'Robins'),
+    ('Pale-yellow Robin', 'Tregellasia capito', NULL, NULL, 'Protected', 'Bird', 'Robins'),
+    ('Pink Robin', 'Petroica rodinogaster', NULL, NULL, 'Protected', 'Bird', 'Robins'),
+    ('Rose Robin', 'Petroica rosea', NULL, NULL, 'Protected', 'Bird', 'Robins'),
+
+    -- Pardalotes
+    ('Spotted Pardalote', 'Pardalotus punctatus', NULL, NULL, 'Protected', 'Bird', 'Pardalotes'),
+    ('Red-browed Pardalote', 'Pardalotus rubricatus', NULL, NULL, 'Protected', 'Bird', 'Pardalotes'),
+    ('Striated Pardalote', 'Pardalotus striatus', NULL, NULL, 'Protected', 'Bird', 'Pardalotes'),
+
+    -- Thornbills and scrubwrens
+    ('Striated Thornbill', 'Acanthiza lineata', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('White-browed Scrubwren', 'Sericornis frontalis', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Yellow Thornbill', 'Acanthiza nana', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Brown Thornbill', 'Acanthiza pusilla', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Buff-rumped Thornbill', 'Acanthiza reguloides', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Yellow-rumped Thornbill', 'Acanthiza chrysorrhoa', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Large-billed Scrubwren', 'Sericornis magnirostra', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Yellow-throated Scrubwren', 'Sericornis citreogularis', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Speckled Warbler', 'Pyrrholaemus sagittatus', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Weebill', 'Smicrornis brevirostris', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Pilotbird', 'Pycnoptilus floccosus', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Rockwarbler', 'Origma solitaria', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Southern Whiteface', 'Aphelocephala leucopsis', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Redthroat', 'Pyrrholaemus brunneus', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+
+    -- Herons and egrets
+    ('White-faced Heron', 'Egretta novaehollandiae', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('White-necked Heron', 'Ardea pacifica', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Australasian Bittern', 'Botaurus poiciloptilus', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Black Bittern', 'Ixobrychus flavicollis', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Cattle Egret', 'Bubulcus ibis', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Eastern Great Egret', 'Ardea modesta', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Intermediate Egret', 'Ardea intermedia', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Little Egret', 'Egretta garzetta', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Nankeen Night Heron', 'Nycticorax caledonicus', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Striated Heron', 'Butorides striata', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+
+    -- Lyrebirds and scrub-birds
+    ('Albert''s Lyrebird', 'Menura alberti', NULL, NULL, 'Protected', 'Bird', 'Lyrebirds and scrub-birds'),
+    ('Superb Lyrebird', 'Menura novaehollandiae', NULL, NULL, 'Protected', 'Bird', 'Lyrebirds and scrub-birds'),
+    ('Rufous Scrub-bird', 'Atrichornis rufescens', NULL, NULL, 'Protected', 'Bird', 'Lyrebirds and scrub-birds'),
+
+    -- Pelicans and terns
+    ('Australian Pelican', 'Pelecanus conspicillatus', NULL, NULL, 'Protected', 'Bird', 'Pelicans and terns'),
+    ('Crested Tern', 'Thalasseus bergii', NULL, NULL, 'Protected', 'Bird', 'Pelicans and terns'),
+
+    -- Reed-warblers and cisticolas
+    ('Australian Reed-Warbler', 'Acrocephalus australis', NULL, NULL, 'Protected', 'Bird', 'Reed-warblers and cisticolas'),
+    ('Clamorous Reed-Warbler', 'Acrocephalus stentoreus', NULL, NULL, 'Protected', 'Bird', 'Reed-warblers and cisticolas'),
+    ('Golden-headed Cisticola', 'Cisticola exilis', NULL, NULL, 'Protected', 'Bird', 'Reed-warblers and cisticolas'),
+    ('Little Grassbird', 'Poodytes gramineus', NULL, NULL, 'Protected', 'Bird', 'Reed-warblers and cisticolas'),
+    ('Tawny Grassbird', 'Cincloramphus timoriensis', NULL, NULL, 'Protected', 'Bird', 'Reed-warblers and cisticolas'),
+
+    -- Gerygones
+    ('Brown Gerygone', 'Gerygone mouki', NULL, NULL, 'Protected', 'Bird', 'Gerygones'),
+    ('Mangrove Gerygone', 'Gerygone levigaster', NULL, NULL, 'Protected', 'Bird', 'Gerygones'),
+    ('Western Gerygone', 'Gerygone fusca', NULL, NULL, 'Protected', 'Bird', 'Gerygones'),
+    ('White-throated Gerygone', 'Gerygone olivacea', NULL, NULL, 'Protected', 'Bird', 'Gerygones'),
+
+    -- Ducks (new additions)
+    ('Blue-billed Duck', 'Oxyura australis', NULL, NULL, 'Protected', 'Bird', 'Ducks, geese and swans'),
+    ('Freckled Duck', 'Stictonetta naevosa', NULL, NULL, 'Protected', 'Bird', 'Ducks, geese and swans'),
+    ('Musk Duck', 'Biziura lobata', NULL, NULL, 'Protected', 'Bird', 'Ducks, geese and swans'),
+    ('Pink-eared Duck', 'Malacorhynchus membranaceus', NULL, NULL, 'Protected', 'Bird', 'Ducks, geese and swans'),
+
+    -- Bee-eaters and dollarbirds
+    ('Dollarbird', 'Eurystomus orientalis', NULL, NULL, 'Protected', 'Bird', 'Bee-eaters and rollers'),
+    ('Rainbow Bee-eater', 'Merops ornatus', NULL, NULL, 'Protected', 'Bird', 'Bee-eaters and rollers'),
+
+    -- Butcherbirds
+    ('Grey Butcherbird', 'Cracticus torquatus', NULL, NULL, 'Protected', 'Bird', 'Butcherbirds'),
+    ('Pied Butcherbird', 'Cracticus nigrogularis', NULL, NULL, 'Protected', 'Bird', 'Butcherbirds'),
+
+    -- Currawongs (additional)
+    ('Grey Currawong', 'Strepera versicolor', NULL, NULL, 'Protected', 'Bird', 'Currawongs'),
+
+    -- Treecreepers
+    ('Brown Treecreeper (eastern subspecies)', 'Climacteris picumnus victoriae', NULL, NULL, 'Protected', 'Bird', 'Treecreepers'),
+    ('Red-browed Treecreeper', 'Climacteris erythrops', NULL, NULL, 'Protected', 'Bird', 'Treecreepers'),
+    ('White-browed Treecreeper', 'Climacteris affinis', NULL, NULL, 'Protected', 'Bird', 'Treecreepers'),
+    ('White-throated Treecreeper', 'Cormobates leucophaea', NULL, NULL, 'Protected', 'Bird', 'Treecreepers'),
+
+    -- Babblers
+    ('Chestnut-crowned Babbler', 'Pomatostomus ruficeps', NULL, NULL, 'Protected', 'Bird', 'Babblers'),
+    ('Grey-crowned Babbler (eastern subspecies)', 'Pomatostomus temporalis temporalis', NULL, NULL, 'Protected', 'Bird', 'Babblers'),
+    ('White-browed Babbler', 'Pomatostomus superciliosus', NULL, NULL, 'Protected', 'Bird', 'Babblers'),
+
+    -- Whipbirds and logrunners
+    ('Eastern Whipbird', 'Psophodes olivaceus', NULL, NULL, 'Protected', 'Bird', 'Whipbirds and logrunners'),
+    ('Logrunner', 'Orthonyx temminckii', NULL, NULL, 'Protected', 'Bird', 'Whipbirds and logrunners'),
+
+    -- Pittas
+    ('Noisy Pitta', 'Pitta versicolor', NULL, NULL, 'Protected', 'Bird', 'Pittas'),
+
+    -- Riflebirds
+    ('Paradise Riflebird', 'Ptiloris paradiseus', NULL, NULL, 'Protected', 'Bird', 'Riflebirds'),
+
+    -- Catbirds and figbirds
+    ('Green Catbird', 'Ailuroedus crassirostris', NULL, NULL, 'Protected', 'Bird', 'Catbirds and figbirds'),
+    ('Australasian Figbird', 'Sphecotheres vieilloti', NULL, NULL, 'Protected', 'Bird', 'Catbirds and figbirds'),
+
+    -- Orioles
+    ('Olive-backed Oriole', 'Oriolus sagittatus', NULL, NULL, 'Protected', 'Bird', 'Orioles'),
+
+    -- Drongos
+    ('Spangled Drongo', 'Dicrurus bracteatus', NULL, NULL, 'Protected', 'Bird', 'Drongos'),
+
+    -- Mistletoebird
+    ('Mistletoebird', 'Dicaeum hirundinaceum', NULL, NULL, 'Protected', 'Bird', 'Mistletoebird'),
+
+    -- Sittellas
+    ('Varied Sittella', 'Daphoenositta chrysoptera', NULL, NULL, 'Protected', 'Bird', 'Sittellas'),
+
+    -- Songlark and fieldwrens
+    ('Brown Songlark', 'Cincloramphus cruralis', NULL, NULL, 'Protected', 'Bird', 'Songlarks and fieldwrens'),
+    ('Rufous Songlark', 'Cincloramphus mathewsi', NULL, NULL, 'Protected', 'Bird', 'Songlarks and fieldwrens'),
+    ('Horsfield''s Bushlark', 'Mirafra javanica', NULL, NULL, 'Protected', 'Bird', 'Songlarks and fieldwrens'),
+    ('Rufous Fieldwren', 'Calamanthus campestris', NULL, NULL, 'Protected', 'Bird', 'Songlarks and fieldwrens'),
+    ('Shy Heathwren', 'Hylacola cautus', NULL, NULL, 'Protected', 'Bird', 'Songlarks and fieldwrens'),
+    ('Striated Fieldwren', 'Calamanthus fuliginosus', NULL, NULL, 'Protected', 'Bird', 'Songlarks and fieldwrens'),
+    ('Southern Emu-wren', 'Stipiturus malachurus', NULL, NULL, 'Protected', 'Bird', 'Songlarks and fieldwrens'),
+    ('Southern Scrub-robin', 'Drymodes brunneopygia', NULL, NULL, 'Protected', 'Bird', 'Songlarks and fieldwrens'),
+
+    -- Swifts and needletails
+    ('Fork-tailed Swift', 'Apus pacificus', NULL, NULL, 'Protected', 'Bird', 'Swifts and needletails'),
+    ('White-throated Needletail', 'Hirundapus caudacutus', NULL, NULL, 'Protected', 'Bird', 'Swifts and needletails'),
+
+    -- Plovers and waders (new additions)
+    ('Black-tailed Godwit', 'Limosa limosa', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+    ('Common Greenshank', 'Tringa nebularia', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+    ('Double-banded Plover', 'Charadrius bicinctus', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+    ('Eastern Curlew', 'Numenius madagascariensis', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+    ('Latham''s Snipe', 'Gallinago hardwickii', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+    ('Plains-wanderer', 'Pedionomus torquatus', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+    ('Red-capped Plover', 'Charadrius ruficapillus', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+    ('Red Knot', 'Calidris canutus', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+    ('Red-kneed Dotterel', 'Erythrogonys cinctus', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+    ('Red-necked Avocet', 'Recurvirostra novaehollandiae', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+    ('Red-necked Stint', 'Calidris ruficollis', NULL, NULL, 'Protected', 'Bird', 'Plovers and waders'),
+
+    -- Bristlebirds and ground parrots
+    ('Eastern Bristlebird', 'Dasyornis brachypterus', NULL, NULL, 'Protected', 'Bird', 'Bristlebirds'),
+    ('Eastern Ground Parrot', 'Pezoporus wallicus', NULL, NULL, 'Protected', 'Bird', 'Ground parrots'),
+
+    -- Malleefowl
+    ('Malleefowl', 'Leipoa ocellata', NULL, NULL, 'Protected', 'Bird', 'Megapodes'),
+
+    -- Spotted Quail-thrush
+    ('Spotted Quail-thrush', 'Cinclosoma punctatum', NULL, NULL, 'Protected', 'Bird', 'Quail-thrushes'),
+
+    -- Ravens (new additions)
+    ('Forest Raven', 'Corvus tasmanicus', NULL, NULL, 'Protected', 'Bird', 'Crows'),
+
+    -- Woodswallows (new addition)
+    ('Little Woodswallow', 'Artamus minor', NULL, NULL, 'Protected', 'Bird', 'Woodswallows'),
+
+    -- ============================================================
+    -- UNIDENTIFIED BIRD ENTRIES
+    -- ============================================================
+    ('Unidentified Bird', 'Unknown', NULL, NULL, 'Protected', 'Bird', NULL),
+    ('Unidentified Babbler', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Babblers'),
+    ('Unidentified ''Barn'' Owl', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Unidentified Bittern', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Unidentified Bowerbird', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Bowerbirds'),
+    ('Unidentified Bronze-Cuckoo', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Unidentified Bronzewing', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Pigeons and doves'),
+    ('Unidentified Butcherbird', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Butcherbirds'),
+    ('Unidentified Button-quail', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Quails'),
+    ('Unidentified Cockatoo', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Cockatoos and parrots'),
+    ('Unidentified Corella', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Cockatoos and parrots'),
+    ('Unidentified Cormorant', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Cormorants and darters'),
+    ('Unidentified Corvid', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Crows'),
+    ('Unidentified Cuckoo', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Cuckoos'),
+    ('Unidentified Cuckoo-shrike', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Cuckooshrike'),
+    ('Unidentified Duck', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Ducks, geese and swans'),
+    ('Unidentified Eagle', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Unidentified Egret', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Unidentified Fairy-wren', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Fairywrens'),
+    ('Unidentified Falcon', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Unidentified Finch', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Finches'),
+    ('Unidentified Firetail', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Finches'),
+    ('Unidentified Flycatcher', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Fantails and flycatchers'),
+    ('Unidentified Gerygone', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Gerygones'),
+    ('Unidentified Goshawk', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Unidentified Grebe', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Grebes'),
+    ('Unidentified Harrier', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Unidentified Heron', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Herons and egrets'),
+    ('Unidentified Honeyeater', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Unidentified Ibis', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Ibis and spoonbills'),
+    ('Unidentified Kingfisher', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Kingfishers'),
+    ('Unidentified Kite', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Unidentified Lapwing', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Plovers and gulls'),
+    ('Unidentified Large Forest Owl', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Unidentified Lorikeet', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Cockatoos and parrots'),
+    ('Unidentified Lyrebird', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Lyrebirds and scrub-birds'),
+    ('Unidentified Martin', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Swallows and martins'),
+    ('Unidentified Nightjar', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Unidentified Owl', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Owls and nightjars'),
+    ('Unidentified Pardalote', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Pardalotes'),
+    ('Unidentified Parrot', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Cockatoos and parrots'),
+    ('Unidentified Pigeon', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Pigeons and doves'),
+    ('Unidentified Plover', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Plovers and gulls'),
+    ('Unidentified Quail', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Quails'),
+    ('Unidentified Rail', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Rails and crakes'),
+    ('Unidentified Raptor', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Raptors'),
+    ('Unidentified Robin', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Robins'),
+    ('Unidentified Rosella', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Cockatoos and parrots'),
+    ('Unidentified Scrubwren', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Unidentified Songlark', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Songlarks and fieldwrens'),
+    ('Unidentified Sparrow', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Introduced birds'),
+    ('Unidentified Spoonbill', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Ibis and spoonbills'),
+    ('Unidentified Stone-curlew', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Stonecurlew'),
+    ('Unidentified Swallow', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Swallows and martins'),
+    ('Unidentified Swift', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Swifts and needletails'),
+    ('Unidentified Teal', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Ducks, geese and swans'),
+    ('Unidentified Thornbill', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Thornbills and scrubwrens'),
+    ('Unidentified Thrush', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Introduced birds'),
+    ('Unidentified Treecreeper', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Treecreepers'),
+    ('Unidentified Turtle-dove', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Pigeons and doves'),
+    ('Unidentified Warbler', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Reed-warblers and cisticolas'),
+    ('Unidentified Wattlebird', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Honeyeaters and chats'),
+    ('Unidentified Woodswallow', 'Unknown', NULL, NULL, 'Protected', 'Bird', 'Woodswallows'),
+
+    -- ============================================================
+    -- INTRODUCED ANIMALS
+    -- ============================================================
+    ('Introduced Rat', 'Rattus sp.', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Cat', 'Felis catus', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Dog', 'Canis lupus familiaris', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Cattle', 'Bos taurus', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Deer', 'Cervidae sp.', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Fox', 'Vulpes vulpes', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Goat', 'Capra aegagrus hircus', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Horse', 'Equus caballus', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Pig', 'Sus scrofa', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Rabbit', 'Oryctolagus cuniculus', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Sheep', 'Ovis aries', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Introduced Mouse', 'Mus musculus', NULL, NULL, 'Unprotected', 'Other', 'Introduced'),
+    ('Unidentified Other', 'Unknown', NULL, NULL, 'Unprotected', 'Other', 'Introduced')
 ON CONFLICT (name, scientific_name) DO NOTHING;
 
 -- The rest of the file contains the same trigger functions and procedures as before

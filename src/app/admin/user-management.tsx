@@ -116,16 +116,8 @@ export function UserManagement() {
     fetchInvitations();
   }, [organization?.id]);
 
-  const getUserEmailDomain = () => {
-    const currentUserEmail = user?.emailAddresses?.[0]?.emailAddress;
-    if (!currentUserEmail) return null;
-    return currentUserEmail.split('@')[1];
-  };
-
-  const validateEmailDomain = (email: string) => {
-    const domain = getUserEmailDomain();
-    if (!domain) return false;
-    return email.endsWith(`@${domain}`);
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
   const handleInviteUser = async (e: React.FormEvent) => {
@@ -146,9 +138,8 @@ export function UserManagement() {
       return;
     }
 
-    if (!validateEmailDomain(inviteEmail)) {
-      const domain = getUserEmailDomain();
-      toast.error(`Email must be from your organization domain (@${domain})`);
+    if (!validateEmail(inviteEmail)) {
+      toast.error('Please enter a valid email address');
       return;
     }
 
@@ -261,7 +252,6 @@ export function UserManagement() {
   };
 
   const isAdmin = membership?.role === 'org:admin';
-  const emailDomain = getUserEmailDomain();
   const remainingSlots = MAX_USERS - members.length;
 
   if (!organization) {
@@ -294,8 +284,8 @@ export function UserManagement() {
             Invite New User
           </CardTitle>
           <CardDescription>
-            {isAdmin 
-              ? `Invite users from your organization domain (${emailDomain ? `@${emailDomain}` : 'your domain'})`
+            {isAdmin
+              ? 'Invite users to your organization by email address'
               : 'Only admins can invite new users to the organization'
             }
           </CardDescription>
@@ -308,7 +298,7 @@ export function UserManagement() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder={`user@${emailDomain || 'yourdomain.com'}`}
+                  placeholder="user@example.com"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   disabled={!isAdmin || sendingInvite || members.length >= MAX_USERS}
