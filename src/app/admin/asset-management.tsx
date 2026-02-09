@@ -60,6 +60,7 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
   const [editType, setEditType] = useState<string>('Other');
   const [editStatus, setEditStatus] = useState<AssetStatus>(AssetStatus.AVAILABLE);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -96,6 +97,7 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
   const [addPurchaseDate, setAddPurchaseDate] = useState('');
   const [addLastMaintenance, setAddLastMaintenance] = useState('');
   const [addNotes, setAddNotes] = useState('');
+  const [addErrors, setAddErrors] = useState<Record<string, string>>({});
 
   const openAddDialog = () => {
     setAddName(newAssetName.trim());
@@ -107,15 +109,30 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
     setAddPurchaseDate('');
     setAddLastMaintenance('');
     setAddNotes('');
+    setAddErrors({});
     setIsAddDialogOpen(true);
   };
 
   const handleCreateAsset = async () => {
-    if (!addName.trim() || !user || !organization) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error', 
-        description: 'Asset name is required.' 
+    const errors: Record<string, string> = {};
+    if (!addName.trim()) {
+      errors.name = 'Asset name is required.';
+    } else if (addName.trim().length < 2) {
+      errors.name = 'Asset name must be at least 2 characters.';
+    }
+    if (addPurchaseDate && addLastMaintenance && new Date(addLastMaintenance) < new Date(addPurchaseDate)) {
+      errors.lastMaintenance = 'Last maintenance date cannot be before purchase date.';
+    }
+    if (Object.keys(errors).length > 0) {
+      setAddErrors(errors);
+      return;
+    }
+    setAddErrors({});
+    if (!user || !organization) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'You must be signed in to an organization.'
       });
       return;
     }
@@ -148,14 +165,18 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
   };
 
   const handleEditAsset = async () => {
-    if (!editingAsset || !editName.trim()) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error', 
-        description: 'Asset name cannot be empty.' 
-      });
+    const errors: Record<string, string> = {};
+    if (!editName.trim()) {
+      errors.name = 'Asset name is required.';
+    } else if (editName.trim().length < 2) {
+      errors.name = 'Asset name must be at least 2 characters.';
+    }
+    if (Object.keys(errors).length > 0) {
+      setEditErrors(errors);
       return;
     }
+    setEditErrors({});
+    if (!editingAsset) return;
 
     setLoading(true);
     try {
@@ -217,6 +238,7 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
     setEditName(asset.name);
     setEditType(asset.type);
     setEditStatus(asset.status);
+    setEditErrors({});
     setIsEditDialogOpen(true);
   };
 
@@ -330,13 +352,18 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Asset Name</label>
+              <label className="text-sm font-medium">Asset Name <span className="text-destructive">*</span></label>
               <Input
                 placeholder="Asset name..."
                 value={editName}
-                onChange={(e) => setEditName(e.target.value)}
+                onChange={(e) => {
+                  setEditName(e.target.value);
+                  if (editErrors.name) setEditErrors((prev) => { const { name, ...rest } = prev; return rest; });
+                }}
                 onKeyPress={(e) => e.key === 'Enter' && handleEditAsset()}
+                className={editErrors.name ? 'border-destructive' : ''}
               />
+              {editErrors.name && <p className="text-sm text-destructive">{editErrors.name}</p>}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Type</label>
@@ -396,8 +423,17 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
           </DialogHeader>
           <div className="space-y-4 overflow-y-auto flex-1 max-h-[60vh] px-1">
             <div className="space-y-2">
-              <Label>Name</Label>
-              <Input placeholder="Asset name..." value={addName} onChange={(e) => setAddName(e.target.value)} />
+              <Label>Name <span className="text-destructive">*</span></Label>
+              <Input
+                placeholder="Asset name..."
+                value={addName}
+                onChange={(e) => {
+                  setAddName(e.target.value);
+                  if (addErrors.name) setAddErrors((prev) => { const { name, ...rest } = prev; return rest; });
+                }}
+                className={addErrors.name ? 'border-destructive' : ''}
+              />
+              {addErrors.name && <p className="text-sm text-destructive">{addErrors.name}</p>}
             </div>
             <div className="space-y-2">
               <Label>Type</Label>
@@ -448,7 +484,16 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
               </div>
               <div className="space-y-2">
                 <Label>Last Maintenance</Label>
-                <Input type="date" value={addLastMaintenance} onChange={(e) => setAddLastMaintenance(e.target.value)} />
+                <Input
+                  type="date"
+                  value={addLastMaintenance}
+                  onChange={(e) => {
+                    setAddLastMaintenance(e.target.value);
+                    if (addErrors.lastMaintenance) setAddErrors((prev) => { const { lastMaintenance, ...rest } = prev; return rest; });
+                  }}
+                  className={addErrors.lastMaintenance ? 'border-destructive' : ''}
+                />
+                {addErrors.lastMaintenance && <p className="text-sm text-destructive">{addErrors.lastMaintenance}</p>}
               </div>
             </div>
             <div className="space-y-2">
