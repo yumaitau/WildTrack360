@@ -54,8 +54,9 @@ export function CarerManagement() {
   const [editPostcode, setEditPostcode] = useState('');
 
   const refreshCarers = async () => {
+    const orgId = organization?.id;
+    if (!orgId) return;
     try {
-      const orgId = organization?.id || 'default-org';
       const updatedCarers = await apiJson<EnrichedCarer[]>(`/api/carers?orgId=${orgId}`);
       setCarers(updatedCarers);
     } catch (error) {

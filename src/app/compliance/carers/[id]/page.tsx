@@ -10,6 +10,7 @@ import { auth } from "@clerk/nextjs/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { Table, TableHead, TableHeader, TableRow, TableCell, TableBody } from "@/components/ui/table";
 import { FileText, XCircle, AlertTriangle, CheckCircle } from "lucide-react";
+import { ensureUserInOrg } from "@/lib/authz";
 
 interface CarerDetailPageProps {
   params: Promise<{
@@ -21,25 +22,33 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
   const { id } = await params;
   const { userId, orgId } = await auth();
   if (!userId) redirect('/sign-in');
-  const organizationId = orgId || '';
+  if (!orgId) redirect('/');
+
+  // Verify the caller belongs to this org before exposing any data
+  await ensureUserInOrg(userId, orgId);
 
   // Fetch profile from DB and Clerk user in parallel
   const client = await clerkClient();
   const [profile, clerkUser] = await Promise.all([
     prisma.carerProfile.findFirst({
-      where: { id, clerkOrganizationId: organizationId },
+      where: { id, clerkOrganizationId: orgId },
+      include: { trainings: true },
     }),
     client.users.getUser(id).catch(() => null),
   ]);
 
+  // Only expose Clerk data if the user is confirmed as an org member via profile
+  if (!profile && !clerkUser) notFound();
   if (!clerkUser) notFound();
 
   const carerName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') ||
     clerkUser.emailAddresses[0]?.emailAddress || 'Unknown';
   const carerEmail = clerkUser.emailAddresses[0]?.emailAddress || 'No email';
 
+  const trainingRecords = profile?.trainings ?? [];
+
   const carerAnimals = await prisma.animal.findMany({
-    where: { carerId: id, clerkOrganizationId: organizationId },
+    where: { carerId: id, clerkOrganizationId: orgId },
     orderBy: { dateFound: 'desc' },
   });
   const animalsInCare = carerAnimals.filter(a => a.status === 'IN_CARE');
@@ -172,7 +181,42 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* Training data would need to be fetched separately */}
+                  {trainingRecords.length > 0 ? (
+                    trainingRecords.map((training) => {
+                      const isExpired = training.expiryDate && new Date(training.expiryDate) < new Date();
+                      const isExpiringSoon = training.expiryDate &&
+                        !isExpired &&
+                        new Date(training.expiryDate).getTime() < Date.now() + 30 * 24 * 60 * 60 * 1000;
+
+                      return (
+                        <TableRow key={training.id}>
+                          <TableCell className="font-medium">{training.courseName}</TableCell>
+                          <TableCell>{training.provider || '—'}</TableCell>
+                          <TableCell>{new Date(training.date).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            {training.expiryDate
+                              ? new Date(training.expiryDate).toLocaleDateString()
+                              : 'No expiry'}
+                          </TableCell>
+                          <TableCell>
+                            {isExpired ? (
+                              <Badge variant="destructive" className="text-xs">Expired</Badge>
+                            ) : isExpiringSoon ? (
+                              <Badge variant="outline" className="text-xs text-orange-600">Expiring Soon</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">Valid</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        No training records found
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -223,13 +267,21 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Licence Status</span>
-                    {profile?.licenseExpiry && new Date(profile.licenseExpiry) < new Date() ? (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  ) : profile?.licenseExpiry && new Date(profile.licenseExpiry) > new Date() ? (
-                    <AlertTriangle className="h-4 w-4 text-orange-600" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  )}
+                  {(() => {
+                    if (!profile?.licenseExpiry) {
+                      return <CheckCircle className="h-4 w-4 text-green-600" />;
+                    }
+                    const expiryTime = new Date(profile.licenseExpiry).getTime();
+                    const now = Date.now();
+                    const thresholdDays = 30;
+                    if (expiryTime < now) {
+                      return <XCircle className="h-4 w-4 text-red-600" />;
+                    }
+                    if (expiryTime < now + thresholdDays * 24 * 60 * 60 * 1000) {
+                      return <AlertTriangle className="h-4 w-4 text-orange-600" />;
+                    }
+                    return <CheckCircle className="h-4 w-4 text-green-600" />;
+                  })()}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Training Current</span>

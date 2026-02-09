@@ -134,9 +134,9 @@ export async function getCarerProfiles(organizationId: string): Promise<CarerPro
 	});
 }
 
-export async function getCarerProfile(userId: string): Promise<CarerProfile | null> {
-	return await prisma.carerProfile.findUnique({
-		where: { id: userId },
+export async function getCarerProfile(userId: string, organizationId: string): Promise<CarerProfile | null> {
+	return await prisma.carerProfile.findFirst({
+		where: { id: userId, clerkOrganizationId: organizationId },
 		include: { trainings: true },
 	});
 }
@@ -147,6 +147,7 @@ export async function upsertCarerProfile(userId: string, orgId: string, data: an
 		create: {
 			id: userId,
 			clerkOrganizationId: orgId,
+			specialties: data.specialties ?? [],
 			...data,
 		},
 		update: data,

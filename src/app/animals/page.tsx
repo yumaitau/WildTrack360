@@ -8,19 +8,19 @@ import { getEnrichedCarers } from '@/lib/carer-helpers';
 export default async function AnimalsPage() {
   const { userId, orgId } = await auth();
   if (!userId) redirect('/sign-in');
-  const organizationId = orgId || '';
+  if (!orgId) redirect('/');
 
   try {
     const [animals, speciesRows, enrichedCarers] = await Promise.all([
       prisma.animal.findMany({
-        where: { clerkUserId: userId, clerkOrganizationId: organizationId },
+        where: { clerkUserId: userId, clerkOrganizationId: orgId },
         orderBy: { dateFound: 'desc' },
       }),
       prisma.species.findMany({
-        where: { clerkUserId: userId, clerkOrganizationId: organizationId },
+        where: { clerkUserId: userId, clerkOrganizationId: orgId },
         orderBy: { name: 'asc' },
       }),
-      getEnrichedCarers(organizationId),
+      getEnrichedCarers(orgId),
     ]);
 
     const species = speciesRows.map(s => s.name);

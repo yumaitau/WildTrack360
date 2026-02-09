@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEnrichedCarer, upsertCarerProfile } from '@/lib/carer-helpers';
+import { ensureUserInOrg, isOrgAdmin } from '@/lib/authz';
 
 export async function GET(
   request: Request,
@@ -13,6 +14,14 @@ export async function GET(
   }
 
   try {
+    await ensureUserInOrg(userId, orgId);
+
+    // Only org admins or the target user themselves can view a profile
+    const admin = await isOrgAdmin(userId, orgId);
+    if (!admin && userId !== id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const carer = await getEnrichedCarer(id, orgId);
     if (!carer) {
       return NextResponse.json({ error: 'Carer not found' }, { status: 404 });
@@ -35,6 +44,14 @@ export async function PATCH(
   }
 
   try {
+    await ensureUserInOrg(userId, orgId);
+
+    // Only org admins or the target user themselves can update a profile
+    const admin = await isOrgAdmin(userId, orgId);
+    if (!admin && userId !== id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
 
     // Strip fields that should not be updated via this endpoint

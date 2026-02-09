@@ -2,34 +2,42 @@
 
 import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from './prisma';
-import type { CarerProfile } from '@prisma/client';
+import type { CarerProfile, CarerTraining } from '@prisma/client';
 import type { EnrichedCarer } from './types';
 
 /**
- * Fetches Clerk org members and merges with CarerProfile data from DB.
+ * Fetches all Clerk org members (paginated) and merges with CarerProfile data from DB.
  */
 export async function getEnrichedCarers(orgId: string): Promise<EnrichedCarer[]> {
   const client = await clerkClient();
 
-  // Fetch Clerk org members and CarerProfiles in parallel
-  const [membershipList, profiles] = await Promise.all([
-    client.organizations.getOrganizationMembershipList({
+  // Paginate through all org members
+  const allMembers: any[] = [];
+  let offset = 0;
+  const limit = 100;
+  while (true) {
+    const batch = await client.organizations.getOrganizationMembershipList({
       organizationId: orgId,
-      limit: 100,
-    }),
-    prisma.carerProfile.findMany({
-      where: { clerkOrganizationId: orgId },
-      include: { trainings: true },
-    }),
-  ]);
+      limit,
+      offset,
+    });
+    allMembers.push(...batch.data);
+    if (batch.data.length < limit) break;
+    offset += limit;
+  }
 
-  const profileMap = new Map<string, CarerProfile & { trainings?: any[] }>();
+  const profiles = await prisma.carerProfile.findMany({
+    where: { clerkOrganizationId: orgId },
+    include: { trainings: true },
+  });
+
+  const profileMap = new Map<string, CarerProfile & { trainings?: CarerTraining[] }>();
   for (const p of profiles) {
     profileMap.set(p.id, p);
   }
 
-  return membershipList.data
-    .filter(m => m.publicUserData?.userId)
+  return allMembers
+    .filter((m: any) => m.publicUserData?.userId)
     .map(m => {
       const userId = m.publicUserData!.userId!;
       const profile = profileMap.get(userId);
@@ -126,6 +134,7 @@ export async function upsertCarerProfile(
     create: {
       id: userId,
       clerkOrganizationId: orgId,
+      specialties: data.specialties ?? [],
       ...data,
     },
     update: data,

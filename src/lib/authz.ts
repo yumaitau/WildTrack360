@@ -12,11 +12,19 @@ export async function ensureUserInOrg(userId: string, orgId?: string): Promise<s
 	return orgId
 }
 
+/**
+ * Returns true if the user holds an admin role in the given organization.
+ */
+export async function isOrgAdmin(userId: string, orgId: string): Promise<boolean> {
+	const client = await clerkClient()
+	const memberships = await client.users.getOrganizationMembershipList({ userId })
+	const membership = memberships.data.find((m: any) => m.organization.id === orgId)
+	return membership?.role === 'org:admin'
+}
+
 export async function getFirstUserOrgId(userId: string): Promise<string | null> {
 	if (!userId) return null
 	const client = await clerkClient()
 	const memberships = await client.users.getOrganizationMembershipList({ userId })
 	return memberships.data[0]?.organization.id ?? null
 }
-
-

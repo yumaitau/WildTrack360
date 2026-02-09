@@ -1,7 +1,9 @@
 // Re-export Prisma types for app-wide use
-export type { Animal, Record, Photo, Asset, Species, CarerProfile, HygieneLog, IncidentReport, ReleaseChecklist } from '@prisma/client';
+export type { Animal, Record, Photo, Asset, Species, CarerProfile, CarerTraining, HygieneLog, IncidentReport, ReleaseChecklist } from '@prisma/client';
 export type AnimalStatus = import('@prisma/client').$Enums.AnimalStatus;
 export type AssetStatus = import('@prisma/client').$Enums.AssetStatus;
+
+import type { CarerTraining } from '@prisma/client';
 
 // Enriched carer: Clerk identity + optional CarerProfile domain fields
 export interface EnrichedCarer {
@@ -28,7 +30,7 @@ export interface EnrichedCarer {
   memberSince: Date | null;
   trainingLevel: string | null;
   hasProfile: boolean;
-  trainings?: any[];
+  trainings?: CarerTraining[];
 }
 
 // Lightweight constants for existing UI components
