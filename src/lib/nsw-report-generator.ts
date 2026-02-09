@@ -1,4 +1,5 @@
-import { Animal, Carer } from '@prisma/client';
+import { Animal } from '@prisma/client';
+import type { EnrichedCarer } from './types';
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 
@@ -15,7 +16,7 @@ export interface NSWReportData {
     contactPhone: string;
   };
   animals: Animal[];
-  carers: Carer[];
+  carers: EnrichedCarer[];
   transfers: TransferRecord[];
   permanentCare: PermanentCareRecord[];
   preservedSpecimens: PreservedSpecimenRecord[];

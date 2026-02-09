@@ -46,10 +46,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { format, isAfter, isBefore, addDays } from 'date-fns';
 
-interface Carer {
+interface EnrichedCarer {
   id: string;
   name: string;
   email: string;
+  [key: string]: any;
 }
 
 interface Training {
@@ -61,7 +62,7 @@ interface Training {
   expiryDate?: string | null;
   certificateUrl?: string | null;
   notes?: string | null;
-  carer: Carer;
+  carer: { id: string };
 }
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -74,7 +75,7 @@ export function TrainingManagement() {
   const { user } = useUser();
   const { organization } = useOrganization();
   const [trainings, setTrainings] = useState<Training[]>([]);
-  const [carers, setCarers] = useState<Carer[]>([]);
+  const [carers, setCarers] = useState<EnrichedCarer[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -120,7 +121,7 @@ export function TrainingManagement() {
   const refreshCarers = async () => {
     try {
       const orgId = organization?.id || 'default-org';
-      const carersData = await apiJson<Carer[]>(`/api/carers?orgId=${orgId}`);
+      const carersData = await apiJson<EnrichedCarer[]>(`/api/carers?orgId=${orgId}`);
       setCarers(carersData);
     } catch (error) {
       console.error('Error fetching carers:', error);
@@ -357,7 +358,7 @@ export function TrainingManagement() {
           <TableBody>
             {filteredTrainings.map((training) => (
               <TableRow key={training.id}>
-                <TableCell className="font-medium">{training.carer.name}</TableCell>
+                <TableCell className="font-medium">{carers.find(c => c.id === training.carerId)?.name || 'Unknown'}</TableCell>
                 <TableCell>{training.courseName}</TableCell>
                 <TableCell>{training.provider || '-'}</TableCell>
                 <TableCell>{format(new Date(training.date), 'dd/MM/yyyy')}</TableCell>
@@ -515,7 +516,7 @@ export function TrainingManagement() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Carer</Label>
-              <Input value={editingTraining?.carer.name || ''} disabled />
+              <Input value={carers.find(c => c.id === editingTraining?.carerId)?.name || ''} disabled />
             </div>
 
             <div className="space-y-2">
@@ -595,7 +596,7 @@ export function TrainingManagement() {
           <DialogHeader>
             <DialogTitle>Delete Training Certificate</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this training certificate for {trainingToDelete?.carer.name}?
+              Are you sure you want to delete this training certificate for {carers.find(c => c.id === trainingToDelete?.carerId)?.name || 'this carer'}?
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>

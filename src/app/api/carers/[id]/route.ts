@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
+import { getEnrichedCarer, upsertCarerProfile } from '@/lib/carer-helpers';
+import { ensureUserInOrg, isOrgAdmin } from '@/lib/authz';
 
 export async function GET(
   request: Request,
@@ -13,20 +14,18 @@ export async function GET(
   }
 
   try {
-    const carer = await prisma.carer.findFirst({
-      where: {
-        id,
-        clerkOrganizationId: orgId,
-      },
-      include: {
-        trainings: true,
-      },
-    });
+    await ensureUserInOrg(userId, orgId);
 
+    // Only org admins or the target user themselves can view a profile
+    const admin = await isOrgAdmin(userId, orgId);
+    if (!admin && userId !== id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const carer = await getEnrichedCarer(id, orgId);
     if (!carer) {
       return NextResponse.json({ error: 'Carer not found' }, { status: 404 });
     }
-
     return NextResponse.json(carer);
   } catch (error) {
     console.error('Error fetching carer:', error);
@@ -45,71 +44,34 @@ export async function PATCH(
   }
 
   try {
+    await ensureUserInOrg(userId, orgId);
+
+    // Only org admins or the target user themselves can update a profile
+    const admin = await isOrgAdmin(userId, orgId);
+    if (!admin && userId !== id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
-    
-    // First, verify the carer belongs to the user's organization
-    const existingCarer = await prisma.carer.findFirst({
-      where: {
-        id,
-        clerkOrganizationId: orgId,
-      },
-    });
 
-    if (!existingCarer) {
-      return NextResponse.json({ error: 'Carer not found or access denied' }, { status: 404 });
-    }
-    
-    // Remove fields that shouldn't be updated
-    const { id: bodyId, createdAt, updatedAt, clerkUserId, clerkOrganizationId, ...updateData } = body;
-    
-    const carer = await prisma.carer.update({
-      where: {
-        id,
-        clerkOrganizationId: orgId, // Double-check in update
-      },
-      data: updateData,
-    });
+    // Strip fields that should not be updated via this endpoint
+    const {
+      id: _id,
+      name: _name,
+      email: _email,
+      imageUrl: _imageUrl,
+      hasProfile: _hasProfile,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      clerkOrganizationId: _orgId,
+      trainings: _trainings,
+      ...profileData
+    } = body;
 
-    return NextResponse.json(carer);
+    const profile = await upsertCarerProfile(id, orgId, profileData);
+    return NextResponse.json(profile);
   } catch (error) {
-    console.error('Error updating carer:', error);
-    return NextResponse.json({ error: 'Failed to update carer' }, { status: 500 });
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const { userId, orgId } = await auth();
-  if (!userId || !orgId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    // First, verify the carer belongs to the user's organization
-    const existingCarer = await prisma.carer.findFirst({
-      where: {
-        id,
-        clerkOrganizationId: orgId,
-      },
-    });
-
-    if (!existingCarer) {
-      return NextResponse.json({ error: 'Carer not found or access denied' }, { status: 404 });
-    }
-
-    await prisma.carer.delete({
-      where: {
-        id,
-        clerkOrganizationId: orgId, // Double-check in delete
-      },
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting carer:', error);
-    return NextResponse.json({ error: 'Failed to delete carer' }, { status: 500 });
+    console.error('Error updating carer profile:', error);
+    return NextResponse.json({ error: 'Failed to update carer profile' }, { status: 500 });
   }
 }

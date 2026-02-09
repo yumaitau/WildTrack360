@@ -22,8 +22,6 @@ export async function GET(request: Request) {
         carer: {
           select: {
             id: true,
-            name: true,
-            email: true
           }
         }
       },
@@ -64,13 +62,11 @@ export async function POST(request: Request) {
         carer: {
           select: {
             id: true,
-            name: true,
-            email: true
           }
         }
       }
     });
-    
+
     return NextResponse.json(training, { status: 201 });
   } catch (error) {
     console.error('Error creating carer training:', error);

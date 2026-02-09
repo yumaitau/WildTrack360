@@ -53,37 +53,31 @@ async function main() {
   // Seed all species for the default organization
   const species = await seedSpeciesForOrganization(defaultUserId, defaultOrgId);
 
-  // Create sample carers
+  // Create sample carer profiles (id = Clerk user ID)
   const carers = await Promise.all([
-    prisma.carer.upsert({
+    prisma.carerProfile.upsert({
       where: { id: 'carer-1' },
       update: {},
       create: {
         id: 'carer-1',
-        name: 'Dr. Sarah Johnson',
-        email: 'sarah.johnson@wildtrack360.com.au',
         phone: '+61 400 123 456',
         licenseNumber: 'ACT-WC-001',
         jurisdiction: 'ACT',
         specialties: ['Koalas', 'Marsupials', 'Emergency Care'],
         active: true,
-        clerkUserId: defaultUserId,
         clerkOrganizationId: defaultOrgId,
       },
     }),
-    prisma.carer.upsert({
+    prisma.carerProfile.upsert({
       where: { id: 'carer-2' },
       update: {},
       create: {
         id: 'carer-2',
-        name: 'Michael Chen',
-        email: 'michael.chen@wildtrack360.com.au',
         phone: '+61 400 234 567',
         licenseNumber: 'ACT-WC-002',
         jurisdiction: 'ACT',
         specialties: ['Kangaroos', 'Large Mammals', 'Rehabilitation'],
         active: true,
-        clerkUserId: defaultUserId,
         clerkOrganizationId: defaultOrgId,
       },
     }),

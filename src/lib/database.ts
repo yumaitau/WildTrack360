@@ -1,7 +1,7 @@
 'server-only';
 
 import { prisma } from './prisma';
-import type { Animal, Record, Photo, Species, Carer, HygieneLog, IncidentReport, ReleaseChecklist, Asset } from '@prisma/client';
+import type { Animal, Record, Photo, Species, CarerProfile, HygieneLog, IncidentReport, ReleaseChecklist, Asset } from '@prisma/client';
 
 // Animal Management
 export async function getAnimals(organizationId: string): Promise<Animal[]> {
@@ -10,7 +10,7 @@ export async function getAnimals(organizationId: string): Promise<Animal[]> {
 			clerkOrganizationId: organizationId,
 		},
 		include: {
-			carer: true,
+			carer: true, // CarerProfile relation
 			records: true,
 			photos: true,
 		},
@@ -122,37 +122,35 @@ export async function deleteSpecies(id: string): Promise<void> {
 	});
 }
 
-// Carer Management
-export async function getCarers(organizationId: string): Promise<Carer[]> {
-	return await prisma.carer.findMany({
+// CarerProfile Management
+export async function getCarerProfiles(organizationId: string): Promise<CarerProfile[]> {
+	return await prisma.carerProfile.findMany({
 		where: {
 			clerkOrganizationId: organizationId,
 		},
 		include: {
 			trainings: true,
 		},
-		orderBy: {
-			name: 'asc',
+	});
+}
+
+export async function getCarerProfile(userId: string, organizationId: string): Promise<CarerProfile | null> {
+	return await prisma.carerProfile.findFirst({
+		where: { id: userId, clerkOrganizationId: organizationId },
+		include: { trainings: true },
+	});
+}
+
+export async function upsertCarerProfile(userId: string, orgId: string, data: any): Promise<CarerProfile> {
+	return await prisma.carerProfile.upsert({
+		where: { id: userId },
+		create: {
+			id: userId,
+			clerkOrganizationId: orgId,
+			specialties: data.specialties ?? [],
+			...data,
 		},
-	});
-}
-
-export async function createCarer(carerData: any): Promise<Carer> {
-	return await prisma.carer.create({
-		data: carerData as any,
-	});
-}
-
-export async function updateCarer(id: string, carerData: any): Promise<Carer> {
-	return await prisma.carer.update({
-		where: { id },
-		data: carerData as any,
-	});
-}
-
-export async function deleteCarer(id: string): Promise<void> {
-	await prisma.carer.delete({
-		where: { id },
+		update: data,
 	});
 }
 

@@ -23,6 +23,7 @@ import { Animal } from "@prisma/client"
 
 interface CarerDistributionChartProps {
   animals: Animal[];
+  carerMap?: Record<string, string>; // carerId → name
 }
 
 const CHART_COLORS = [
@@ -36,7 +37,7 @@ const CHART_COLORS = [
     "#3b82f6", // blue-500
 ];
 
-export default function CarerDistributionChart({ animals }: CarerDistributionChartProps) {
+export default function CarerDistributionChart({ animals, carerMap = {} }: CarerDistributionChartProps) {
   const chartData = React.useMemo(() => {
     const carerCount = animals
       .filter(a => a.status === 'IN_CARE')
@@ -47,8 +48,8 @@ export default function CarerDistributionChart({ animals }: CarerDistributionCha
           return acc;
         }, {} as { [key: string]: number });
 
-    return Object.entries(carerCount).map(([carer, count], index) => ({
-      name: carer,
+    return Object.entries(carerCount).map(([carerId, count], index) => ({
+      name: carerMap[carerId] || carerId,
       value: count,
       fill: CHART_COLORS[index % CHART_COLORS.length],
     }));

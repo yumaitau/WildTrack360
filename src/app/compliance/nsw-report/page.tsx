@@ -2,10 +2,11 @@ import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import NSWReportClient from './nsw-report-client';
 import { prisma } from '@/lib/prisma';
+import { getEnrichedCarers } from '@/lib/carer-helpers';
 
 export default async function NSWReportPage() {
   const { userId, orgId } = await auth();
-  
+
   if (!userId || !orgId) {
     redirect('/sign-in');
   }
@@ -16,14 +17,11 @@ export default async function NSWReportPage() {
       where: { clerkOrganizationId: orgId },
       orderBy: { dateFound: 'desc' }
     }),
-    prisma.carer.findMany({
-      where: { clerkOrganizationId: orgId },
-      orderBy: { name: 'asc' }
-    })
+    getEnrichedCarers(orgId),
   ]);
 
   return (
-    <NSWReportClient 
+    <NSWReportClient
       initialAnimals={animals}
       initialCarers={carers}
       organizationId={orgId}

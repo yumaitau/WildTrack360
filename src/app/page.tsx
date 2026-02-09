@@ -1,8 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import HomeClient from "./home-client";
-import { getAnimals, getSpecies, getCarers } from "@/lib/database";
+import { getAnimals, getSpecies } from "@/lib/database";
 import { createOrUpdateClerkUser, createOrUpdateClerkOrganization } from "@/lib/database";
+import { getEnrichedCarers } from "@/lib/carer-helpers";
 
 export default async function Home() {
   const { userId, orgId } = await auth();
@@ -30,7 +31,7 @@ export default async function Home() {
     const [animals, species, carers] = await Promise.all([
       getAnimals(organizationId),
       getSpecies(organizationId),
-      getCarers(organizationId),
+      getEnrichedCarers(organizationId),
     ]);
 
     const showOnboarding = animals.length === 0 || species.length === 0;

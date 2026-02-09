@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Animal, Carer } from '@prisma/client';
+import { Animal } from '@prisma/client';
+import type { EnrichedCarer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,7 @@ import { useOrganization, useUser } from '@clerk/nextjs';
 
 interface NSWReportClientProps {
   initialAnimals: Animal[];
-  initialCarers: Carer[];
+  initialCarers: EnrichedCarer[];
   organizationId: string;
 }
 

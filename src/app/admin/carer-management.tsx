@@ -19,12 +19,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Pen, PlusCircle, Trash, Save, X } from 'lucide-react';
+import { Pen, Save, X, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useOrganization } from '@clerk/nextjs';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import type { EnrichedCarer } from '@/lib/types';
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -32,75 +33,31 @@ async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-interface Carer {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string | null;
-  licenseNumber?: string | null;
-  jurisdiction?: string | null;
-  specialties?: string[];
-  notes?: string | null;
-  active: boolean;
-  // Address fields for NSW reporting
-  streetAddress?: string | null;
-  suburb?: string | null;
-  state?: string | null;
-  postcode?: string | null;
-}
-
-interface CarerManagementProps {
-  initialCarers: string[];
-}
-
-export function CarerManagement({ initialCarers }: CarerManagementProps) {
-  const { user } = useUser();
+export function CarerManagement() {
   const { organization } = useOrganization();
-  const [carers, setCarers] = useState<Carer[]>([]);
-  const [newCarer, setNewCarer] = useState('');
+  const [carers, setCarers] = useState<EnrichedCarer[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [carerToDelete, setCarerToDelete] = useState<Carer | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Add dialog state
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [addName, setAddName] = useState('');
-  const [addEmail, setAddEmail] = useState('');
-  const [addPhone, setAddPhone] = useState('');
-  const [addLicenseNumber, setAddLicenseNumber] = useState('');
-  const [addJurisdiction, setAddJurisdiction] = useState('');
-  const [addSpecialtiesText, setAddSpecialtiesText] = useState('');
-  const [addNotes, setAddNotes] = useState('');
-  const [addActive, setAddActive] = useState(true);
-  // Address fields
-  const [addStreetAddress, setAddStreetAddress] = useState('');
-  const [addSuburb, setAddSuburb] = useState('');
-  const [addState, setAddState] = useState('NSW');
-  const [addPostcode, setAddPostcode] = useState('');
-
   // Edit dialog state
-  const [editingCarer, setEditingCarer] = useState<Carer | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editEmail, setEditEmail] = useState('');
+  const [editingCarer, setEditingCarer] = useState<EnrichedCarer | null>(null);
   const [editPhone, setEditPhone] = useState('');
   const [editLicenseNumber, setEditLicenseNumber] = useState('');
   const [editJurisdiction, setEditJurisdiction] = useState('');
   const [editSpecialtiesText, setEditSpecialtiesText] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editActive, setEditActive] = useState(true);
-  // Address fields
   const [editStreetAddress, setEditStreetAddress] = useState('');
   const [editSuburb, setEditSuburb] = useState('');
   const [editState, setEditState] = useState('NSW');
   const [editPostcode, setEditPostcode] = useState('');
 
-  // Refresh carers list from data store
   const refreshCarers = async () => {
+    const orgId = organization?.id;
+    if (!orgId) return;
     try {
-      const orgId = organization?.id || 'default-org';
-      const updatedCarers = await apiJson<Carer[]>(`/api/carers?orgId=${orgId}`);
+      const updatedCarers = await apiJson<EnrichedCarer[]>(`/api/carers?orgId=${orgId}`);
       setCarers(updatedCarers);
     } catch (error) {
       console.error('Error refreshing carers:', error);
@@ -112,84 +69,14 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
     refreshCarers();
   }, [organization]);
 
-  const openAddDialog = () => {
-    setAddName(newCarer.trim());
-    setAddEmail('');
-    setAddPhone('');
-    setAddLicenseNumber('');
-    setAddJurisdiction('');
-    setAddSpecialtiesText('');
-    setAddNotes('');
-    setAddActive(true);
-    // Address fields
-    setAddStreetAddress('');
-    setAddSuburb('');
-    setAddState('NSW');
-    setAddPostcode('');
-    setIsAddDialogOpen(true);
-  };
-
-  const handleCreateCarer = async () => {
-    if (!addName.trim() || !addEmail.trim()) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Name and email are required.' });
-      return;
-    }
-    setLoading(true);
-    try {
-      const specialties = addSpecialtiesText
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      await apiJson(`/api/carers`, { 
-        method: 'POST', 
-        body: JSON.stringify({ 
-          name: addName.trim(),
-          email: addEmail.trim(),
-          phone: addPhone || null,
-          licenseNumber: addLicenseNumber || null,
-          jurisdiction: addJurisdiction || null,
-          specialties,
-          notes: addNotes || null,
-          active: addActive,
-          // Address fields
-          streetAddress: addStreetAddress || null,
-          suburb: addSuburb || null,
-          state: addState || null,
-          postcode: addPostcode || null,
-          clerkOrganizationId: organization?.id
-        }) 
-      });
-      setNewCarer('');
-      setIsAddDialogOpen(false);
-      setAddName('');
-      setAddEmail('');
-      setAddPhone('');
-      setAddLicenseNumber('');
-      setAddJurisdiction('');
-      setAddSpecialtiesText('');
-      setAddNotes('');
-      setAddActive(true);
-      await refreshCarers();
-      toast({ title: 'Success', description: `Carer "${addName.trim()}" added.` });
-    } catch (error) {
-      console.error('Error adding carer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to add carer.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openEditDialog = async (carer: Carer) => {
+  const openEditDialog = (carer: EnrichedCarer) => {
     setEditingCarer(carer);
-    setEditName(carer.name);
-    setEditEmail(carer.email);
     setEditPhone(carer.phone || '');
     setEditLicenseNumber(carer.licenseNumber || '');
     setEditJurisdiction(carer.jurisdiction || '');
     setEditSpecialtiesText((carer.specialties || []).join(', '));
     setEditNotes(carer.notes || '');
     setEditActive(carer.active);
-    // Address fields
     setEditStreetAddress(carer.streetAddress || '');
     setEditSuburb(carer.suburb || '');
     setEditState(carer.state || 'NSW');
@@ -198,84 +85,47 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
   };
 
   const handleEditCarer = async () => {
-    if (!editingCarer || !editName.trim() || !editEmail.trim()) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Name and email are required.' });
-      return;
-    }
+    if (!editingCarer) return;
     setLoading(true);
     try {
       const specialties = editSpecialtiesText
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
-      
-      await apiJson(`/api/carers/${editingCarer.id}`, { 
-        method: 'PATCH', 
-        body: JSON.stringify({ 
-          name: editName.trim(),
-          email: editEmail.trim(),
+
+      await apiJson(`/api/carers/${editingCarer.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
           phone: editPhone || null,
           licenseNumber: editLicenseNumber || null,
           jurisdiction: editJurisdiction || null,
           specialties,
           notes: editNotes || null,
           active: editActive,
-          // Address fields
           streetAddress: editStreetAddress || null,
           suburb: editSuburb || null,
           state: editState || null,
-          postcode: editPostcode || null
-        }) 
+          postcode: editPostcode || null,
+        })
       });
-      
+
       setEditingCarer(null);
       setIsEditDialogOpen(false);
       await refreshCarers();
-      toast({ title: 'Success', description: `Carer "${editName.trim()}" updated.` });
+      toast({ title: 'Success', description: `Profile for "${editingCarer.name}" updated.` });
     } catch (error) {
-      console.error('Error updating carer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to update carer.' });
+      console.error('Error updating carer profile:', error);
+      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to update profile.' });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDeleteCarer = async () => {
-    if (!carerToDelete) return;
-    setLoading(true);
-    try {
-      await apiJson(`/api/carers/${carerToDelete.id}`, { method: 'DELETE' });
-      setCarerToDelete(null);
-      setIsDeleteDialogOpen(false);
-      await refreshCarers();
-      toast({ title: 'Success', description: `Carer "${carerToDelete.name}" deleted.` });
-    } catch (error) {
-      console.error('Error deleting carer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to delete carer.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openDeleteDialog = (carer: Carer) => {
-    setCarerToDelete(carer);
-    setIsDeleteDialogOpen(true);
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex space-x-2">
-        <Input
-          placeholder="New carer name..."
-          value={newCarer}
-          onChange={(e) => setNewCarer(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && openAddDialog()}
-          disabled={loading}
-        />
-        <Button onClick={openAddDialog} disabled={loading}>
-          <PlusCircle className="mr-2 h-4 w-4" /> 
-          Add Carer
-        </Button>
+      <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
+        <Info className="h-4 w-4 flex-shrink-0" />
+        <span>To add or remove people, use the <strong>Manage Users</strong> tab. This page manages domain-specific profile data for existing org members.</span>
       </div>
 
       <div className="rounded-md border">
@@ -286,8 +136,9 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>License Number</TableHead>
+              <TableHead>Profile</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-[120px] text-right">Actions</TableHead>
+              <TableHead className="w-[80px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -299,35 +150,34 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
                 <TableCell>{c.licenseNumber || '-'}</TableCell>
                 <TableCell>
                   <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                    c.hasProfile ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {c.hasProfile ? 'Complete' : 'Incomplete'}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                     c.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                   }`}>
                     {c.active ? 'Active' : 'Inactive'}
                   </span>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="icon"
                     onClick={() => openEditDialog(c)}
                     disabled={loading}
                   >
                     <Pen className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openDeleteDialog(c)}
-                    disabled={loading}
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}
             {carers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  No carers found. Add your first carer above.
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  No organization members found. Invite users via the Manage Users tab.
                 </TableCell>
               </TableRow>
             )}
@@ -335,316 +185,137 @@ export function CarerManagement({ initialCarers }: CarerManagementProps) {
         </Table>
       </div>
 
-      {/* Edit Dialog */}
+      {/* Edit Profile Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Edit Carer</DialogTitle>
+            <DialogTitle>Edit Carer Profile</DialogTitle>
             <DialogDescription>
-              Update the carer details. Changes will affect all animals assigned to this carer.
+              Update profile details for {editingCarer?.name}. Name and email are managed via Clerk.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            {/* Read-only identity info */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-name">Name *</Label>
-                <Input 
-                  id="edit-name"
-                  placeholder="Name" 
-                  value={editName} 
-                  onChange={(e) => setEditName(e.target.value)} 
-                />
+                <Label>Name</Label>
+                <Input value={editingCarer?.name || ''} disabled />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-email">Email *</Label>
-                <Input 
-                  id="edit-email"
-                  placeholder="Email" 
-                  type="email" 
-                  value={editEmail} 
-                  onChange={(e) => setEditEmail(e.target.value)} 
-                />
+                <Label>Email</Label>
+                <Input value={editingCarer?.email || ''} disabled />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-phone">Phone</Label>
-                <Input 
+                <Input
                   id="edit-phone"
-                  placeholder="Phone (optional)" 
-                  value={editPhone} 
-                  onChange={(e) => setEditPhone(e.target.value)} 
+                  placeholder="Phone (optional)"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-license">License Number</Label>
-                <Input 
+                <Input
                   id="edit-license"
-                  placeholder="License Number (optional)" 
-                  value={editLicenseNumber} 
-                  onChange={(e) => setEditLicenseNumber(e.target.value)} 
+                  placeholder="License Number (optional)"
+                  value={editLicenseNumber}
+                  onChange={(e) => setEditLicenseNumber(e.target.value)}
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="edit-jurisdiction">Jurisdiction</Label>
-              <Input 
+              <Input
                 id="edit-jurisdiction"
-                placeholder="Jurisdiction (optional)" 
-                value={editJurisdiction} 
-                onChange={(e) => setEditJurisdiction(e.target.value)} 
+                placeholder="Jurisdiction (optional)"
+                value={editJurisdiction}
+                onChange={(e) => setEditJurisdiction(e.target.value)}
               />
             </div>
-            
+
             {/* Address Fields */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium">Address Details (Required for NSW Reporting)</h4>
               <div className="space-y-2">
                 <Label htmlFor="edit-street">Street Address</Label>
-                <Input 
+                <Input
                   id="edit-street"
-                  placeholder="e.g., 123 Main Street" 
-                  value={editStreetAddress} 
-                  onChange={(e) => setEditStreetAddress(e.target.value)} 
+                  placeholder="e.g., 123 Main Street"
+                  value={editStreetAddress}
+                  onChange={(e) => setEditStreetAddress(e.target.value)}
                 />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2 space-y-2">
                   <Label htmlFor="edit-suburb">Suburb/Town</Label>
-                  <Input 
+                  <Input
                     id="edit-suburb"
-                    placeholder="e.g., Sydney" 
-                    value={editSuburb} 
-                    onChange={(e) => setEditSuburb(e.target.value)} 
+                    placeholder="e.g., Sydney"
+                    value={editSuburb}
+                    onChange={(e) => setEditSuburb(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-postcode">Postcode</Label>
-                  <Input 
+                  <Input
                     id="edit-postcode"
-                    placeholder="e.g., 2000" 
-                    value={editPostcode} 
-                    onChange={(e) => setEditPostcode(e.target.value)} 
+                    placeholder="e.g., 2000"
+                    value={editPostcode}
+                    onChange={(e) => setEditPostcode(e.target.value)}
                   />
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="edit-specialties">Specialties (comma-separated)</Label>
-              <Textarea 
+              <Textarea
                 id="edit-specialties"
-                placeholder="e.g. Raptors, Marsupials" 
-                value={editSpecialtiesText} 
-                onChange={(e) => setEditSpecialtiesText(e.target.value)} 
+                placeholder="e.g. Raptors, Marsupials"
+                value={editSpecialtiesText}
+                onChange={(e) => setEditSpecialtiesText(e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="edit-notes">Notes</Label>
-              <Textarea 
+              <Textarea
                 id="edit-notes"
-                placeholder="Additional notes (optional)" 
-                value={editNotes} 
-                onChange={(e) => setEditNotes(e.target.value)} 
+                placeholder="Additional notes (optional)"
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-center space-x-2">
-              <Switch 
-                checked={editActive} 
-                onCheckedChange={setEditActive} 
-                id="edit-carer-active" 
+              <Switch
+                checked={editActive}
+                onCheckedChange={setEditActive}
+                id="edit-carer-active"
               />
               <Label htmlFor="edit-carer-active">Active</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsEditDialogOpen(false)}
               disabled={loading}
             >
               <X className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button 
-              onClick={handleEditCarer} 
-              disabled={loading || !editName.trim() || !editEmail.trim()}
+            <Button
+              onClick={handleEditCarer}
+              disabled={loading}
             >
               <Save className="mr-2 h-4 w-4" />
               {loading ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Carer Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Add Carer</DialogTitle>
-            <DialogDescription>
-              Provide details for the new carer.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="add-name">Name *</Label>
-                <Input 
-                  id="add-name"
-                  placeholder="Name" 
-                  value={addName} 
-                  onChange={(e) => setAddName(e.target.value)} 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-email">Email *</Label>
-                <Input 
-                  id="add-email"
-                  placeholder="Email" 
-                  type="email" 
-                  value={addEmail} 
-                  onChange={(e) => setAddEmail(e.target.value)} 
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="add-phone">Phone</Label>
-                <Input 
-                  id="add-phone"
-                  placeholder="Phone (optional)" 
-                  value={addPhone} 
-                  onChange={(e) => setAddPhone(e.target.value)} 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-license">License Number</Label>
-                <Input 
-                  id="add-license"
-                  placeholder="License Number (optional)" 
-                  value={addLicenseNumber} 
-                  onChange={(e) => setAddLicenseNumber(e.target.value)} 
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="add-jurisdiction">Jurisdiction</Label>
-              <Input 
-                id="add-jurisdiction"
-                placeholder="Jurisdiction (optional)" 
-                value={addJurisdiction} 
-                onChange={(e) => setAddJurisdiction(e.target.value)} 
-              />
-            </div>
-            
-            {/* Address Fields */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium">Address Details (Required for NSW Reporting)</h4>
-              <div className="space-y-2">
-                <Label htmlFor="add-street">Street Address</Label>
-                <Input 
-                  id="add-street"
-                  placeholder="e.g., 123 Main Street" 
-                  value={addStreetAddress} 
-                  onChange={(e) => setAddStreetAddress(e.target.value)} 
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 space-y-2">
-                  <Label htmlFor="add-suburb">Suburb/Town</Label>
-                  <Input 
-                    id="add-suburb"
-                    placeholder="e.g., Sydney" 
-                    value={addSuburb} 
-                    onChange={(e) => setAddSuburb(e.target.value)} 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="add-postcode">Postcode</Label>
-                  <Input 
-                    id="add-postcode"
-                    placeholder="e.g., 2000" 
-                    value={addPostcode} 
-                    onChange={(e) => setAddPostcode(e.target.value)} 
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="add-specialties">Specialties (comma-separated)</Label>
-              <Textarea 
-                id="add-specialties"
-                placeholder="e.g. Raptors, Marsupials" 
-                value={addSpecialtiesText} 
-                onChange={(e) => setAddSpecialtiesText(e.target.value)} 
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="add-notes">Notes</Label>
-              <Textarea 
-                id="add-notes"
-                placeholder="Additional notes (optional)" 
-                value={addNotes} 
-                onChange={(e) => setAddNotes(e.target.value)} 
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Switch 
-                checked={addActive} 
-                onCheckedChange={setAddActive} 
-                id="add-carer-active" 
-              />
-              <Label htmlFor="add-carer-active">Active</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={loading}>
-              <X className="mr-2 h-4 w-4" />
-              Cancel
-            </Button>
-            <Button onClick={handleCreateCarer} disabled={loading}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Save Carer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Carer</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{carerToDelete?.name}&quot;? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsDeleteDialogOpen(false)}
-              disabled={loading}
-            >
-              <X className="mr-2 h-4 w-4" />
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive"
-              onClick={handleDeleteCarer} 
-              disabled={loading}
-            >
-              <Trash className="mr-2 h-4 w-4" />
-              {loading ? 'Deleting...' : 'Delete Carer'}
             </Button>
           </DialogFooter>
         </DialogContent>

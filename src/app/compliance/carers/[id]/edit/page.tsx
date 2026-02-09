@@ -29,10 +29,12 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
   const { organization } = useOrganization();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  
-  // Form state
+
+  // Read-only identity fields (from Clerk)
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+
+  // Editable profile fields
   const [phone, setPhone] = useState("");
   const [jurisdiction, setJurisdiction] = useState("ACT");
   const [licenseNumber, setLicenseNumber] = useState("");
@@ -48,9 +50,12 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
         const response = await fetch(`/api/carers/${id}`);
         if (!response.ok) throw new Error("Failed to load carer");
         const data = await response.json();
-        
+
+        // Read-only from Clerk
         setName(data.name || "");
         setEmail(data.email || "");
+
+        // Editable profile fields
         setPhone(data.phone || "");
         setJurisdiction(data.jurisdiction || "ACT");
         setLicenseNumber(data.licenseNumber || "");
@@ -83,25 +88,14 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!name || !email) {
-      toast({
-        title: "Missing Required Fields",
-        description: "Name and email are required",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setLoading(true);
-    
+
     try {
       const response = await fetch(`/api/carers/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
-          email,
           phone: phone || null,
           jurisdiction: jurisdiction || null,
           licenseNumber: licenseNumber || null,
@@ -115,17 +109,17 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
       if (response.ok) {
         toast({
           title: "Success",
-          description: "Carer updated successfully",
+          description: "Carer profile updated successfully",
         });
         router.push(`/compliance/carers/${id}`);
       } else {
-        throw new Error("Failed to update carer");
+        throw new Error("Failed to update carer profile");
       }
     } catch (error) {
       console.error("Error updating carer:", error);
       toast({
         title: "Error",
-        description: "Failed to update carer",
+        description: "Failed to update carer profile",
         variant: "destructive",
       });
     } finally {
@@ -151,53 +145,40 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
             </Link>
           </div>
           <div>
-            <h1 className="text-3xl font-bold">Edit Carer</h1>
+            <h1 className="text-3xl font-bold">Edit Carer Profile</h1>
             <p className="text-muted-foreground">
-              Update carer information and compliance details
+              Update profile information and compliance details
             </p>
           </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Basic Information */}
+        {/* Identity (read-only from Clerk) */}
         <Card>
           <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
+            <CardTitle>Identity</CardTitle>
             <CardDescription>
-              Update carer&apos;s personal and contact information
+              Name and email are managed via your organization&apos;s user settings
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
-                <Input 
-                  id="name" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter full name"
-                  required
-                />
+                <Label htmlFor="name">Full Name</Label>
+                <Input id="name" value={name} disabled />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input 
-                  id="email" 
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter email address"
-                  required
-                />
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" value={email} disabled />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
-                <Input 
-                  id="phone" 
+                <Input
+                  id="phone"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Enter phone number" 
+                  placeholder="Enter phone number"
                 />
               </div>
               <div className="space-y-2">
@@ -234,8 +215,8 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="licenseNumber">Licence Number</Label>
-                <Input 
-                  id="licenseNumber" 
+                <Input
+                  id="licenseNumber"
                   value={licenseNumber}
                   onChange={(e) => setLicenseNumber(e.target.value)}
                   placeholder="Enter licence number"
@@ -302,15 +283,15 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               <div className="flex flex-wrap gap-2">
                 {specialties.map((sp, index) => (
                   <Badge key={index} variant="secondary" className="text-sm pr-1">
                     {sp}
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
                       className="h-4 w-4 ml-1 hover:bg-red-100"
                       onClick={() => handleRemoveSpecialty(sp)}
                     >
@@ -334,8 +315,8 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
-              <Textarea 
-                id="notes" 
+              <Textarea
+                id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Enter any additional notes about the carer..."
