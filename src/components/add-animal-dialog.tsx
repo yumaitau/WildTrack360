@@ -485,7 +485,7 @@ export function AddAnimalDialog({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Date of Birth (optional)</FormLabel>
-                  <Popover>
+                  <Popover modal>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -555,7 +555,7 @@ export function AddAnimalDialog({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Date Found</FormLabel>
-                  <Popover>
+                  <Popover modal>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
