@@ -30,12 +30,31 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
     }),
   ]);
 
+  // Resolve Clerk user IDs to display names for the record timeline
+  const uniqueUserIds = [...new Set(records.map((r) => r.clerkUserId).filter(Boolean))];
+  const userMap: Record<string, string> = {};
+  if (uniqueUserIds.length > 0) {
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const client = await clerkClient();
+    await Promise.all(
+      uniqueUserIds.map(async (uid) => {
+        try {
+          const user = await client.users.getUser(uid);
+          userMap[uid] = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.emailAddresses?.[0]?.emailAddress || "Unknown";
+        } catch {
+          userMap[uid] = "Unknown";
+        }
+      })
+    );
+  }
+
   return (
     <AnimalDetailClient
       initialAnimal={animal}
       initialRecords={records}
       initialPhotos={photos}
       releaseChecklist={releaseChecklist}
+      userMap={userMap}
     />
   );
 }
