@@ -392,6 +392,13 @@ describe('updateSpeciesGroup', () => {
       name: 'Test', slug: 'test', description: 'desc', speciesNames: ['Koala'],
     });
   });
+
+  it('throws when no valid fields provided', async () => {
+    await expect(updateSpeciesGroup('sg1', 'org1', {} as any))
+      .rejects.toThrow('No valid fields to update');
+
+    expect(mockPrisma.speciesGroup.updateMany).not.toHaveBeenCalled();
+  });
 });
 
 describe('deleteSpeciesGroup', () => {
@@ -446,8 +453,9 @@ describe('assignCoordinatorToSpeciesGroup', () => {
 });
 
 describe('removeCoordinatorFromSpeciesGroup', () => {
-  it('succeeds when member belongs to org', async () => {
+  it('succeeds when both belong to same org', async () => {
     mockPrisma.orgMember.findFirst.mockResolvedValue({ id: 'member1', orgId: 'org1' });
+    mockPrisma.speciesGroup.findFirst.mockResolvedValue({ id: 'sg1', orgId: 'org1' });
     mockPrisma.coordinatorSpeciesAssignment.delete.mockResolvedValue({});
 
     await removeCoordinatorFromSpeciesGroup('member1', 'sg1', 'org1');
@@ -456,8 +464,17 @@ describe('removeCoordinatorFromSpeciesGroup', () => {
 
   it('throws when member is from different org', async () => {
     mockPrisma.orgMember.findFirst.mockResolvedValue(null);
+    mockPrisma.speciesGroup.findFirst.mockResolvedValue({ id: 'sg1', orgId: 'org1' });
 
     await expect(removeCoordinatorFromSpeciesGroup('member1', 'sg1', 'org1'))
       .rejects.toThrow('OrgMember not found in this organisation');
+  });
+
+  it('throws when species group is from different org', async () => {
+    mockPrisma.orgMember.findFirst.mockResolvedValue({ id: 'member1', orgId: 'org1' });
+    mockPrisma.speciesGroup.findFirst.mockResolvedValue(null);
+
+    await expect(removeCoordinatorFromSpeciesGroup('member1', 'sg1', 'org1'))
+      .rejects.toThrow('Species group not found in this organisation');
   });
 });

@@ -295,6 +295,10 @@ export async function updateSpeciesGroup(
   if (data.description !== undefined) safeData.description = data.description;
   if (data.speciesNames !== undefined) safeData.speciesNames = data.speciesNames;
 
+  if (Object.keys(safeData).length === 0) {
+    throw new Error('No valid fields to update');
+  }
+
   const result = await prisma.speciesGroup.updateMany({
     where: { id, orgId },
     data: safeData,
@@ -352,9 +356,13 @@ export async function removeCoordinatorFromSpeciesGroup(
   speciesGroupId: string,
   orgId: string
 ) {
-  // Verify member belongs to this org
-  const member = await prisma.orgMember.findFirst({ where: { id: orgMemberId, orgId } });
+  // Verify both belong to the same org
+  const [member, group] = await Promise.all([
+    prisma.orgMember.findFirst({ where: { id: orgMemberId, orgId } }),
+    prisma.speciesGroup.findFirst({ where: { id: speciesGroupId, orgId } }),
+  ]);
   if (!member) throw new Error('OrgMember not found in this organisation');
+  if (!group) throw new Error('Species group not found in this organisation');
 
   return prisma.coordinatorSpeciesAssignment.delete({
     where: {
