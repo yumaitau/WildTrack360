@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { updateAnimal, deleteAnimal } from '@/lib/database'
+import { prisma } from '@/lib/prisma'
+import { canAccessAnimal, getUserRole, hasPermission } from '@/lib/rbac'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { userId, orgId: activeOrgId } = await auth()
@@ -10,7 +12,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const requestedOrgId = body.clerkOrganizationId || activeOrgId || undefined
   if (!requestedOrgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
   if (activeOrgId && requestedOrgId !== activeOrgId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   try {
+    // Fetch the animal to check access
+    const animal = await prisma.animal.findFirst({
+      where: { id, clerkOrganizationId: requestedOrgId },
+    })
+    if (!animal) return NextResponse.json({ error: 'Animal not found' }, { status: 404 })
+
+    const role = await getUserRole(userId, requestedOrgId)
+
+    // ADMIN and COORDINATOR (in scope) can edit any animal they can access
+    // CARER can only edit animals assigned to them
+    if (role === 'CARER') {
+      if (animal.carerId !== userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    } else if (role === 'COORDINATOR') {
+      const allowed = await canAccessAnimal(userId, requestedOrgId, animal)
+      if (!allowed) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    }
+    // ADMIN can always edit
+
     const updated = await updateAnimal(id, { ...body, clerkUserId: userId, clerkOrganizationId: requestedOrgId })
     return NextResponse.json(updated)
   } catch (e) {
@@ -19,15 +44,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { userId, orgId } = await auth()
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
+
   try {
+    // Only ADMIN can delete animals
+    const role = await getUserRole(userId, orgId)
+    if (!hasPermission(role, 'animal:delete')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     await deleteAnimal(id)
     return NextResponse.json({ ok: true })
   } catch (e) {
     return NextResponse.json({ error: 'Failed to delete animal' }, { status: 500 })
   }
 }
-
-

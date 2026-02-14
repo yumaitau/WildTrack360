@@ -5,7 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, User, RefreshCw, LogOut, Building, AlertTriangle } from 'lucide-react';
+import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, ShieldCheck, ShieldAlert, User, RefreshCw, LogOut, Building, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Animal } from '@prisma/client';
 
 // Local type for create-animal payload
@@ -65,22 +66,24 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
   const [isLoading, setIsLoading] = useState(false);
   const [greeting, setGreeting] = useState('');
   const [orgJurisdiction, setOrgJurisdiction] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>('CARER');
 
-  // Load species and carers from API for current organization
+  // Load species, carers, and user role from API for current organization
   useEffect(() => {
     const fetchLookups = async () => {
       if (!organization) return;
       try {
         const orgId = organization.id;
-        const [newSpecies, newCarers] = await Promise.all([
+        const [newSpecies, newCarers, roleData] = await Promise.all([
           apiJson<any[]>(`/api/species?orgId=${orgId}`),
           apiJson<any[]>(`/api/carers?orgId=${orgId}`),
+          apiJson<any>('/api/rbac/my-role'),
         ]);
         setSpeciesList(newSpecies || []);
         setCarersList(newCarers || []);
+        setUserRole(roleData.role || 'CARER');
       } catch (error) {
         console.error('Error loading species/carers:', error);
-        // Set empty arrays on error to avoid undefined
         setSpeciesList([]);
         setCarersList([]);
       }
@@ -204,19 +207,29 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                   <p className="text-sm font-medium">
                     Welcome, {user.firstName} {user.lastName}
                   </p>
-                  {organization?.name && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Building className="w-3 h-3" />
-                      {organization.name}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {organization?.name && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Building className="w-3 h-3" />
+                        {organization.name}
+                      </span>
+                    )}
+                    <Badge variant={userRole === 'ADMIN' ? 'default' : userRole === 'COORDINATOR' ? 'secondary' : 'outline'} className="text-xs">
+                      {userRole === 'ADMIN' && <ShieldAlert className="h-3 w-3 mr-1" />}
+                      {userRole === 'COORDINATOR' && <ShieldCheck className="h-3 w-3 mr-1" />}
+                      {userRole === 'CARER' && <Shield className="h-3 w-3 mr-1" />}
+                      {userRole}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-              <Link href="/admin">
-                <Button size="sm">
-                  Admin
-                </Button>
-              </Link>
+              {userRole !== 'CARER' && (
+                <Link href="/admin">
+                  <Button size="sm">
+                    {userRole === 'ADMIN' ? 'Admin' : 'Coordinator'}
+                  </Button>
+                </Link>
+              )}
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
@@ -259,13 +272,15 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         {/* Action Bar */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="flex-1">
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)}
-              className="w-full sm:w-auto"
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add New Animal
-            </Button>
+            {(userRole === 'ADMIN' || userRole === 'COORDINATOR') && (
+              <Button
+                onClick={() => setIsAddDialogOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Add New Animal
+              </Button>
+            )}
           </div>
           <div>
             <Link href="/animals">

@@ -1,7 +1,8 @@
 // Re-export Prisma types for app-wide use
-export type { Animal, Record, Photo, Asset, Species, CarerProfile, CarerTraining, HygieneLog, IncidentReport, ReleaseChecklist } from '@prisma/client';
+export type { Animal, Record, Photo, Asset, Species, CarerProfile, CarerTraining, HygieneLog, IncidentReport, ReleaseChecklist, OrgMember, SpeciesGroup, CoordinatorSpeciesAssignment } from '@prisma/client';
 export type AnimalStatus = import('@prisma/client').$Enums.AnimalStatus;
 export type AssetStatus = import('@prisma/client').$Enums.AssetStatus;
+export type OrgRole = import('@prisma/client').$Enums.OrgRole;
 
 import type { CarerTraining } from '@prisma/client';
 
@@ -39,6 +40,44 @@ export type AssetType = typeof assetTypes[number];
 
 export const recordTypes = ['Health Check', 'Growth', 'Feeding', 'Sighting', 'Release', 'General'] as const;
 export type RecordType = typeof recordTypes[number];
+
+// RBAC types for client-side use
+export interface OrgMemberWithAssignments {
+  id: string;
+  userId: string;
+  orgId: string;
+  role: 'ADMIN' | 'COORDINATOR' | 'CARER';
+  createdAt: string;
+  updatedAt: string;
+  speciesAssignments: {
+    id: string;
+    speciesGroupId: string;
+    speciesGroup: {
+      id: string;
+      slug: string;
+      name: string;
+      speciesNames: string[];
+    };
+  }[];
+}
+
+export interface SpeciesGroupWithCoordinators {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  speciesNames: string[];
+  orgId: string;
+  coordinators: {
+    id: string;
+    orgMemberId: string;
+    orgMember: {
+      id: string;
+      userId: string;
+      role: 'ADMIN' | 'COORDINATOR' | 'CARER';
+    };
+  }[];
+}
 
 // Compliance config interface used by compliance-rules
 export interface JurisdictionConfig {

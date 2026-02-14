@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PawPrint, User, Package, Users } from 'lucide-react';
+import { ArrowLeft, PawPrint, User, Package, Users, ShieldCheck, Leaf } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Asset } from '@prisma/client';
@@ -11,6 +11,8 @@ import { SpeciesManagement } from './species-management';
 import { CarerManagement } from './carer-management';
 import { AssetManagement } from './asset-management';
 import { UserManagement } from './user-management';
+import { RoleManagement } from './role-management';
+import { SpeciesGroupManagement } from './species-group-management';
 import { useUser, useOrganization } from '@clerk/nextjs';
 
 async function apiJson<T>(url: string): Promise<T> {
@@ -23,18 +25,22 @@ export default function AdminPage() {
   const [species, setSpecies] = useState<string[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string>('CARER');
   const { user } = useUser();
   const { organization } = useOrganization();
+
   useEffect(() => {
     const loadData = async () => {
       try {
         const orgId = organization?.id || 'default-org';
-        const [speciesData, assetsData] = await Promise.all([
+        const [speciesData, assetsData, roleData] = await Promise.all([
           apiJson<any[]>(`/api/species?orgId=${orgId}`),
-          apiJson<Asset[]>(`/api/assets?orgId=${orgId}`)
+          apiJson<Asset[]>(`/api/assets?orgId=${orgId}`),
+          apiJson<any>('/api/rbac/my-role'),
         ]);
         setSpecies(speciesData.map(s => s.name));
         setAssets(assetsData);
+        setUserRole(roleData.role || 'CARER');
       } catch (error) {
         console.error('Error loading admin data:', error);
       } finally {
@@ -44,6 +50,8 @@ export default function AdminPage() {
 
     loadData();
   }, [organization]);
+
+  const isAdmin = userRole === 'ADMIN';
 
   if (loading) {
     return (
@@ -82,8 +90,20 @@ export default function AdminPage() {
         </div>
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-        <Tabs defaultValue="species">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue={isAdmin ? "roles" : "species"}>
+          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-4'}`}>
+            {isAdmin && (
+              <TabsTrigger value="roles">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Roles
+              </TabsTrigger>
+            )}
+            {isAdmin && (
+              <TabsTrigger value="species-groups">
+                <Leaf className="mr-2 h-4 w-4" />
+                Species Groups
+              </TabsTrigger>
+            )}
             <TabsTrigger value="species">
               <PawPrint className="mr-2 h-4 w-4" />
               Manage Species
@@ -101,6 +121,16 @@ export default function AdminPage() {
               Manage Users
             </TabsTrigger>
           </TabsList>
+          {isAdmin && (
+            <TabsContent value="roles">
+              <RoleManagement />
+            </TabsContent>
+          )}
+          {isAdmin && (
+            <TabsContent value="species-groups">
+              <SpeciesGroupManagement />
+            </TabsContent>
+          )}
           <TabsContent value="species">
             <Card>
               <CardHeader>

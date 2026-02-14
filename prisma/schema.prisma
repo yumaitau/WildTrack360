@@ -535,6 +535,64 @@ model NSWLifeStage {
   @@map("nsw_life_stages")
 }
 
+// ─── RBAC Models ─────────────────────────────────────────────────────────────
+
+enum OrgRole {
+  ADMIN
+  COORDINATOR
+  CARER
+}
+
+// Application-level role for each user within an organisation.
+// This replaces reliance on Clerk's built-in org:admin / org:member roles.
+model OrgMember {
+  id        String   @id @default(cuid())
+  userId    String   // Clerk user ID
+  orgId     String   // Clerk organization ID
+  role      OrgRole  @default(CARER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A coordinator can be assigned to one or more species groups
+  speciesAssignments CoordinatorSpeciesAssignment[]
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+  @@map("org_members")
+}
+
+// Configurable species groups per organisation (e.g. Macropods, Bats, Koalas).
+model SpeciesGroup {
+  id          String   @id @default(cuid())
+  slug        String   // machine-readable key, e.g. "macropods"
+  name        String   // display name, e.g. "Macropods"
+  description String?
+  speciesNames String[] // species names that belong to this group (matched against Animal.species)
+  orgId       String   // Clerk organization ID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  coordinators CoordinatorSpeciesAssignment[]
+
+  @@unique([slug, orgId])
+  @@index([orgId])
+  @@map("species_groups")
+}
+
+// Junction table: which coordinators manage which species groups.
+model CoordinatorSpeciesAssignment {
+  id             String       @id @default(cuid())
+  orgMemberId    String
+  speciesGroupId String
+  createdAt      DateTime     @default(now())
+
+  orgMember    OrgMember    @relation(fields: [orgMemberId], references: [id], onDelete: Cascade)
+  speciesGroup SpeciesGroup @relation(fields: [speciesGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([orgMemberId, speciesGroupId])
+  @@map("coordinator_species_assignments")
+}
+
 // Additional enums for NSW models
 enum PermanentCareCategory {
   EDUCATION
