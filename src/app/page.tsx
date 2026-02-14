@@ -5,7 +5,7 @@ import { getSpecies } from "@/lib/database";
 import { createOrUpdateClerkUser, createOrUpdateClerkOrganization } from "@/lib/database";
 import { getEnrichedCarers } from "@/lib/carer-helpers";
 import { prisma } from "@/lib/prisma";
-import { getUserRole, getAuthorisedSpecies } from "@/lib/rbac";
+import { getUserRole, getAuthorisedSpecies, getOrgMember } from "@/lib/rbac";
 
 export default async function Home() {
   const { userId, orgId } = await auth();
@@ -27,6 +27,14 @@ export default async function Home() {
       lastName: user.lastName || undefined,
       imageUrl: user.imageUrl || undefined,
     });
+  }
+
+  // Redirect unmigrated users (no OrgMember record) to the role setup page
+  if (organizationId) {
+    const member = await getOrgMember(userId, organizationId);
+    if (!member) {
+      redirect("/setup-role");
+    }
   }
 
   try {
