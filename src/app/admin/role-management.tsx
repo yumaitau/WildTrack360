@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useOrganization, useUser } from '@clerk/nextjs';
-import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -21,9 +20,92 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Shield, ShieldCheck, ShieldAlert, Users, Info, Leaf, X } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldAlert, Users, Info, Leaf, X, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { OrgMemberWithAssignments, SpeciesGroupWithCoordinators } from '@/lib/types';
+
+function SpeciesGroupBadges({
+  userId,
+  assignments,
+  speciesGroups,
+  isCurrentUser,
+  onAssign,
+  onRemove,
+}: {
+  userId: string;
+  assignments: OrgMemberWithAssignments['speciesAssignments'];
+  speciesGroups: SpeciesGroupWithCoordinators[];
+  isCurrentUser: boolean;
+  onAssign: (userId: string, groupId: string) => Promise<void>;
+  onRemove: (userId: string, groupId: string) => Promise<void>;
+}) {
+  const [busyGroupId, setBusyGroupId] = useState<string | null>(null);
+  const assignedGroupIds = new Set(assignments.map((a) => a.speciesGroupId));
+
+  const handleToggle = async (groupId: string, assigned: boolean) => {
+    setBusyGroupId(groupId);
+    try {
+      if (assigned) {
+        await onRemove(userId, groupId);
+      } else {
+        await onAssign(userId, groupId);
+      }
+    } finally {
+      setBusyGroupId(null);
+    }
+  };
+
+  if (speciesGroups.length === 0) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        No species groups defined
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {speciesGroups.map((g) => {
+        const assigned = assignedGroupIds.has(g.id);
+        const isBusy = busyGroupId === g.id;
+
+        if (isCurrentUser) {
+          // Read-only view for current user
+          return assigned ? (
+            <Badge key={g.id} variant="secondary" className="text-xs">
+              <Leaf className="h-3 w-3 mr-1" />
+              {g.name}
+            </Badge>
+          ) : null;
+        }
+
+        return (
+          <button
+            key={g.id}
+            disabled={isBusy}
+            onClick={() => handleToggle(g.id, assigned)}
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors
+              ${assigned
+                ? 'bg-primary/10 text-primary border border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30'
+                : 'bg-muted/50 text-muted-foreground border border-dashed border-muted-foreground/30 hover:bg-primary/10 hover:text-primary hover:border-primary/30'
+              }
+              ${isBusy ? 'opacity-50 cursor-wait' : 'cursor-pointer'}
+            `}
+          >
+            {isBusy ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : assigned ? (
+              <X className="h-3 w-3" />
+            ) : (
+              <Plus className="h-3 w-3" />
+            )}
+            {g.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 interface ClerkMember {
   id: string;
@@ -339,54 +421,14 @@ export function RoleManagement({ onCarerRoleAssigned }: RoleManagementProps) {
                       </TableCell>
                       <TableCell>
                         {(currentRole === 'COORDINATOR' || currentRole === 'CARER') && hasExplicitRole(userId) ? (
-                          <div className="space-y-2">
-                            {assignments.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {assignments.map((a) => (
-                                  <Badge key={a.id} variant="outline" className="text-xs flex items-center gap-1">
-                                    <Leaf className="h-3 w-3" />
-                                    {a.speciesGroup.name}
-                                    {!isCurrentUser && (
-                                      <button
-                                        className="ml-1 hover:text-destructive"
-                                        onClick={() => handleRemoveSpeciesGroup(userId, a.speciesGroupId)}
-                                      >
-                                        <X className="h-3 w-3" />
-                                      </button>
-                                    )}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                            {!isCurrentUser && (() => {
-                              const assignedGroupIds = assignments.map((a) => a.speciesGroupId);
-                              const available = speciesGroups.filter(
-                                (g) => !assignedGroupIds.includes(g.id)
-                              );
-                              return available.length > 0 ? (
-                                <Select
-                                  onValueChange={(groupId) =>
-                                    handleAssignSpeciesGroup(userId, groupId)
-                                  }
-                                >
-                                  <SelectTrigger className="w-[160px] h-8">
-                                    <SelectValue placeholder="Add group..." />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {available.map((g) => (
-                                      <SelectItem key={g.id} value={g.id}>
-                                        {g.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : assignments.length === 0 ? (
-                                <span className="text-xs text-muted-foreground">
-                                  No species groups defined
-                                </span>
-                              ) : null;
-                            })()}
-                          </div>
+                          <SpeciesGroupBadges
+                            userId={userId}
+                            assignments={assignments}
+                            speciesGroups={speciesGroups}
+                            isCurrentUser={isCurrentUser}
+                            onAssign={handleAssignSpeciesGroup}
+                            onRemove={handleRemoveSpeciesGroup}
+                          />
                         ) : !currentRole ? (
                           <span className="text-xs text-muted-foreground">
                             Assign a role first
