@@ -27,6 +27,7 @@ export default function AdminPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
   const { user } = useUser();
   const { organization } = useOrganization();
   const router = useRouter();
@@ -48,6 +49,7 @@ export default function AdminPage() {
         setSpecies(speciesData.map(s => s.name));
         setAssets(assetsData);
         setUserRole(role);
+        setActiveTab(role === 'ADMIN' ? 'roles' : 'species');
       } catch (error) {
         console.error('Error loading admin data:', error);
       } finally {
@@ -97,7 +99,7 @@ export default function AdminPage() {
         </div>
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-        <Tabs defaultValue={isAdmin ? "roles" : "species"}>
+        <Tabs value={activeTab ?? (isAdmin ? "roles" : "species")} onValueChange={setActiveTab}>
           <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-4'}`}>
             {isAdmin && (
               <TabsTrigger value="roles">
@@ -130,7 +132,7 @@ export default function AdminPage() {
           </TabsList>
           {isAdmin && (
             <TabsContent value="roles">
-              <RoleManagement />
+              <RoleManagement onCarerRoleAssigned={() => setActiveTab('carers')} />
             </TabsContent>
           )}
           {isAdmin && (

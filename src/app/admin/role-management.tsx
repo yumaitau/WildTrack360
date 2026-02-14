@@ -37,7 +37,11 @@ interface ClerkMember {
   role: string;
 }
 
-export function RoleManagement() {
+interface RoleManagementProps {
+  onCarerRoleAssigned?: () => void;
+}
+
+export function RoleManagement({ onCarerRoleAssigned }: RoleManagementProps) {
   const { organization } = useOrganization();
   const { user } = useUser();
   const [clerkMembers, setClerkMembers] = useState<ClerkMember[]>([]);
@@ -97,8 +101,16 @@ export function RoleManagement() {
         throw new Error(err.error || 'Failed to update role');
       }
 
-      toast.success('Role updated successfully');
-      fetchData();
+      if (newRole === 'CARER') {
+        toast.info('Role set to Carer. Please set up their profile before assigning animals to their caseload.', {
+          duration: 6000,
+        });
+        fetchData();
+        onCarerRoleAssigned?.();
+      } else {
+        toast.success('Role updated successfully');
+        fetchData();
+      }
     } catch (error) {
       console.error('Error updating role:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to update role');
