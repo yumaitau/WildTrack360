@@ -193,6 +193,11 @@ export function SpeciesGroupManagement() {
       .map((s) => s.trim())
       .filter(Boolean);
 
+    if (!formName || speciesNames.length === 0) {
+      toast.error('Name and species names are required');
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch(`/api/rbac/species-groups/${editingGroup.id}`, {

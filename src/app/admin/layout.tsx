@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { getUserRole } from '@/lib/rbac';
+import { requireMinimumRole } from '@/lib/rbac';
 
 export default async function AdminLayout({
   children,
@@ -8,14 +8,11 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const { userId, orgId } = await auth();
+  if (!userId || !orgId) redirect('/sign-in');
 
-  if (!userId || !orgId) {
-    redirect('/sign-in');
-  }
-
-  const role = await getUserRole(userId, orgId);
-
-  if (role === 'CARER') {
+  try {
+    await requireMinimumRole(userId, orgId, 'COORDINATOR');
+  } catch {
     redirect('/');
   }
 
