@@ -542,15 +542,25 @@ export default function AnimalDetailClient({
         setIsOpen={setIsEditOpen}
         onAnimalAdd={async (data: any) => {
           try {
-            await fetch(`/api/animals/${animal.id}`, {
+            const res = await fetch(`/api/animals/${animal.id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ ...data, clerkOrganizationId: organization?.id }),
             });
-            setAnimal(prev => ({ ...prev, ...data } as any));
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({ error: 'Failed to update animal' }));
+              throw new Error(err.error || 'Failed to update animal');
+            }
+            const updated = await res.json();
+            setAnimal(prev => ({ ...prev, ...updated }));
             setIsEditOpen(false);
           } catch (e) {
             console.error('Failed to save animal', e);
+            toast({
+              variant: 'destructive',
+              title: 'Update failed',
+              description: e instanceof Error ? e.message : 'Failed to update animal',
+            });
           }
         }}
         animalToEdit={animal as any}
