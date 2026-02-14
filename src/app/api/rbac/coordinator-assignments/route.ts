@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const assignment = await assignCoordinatorToSpeciesGroup(orgMemberId, speciesGroupId);
+    const assignment = await assignCoordinatorToSpeciesGroup(orgMemberId, speciesGroupId, orgId);
     return NextResponse.json(assignment, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
@@ -67,7 +67,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await removeCoordinatorFromSpeciesGroup(orgMemberId, speciesGroupId);
+    await removeCoordinatorFromSpeciesGroup(orgMemberId, speciesGroupId, orgId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';

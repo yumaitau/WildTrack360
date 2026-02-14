@@ -21,7 +21,8 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const updated = await updateSpeciesGroup(id, body);
+    const { name, slug, description, speciesNames } = body;
+    const updated = await updateSpeciesGroup(id, orgId, { name, slug, description, speciesNames });
     return NextResponse.json(updated);
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
@@ -46,7 +47,7 @@ export async function DELETE(
   try {
     await requirePermission(userId, orgId, 'species_group:manage');
     const { id } = await params;
-    await deleteSpeciesGroup(id);
+    await deleteSpeciesGroup(id, orgId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';

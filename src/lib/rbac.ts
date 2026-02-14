@@ -141,8 +141,16 @@ export async function requireMinimumRole(
 // ─── Species-Scoped Access ───────────────────────────────────────────────────
 
 /**
+ * Normalise a species name for case-insensitive comparison.
+ */
+function normaliseSpecies(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+/**
  * Get the species names a coordinator is authorised to manage.
  * Returns null for ADMIN (unrestricted) or empty array for CARER.
+ * Species names are normalised (lowercased) for consistent matching.
  */
 export async function getAuthorisedSpecies(
   userId: string,
@@ -159,7 +167,7 @@ export async function getAuthorisedSpecies(
     const speciesNames = member.speciesAssignments.flatMap(
       (a) => a.speciesGroup.speciesNames
     );
-    return [...new Set(speciesNames)];
+    return [...new Set(speciesNames.map(normaliseSpecies))];
   }
 
   // Carer has no species-level access (filtered by assigned animals instead)
@@ -169,7 +177,7 @@ export async function getAuthorisedSpecies(
 /**
  * Check whether a user can access a specific animal based on their role:
  * - ADMIN: always
- * - COORDINATOR: if the animal's species is in one of their groups
+ * - COORDINATOR: if the animal's species is in one of their groups (case-insensitive)
  * - CARER: if the animal is assigned to them
  */
 export async function canAccessAnimal(
@@ -187,9 +195,9 @@ export async function canAccessAnimal(
 
   if (member.role === 'COORDINATOR') {
     const authorisedSpecies = member.speciesAssignments.flatMap(
-      (a) => a.speciesGroup.speciesNames
+      (a) => a.speciesGroup.speciesNames.map(normaliseSpecies)
     );
-    return authorisedSpecies.includes(animal.species) || animal.carerId === userId;
+    return authorisedSpecies.includes(normaliseSpecies(animal.species)) || animal.carerId === userId;
   }
 
   // CARER
@@ -200,12 +208,28 @@ export async function canAccessAnimal(
 
 /**
  * Set a user's role within an organisation (upsert).
+ * Prevents demotion of the last ADMIN in an org.
  */
 export async function setUserRole(
   userId: string,
   orgId: string,
   role: OrgRole
 ) {
+  // Prevent removing the last ADMIN
+  if (role !== 'ADMIN') {
+    const currentMember = await prisma.orgMember.findUnique({
+      where: { userId_orgId: { userId, orgId } },
+    });
+    if (currentMember?.role === 'ADMIN') {
+      const adminCount = await prisma.orgMember.count({
+        where: { orgId, role: 'ADMIN' },
+      });
+      if (adminCount <= 1) {
+        throw new Error('Cannot demote the last admin in the organisation');
+      }
+    }
+  }
+
   return prisma.orgMember.upsert({
     where: { userId_orgId: { userId, orgId } },
     create: { userId, orgId, role },
@@ -252,32 +276,83 @@ export async function createSpeciesGroup(data: {
   return prisma.speciesGroup.create({ data });
 }
 
+/**
+ * Update a species group. Scoped by orgId to prevent cross-tenant modification.
+ * Only allows updating safe fields (name, slug, description, speciesNames).
+ */
 export async function updateSpeciesGroup(
   id: string,
+  orgId: string,
   data: { name?: string; slug?: string; description?: string; speciesNames?: string[] }
 ) {
-  return prisma.speciesGroup.update({ where: { id }, data });
+  // Allowlist only safe fields — never allow orgId, id, createdAt, updatedAt
+  const safeData: Record<string, unknown> = {};
+  if (data.name !== undefined) safeData.name = data.name;
+  if (data.slug !== undefined) safeData.slug = data.slug;
+  if (data.description !== undefined) safeData.description = data.description;
+  if (data.speciesNames !== undefined) safeData.speciesNames = data.speciesNames;
+
+  const result = await prisma.speciesGroup.updateMany({
+    where: { id, orgId },
+    data: safeData,
+  });
+  if (result.count === 0) {
+    throw new Error('Species group not found');
+  }
+  return prisma.speciesGroup.findUnique({ where: { id } });
 }
 
-export async function deleteSpeciesGroup(id: string) {
+/**
+ * Delete a species group. Scoped by orgId to prevent cross-tenant deletion.
+ */
+export async function deleteSpeciesGroup(id: string, orgId: string) {
+  // First verify the group belongs to this org
+  const group = await prisma.speciesGroup.findFirst({
+    where: { id, orgId },
+  });
+  if (!group) {
+    throw new Error('Species group not found');
+  }
   return prisma.speciesGroup.delete({ where: { id } });
 }
 
 // ─── Coordinator ↔ Species Group Assignment ──────────────────────────────────
 
+/**
+ * Assign a coordinator to a species group.
+ * Validates that both the OrgMember and SpeciesGroup belong to the same org.
+ */
 export async function assignCoordinatorToSpeciesGroup(
   orgMemberId: string,
-  speciesGroupId: string
+  speciesGroupId: string,
+  orgId: string
 ) {
+  // Verify both belong to the same org
+  const [member, group] = await Promise.all([
+    prisma.orgMember.findFirst({ where: { id: orgMemberId, orgId } }),
+    prisma.speciesGroup.findFirst({ where: { id: speciesGroupId, orgId } }),
+  ]);
+  if (!member) throw new Error('OrgMember not found in this organisation');
+  if (!group) throw new Error('Species group not found in this organisation');
+
   return prisma.coordinatorSpeciesAssignment.create({
     data: { orgMemberId, speciesGroupId },
   });
 }
 
+/**
+ * Remove a coordinator from a species group.
+ * Validates that the OrgMember belongs to the caller's org.
+ */
 export async function removeCoordinatorFromSpeciesGroup(
   orgMemberId: string,
-  speciesGroupId: string
+  speciesGroupId: string,
+  orgId: string
 ) {
+  // Verify member belongs to this org
+  const member = await prisma.orgMember.findFirst({ where: { id: orgMemberId, orgId } });
+  if (!member) throw new Error('OrgMember not found in this organisation');
+
   return prisma.coordinatorSpeciesAssignment.delete({
     where: {
       orgMemberId_speciesGroupId: { orgMemberId, speciesGroupId },
