@@ -26,14 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { UserPlus, Trash2, Mail, AlertCircle, Users, Shield, ShieldCheck, Info, Clock, X } from 'lucide-react';
+import { UserPlus, Trash2, Mail, AlertCircle, Users, Info, Clock, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const MAX_USERS = 25;
@@ -76,7 +69,6 @@ export function UserManagement() {
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [sendingInvite, setSendingInvite] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
-  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
   const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
 
   const fetchMembers = async () => {
@@ -163,37 +155,6 @@ export function UserManagement() {
       }
     } finally {
       setSendingInvite(false);
-    }
-  };
-
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    if (!organization) return;
-    
-    if (userId === user?.id) {
-      toast.error('You cannot change your own role');
-      return;
-    }
-
-    setUpdatingRoleUserId(userId);
-    try {
-      const memberToUpdate = members.find(m => m.publicUserData.userId === userId);
-      if (!memberToUpdate) {
-        toast.error('Member not found');
-        return;
-      }
-
-      await organization.updateMember({
-        userId,
-        role: newRole
-      });
-      
-      toast.success(`Role updated successfully`);
-      fetchMembers();
-    } catch (error) {
-      console.error('Error updating role:', error);
-      toast.error('Failed to update user role');
-    } finally {
-      setUpdatingRoleUserId(null);
     }
   };
 
@@ -373,7 +334,6 @@ export function UserManagement() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -405,41 +365,6 @@ export function UserManagement() {
                           <Mail className="h-4 w-4 text-muted-foreground" />
                           {member.publicUserData.identifier}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {isAdmin && !isCurrentUser ? (
-                          <Select
-                            value={member.role}
-                            onValueChange={(value) => handleRoleChange(member.publicUserData.userId, value)}
-                            disabled={updatingRoleUserId === member.publicUserData.userId}
-                          >
-                            <SelectTrigger className="w-[110px] h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="org:admin">
-                                <span className="flex items-center gap-1">
-                                  <ShieldCheck className="h-3 w-3" />
-                                  Admin
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="org:member">
-                                <span className="flex items-center gap-1">
-                                  <Shield className="h-3 w-3" />
-                                  Member
-                                </span>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium">
-                            {member.role === 'org:admin' ? (
-                              <><ShieldCheck className="h-3 w-3" /> Admin</>
-                            ) : (
-                              <><Shield className="h-3 w-3" /> Member</>
-                            )}
-                          </span>
-                        )}
                       </TableCell>
                       <TableCell>
                         {new Date(member.createdAt).toLocaleDateString()}
@@ -517,7 +442,6 @@ export function UserManagement() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
                     <TableHead>Sent</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -530,15 +454,6 @@ export function UserManagement() {
                           <Mail className="h-4 w-4 text-muted-foreground" />
                           {invitation.emailAddress}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
-                          {invitation.role === 'org:admin' ? (
-                            <><ShieldCheck className="h-3 w-3" /> Admin</>
-                          ) : (
-                            <><Shield className="h-3 w-3" /> Member</>
-                          )}
-                        </span>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm text-muted-foreground">

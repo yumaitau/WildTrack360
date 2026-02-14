@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, PawPrint, User, Package, Users, ShieldCheck, Leaf } from 'lucide-react';
@@ -25,9 +26,10 @@ export default function AdminPage() {
   const [species, setSpecies] = useState<string[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>('CARER');
+  const [userRole, setUserRole] = useState<string | null>(null);
   const { user } = useUser();
   const { organization } = useOrganization();
+  const router = useRouter();
 
   useEffect(() => {
     const loadData = async () => {
@@ -38,9 +40,14 @@ export default function AdminPage() {
           apiJson<Asset[]>(`/api/assets?orgId=${orgId}`),
           apiJson<any>('/api/rbac/my-role'),
         ]);
+        const role = roleData.role || 'CARER';
+        if (role === 'CARER') {
+          router.replace('/');
+          return;
+        }
         setSpecies(speciesData.map(s => s.name));
         setAssets(assetsData);
-        setUserRole(roleData.role || 'CARER');
+        setUserRole(role);
       } catch (error) {
         console.error('Error loading admin data:', error);
       } finally {

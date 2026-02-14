@@ -15,8 +15,15 @@ export default function SignInPage() {
   
   // Check if we should show the full Clerk sign-in (when redirected from Clerk)
   useEffect(() => {
-    // If there are Clerk-specific params in the URL, show the full sign-in
-    if (searchParams.get('redirect_url') || searchParams.get('after_sign_in_url')) {
+    // Clerk often puts params in the hash fragment (#/?redirect_url=...),
+    // which useSearchParams() cannot read. Check both query and hash.
+    const hash = window.location.hash;
+    const hasClerkQueryParams =
+      searchParams.get('redirect_url') || searchParams.get('after_sign_in_url');
+    const hasClerkHashParams =
+      hash.includes('redirect_url') || hash.includes('after_sign_in_url');
+
+    if (hasClerkQueryParams || hasClerkHashParams) {
       setShowFullSignIn(true);
     }
   }, [searchParams]);

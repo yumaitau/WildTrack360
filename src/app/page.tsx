@@ -81,7 +81,7 @@ export default async function Home() {
       getEnrichedCarers(organizationId),
     ]);
 
-    const showOnboarding = animals.length === 0 || species.length === 0;
+    const showOnboarding = role === 'ADMIN' && (animals.length === 0 || species.length === 0);
 
     return (
       <>

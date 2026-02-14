@@ -58,6 +58,7 @@ export function SpeciesGroupManagement() {
   const { organization } = useOrganization();
   const [groups, setGroups] = useState<SpeciesGroupWithCoordinators[]>([]);
   const [coordinators, setCoordinators] = useState<CoordinatorOption[]>([]);
+  const [memberNamesByOrgMemberId, setMemberNamesByOrgMemberId] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<SpeciesGroupWithCoordinators | null>(null);
@@ -88,11 +89,9 @@ export function SpeciesGroupManagement() {
         const orgMembers: OrgMemberWithAssignments[] = await rolesRes.json();
         const clerkMembers = membersRes.data as any[];
 
-        const coordinatorMembers = orgMembers.filter(
-          (m) => m.role === 'COORDINATOR'
-        );
-
-        const options: CoordinatorOption[] = coordinatorMembers.map((m) => {
+        // Build a name lookup for ALL org members (for display purposes)
+        const nameMap: Record<string, string> = {};
+        for (const m of orgMembers) {
           const clerk = clerkMembers.find(
             (cm: any) => cm.publicUserData?.userId === m.userId
           );
@@ -100,13 +99,20 @@ export function SpeciesGroupManagement() {
             ? [clerk.publicUserData?.firstName, clerk.publicUserData?.lastName]
                 .filter(Boolean)
                 .join(' ') || clerk.publicUserData?.identifier
-            : m.userId;
-          return {
-            orgMemberId: m.id,
-            userId: m.userId,
-            name: name || 'Unknown',
-          };
-        });
+            : null;
+          nameMap[m.id] = name || 'Unknown';
+        }
+        setMemberNamesByOrgMemberId(nameMap);
+
+        const coordinatorMembers = orgMembers.filter(
+          (m) => m.role === 'COORDINATOR'
+        );
+
+        const options: CoordinatorOption[] = coordinatorMembers.map((m) => ({
+          orgMemberId: m.id,
+          userId: m.userId,
+          name: nameMap[m.id] || 'Unknown',
+        }));
 
         setCoordinators(options);
       }
@@ -352,6 +358,73 @@ export function SpeciesGroupManagement() {
           Use the same names you use when adding animals.
         </p>
       </div>
+      {editingGroup && (() => {
+        const editCoordinatorAssignments = editingGroup.coordinators.filter(
+          (c) => c.orgMember.role === 'COORDINATOR'
+        );
+        return (
+        <div className="space-y-2">
+          <Label>Coordinators</Label>
+          {editCoordinatorAssignments.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {editCoordinatorAssignments.map((c) => {
+                const coord = coordinators.find(
+                  (co) => co.orgMemberId === c.orgMemberId
+                );
+                return (
+                  <Badge key={c.id} variant="secondary" className="text-xs flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {coord?.name || memberNamesByOrgMemberId[c.orgMemberId] || 'Unknown'}
+                    <button
+                      className="ml-1 hover:text-destructive"
+                      onClick={() =>
+                        handleRemoveCoordinator(c.orgMemberId, editingGroup.id)
+                      }
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
+          {(() => {
+            const assignedIds = editCoordinatorAssignments.map(
+              (c) => c.orgMember.userId
+            );
+            const available = coordinators.filter(
+              (c) => !assignedIds.includes(c.userId)
+            );
+            return available.length > 0 ? (
+              <Select
+                onValueChange={(orgMemberId) =>
+                  handleAssignCoordinator(orgMemberId, editingGroup.id)
+                }
+              >
+                <SelectTrigger className="w-full h-8">
+                  <SelectValue placeholder="Add coordinator..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {available.map((c) => (
+                    <SelectItem key={c.orgMemberId} value={c.orgMemberId}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : coordinators.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No coordinators in org. Assign the Coordinator role first.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                All coordinators already assigned.
+              </p>
+            );
+          })()}
+        </div>
+        );
+      })()}
     </div>
   );
 
@@ -448,7 +521,11 @@ export function SpeciesGroupManagement() {
               </TableHeader>
               <TableBody>
                 {groups.map((group) => {
-                  const assignedCoordinatorIds = group.coordinators.map(
+                  // Only show actual coordinators (not carers) in the Coordinators column
+                  const coordinatorAssignments = group.coordinators.filter(
+                    (c) => c.orgMember.role === 'COORDINATOR'
+                  );
+                  const assignedCoordinatorIds = coordinatorAssignments.map(
                     (c) => c.orgMember.userId
                   );
                   const availableCoordinators = coordinators.filter(
@@ -480,13 +557,13 @@ export function SpeciesGroupManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {group.coordinators.length === 0 ? (
+                        {coordinatorAssignments.length === 0 ? (
                           <span className="text-xs text-muted-foreground">
                             None assigned
                           </span>
                         ) : (
                           <div className="space-y-1">
-                            {group.coordinators.map((c) => {
+                            {coordinatorAssignments.map((c) => {
                               const coord = coordinators.find(
                                 (co) => co.orgMemberId === c.orgMemberId
                               );
@@ -497,7 +574,7 @@ export function SpeciesGroupManagement() {
                                 >
                                   <Badge variant="secondary" className="text-xs">
                                     <Users className="h-3 w-3 mr-1" />
-                                    {coord?.name || c.orgMember.userId}
+                                    {coord?.name || memberNamesByOrgMemberId[c.orgMemberId] || 'Unknown'}
                                   </Badge>
                                   <Button
                                     variant="ghost"

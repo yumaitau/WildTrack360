@@ -122,6 +122,68 @@ export async function getEnrichedCarer(userId: string, orgId: string): Promise<E
 }
 
 /**
+ * Returns the set of Clerk user IDs eligible to care for a given species,
+ * based on SpeciesGroup assignments. Users with NO species group assignments
+ * are treated as unrestricted (eligible for any species).
+ */
+export async function getEligibleCarerIdsForSpecies(
+  orgId: string,
+  species: string
+): Promise<Set<string> | null> {
+  const normSpecies = species.trim().toLowerCase();
+
+  // Find species groups in this org that contain the species
+  const matchingGroups = await prisma.speciesGroup.findMany({
+    where: { orgId },
+    select: { id: true, speciesNames: true },
+  });
+
+  const matchingGroupIds = matchingGroups
+    .filter(g => g.speciesNames.some(s => s.trim().toLowerCase() === normSpecies))
+    .map(g => g.id);
+
+  // If no species groups exist at all for the org, skip filtering entirely
+  if (matchingGroups.length === 0) return null;
+
+  // Find all OrgMember IDs that have ANY species assignment in this org
+  const allAssigned = await prisma.coordinatorSpeciesAssignment.findMany({
+    where: {
+      orgMember: { orgId },
+    },
+    select: { orgMemberId: true, speciesGroupId: true },
+  });
+
+  // Build set of orgMember IDs that have at least one assignment
+  const membersWithAssignments = new Set(allAssigned.map(a => a.orgMemberId));
+
+  // Build set of orgMember IDs assigned to matching groups
+  const eligibleMemberIds = new Set(
+    allAssigned
+      .filter(a => matchingGroupIds.includes(a.speciesGroupId))
+      .map(a => a.orgMemberId)
+  );
+
+  // Resolve orgMember IDs → Clerk user IDs
+  const orgMembers = await prisma.orgMember.findMany({
+    where: { orgId },
+    select: { id: true, userId: true },
+  });
+
+  const memberIdToUserId = new Map(orgMembers.map(m => [m.id, m.userId]));
+  const memberUserIdToMemberId = new Map(orgMembers.map(m => [m.userId, m.id]));
+
+  const eligible = new Set<string>();
+  for (const m of orgMembers) {
+    // Include if: assigned to a matching species group, OR has no assignments at all
+    if (eligibleMemberIds.has(m.id) || !membersWithAssignments.has(m.id)) {
+      eligible.add(m.userId);
+    }
+  }
+
+  return eligible;
+}
+
+/**
  * Upsert a CarerProfile for a Clerk user.
  */
 export async function upsertCarerProfile(

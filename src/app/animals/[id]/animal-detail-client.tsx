@@ -55,7 +55,7 @@ export default function AnimalDetailClient({
         const orgId = organization.id;
         const [speciesResponse, carersResponse] = await Promise.all([
           fetch(`/api/species?orgId=${orgId}`),
-          fetch(`/api/carers?orgId=${orgId}`),
+          fetch(`/api/carers?orgId=${orgId}&species=${encodeURIComponent(animal.species)}`),
         ]);
         
         const species = await speciesResponse.json();
@@ -103,7 +103,7 @@ export default function AnimalDetailClient({
       }
     };
     loadLookups();
-  }, [organization]);
+  }, [organization, animal.species]);
 
   const handleAddRecord = async (newRecord: any) => {
     // Check if this is a release record - redirect to release checklist

@@ -21,9 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Shield, ShieldCheck, ShieldAlert, Users, Info, Leaf } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldAlert, Users, Info, Leaf, X } from 'lucide-react';
 import { toast } from 'sonner';
-import type { OrgMemberWithAssignments } from '@/lib/types';
+import type { OrgMemberWithAssignments, SpeciesGroupWithCoordinators } from '@/lib/types';
 
 interface ClerkMember {
   id: string;
@@ -42,6 +42,7 @@ export function RoleManagement() {
   const { user } = useUser();
   const [clerkMembers, setClerkMembers] = useState<ClerkMember[]>([]);
   const [orgMembers, setOrgMembers] = useState<OrgMemberWithAssignments[]>([]);
+  const [speciesGroups, setSpeciesGroups] = useState<SpeciesGroupWithCoordinators[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
@@ -53,11 +54,16 @@ export function RoleManagement() {
       const membersList = await organization.getMemberships();
       setClerkMembers(membersList.data as unknown as ClerkMember[]);
 
-      // Fetch WildTrack360 RBAC roles
-      const res = await fetch('/api/rbac/roles');
-      if (res.ok) {
-        const data = await res.json();
-        setOrgMembers(data);
+      // Fetch WildTrack360 RBAC roles and species groups
+      const [rolesRes, groupsRes] = await Promise.all([
+        fetch('/api/rbac/roles'),
+        fetch('/api/rbac/species-groups'),
+      ]);
+      if (rolesRes.ok) {
+        setOrgMembers(await rolesRes.json());
+      }
+      if (groupsRes.ok) {
+        setSpeciesGroups(await groupsRes.json());
       }
     } catch (error) {
       console.error('Error fetching role data:', error);
@@ -101,17 +107,69 @@ export function RoleManagement() {
     }
   };
 
-  const getRoleForUser = (userId: string): string => {
-    const member = orgMembers.find((m) => m.userId === userId);
-    return member?.role ?? 'CARER';
+  const getOrgMember = (userId: string) => {
+    return orgMembers.find((m) => m.userId === userId) ?? null;
+  };
+
+  const getRoleForUser = (userId: string): string | null => {
+    return getOrgMember(userId)?.role ?? null;
   };
 
   const getSpeciesAssignments = (userId: string) => {
-    const member = orgMembers.find((m) => m.userId === userId);
-    return member?.speciesAssignments ?? [];
+    return getOrgMember(userId)?.speciesAssignments ?? [];
   };
 
-  const getRoleIcon = (role: string) => {
+  const hasExplicitRole = (userId: string): boolean => {
+    return getOrgMember(userId) !== null;
+  };
+
+  const handleAssignSpeciesGroup = async (userId: string, speciesGroupId: string) => {
+    const member = orgMembers.find((m) => m.userId === userId);
+    if (!member) return;
+
+    try {
+      const res = await fetch('/api/rbac/coordinator-assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgMemberId: member.id, speciesGroupId }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to assign species group');
+      }
+
+      toast.success('Species group assigned');
+      fetchData();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to assign species group');
+    }
+  };
+
+  const handleRemoveSpeciesGroup = async (userId: string, speciesGroupId: string) => {
+    const member = orgMembers.find((m) => m.userId === userId);
+    if (!member) return;
+
+    try {
+      const res = await fetch('/api/rbac/coordinator-assignments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgMemberId: member.id, speciesGroupId }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to remove species group');
+      }
+
+      toast.success('Species group removed');
+      fetchData();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to remove species group');
+    }
+  };
+
+  const getRoleIcon = (role: string | null) => {
     switch (role) {
       case 'ADMIN':
         return <ShieldAlert className="h-3 w-3" />;
@@ -122,7 +180,7 @@ export function RoleManagement() {
     }
   };
 
-  const getRoleBadgeVariant = (role: string): "default" | "secondary" | "outline" => {
+  const getRoleBadgeVariant = (role: string | null): "default" | "secondary" | "outline" => {
     switch (role) {
       case 'ADMIN':
         return 'default';
@@ -221,22 +279,28 @@ export function RoleManagement() {
                       </TableCell>
                       <TableCell>
                         {isCurrentUser ? (
-                          <Badge variant={getRoleBadgeVariant(currentRole)}>
-                            <span className="flex items-center gap-1">
-                              {getRoleIcon(currentRole)}
-                              {currentRole}
+                          currentRole ? (
+                            <Badge variant={getRoleBadgeVariant(currentRole)}>
+                              <span className="flex items-center gap-1">
+                                {getRoleIcon(currentRole)}
+                                {currentRole}
+                              </span>
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-amber-600 font-medium">
+                              No role assigned
                             </span>
-                          </Badge>
+                          )
                         ) : (
                           <Select
-                            value={currentRole}
+                            value={currentRole ?? ''}
                             onValueChange={(value) =>
                               handleRoleChange(userId, value)
                             }
                             disabled={updatingUserId === userId}
                           >
-                            <SelectTrigger className="w-[150px] h-8">
-                              <SelectValue />
+                            <SelectTrigger className="w-[170px] h-8">
+                              <SelectValue placeholder="Assign a role..." />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="ADMIN">
@@ -262,18 +326,58 @@ export function RoleManagement() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {currentRole === 'COORDINATOR' && assignments.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {assignments.map((a) => (
-                              <Badge key={a.id} variant="outline" className="text-xs">
-                                <Leaf className="h-3 w-3 mr-1" />
-                                {a.speciesGroup.name}
-                              </Badge>
-                            ))}
+                        {(currentRole === 'COORDINATOR' || currentRole === 'CARER') && hasExplicitRole(userId) ? (
+                          <div className="space-y-2">
+                            {assignments.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {assignments.map((a) => (
+                                  <Badge key={a.id} variant="outline" className="text-xs flex items-center gap-1">
+                                    <Leaf className="h-3 w-3" />
+                                    {a.speciesGroup.name}
+                                    {!isCurrentUser && (
+                                      <button
+                                        className="ml-1 hover:text-destructive"
+                                        onClick={() => handleRemoveSpeciesGroup(userId, a.speciesGroupId)}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                            {!isCurrentUser && (() => {
+                              const assignedGroupIds = assignments.map((a) => a.speciesGroupId);
+                              const available = speciesGroups.filter(
+                                (g) => !assignedGroupIds.includes(g.id)
+                              );
+                              return available.length > 0 ? (
+                                <Select
+                                  onValueChange={(groupId) =>
+                                    handleAssignSpeciesGroup(userId, groupId)
+                                  }
+                                >
+                                  <SelectTrigger className="w-[160px] h-8">
+                                    <SelectValue placeholder="Add group..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {available.map((g) => (
+                                      <SelectItem key={g.id} value={g.id}>
+                                        {g.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : assignments.length === 0 ? (
+                                <span className="text-xs text-muted-foreground">
+                                  No species groups defined
+                                </span>
+                              ) : null;
+                            })()}
                           </div>
-                        ) : currentRole === 'COORDINATOR' ? (
+                        ) : !currentRole ? (
                           <span className="text-xs text-muted-foreground">
-                            No species groups assigned
+                            Assign a role first
                           </span>
                         ) : currentRole === 'ADMIN' ? (
                           <span className="text-xs text-muted-foreground">

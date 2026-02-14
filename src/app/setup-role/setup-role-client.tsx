@@ -29,8 +29,8 @@ export default function SetupRoleClient({
         const body = await res.json();
         throw new Error(body.error || 'Failed to set up role');
       }
-      // Success — redirect to home
-      router.push('/');
+      // Success — redirect to admin
+      router.push('/admin');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
       setIsProvisioning(false);
