@@ -5,7 +5,6 @@ import { useOrganization } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -44,9 +43,111 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PlusCircle, Trash2, Edit2, Leaf, Users, Info, X } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2, Leaf, Users, Info, X, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SpeciesGroupWithCoordinators, OrgMemberWithAssignments } from '@/lib/types';
+
+function SpeciesNamePicker({
+  selected,
+  onChange,
+  availableSpecies,
+}: {
+  selected: string[];
+  onChange: (names: string[]) => void;
+  availableSpecies: string[];
+}) {
+  const [customInput, setCustomInput] = useState('');
+  const selectedSet = new Set(selected.map((s) => s.toLowerCase()));
+
+  const handleToggle = (name: string) => {
+    if (selectedSet.has(name.toLowerCase())) {
+      onChange(selected.filter((s) => s.toLowerCase() !== name.toLowerCase()));
+    } else {
+      onChange([...selected, name]);
+    }
+  };
+
+  const handleAddCustom = () => {
+    const trimmed = customInput.trim();
+    if (!trimmed) return;
+    if (selectedSet.has(trimmed.toLowerCase())) {
+      toast.error(`"${trimmed}" is already selected`);
+      return;
+    }
+    onChange([...selected, trimmed]);
+    setCustomInput('');
+  };
+
+  return (
+    <div className="space-y-3">
+      {availableSpecies.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {availableSpecies.map((name) => {
+            const isSelected = selectedSet.has(name.toLowerCase());
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => handleToggle(name)}
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors
+                  ${isSelected
+                    ? 'bg-primary/10 text-primary border border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30'
+                    : 'bg-muted/50 text-muted-foreground border border-dashed border-muted-foreground/30 hover:bg-primary/10 hover:text-primary hover:border-primary/30'
+                  } cursor-pointer`}
+              >
+                {isSelected ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                {name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {/* Show any selected names not in the org species list */}
+      {selected.filter((s) => !availableSpecies.some((a) => a.toLowerCase() === s.toLowerCase())).length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected
+            .filter((s) => !availableSpecies.some((a) => a.toLowerCase() === s.toLowerCase()))
+            .map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => handleToggle(name)}
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors bg-amber-50 text-amber-700 border border-amber-300 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 cursor-pointer"
+              >
+                <X className="h-3 w-3" />
+                {name}
+              </button>
+            ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Input
+          placeholder="Add unlisted species..."
+          value={customInput}
+          onChange={(e) => setCustomInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAddCustom();
+            }
+          }}
+          className="h-8 text-sm"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0"
+          onClick={handleAddCustom}
+          disabled={!customInput.trim()}
+        >
+          <Plus className="h-3 w-3 mr-1" />
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 interface CoordinatorOption {
   orgMemberId: string;
@@ -59,6 +160,7 @@ export function SpeciesGroupManagement() {
   const [groups, setGroups] = useState<SpeciesGroupWithCoordinators[]>([]);
   const [coordinators, setCoordinators] = useState<CoordinatorOption[]>([]);
   const [memberNamesByOrgMemberId, setMemberNamesByOrgMemberId] = useState<Record<string, string>>({});
+  const [orgSpecies, setOrgSpecies] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<SpeciesGroupWithCoordinators | null>(null);
@@ -67,21 +169,27 @@ export function SpeciesGroupManagement() {
   const [formName, setFormName] = useState('');
   const [formSlug, setFormSlug] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formSpeciesNames, setFormSpeciesNames] = useState('');
+  const [formSpeciesNames, setFormSpeciesNames] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const fetchData = async () => {
     if (!organization) return;
     setLoading(true);
     try {
-      const [groupsRes, rolesRes, membersRes] = await Promise.all([
+      const [groupsRes, rolesRes, membersRes, speciesRes] = await Promise.all([
         fetch('/api/rbac/species-groups'),
         fetch('/api/rbac/roles'),
         organization.getMemberships(),
+        fetch(`/api/species?orgId=${organization.id}`),
       ]);
 
       if (groupsRes.ok) {
         setGroups(await groupsRes.json());
+      }
+
+      if (speciesRes.ok) {
+        const speciesData: { name: string }[] = await speciesRes.json();
+        setOrgSpecies(speciesData.map((s) => s.name).sort());
       }
 
       // Build coordinator options from RBAC roles + Clerk identity
@@ -133,7 +241,7 @@ export function SpeciesGroupManagement() {
     setFormName('');
     setFormSlug('');
     setFormDescription('');
-    setFormSpeciesNames('');
+    setFormSpeciesNames([]);
     setEditingGroup(null);
   };
 
@@ -145,16 +253,13 @@ export function SpeciesGroupManagement() {
   };
 
   const handleCreate = async () => {
-    if (!formName || !formSpeciesNames) {
+    if (!formName || formSpeciesNames.length === 0) {
       toast.error('Name and species names are required');
       return;
     }
 
     const slug = formSlug || generateSlug(formName);
-    const speciesNames = formSpeciesNames
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const speciesNames = formSpeciesNames;
 
     setSaving(true);
     try {
@@ -188,15 +293,12 @@ export function SpeciesGroupManagement() {
   const handleUpdate = async () => {
     if (!editingGroup) return;
 
-    const speciesNames = formSpeciesNames
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (!formName || speciesNames.length === 0) {
+    if (!formName || formSpeciesNames.length === 0) {
       toast.error('Name and species names are required');
       return;
     }
+
+    const speciesNames = formSpeciesNames;
 
     setSaving(true);
     try {
@@ -298,7 +400,7 @@ export function SpeciesGroupManagement() {
     setFormName(group.name);
     setFormSlug(group.slug);
     setFormDescription(group.description || '');
-    setFormSpeciesNames(group.speciesNames.join(', '));
+    setFormSpeciesNames([...group.speciesNames]);
   };
 
   if (!organization) {
@@ -350,17 +452,14 @@ export function SpeciesGroupManagement() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="group-species">Species Names (comma-separated)</Label>
-        <Textarea
-          id="group-species"
-          placeholder="e.g. Kangaroo, Wallaby, Wallaroo, Pademelon"
-          value={formSpeciesNames}
-          onChange={(e) => setFormSpeciesNames(e.target.value)}
-          rows={3}
+        <Label>Species Names</Label>
+        <SpeciesNamePicker
+          selected={formSpeciesNames}
+          onChange={setFormSpeciesNames}
+          availableSpecies={orgSpecies}
         />
         <p className="text-xs text-muted-foreground">
-          These names are matched against the species field on animal records.
-          Use the same names you use when adding animals.
+          Click species to add or remove them. Use the input to add species not yet in your org list.
         </p>
       </div>
       {editingGroup && (() => {
