@@ -326,7 +326,7 @@ export function RoleManagement() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {currentRole === 'COORDINATOR' && hasExplicitRole(userId) ? (
+                        {(currentRole === 'COORDINATOR' || currentRole === 'CARER') && hasExplicitRole(userId) ? (
                           <div className="space-y-2">
                             {assignments.length > 0 && (
                               <div className="flex flex-wrap gap-1">
