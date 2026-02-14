@@ -209,31 +209,34 @@ export async function canAccessAnimal(
 /**
  * Set a user's role within an organisation (upsert).
  * Prevents demotion of the last ADMIN in an org.
+ * Wrapped in an interactive transaction so the read + write are atomic.
  */
 export async function setUserRole(
   userId: string,
   orgId: string,
   role: OrgRole
 ) {
-  // Prevent removing the last ADMIN
-  if (role !== 'ADMIN') {
-    const currentMember = await prisma.orgMember.findUnique({
-      where: { userId_orgId: { userId, orgId } },
-    });
-    if (currentMember?.role === 'ADMIN') {
-      const adminCount = await prisma.orgMember.count({
-        where: { orgId, role: 'ADMIN' },
+  return prisma.$transaction(async (tx) => {
+    // Prevent removing the last ADMIN
+    if (role !== 'ADMIN') {
+      const currentMember = await tx.orgMember.findUnique({
+        where: { userId_orgId: { userId, orgId } },
       });
-      if (adminCount <= 1) {
-        throw new Error('Cannot demote the last admin in the organisation');
+      if (currentMember?.role === 'ADMIN') {
+        const adminCount = await tx.orgMember.count({
+          where: { orgId, role: 'ADMIN' },
+        });
+        if (adminCount <= 1) {
+          throw new Error('Cannot demote the last admin in the organisation');
+        }
       }
     }
-  }
 
-  return prisma.orgMember.upsert({
-    where: { userId_orgId: { userId, orgId } },
-    create: { userId, orgId, role },
-    update: { role },
+    return tx.orgMember.upsert({
+      where: { userId_orgId: { userId, orgId } },
+      create: { userId, orgId, role },
+      update: { role },
+    });
   });
 }
 

@@ -55,6 +55,10 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     await deleteAnimal(id, orgId)
     return NextResponse.json({ ok: true })
   } catch (e) {
+    const message = e instanceof Error ? e.message : ''
+    if (message === 'Animal not found') {
+      return NextResponse.json({ error: 'Not Found' }, { status: 404 })
+    }
     return NextResponse.json({ error: 'Failed to delete animal' }, { status: 500 })
   }
 }

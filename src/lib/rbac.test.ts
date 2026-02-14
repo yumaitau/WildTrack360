@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Mock Prisma (hoisted so vi.mock factory can reference it) ──────────────
-const { mockPrisma } = vi.hoisted(() => ({
-  mockPrisma: {
+const { mockPrisma } = vi.hoisted(() => {
+  const mock: any = {
     orgMember: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
@@ -23,8 +23,11 @@ const { mockPrisma } = vi.hoisted(() => ({
       create: vi.fn(),
       delete: vi.fn(),
     },
-  },
-}));
+    // $transaction executes the callback with the mock itself as the tx client
+    $transaction: vi.fn((cb: (tx: any) => any) => cb(mock)),
+  };
+  return { mockPrisma: mock };
+});
 
 vi.mock('./prisma', () => ({ prisma: mockPrisma }));
 
