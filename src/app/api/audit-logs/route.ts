@@ -8,6 +8,15 @@ const VALID_ACTIONS: AuditAction[] = [
   'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'ROLE_CHANGE', 'ASSIGN', 'UNASSIGN',
 ];
 
+const VALID_ENTITIES = new Set([
+  'Animal', 'Record', 'Species', 'ReleaseChecklist',
+  'HygieneLog', 'IncidentReport', 'Asset', 'CarerTraining',
+  'CarerProfile', 'OrgMember', 'SpeciesGroup', 'CoordinatorSpeciesAssignment',
+]);
+
+// Clerk user IDs are alphanumeric with underscores, max ~50 chars
+const USER_ID_PATTERN = /^[a-zA-Z0-9_]{1,128}$/;
+
 const VALID_SORT_FIELDS = ['createdAt', 'action', 'entity', 'userId'] as const;
 type SortField = (typeof VALID_SORT_FIELDS)[number];
 
@@ -23,9 +32,9 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
 
-    // Pagination
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '25', 10)));
+    // Pagination (guard against NaN from non-numeric input)
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '25', 10) || 25));
     const skip = (page - 1) * pageSize;
 
     // Filters
@@ -38,10 +47,10 @@ export async function GET(request: Request) {
     if (actionFilter && VALID_ACTIONS.includes(actionFilter as AuditAction)) {
       where.action = actionFilter as AuditAction;
     }
-    if (entityFilter) {
+    if (entityFilter && VALID_ENTITIES.has(entityFilter)) {
       where.entity = entityFilter;
     }
-    if (userIdFilter) {
+    if (userIdFilter && USER_ID_PATTERN.test(userIdFilter)) {
       where.userId = userIdFilter;
     }
 
