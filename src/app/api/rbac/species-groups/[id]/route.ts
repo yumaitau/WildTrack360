@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { logAudit } from '@/lib/audit';
 import {
   updateSpeciesGroup,
   deleteSpeciesGroup,
@@ -23,6 +24,7 @@ export async function PATCH(
 
     const { name, slug, description, speciesNames } = body;
     const updated = await updateSpeciesGroup(id, orgId, { name, slug, description, speciesNames });
+    logAudit({ userId, orgId, action: 'UPDATE', entity: 'SpeciesGroup', entityId: id, metadata: { fields: Object.keys(body) } });
     return NextResponse.json(updated);
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
@@ -48,6 +50,7 @@ export async function DELETE(
     await requirePermission(userId, orgId, 'species_group:manage');
     const { id } = await params;
     await deleteSpeciesGroup(id, orgId);
+    logAudit({ userId, orgId, action: 'DELETE', entity: 'SpeciesGroup', entityId: id });
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';

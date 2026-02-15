@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { listOrgMembers, setUserRole, requirePermission } from '@/lib/rbac';
 import type { OrgRole } from '@prisma/client';
+import { logAudit } from '@/lib/audit';
 
 // GET /api/rbac/roles — list all role assignments for the org
 export async function GET() {
@@ -75,6 +76,7 @@ export async function POST(request: Request) {
     }
 
     const member = await setUserRole(targetUserId, orgId, role);
+    logAudit({ userId, orgId, action: 'ROLE_CHANGE', entity: 'OrgMember', entityId: member.id, metadata: { targetUserId, role } });
     return NextResponse.json(member);
   } catch (error) {
     const message = error instanceof Error ? error.message : '';

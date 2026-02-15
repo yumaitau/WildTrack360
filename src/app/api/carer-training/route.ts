@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { logAudit } from '@/lib/audit';
 
 export async function GET(request: Request) {
   const { userId, orgId: activeOrgId } = await auth();
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
       }
     });
 
+    logAudit({ userId, orgId, action: 'CREATE', entity: 'CarerTraining', entityId: training.id, metadata: { courseName: body.courseName, carerId: body.carerId } });
     return NextResponse.json(training, { status: 201 });
   } catch (error) {
     console.error('Error creating carer training:', error);

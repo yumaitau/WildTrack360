@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEnrichedCarer, upsertCarerProfile } from '@/lib/carer-helpers';
 import { ensureUserInOrg, isOrgAdmin } from '@/lib/authz';
+import { logAudit } from '@/lib/audit';
 
 export async function GET(
   request: Request,
@@ -69,6 +70,7 @@ export async function PATCH(
     } = body;
 
     const profile = await upsertCarerProfile(id, orgId, profileData);
+    logAudit({ userId, orgId, action: 'UPDATE', entity: 'CarerProfile', entityId: id, metadata: { fields: Object.keys(profileData) } });
     return NextResponse.json(profile);
   } catch (error) {
     console.error('Error updating carer profile:', error);

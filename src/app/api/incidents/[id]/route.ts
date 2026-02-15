@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
+import { logAudit } from '@/lib/audit';
 
 export async function GET(
   request: Request,
@@ -56,6 +57,7 @@ export async function PATCH(
       },
     });
 
+    logAudit({ userId, orgId, action: 'UPDATE', entity: 'IncidentReport', entityId: id, metadata: { fields: Object.keys(body) } });
     return NextResponse.json(incident);
   } catch (error) {
     console.error('Error updating incident:', error);
@@ -80,6 +82,7 @@ export async function DELETE(
       },
     });
 
+    logAudit({ userId, orgId, action: 'DELETE', entity: 'IncidentReport', entityId: id });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting incident:', error);
