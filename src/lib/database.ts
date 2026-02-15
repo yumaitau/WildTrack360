@@ -1,7 +1,7 @@
 'server-only';
 
 import { prisma } from './prisma';
-import type { Animal, Record, Photo, Species, CarerProfile, HygieneLog, IncidentReport, ReleaseChecklist, Asset } from '@prisma/client';
+import type { Animal, Record as PrismaRecord, Photo, Species, CarerProfile, HygieneLog, IncidentReport, ReleaseChecklist, Asset } from '@prisma/client';
 
 // Animal Management
 export async function getAnimals(organizationId: string): Promise<Animal[]> {
@@ -20,37 +20,63 @@ export async function getAnimals(organizationId: string): Promise<Animal[]> {
 	});
 }
 
+// Allowlisted fields for animal create/update to prevent mass assignment
+const ANIMAL_SAFE_FIELDS = [
+	'name', 'species', 'sex', 'ageClass', 'age', 'dateOfBirth', 'status',
+	'dateFound', 'dateReleased', 'outcomeDate', 'outcome', 'photo', 'notes',
+	'rescueLocation', 'rescueCoordinates', 'rescueAddress', 'rescueSuburb',
+	'rescuePostcode', 'releaseLocation', 'releaseCoordinates', 'releaseNotes',
+	'releaseAddress', 'releaseSuburb', 'releasePostcode',
+	'encounterType', 'initialWeightGrams', 'weightUnit', 'animalCondition',
+	'pouchCondition', 'fate', 'markBandMicrochip', 'lifeStage',
+	'carerId',
+] as const;
+
+function pickAnimalFields(data: Record<string, unknown>): Record<string, unknown> {
+	const result: Record<string, unknown> = {};
+	for (const key of ANIMAL_SAFE_FIELDS) {
+		if (key in data) {
+			result[key] = key === 'carerId' ? (data[key] || null) : data[key];
+		}
+	}
+	return result;
+}
+
 export async function createAnimal(animalData: any): Promise<Animal> {
-	// Convert empty string carerId to null
-	const data = {
-		...animalData,
-		carerId: animalData.carerId || null
-	};
+	const safeFields = pickAnimalFields(animalData);
 	return await prisma.animal.create({
-		data: data as any,
+		data: {
+			...safeFields,
+			// These must come from server-side auth, never from the request body
+			clerkUserId: animalData.clerkUserId,
+			clerkOrganizationId: animalData.clerkOrganizationId,
+		} as any,
 	});
 }
 
 export async function updateAnimal(id: string, animalData: any): Promise<Animal> {
-	// Convert empty string carerId to null
-	const data = {
-		...animalData,
-		carerId: animalData.carerId || null
-	};
+	const safeFields = pickAnimalFields(animalData);
 	return await prisma.animal.update({
 		where: { id },
-		data: data as any,
+		data: safeFields as any,
 	});
 }
 
-export async function deleteAnimal(id: string): Promise<void> {
+export async function deleteAnimal(id: string, organizationId: string): Promise<void> {
+	// Scope by orgId to prevent cross-tenant deletion
+	const animal = await prisma.animal.findFirst({
+		where: { id, clerkOrganizationId: organizationId },
+	});
+	if (!animal) {
+		throw new Error('Animal not found');
+	}
 	await prisma.animal.delete({
 		where: { id },
 	});
 }
 
 // Record Management
-export async function getRecords(organizationId: string): Promise<Record[]> {
+export async function getRecords(organizationId: string): Promise<PrismaRecord[]> {
 	return await prisma.record.findMany({
 		where: {
 			clerkOrganizationId: organizationId,
@@ -64,7 +90,7 @@ export async function getRecords(organizationId: string): Promise<Record[]> {
 	});
 }
 
-export async function createRecord(recordData: any): Promise<Record> {
+export async function createRecord(recordData: any): Promise<PrismaRecord> {
 	return await prisma.record.create({
 		data: recordData as any,
 	});

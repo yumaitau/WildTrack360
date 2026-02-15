@@ -1,14 +1,16 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import HomeClient from "./home-client";
-import { getAnimals, getSpecies } from "@/lib/database";
+import { getSpecies } from "@/lib/database";
 import { createOrUpdateClerkUser, createOrUpdateClerkOrganization } from "@/lib/database";
 import { getEnrichedCarers } from "@/lib/carer-helpers";
+import { prisma } from "@/lib/prisma";
+import { getUserRole, getAuthorisedSpecies, getOrgMember } from "@/lib/rbac";
 
 export default async function Home() {
   const { userId, orgId } = await auth();
   const user = await currentUser();
-  
+
   if (!userId) {
     redirect("/landing");
   }
@@ -27,14 +29,59 @@ export default async function Home() {
     });
   }
 
+  // Redirect unmigrated users (no OrgMember record) to the role setup page
+  if (organizationId) {
+    const member = await getOrgMember(userId, organizationId);
+    if (!member) {
+      redirect("/setup-role");
+    }
+  }
+
   try {
+    // RBAC-filtered animal fetch: respect the user's role
+    const role = await getUserRole(userId, organizationId);
+    let animalsPromise;
+
+    if (role === 'ADMIN') {
+      animalsPromise = prisma.animal.findMany({
+        where: { clerkOrganizationId: organizationId },
+        include: { carer: true, records: true, photos: true },
+        orderBy: { dateFound: 'desc' },
+      });
+    } else if (role === 'COORDINATOR') {
+      const authorisedSpecies = await getAuthorisedSpecies(userId, organizationId);
+      animalsPromise = prisma.animal.findMany({
+        where: {
+          clerkOrganizationId: organizationId,
+          OR: [
+            ...(authorisedSpecies && authorisedSpecies.length > 0
+              ? [{ species: { in: authorisedSpecies } }]
+              : []),
+            { carerId: userId },
+          ],
+        },
+        include: { carer: true, records: true, photos: true },
+        orderBy: { dateFound: 'desc' },
+      });
+    } else {
+      // CARER: only animals assigned to them
+      animalsPromise = prisma.animal.findMany({
+        where: {
+          clerkOrganizationId: organizationId,
+          carerId: userId,
+        },
+        include: { carer: true, records: true, photos: true },
+        orderBy: { dateFound: 'desc' },
+      });
+    }
+
     const [animals, species, carers] = await Promise.all([
-      getAnimals(organizationId),
+      animalsPromise,
       getSpecies(organizationId),
       getEnrichedCarers(organizationId),
     ]);
 
-    const showOnboarding = animals.length === 0 || species.length === 0;
+    const showOnboarding = role === 'ADMIN' && (animals.length === 0 || species.length === 0);
 
     return (
       <>
@@ -54,7 +101,7 @@ export default async function Home() {
             </div>
           </div>
         )}
-        <HomeClient 
+        <HomeClient
           initialAnimals={animals}
           species={species}
           carers={carers}
@@ -64,10 +111,10 @@ export default async function Home() {
   } catch (error) {
     console.error('Error loading initial data:', error);
     return (
-      <HomeClient 
-        initialAnimals={[]} 
-        species={[]} 
-        carers={[]} 
+      <HomeClient
+        initialAnimals={[]}
+        species={[]}
+        carers={[]}
       />
     );
   }

@@ -16,6 +16,7 @@ WildTrack360 is a comprehensive wildlife conservation management application des
 
 - **Frontend**: Next.js 14 with TypeScript
 - **Authentication**: Clerk for user and organization management
+- **Authorisation**: Custom RBAC + Species-Based Access Control (SBAC)
 - **Database**: PostgreSQL with Prisma ORM
 - **Styling**: Tailwind CSS with shadcn/ui components
 - **Charts**: Recharts for data visualization
@@ -120,16 +121,156 @@ WildTrack360 uses a comprehensive database schema with the following key models:
 - **Carers**: Wildlife carer information and licensing
 - **Compliance**: Hygiene logs, incident reports, release checklists
 - **Assets**: Equipment and asset management
+- **OrgMember**: User-to-organisation role assignments (ADMIN, COORDINATOR, CARER)
+- **SpeciesGroup**: Named collections of species (e.g. "Macropods", "Bats")
+- **CoordinatorSpeciesAssignment**: Links coordinators to the species groups they manage
 
 All data is properly isolated by organization and user for security and privacy.
 
-## 🔐 Authentication & Security
+## 🔐 Role-Based Access Control (RBAC)
+
+WildTrack360 uses a custom three-tier RBAC system that mirrors the real-world structure of Australian wildlife care organisations (Committee > Species Coordinators > Carers). This replaces Clerk's built-in `org:admin` / `org:member` roles with a more granular model.
+
+### Role Hierarchy
+
+| Role | Rank | Description |
+|------|------|-------------|
+| **ADMIN** | 3 | Committee / management. Full access to all animals, users, settings, and reports. |
+| **COORDINATOR** | 2 | Species coordinator. Manages animals within assigned species groups and can view workloads. |
+| **CARER** | 1 | Frontline volunteer. Can only view and edit animals assigned to them. |
+
+### Permission Matrix
+
+| Permission | ADMIN | COORDINATOR | CARER |
+|---|:---:|:---:|:---:|
+| `animal:view_all` | Yes | | |
+| `animal:view_species_group` | Yes | Yes | |
+| `animal:view_own` | Yes | Yes | Yes |
+| `animal:create` | Yes | Yes | |
+| `animal:assign` | Yes | Yes | |
+| `animal:edit_any` | Yes | Yes | |
+| `animal:edit_own` | Yes | Yes | Yes |
+| `animal:delete` | Yes | | |
+| `user:manage` | Yes | | |
+| `species_group:manage` | Yes | | |
+| `coordinator:assign` | Yes | | |
+| `report:view_org` | Yes | | |
+| `report:view_species` | Yes | Yes | |
+| `report:export` | Yes | Yes | |
+| `settings:manage` | Yes | | |
+| `carer:view_workload` | Yes | Yes | |
+
+### How to Configure Roles
+
+1. **Navigate to Admin > Roles** (ADMIN only).
+2. Select a user from the org member list.
+3. Choose their role: ADMIN, COORDINATOR, or CARER.
+4. Click save. The role takes effect immediately.
+
+> The system prevents demoting the last ADMIN in an organisation.
+
+### API Endpoints
+
+| Method | Endpoint | Permission | Description |
+|--------|----------|------------|-------------|
+| GET | `/api/rbac/my-role` | Any authenticated | Get your own role and species assignments |
+| GET | `/api/rbac/roles` | `user:manage` | List all role assignments for the org |
+| POST | `/api/rbac/roles` | `user:manage` | Assign a role: `{ targetUserId, role }` |
+| POST | `/api/rbac/provision` | Clerk org:admin only | Self-provision during migration (see below) |
+
+## 🌿 Species-Based Access Control (SBAC)
+
+SBAC extends RBAC by scoping **COORDINATOR** access to specific species. Instead of seeing all animals, coordinators only see animals whose species falls within their assigned species groups.
+
+### How It Works
+
+1. **Create Species Groups** (Admin > Species Groups):
+   - e.g. "Macropods" containing `Eastern Grey Kangaroo`, `Red Kangaroo`, `Wallaroo`
+   - e.g. "Bats" containing `Grey-headed Flying Fox`, `Little Red Flying Fox`
+   - e.g. "Koalas & Wombats" containing `Koala`, `Common Wombat`
+
+2. **Assign Coordinators** to species groups:
+   - A coordinator assigned to "Macropods" can see all kangaroo and wallaroo animals.
+   - A coordinator can be assigned to multiple species groups.
+   - Coordinators can also always see animals directly assigned to them (regardless of species).
+
+3. **Filtering is automatic**:
+   - The home page, API endpoints, and SSR data all respect SBAC filtering.
+   - Species names are matched case-insensitively.
+
+### Species Group API Endpoints
+
+| Method | Endpoint | Permission | Description |
+|--------|----------|------------|-------------|
+| GET | `/api/rbac/species-groups` | Any authenticated | List all species groups |
+| POST | `/api/rbac/species-groups` | `species_group:manage` | Create a species group |
+| PATCH | `/api/rbac/species-groups/[id]` | `species_group:manage` | Update a species group |
+| DELETE | `/api/rbac/species-groups/[id]` | `species_group:manage` | Delete a species group |
+| POST | `/api/rbac/coordinator-assignments` | `coordinator:assign` | Assign coordinator to group |
+| DELETE | `/api/rbac/coordinator-assignments` | `coordinator:assign` | Remove coordinator from group |
+
+### Data Visibility Summary
+
+| Role | Animals Visible | Reports |
+|------|-----------------|---------|
+| **ADMIN** | All animals in the organisation | Full org-wide reports |
+| **COORDINATOR** | Animals in assigned species groups + animals assigned to them | Species-scoped reports |
+| **CARER** | Only animals assigned to them | None |
+
+## 🔄 Migration from Clerk Roles
+
+When existing users who only have Clerk roles (`org:admin` / `org:member`) log in for the first time after RBAC is enabled, they are redirected to `/setup-role`:
+
+- **Clerk `org:admin` users** see a button to self-provision as ADMIN in the new system. This calls `POST /api/rbac/provision` which creates their `OrgMember` record.
+- **Clerk `org:member` users** see a message asking them to contact their admin. They cannot access the application until an admin assigns their role.
+
+Once an `OrgMember` record exists, the Clerk fallback is never used again for that user. This ensures that intentional RBAC demotions (e.g. removing someone's ADMIN role) cannot be bypassed via their Clerk role.
+
+### Migration Steps for Existing Organisations
+
+1. Deploy the RBAC update.
+2. The first `org:admin` user to log in clicks "Activate Admin Role" on the setup page.
+3. That admin then goes to **Admin > Roles** and assigns roles to all other org members.
+4. All users can now access the app with their new roles.
+
+## 🧪 Testing
+
+WildTrack360 uses [Vitest](https://vitest.dev/) for unit testing.
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+### Test Coverage
+
+Tests cover the following areas:
+
+- **RBAC permission matrix** — all 16 permissions across all 3 roles
+- **Role hierarchy** — `hasMinimumRole` checks (ADMIN > COORDINATOR > CARER)
+- **`getUserRole`** — returns role from OrgMember or falls back to CARER
+- **`requirePermission` / `requireMinimumRole`** — throws `Forbidden` when unauthorised
+- **SBAC species access** — `getAuthorisedSpecies` and `canAccessAnimal` with case-insensitive matching
+- **Last-admin guard** — prevents demoting the only ADMIN
+- **Cross-tenant protection** — species group update/delete scoped by orgId
+- **Coordinator assignment** — validates org ownership for both member and group
+- **Mass assignment protection** — field allowlisting for animal create/update
+- **Cross-tenant animal deletion** — org-scoped deletion
+- **Clerk fallback** — `isOrgAdmin` respects RBAC demotion, only falls back when no OrgMember exists
+
+## 🔒 Authentication & Security
 
 - **Clerk Integration**: Professional authentication with organization support
-- **Multi-tenant**: Data isolation between organizations
-- **User Management**: Role-based access control
-- **Secure API**: Protected routes with middleware
-- **Data Privacy**: User-specific data access
+- **Multi-tenant**: All database operations scoped by organisation ID
+- **Custom RBAC**: Three-tier role system with 16 granular permissions
+- **SBAC**: Species-scoped access for coordinators
+- **Field Allowlisting**: Mass assignment protection on animal and species group mutations
+- **Cross-tenant Guards**: All update/delete operations verify org ownership
+- **Secure API**: Protected routes with Clerk middleware + RBAC permission checks
+- **Data Privacy**: Carers can only see animals assigned to them
 
 ## 📱 User Interface
 

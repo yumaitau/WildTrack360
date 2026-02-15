@@ -55,7 +55,7 @@ export default function AnimalDetailClient({
         const orgId = organization.id;
         const [speciesResponse, carersResponse] = await Promise.all([
           fetch(`/api/species?orgId=${orgId}`),
-          fetch(`/api/carers?orgId=${orgId}`),
+          fetch(`/api/carers?orgId=${orgId}&species=${encodeURIComponent(animal.species)}&assignable=true`),
         ]);
         
         const species = await speciesResponse.json();
@@ -103,7 +103,7 @@ export default function AnimalDetailClient({
       }
     };
     loadLookups();
-  }, [organization]);
+  }, [organization, animal.species]);
 
   const handleAddRecord = async (newRecord: any) => {
     // Check if this is a release record - redirect to release checklist
@@ -542,15 +542,25 @@ export default function AnimalDetailClient({
         setIsOpen={setIsEditOpen}
         onAnimalAdd={async (data: any) => {
           try {
-            await fetch(`/api/animals/${animal.id}`, {
+            const res = await fetch(`/api/animals/${animal.id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ ...data, clerkOrganizationId: organization?.id }),
             });
-            setAnimal(prev => ({ ...prev, ...data } as any));
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({ error: 'Failed to update animal' }));
+              throw new Error(err.error || 'Failed to update animal');
+            }
+            const updated = await res.json();
+            setAnimal(prev => ({ ...prev, ...updated }));
             setIsEditOpen(false);
           } catch (e) {
             console.error('Failed to save animal', e);
+            toast({
+              variant: 'destructive',
+              title: 'Update failed',
+              description: e instanceof Error ? e.message : 'Failed to update animal',
+            });
           }
         }}
         animalToEdit={animal as any}
