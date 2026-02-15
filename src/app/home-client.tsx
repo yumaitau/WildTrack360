@@ -255,6 +255,10 @@ function AdminCoordinatorView({
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Animals</h2>
           <div className="flex items-center gap-2">
+            <Button size="sm" onClick={onAddNew}>
+              <PlusCircle className="h-4 w-4 mr-1" />
+              Add New Animal
+            </Button>
             <Link href="/animals">
               <Button size="sm" variant="secondary">Manage Animals</Button>
             </Link>
