@@ -33,6 +33,7 @@ import RecentAdmissionsChart from '@/components/recent-admissions-chart';
 import CarerWorkloadDashboard from '@/components/carer-workload-dashboard';
 import ReleasesVsAdmissionsChart from '@/components/releases-vs-admissions-chart';
 import { TrainingExpiryAlerts } from '@/components/training-expiry-alerts';
+import { AdminComplianceChecklist } from '@/components/admin-compliance-checklist';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -184,6 +185,8 @@ function AdminCoordinatorView({
   onEdit,
   onAddNew,
   carersList,
+  organization,
+  jurisdiction,
 }: {
   animals: Animal[];
   userRole: string;
@@ -194,9 +197,20 @@ function AdminCoordinatorView({
   onEdit: (animal: Animal) => void;
   onAddNew: () => void;
   carersList: any[];
+  organization: any;
+  jurisdiction: string;
 }) {
   return (
     <>
+      {/* Admin Compliance Checklist */}
+      {userRole === 'ADMIN' && (
+        <AdminComplianceChecklist
+          carers={carersList}
+          organization={organization}
+          jurisdiction={jurisdiction}
+        />
+      )}
+
       {/* Action Bar */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="flex-1">
@@ -666,6 +680,8 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
             onEdit={handleEditAnimal}
             onAddNew={() => setIsAddDialogOpen(true)}
             carersList={carersList}
+            organization={organization}
+            jurisdiction={orgJurisdiction}
           />
         )}
       </main>
