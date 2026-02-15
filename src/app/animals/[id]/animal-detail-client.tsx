@@ -6,7 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpeciesIcon } from "@/components/icons";
 import RecordTimeline from "@/components/record-timeline";
-import { ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2 } from "lucide-react";
+import { ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StatusBadge } from "@/components/status-badge";
 import { AddRecordForm } from "@/components/add-record-form";
 import LocationMap from "@/components/location-map";
@@ -43,6 +58,9 @@ export default function AnimalDetailClient({
   const [liveUserMap, setLiveUserMap] = useState<{ [clerkUserId: string]: string }>(userMap);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isAssignCarerOpen, setIsAssignCarerOpen] = useState(false);
+  const [selectedCarerId, setSelectedCarerId] = useState<string>(animal.carerId || "");
+  const [isAssigningCarer, setIsAssigningCarer] = useState(false);
   const [speciesOptions, setSpeciesOptions] = useState<any[]>([]);
   const [carerOptions, setCarerOptions] = useState<any[]>([]);
   const router = useRouter();
@@ -199,6 +217,42 @@ export default function AnimalDetailClient({
     }
   };
 
+  const handleAssignCarer = async () => {
+    setIsAssigningCarer(true);
+    try {
+      const res = await fetch(`/api/animals/${animal.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          carerId: selectedCarerId || null,
+          clerkOrganizationId: organization?.id,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Failed to assign carer' }));
+        throw new Error(err.error || 'Failed to assign carer');
+      }
+      const updated = await res.json();
+      setAnimal(prev => ({ ...prev, ...updated }));
+      setIsAssignCarerOpen(false);
+      toast({
+        title: "Carer Updated",
+        description: selectedCarerId
+          ? `Carer assigned to ${animal.name}.`
+          : `Carer removed from ${animal.name}.`,
+      });
+    } catch (e) {
+      console.error('Failed to assign carer', e);
+      toast({
+        variant: 'destructive',
+        title: 'Assignment failed',
+        description: e instanceof Error ? e.message : 'Failed to assign carer',
+      });
+    } finally {
+      setIsAssigningCarer(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -227,6 +281,18 @@ export default function AnimalDetailClient({
                     <div className="flex items-center gap-2">
                       <User className="h-5 w-5 text-accent"/>
                       <span className="font-semibold">Carer:</span> {carerOptions.find(c => c.value === animal.carerId)?.label ?? '—'}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-2"
+                        onClick={() => {
+                          setSelectedCarerId(animal.carerId || "");
+                          setIsAssignCarerOpen(true);
+                        }}
+                      >
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        {animal.carerId ? 'Change Carer' : 'Assign Carer'}
+                      </Button>
                     </div>
                     <div className="flex items-center gap-2">
                       <CalendarDays className="h-5 w-5 text-accent"/>
@@ -575,6 +641,49 @@ export default function AnimalDetailClient({
         animalName={animal.name}
         onConfirm={handleDeleteAnimal}
       />
+
+      {/* Assign Carer Dialog */}
+      <Dialog open={isAssignCarerOpen} onOpenChange={setIsAssignCarerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{animal.carerId ? 'Change' : 'Assign'} Carer for {animal.name}</DialogTitle>
+            <DialogDescription>
+              Select a carer to assign to this animal. Only carers with completed profiles are shown.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select value={selectedCarerId} onValueChange={setSelectedCarerId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a carer" />
+              </SelectTrigger>
+              <SelectContent>
+                {carerOptions.map((c: any) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            {animal.carerId && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedCarerId("");
+                  handleAssignCarer();
+                }}
+                disabled={isAssigningCarer}
+              >
+                Remove Carer
+              </Button>
+            )}
+            <Button onClick={handleAssignCarer} disabled={isAssigningCarer || !selectedCarerId}>
+              {isAssigningCarer ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
