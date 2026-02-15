@@ -55,7 +55,7 @@ export default function AnimalDetailClient({
         const orgId = organization.id;
         const [speciesResponse, carersResponse] = await Promise.all([
           fetch(`/api/species?orgId=${orgId}`),
-          fetch(`/api/carers?orgId=${orgId}&species=${encodeURIComponent(animal.species)}`),
+          fetch(`/api/carers?orgId=${orgId}&species=${encodeURIComponent(animal.species)}&assignable=true`),
         ]);
         
         const species = await speciesResponse.json();

@@ -43,7 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PlusCircle, Trash2, Edit2, Leaf, Users, Info, X, Plus } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2, Leaf, Users, Info, X, Plus, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SpeciesGroupWithCoordinators, OrgMemberWithAssignments } from '@/lib/types';
 
@@ -81,23 +81,25 @@ function SpeciesNamePicker({
   return (
     <div className="space-y-3">
       {availableSpecies.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="border rounded-md max-h-[200px] overflow-y-auto">
           {availableSpecies.map((name) => {
             const isSelected = selectedSet.has(name.toLowerCase());
             return (
-              <button
+              <label
                 key={name}
-                type="button"
-                onClick={() => handleToggle(name)}
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors
-                  ${isSelected
-                    ? 'bg-primary/10 text-primary border border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30'
-                    : 'bg-muted/50 text-muted-foreground border border-dashed border-muted-foreground/30 hover:bg-primary/10 hover:text-primary hover:border-primary/30'
-                  } cursor-pointer`}
+                className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 text-sm"
               >
-                {isSelected ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                {name}
-              </button>
+                <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'}`}>
+                  {isSelected && <Check className="h-3 w-3" />}
+                </div>
+                <span className={isSelected ? 'font-medium' : 'text-muted-foreground'}>{name}</span>
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={isSelected}
+                  onChange={() => handleToggle(name)}
+                />
+              </label>
             );
           })}
         </div>
@@ -145,6 +147,11 @@ function SpeciesNamePicker({
           Add
         </Button>
       </div>
+      {selected.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {selected.length} species selected
+        </p>
+      )}
     </div>
   );
 }
@@ -552,14 +559,16 @@ export function SpeciesGroupManagement() {
               Create Species Group
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Create Species Group</DialogTitle>
               <DialogDescription>
                 Define a new species group for your organisation.
               </DialogDescription>
             </DialogHeader>
-            {formContent}
+            <div className="overflow-y-auto flex-1 pr-1">
+              {formContent}
+            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
                 Cancel
@@ -574,14 +583,16 @@ export function SpeciesGroupManagement() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingGroup} onOpenChange={(open) => { if (!open) { setEditingGroup(null); resetForm(); } }}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit Species Group</DialogTitle>
             <DialogDescription>
               Update the species group details.
             </DialogDescription>
           </DialogHeader>
-          {formContent}
+          <div className="overflow-y-auto flex-1 pr-1">
+            {formContent}
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setEditingGroup(null); resetForm(); }}>
               Cancel

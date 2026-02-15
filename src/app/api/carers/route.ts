@@ -8,9 +8,15 @@ export async function GET(request: Request) {
 	const { searchParams } = new URL(request.url)
 	const orgId = searchParams.get('orgId') || activeOrgId || undefined
 	const species = searchParams.get('species') || undefined
+	const assignable = searchParams.get('assignable') === 'true'
 	try {
 		if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
 		let carers = await getEnrichedCarers(orgId)
+
+		// Filter out carers without a complete profile when requesting assignable carers
+		if (assignable) {
+			carers = carers.filter(c => c.hasProfile)
+		}
 
 		// Filter to carers eligible for the given species (via species group assignments)
 		if (species) {

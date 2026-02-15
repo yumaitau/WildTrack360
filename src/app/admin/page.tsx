@@ -4,15 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PawPrint, User, Package, Users, ShieldCheck, Leaf } from 'lucide-react';
+import { ArrowLeft, PawPrint, Package, Users, Leaf } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Asset } from '@prisma/client';
 import { SpeciesManagement } from './species-management';
-import { CarerManagement } from './carer-management';
 import { AssetManagement } from './asset-management';
-import { UserManagement } from './user-management';
-import { RoleManagement } from './role-management';
+import { PeopleManagement } from './people-management';
 import { SpeciesGroupManagement } from './species-group-management';
 import { useUser, useOrganization } from '@clerk/nextjs';
 
@@ -49,7 +47,7 @@ export default function AdminPage() {
         setSpecies(speciesData.map(s => s.name));
         setAssets(assetsData);
         setUserRole(role);
-        setActiveTab(role === 'ADMIN' ? 'roles' : 'species');
+        setActiveTab(role === 'ADMIN' ? 'people' : 'assets');
       } catch (error) {
         console.error('Error loading admin data:', error);
       } finally {
@@ -99,12 +97,12 @@ export default function AdminPage() {
         </div>
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-        <Tabs value={activeTab ?? (isAdmin ? "roles" : "species")} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-4'}`}>
+        <Tabs value={activeTab ?? (isAdmin ? "people" : "assets")} onValueChange={setActiveTab}>
+          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-1'}`}>
             {isAdmin && (
-              <TabsTrigger value="roles">
-                <ShieldCheck className="mr-2 h-4 w-4" />
-                Roles
+              <TabsTrigger value="people">
+                <Users className="mr-2 h-4 w-4" />
+                People
               </TabsTrigger>
             )}
             {isAdmin && (
@@ -113,26 +111,20 @@ export default function AdminPage() {
                 Species Groups
               </TabsTrigger>
             )}
-            <TabsTrigger value="species">
-              <PawPrint className="mr-2 h-4 w-4" />
-              Manage Species
-            </TabsTrigger>
-            <TabsTrigger value="carers">
-              <User className="mr-2 h-4 w-4" />
-              Carer Profiles
-            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="species">
+                <PawPrint className="mr-2 h-4 w-4" />
+                Manage Species
+              </TabsTrigger>
+            )}
             <TabsTrigger value="assets">
               <Package className="mr-2 h-4 w-4" />
               Manage Assets
             </TabsTrigger>
-            <TabsTrigger value="users">
-              <Users className="mr-2 h-4 w-4" />
-              Manage Users
-            </TabsTrigger>
           </TabsList>
           {isAdmin && (
-            <TabsContent value="roles">
-              <RoleManagement onCarerRoleAssigned={() => setActiveTab('carers')} />
+            <TabsContent value="people">
+              <PeopleManagement />
             </TabsContent>
           )}
           {isAdmin && (
@@ -140,26 +132,18 @@ export default function AdminPage() {
               <SpeciesGroupManagement />
             </TabsContent>
           )}
-          <TabsContent value="species">
-            <Card>
-              <CardHeader>
-                <CardTitle>Species List</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SpeciesManagement initialSpecies={species} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="carers">
-            <Card>
-              <CardHeader>
-                <CardTitle>Carer Profiles</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CarerManagement />
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {isAdmin && (
+            <TabsContent value="species">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Species List</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SpeciesManagement initialSpecies={species} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
            <TabsContent value="assets">
             <Card>
               <CardHeader>
@@ -169,9 +153,6 @@ export default function AdminPage() {
                 <AssetManagement initialAssets={assets} />
               </CardContent>
             </Card>
-          </TabsContent>
-          <TabsContent value="users">
-            <UserManagement />
           </TabsContent>
         </Tabs>
       </main>

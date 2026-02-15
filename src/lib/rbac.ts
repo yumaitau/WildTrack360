@@ -150,7 +150,7 @@ function normaliseSpecies(name: string): string {
 /**
  * Get the species names a coordinator is authorised to manage.
  * Returns null for ADMIN (unrestricted) or empty array for CARER.
- * Species names are normalised (lowercased) for consistent matching.
+ * Species names preserve original casing for Prisma query compatibility.
  */
 export async function getAuthorisedSpecies(
   userId: string,
@@ -163,11 +163,12 @@ export async function getAuthorisedSpecies(
   if (member.role === 'ADMIN') return null;
 
   // Coordinator sees species in their assigned groups
+  // Preserve original casing so Prisma queries match DB values
   if (member.role === 'COORDINATOR') {
     const speciesNames = member.speciesAssignments.flatMap(
       (a) => a.speciesGroup.speciesNames
     );
-    return [...new Set(speciesNames.map(normaliseSpecies))];
+    return [...new Set(speciesNames.map(s => s.trim()))];
   }
 
   // Carer has no species-level access (filtered by assigned animals instead)
@@ -177,8 +178,8 @@ export async function getAuthorisedSpecies(
 /**
  * Check whether a user can access a specific animal based on their role:
  * - ADMIN: always
- * - COORDINATOR: if the animal's species is in one of their groups (case-insensitive)
- * - CARER: if the animal is assigned to them
+ * - COORDINATOR: if the animal's species is in one of their assigned species groups (case-insensitive)
+ * - CARER: only if the animal is assigned to them
  */
 export async function canAccessAnimal(
   userId: string,
@@ -197,7 +198,7 @@ export async function canAccessAnimal(
     const authorisedSpecies = member.speciesAssignments.flatMap(
       (a) => a.speciesGroup.speciesNames.map(normaliseSpecies)
     );
-    return authorisedSpecies.includes(normaliseSpecies(animal.species)) || animal.carerId === userId;
+    return authorisedSpecies.includes(normaliseSpecies(animal.species));
   }
 
   // CARER

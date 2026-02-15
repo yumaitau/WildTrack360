@@ -123,8 +123,8 @@ export async function getEnrichedCarer(userId: string, orgId: string): Promise<E
 
 /**
  * Returns the set of Clerk user IDs eligible to care for a given species,
- * based on SpeciesGroup assignments. Users with NO species group assignments
- * are treated as unrestricted (eligible for any species).
+ * based on SpeciesGroup assignments. Users with no species group assignments
+ * are not eligible for any species.
  */
 export async function getEligibleCarerIdsForSpecies(
   orgId: string,
@@ -174,8 +174,8 @@ export async function getEligibleCarerIdsForSpecies(
 
   const eligible = new Set<string>();
   for (const m of orgMembers) {
-    // Include if: assigned to a matching species group, OR has no assignments at all
-    if (eligibleMemberIds.has(m.id) || !membersWithAssignments.has(m.id)) {
+    // Include only if assigned to a matching species group
+    if (eligibleMemberIds.has(m.id)) {
       eligible.add(m.userId);
     }
   }

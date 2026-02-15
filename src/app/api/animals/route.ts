@@ -27,19 +27,15 @@ export async function GET(request: Request) {
 			return NextResponse.json(animals)
 		}
 
-		// COORDINATOR: sees animals whose species is in their assigned species groups
-		// plus any animals assigned to them personally
+		// COORDINATOR: sees all animals whose species is in their assigned species groups
 		if (role === 'COORDINATOR') {
 			const authorisedSpecies = await getAuthorisedSpecies(userId, requestedOrgId)
 			const animals = await prisma.animal.findMany({
 				where: {
 					clerkOrganizationId: requestedOrgId,
-					OR: [
-						...(authorisedSpecies && authorisedSpecies.length > 0
-							? [{ species: { in: authorisedSpecies } }]
-							: []),
-						{ carerId: userId },
-					],
+					...(authorisedSpecies && authorisedSpecies.length > 0
+						? { species: { in: authorisedSpecies } }
+						: { id: '__none__' }), // no species assignments → no animals
 				},
 				include: { carer: true, records: true, photos: true },
 				orderBy: { dateFound: 'desc' },

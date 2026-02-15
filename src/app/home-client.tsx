@@ -30,7 +30,7 @@ import { AddAnimalDialog } from '@/components/add-animal-dialog';
 import DashboardStats from '@/components/dashboard-stats';
 import SpeciesDistributionChart from '@/components/species-distribution-chart';
 import RecentAdmissionsChart from '@/components/recent-admissions-chart';
-import CarerDistributionChart from '@/components/carer-distribution-chart';
+import CarerWorkloadDashboard from '@/components/carer-workload-dashboard';
 import ReleasesVsAdmissionsChart from '@/components/releases-vs-admissions-chart';
 import { TrainingExpiryAlerts } from '@/components/training-expiry-alerts';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
@@ -331,8 +331,8 @@ function AdminCoordinatorView({
         </Card>
       )}
 
-      {/* Incomplete Carer Profiles Alert */}
-      {(carersList || []).filter((c: any) => !c.hasProfile).length > 0 && (
+      {/* Incomplete Carer Profiles Alert (ADMIN only - only admins can action this) */}
+      {userRole === 'ADMIN' && (carersList || []).filter((c: any) => !c.hasProfile).length > 0 && (
         <Card className="border-orange-200 bg-orange-50 mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-orange-800">
@@ -392,7 +392,10 @@ function AdminCoordinatorView({
       </div>
 
       <div className="grid grid-cols-1 gap-8 mb-8">
-        <CarerDistributionChart animals={animals} carerMap={Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name]))} />
+        <CarerWorkloadDashboard animals={animals} carerMap={Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name]))} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 mb-8">
         <ReleasesVsAdmissionsChart animals={animals} />
       </div>
     </>
@@ -416,6 +419,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
   const [greeting, setGreeting] = useState('');
   const [orgJurisdiction, setOrgJurisdiction] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('CARER');
+  const [hasIncompleteProfile, setHasIncompleteProfile] = useState(false);
 
   // Load species, carers, and user role from API for current organization
   useEffect(() => {
@@ -430,7 +434,14 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         ]);
         setSpeciesList(newSpecies || []);
         setCarersList(newCarers || []);
-        setUserRole(roleData.role || 'CARER');
+        const role = roleData.role || 'CARER';
+        setUserRole(role);
+
+        // Check if current user has an incomplete profile (CARER/COORDINATOR only)
+        if (role !== 'ADMIN' && user) {
+          const currentCarer = (newCarers || []).find((c: any) => c.id === user.id);
+          setHasIncompleteProfile(currentCarer?.hasProfile === false);
+        }
       } catch (error) {
         console.error('Error loading species/carers:', error);
         setSpeciesList([]);
@@ -438,7 +449,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
       }
     };
     fetchLookups();
-  }, [organization]);
+  }, [organization, user]);
 
   // Load animals from API for current organization
   useEffect(() => {
@@ -518,6 +529,12 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
       setAnimals(newAnimals);
       setSpeciesList(newSpecies);
       setCarersList(newCarers);
+
+      // Re-check incomplete profile on refresh
+      if (userRole !== 'ADMIN' && user) {
+        const currentCarer = (newCarers || []).find((c: any) => c.id === user.id);
+        setHasIncompleteProfile(currentCarer?.hasProfile === false);
+      }
     } catch (error) {
       console.error('Error refreshing data:', error);
     } finally {
@@ -618,6 +635,16 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
 
       {/* Main Content */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Incomplete Profile Banner */}
+        {hasIncompleteProfile && (
+          <div className="flex items-center gap-3 p-4 mb-6 rounded-lg border border-amber-300 bg-amber-50 text-amber-800">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <p className="text-sm font-medium">
+              Your carer profile is incomplete. Please contact your organisation administrator to complete your profile before animals can be assigned to you.
+            </p>
+          </div>
+        )}
+
         {userRole === 'CARER' ? (
           <CarerView
             animals={animals}
@@ -653,7 +680,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
           value: s.name, 
           label: s.name 
         }))}
-        carers={(carersList || []).map((c: any) => ({
+        carers={(carersList || []).filter((c: any) => c.hasProfile).map((c: any) => ({
           value: c.id,
           label: c.name
         }))}
