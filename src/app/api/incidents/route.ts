@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(request: Request) {
   const { userId, orgId: activeOrgId } = await auth()
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
         clerkOrganizationId: orgId,
       }
     })
+    logAudit({ userId, orgId, action: 'CREATE', entity: 'IncidentReport', entityId: created.id, metadata: { type: body.type, severity: body.severity } })
     return NextResponse.json(created, { status: 201 })
   } catch (error) {
     console.error('Error creating incident report:', error);

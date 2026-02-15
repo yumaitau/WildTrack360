@@ -593,6 +593,37 @@ model CoordinatorSpeciesAssignment {
   @@map("coordinator_species_assignments")
 }
 
+// ─── Audit Log ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  userId    String      // Clerk user ID of the actor
+  userName  String?     // Display name of the actor at the time of the action
+  userEmail String?     // Email of the actor at the time of the action
+  orgId     String      // Clerk organization ID
+  action    AuditAction
+  entity    String      // e.g. "Animal", "Species", "HygieneLog"
+  entityId  String?     // ID of the affected record (null for bulk ops)
+  metadata  Json?       // Additional context (changed fields, old/new values, etc.)
+  createdAt DateTime    @default(now())
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  ROLE_CHANGE
+  ASSIGN
+  UNASSIGN
+}
+
 // Additional enums for NSW models
 enum PermanentCareCategory {
   EDUCATION

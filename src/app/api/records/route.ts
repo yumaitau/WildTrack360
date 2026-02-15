@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { RecordType } from '@prisma/client'
+import { logAudit } from '@/lib/audit'
 
 export async function POST(request: Request) {
   const { userId, orgId: activeOrgId } = await auth()
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
         clerkOrganizationId: requestedOrgId,
       },
     })
+    logAudit({ userId, orgId: requestedOrgId, action: 'CREATE', entity: 'Record', entityId: created.id, metadata: { type, animalId: body.animalId } })
     return NextResponse.json(created, { status: 201 })
   } catch (e) {
     return NextResponse.json({ error: 'Failed to create record' }, { status: 500 })

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSpecies, createSpecies } from '@/lib/database'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(request: Request) {
 	const { userId, orgId: activeOrgId } = await auth()
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
 			clerkOrganizationId: orgId
 		}
 		const created = await createSpecies(speciesData)
+		logAudit({ userId, orgId, action: 'CREATE', entity: 'Species', entityId: created.id, metadata: { name: body.name } })
 		return NextResponse.json(created, { status: 201 })
 	} catch (error) {
 		console.error('Error creating species:', error)
@@ -57,6 +59,9 @@ export async function PATCH(request: Request) {
 			where: { name: oldName, clerkOrganizationId: orgId || 'default-org' },
 			data: { name: newName }
 		})
+		if (updated.count > 0) {
+			logAudit({ userId, orgId, action: 'UPDATE', entity: 'Species', metadata: { oldName, newName } })
+		}
 		return NextResponse.json({ count: updated.count })
 	} catch {
 		return NextResponse.json({ error: 'Failed to update species' }, { status: 500 })
@@ -72,6 +77,9 @@ export async function DELETE(request: Request) {
 		const deleted = await prisma.species.deleteMany({
 			where: { name, clerkOrganizationId: orgId || 'default-org' }
 		})
+		if (deleted.count > 0) {
+			logAudit({ userId, orgId, action: 'DELETE', entity: 'Species', metadata: { name } })
+		}
 		return NextResponse.json({ count: deleted.count })
 	} catch {
 		return NextResponse.json({ error: 'Failed to delete species' }, { status: 500 })

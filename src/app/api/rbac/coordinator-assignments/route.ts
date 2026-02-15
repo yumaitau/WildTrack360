@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { logAudit } from '@/lib/audit';
 import {
   assignCoordinatorToSpeciesGroup,
   removeCoordinatorFromSpeciesGroup,
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     }
 
     const assignment = await assignCoordinatorToSpeciesGroup(orgMemberId, speciesGroupId, orgId);
+    logAudit({ userId, orgId, action: 'ASSIGN', entity: 'CoordinatorSpeciesAssignment', entityId: assignment.id, metadata: { orgMemberId, speciesGroupId } });
     return NextResponse.json(assignment, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
@@ -68,6 +70,7 @@ export async function DELETE(request: Request) {
     }
 
     await removeCoordinatorFromSpeciesGroup(orgMemberId, speciesGroupId, orgId);
+    logAudit({ userId, orgId, action: 'UNASSIGN', entity: 'CoordinatorSpeciesAssignment', metadata: { orgMemberId, speciesGroupId } });
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
