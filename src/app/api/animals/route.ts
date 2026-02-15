@@ -3,6 +3,7 @@ import { createAnimal } from '@/lib/database'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { getUserRole, getAuthorisedSpecies, hasPermission } from '@/lib/rbac'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(request: Request) {
 	const { userId, orgId: activeOrgId } = await auth()
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
 		}
 
 		const created = await createAnimal({ ...body, clerkUserId: userId, clerkOrganizationId: requestedOrgId })
+		logAudit({ userId, orgId: requestedOrgId, action: 'CREATE', entity: 'Animal', entityId: created.id, metadata: { name: created.name, species: created.species } })
 		return NextResponse.json(created, { status: 201 })
 	} catch (err) {
 		const message = err instanceof Error ? err.message : ''

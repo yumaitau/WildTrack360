@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server'
 import { updateAsset, deleteAsset } from '@/lib/database'
 import { auth } from '@clerk/nextjs/server'
+import { logAudit } from '@/lib/audit'
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-	const { userId } = await auth()
+	const { userId, orgId } = await auth()
 	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 	const body = await request.json()
 	try {
 		const updated = await updateAsset(params.id, body)
+		logAudit({ userId, orgId: orgId || updated.clerkOrganizationId, action: 'UPDATE', entity: 'Asset', entityId: params.id, metadata: { fields: Object.keys(body) } })
 		return NextResponse.json(updated)
 	} catch (e) {
 		return NextResponse.json({ error: 'Failed to update asset' }, { status: 500 })
@@ -15,10 +17,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
-	const { userId } = await auth()
+	const { userId, orgId } = await auth()
 	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 	try {
 		await deleteAsset(params.id)
+		logAudit({ userId, orgId: orgId || 'unknown', action: 'DELETE', entity: 'Asset', entityId: params.id })
 		return NextResponse.json({ ok: true })
 	} catch (e) {
 		return NextResponse.json({ error: 'Failed to delete asset' }, { status: 500 })

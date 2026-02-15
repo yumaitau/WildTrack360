@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { logAudit } from '@/lib/audit';
 import {
   listSpeciesGroups,
   createSpeciesGroup,
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
       orgId,
     });
 
+    logAudit({ userId, orgId, action: 'CREATE', entity: 'SpeciesGroup', entityId: group.id, metadata: { name, slug } });
     return NextResponse.json(group, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';

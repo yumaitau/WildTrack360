@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
+import { logAudit } from '@/lib/audit';
 
 export async function GET(
   request: Request,
@@ -67,6 +68,7 @@ export async function PATCH(
       data: updateData,
     });
 
+    logAudit({ userId, orgId: orgId || 'default-org', action: 'UPDATE', entity: 'Species', entityId: id, metadata: { fields: Object.keys(updateData) } });
     return NextResponse.json(species);
   } catch (error) {
     console.error('Error updating species:', error);
@@ -104,6 +106,7 @@ export async function DELETE(
       },
     });
 
+    logAudit({ userId, orgId: orgId || 'default-org', action: 'DELETE', entity: 'Species', entityId: id, metadata: { name: existingSpecies.name } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting species:', error);

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { logAudit } from '@/lib/audit';
 
 export async function GET(
   request: Request,
@@ -83,6 +84,7 @@ export async function PATCH(
       }
     });
 
+    logAudit({ userId, orgId: orgId || 'default-org', action: 'UPDATE', entity: 'CarerTraining', entityId: params.id, metadata: { fields: Object.keys(body) } });
     return NextResponse.json(training);
   } catch (error) {
     console.error('Error updating carer training:', error);
@@ -111,12 +113,13 @@ export async function DELETE(
     }
     
     await prisma.carerTraining.delete({
-      where: { 
+      where: {
         id: params.id,
         clerkOrganizationId: orgId || 'default-org' // Double-check in delete
       }
     });
-    
+
+    logAudit({ userId, orgId: orgId || 'default-org', action: 'DELETE', entity: 'CarerTraining', entityId: params.id });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting carer training:', error);

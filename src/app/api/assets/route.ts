@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAssets, createAsset } from '@/lib/database'
 import { auth } from '@clerk/nextjs/server'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(request: Request) {
 	const { userId, orgId: activeOrgId } = await auth()
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
 	try {
 		if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
 		const created = await createAsset({ ...body, clerkUserId: userId, clerkOrganizationId: orgId })
+		logAudit({ userId, orgId, action: 'CREATE', entity: 'Asset', entityId: created.id, metadata: { name: created.name, type: created.type } })
 		return NextResponse.json(created, { status: 201 })
 	} catch (e) {
 		return NextResponse.json({ error: 'Failed to create asset' }, { status: 500 })
