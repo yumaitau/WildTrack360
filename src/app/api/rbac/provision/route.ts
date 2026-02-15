@@ -53,7 +53,7 @@ export async function POST() {
       },
     });
 
-    logAudit({ userId, orgId, action: 'LOGIN', entity: 'OrgMember', entityId: member.id, metadata: { role: 'ADMIN', selfProvisioned: true } });
+    logAudit({ userId, orgId, action: 'CREATE', entity: 'OrgMember', entityId: member.id, metadata: { role: 'ADMIN', selfProvisioned: true } });
     return NextResponse.json(member, { status: 201 });
   } catch (error) {
     console.error('Error provisioning role:', error);

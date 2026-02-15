@@ -260,8 +260,8 @@ export async function updateAsset(id: string, assetData: any): Promise<Asset> {
 	});
 }
 
-export async function deleteAsset(id: string): Promise<void> {
-	await prisma.asset.delete({
+export async function deleteAsset(id: string) {
+	return prisma.asset.delete({
 		where: { id },
 	});
 }

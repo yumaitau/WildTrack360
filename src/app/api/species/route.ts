@@ -59,7 +59,9 @@ export async function PATCH(request: Request) {
 			where: { name: oldName, clerkOrganizationId: orgId || 'default-org' },
 			data: { name: newName }
 		})
-		logAudit({ userId, orgId, action: 'UPDATE', entity: 'Species', metadata: { oldName, newName } })
+		if (updated.count > 0) {
+			logAudit({ userId, orgId, action: 'UPDATE', entity: 'Species', metadata: { oldName, newName } })
+		}
 		return NextResponse.json({ count: updated.count })
 	} catch {
 		return NextResponse.json({ error: 'Failed to update species' }, { status: 500 })
@@ -75,7 +77,9 @@ export async function DELETE(request: Request) {
 		const deleted = await prisma.species.deleteMany({
 			where: { name, clerkOrganizationId: orgId || 'default-org' }
 		})
-		logAudit({ userId, orgId, action: 'DELETE', entity: 'Species', metadata: { name } })
+		if (deleted.count > 0) {
+			logAudit({ userId, orgId, action: 'DELETE', entity: 'Species', metadata: { name } })
+		}
 		return NextResponse.json({ count: deleted.count })
 	} catch {
 		return NextResponse.json({ error: 'Failed to delete species' }, { status: 500 })

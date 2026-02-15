@@ -159,6 +159,9 @@ export default function AdminPage() {
                     <ScrollText className="h-5 w-5" />
                     Audit Log
                   </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Immutable record of all actions taken within this organisation. All timestamps are displayed in Australian Eastern Time (AEST/AEDT). Audit entries are logged automatically for every create, update, and delete operation and must not be modified or deleted.
+                  </p>
                 </CardHeader>
                 <CardContent>
                   <AuditLogViewer />

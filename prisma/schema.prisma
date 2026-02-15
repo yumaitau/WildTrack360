@@ -598,6 +598,8 @@ model CoordinatorSpeciesAssignment {
 model AuditLog {
   id        String      @id @default(cuid())
   userId    String      // Clerk user ID of the actor
+  userName  String?     // Display name of the actor at the time of the action
+  userEmail String?     // Email of the actor at the time of the action
   orgId     String      // Clerk organization ID
   action    AuditAction
   entity    String      // e.g. "Animal", "Species", "HygieneLog"

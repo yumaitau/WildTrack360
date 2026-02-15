@@ -20,6 +20,8 @@ import {
 interface AuditLog {
   id: string;
   userId: string;
+  userName: string | null;
+  userEmail: string | null;
   orgId: string;
   action: string;
   entity: string;
@@ -151,6 +153,7 @@ export function AuditLogViewer() {
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString('en-AU', {
+      timeZone: 'Australia/Sydney',
       day: '2-digit', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
     });
@@ -237,13 +240,13 @@ export function AuditLogViewer() {
             <TableRow>
               <TableHead>
                 <button className="flex items-center font-medium" onClick={() => toggleSort('createdAt')}>
-                  When
+                  When (AEST)
                   <SortIcon field="createdAt" />
                 </button>
               </TableHead>
               <TableHead>
                 <button className="flex items-center font-medium" onClick={() => toggleSort('userId')}>
-                  User ID
+                  User
                   <SortIcon field="userId" />
                 </button>
               </TableHead>
@@ -282,8 +285,15 @@ export function AuditLogViewer() {
                   <TableCell className="whitespace-nowrap text-sm">
                     {formatDate(log.createdAt)}
                   </TableCell>
-                  <TableCell className="font-mono text-xs max-w-[140px] truncate" title={log.userId}>
-                    {log.userId}
+                  <TableCell className="max-w-[200px] truncate" title={log.userEmail || log.userId}>
+                    {log.userName || log.userEmail ? (
+                      <div>
+                        {log.userName && <div className="text-sm font-medium">{log.userName}</div>}
+                        <div className="text-xs text-muted-foreground">{log.userEmail || log.userId}</div>
+                      </div>
+                    ) : (
+                      <span className="font-mono text-xs">{log.userId}</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={ACTION_BADGE_VARIANT[log.action] || 'outline'}>
