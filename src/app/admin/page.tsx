@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PawPrint, Package, Users, Leaf } from 'lucide-react';
+import { ArrowLeft, PawPrint, Package, Users, Leaf, ScrollText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Asset } from '@prisma/client';
@@ -12,6 +12,7 @@ import { SpeciesManagement } from './species-management';
 import { AssetManagement } from './asset-management';
 import { PeopleManagement } from './people-management';
 import { SpeciesGroupManagement } from './species-group-management';
+import { AuditLogViewer } from './audit-log-viewer';
 import { useUser, useOrganization } from '@clerk/nextjs';
 
 async function apiJson<T>(url: string): Promise<T> {
@@ -98,7 +99,7 @@ export default function AdminPage() {
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
         <Tabs value={activeTab ?? (isAdmin ? "people" : "assets")} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-1'}`}>
+          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-1'}`}>
             {isAdmin && (
               <TabsTrigger value="people">
                 <Users className="mr-2 h-4 w-4" />
@@ -115,6 +116,12 @@ export default function AdminPage() {
               <TabsTrigger value="species">
                 <PawPrint className="mr-2 h-4 w-4" />
                 Manage Species
+              </TabsTrigger>
+            )}
+            {isAdmin && (
+              <TabsTrigger value="audit-log">
+                <ScrollText className="mr-2 h-4 w-4" />
+                Audit Log
               </TabsTrigger>
             )}
             <TabsTrigger value="assets">
@@ -140,6 +147,21 @@ export default function AdminPage() {
                 </CardHeader>
                 <CardContent>
                   <SpeciesManagement initialSpecies={species} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+          {isAdmin && (
+            <TabsContent value="audit-log">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ScrollText className="h-5 w-5" />
+                    Audit Log
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AuditLogViewer />
                 </CardContent>
               </Card>
             </TabsContent>
