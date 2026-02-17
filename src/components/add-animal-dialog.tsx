@@ -182,7 +182,7 @@ export function AddAnimalDialog({
       age: undefined,
       dateOfBirth: undefined,
       carer: "",
-      status: "IN_CARE",
+      status: "ADMITTED",
       dateFound: new Date(),
       rescueLocation: "Canberra ACT, Australia",
       rescueCoordinates: { lat: -35.2809, lng: 149.1300 },
@@ -197,7 +197,7 @@ export function AddAnimalDialog({
       fate: undefined
     }
   })
-  
+
   // Only reset form when dialog transitions from closed to open, or when animalToEdit changes
   React.useEffect(() => {
     // Check if dialog just opened (was closed, now open)
@@ -254,7 +254,7 @@ export function AddAnimalDialog({
             age: undefined,
             dateOfBirth: undefined,
             carer: "",
-            status: "IN_CARE",
+            status: "ADMITTED",
             dateFound: new Date(),
             rescueLocation: "Canberra ACT, Australia",
             rescueCoordinates: { lat: -35.2809, lng: 149.1300 },

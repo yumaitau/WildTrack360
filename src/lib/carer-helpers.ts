@@ -163,19 +163,20 @@ export async function getEligibleCarerIdsForSpecies(
       .map(a => a.orgMemberId)
   );
 
-  // Resolve orgMember IDs → Clerk user IDs
+  // Resolve orgMember IDs → Clerk user IDs (include role to identify admins)
   const orgMembers = await prisma.orgMember.findMany({
     where: { orgId },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, role: true },
   });
-
-  const memberIdToUserId = new Map(orgMembers.map(m => [m.id, m.userId]));
-  const memberUserIdToMemberId = new Map(orgMembers.map(m => [m.userId, m.id]));
 
   const eligible = new Set<string>();
   for (const m of orgMembers) {
-    // Include only if assigned to a matching species group
-    if (eligibleMemberIds.has(m.id)) {
+    // Always include admins — they are eligible for all species
+    if (m.role === 'ADMIN') {
+      eligible.add(m.userId);
+    }
+    // Include if assigned to a matching species group
+    else if (eligibleMemberIds.has(m.id)) {
       eligible.add(m.userId);
     }
   }
