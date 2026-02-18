@@ -2,12 +2,6 @@ import 'server-only';
 
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-const isR2Configured =
-  !!process.env.R2_ENDPOINT &&
-  !!process.env.R2_ACCESS_KEY_ID &&
-  !!process.env.R2_SECRET_ACCESS_KEY &&
-  !!process.env.R2_BUCKET;
-
 let _s3: S3Client | null = null;
 function getS3Client(): S3Client {
   if (!_s3) {
@@ -31,6 +25,12 @@ export async function uploadToR2(
   body: Buffer,
   contentType: string
 ): Promise<string> {
+  const isR2Configured =
+    !!process.env.R2_ENDPOINT &&
+    !!process.env.R2_ACCESS_KEY_ID &&
+    !!process.env.R2_SECRET_ACCESS_KEY &&
+    !!process.env.R2_BUCKET;
+
   if (!isR2Configured) {
     throw new Error(
       'R2 storage is not configured. Set R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET environment variables.'
