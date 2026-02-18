@@ -29,22 +29,22 @@ export async function uploadToR2(
     !!process.env.R2_ENDPOINT &&
     !!process.env.R2_ACCESS_KEY_ID &&
     !!process.env.R2_SECRET_ACCESS_KEY &&
-    !!process.env.R2_BUCKET;
+    !!process.env.R2_BUCKET_NAME;
 
   if (!isR2Configured) {
     throw new Error(
-      'R2 storage is not configured. Set R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET environment variables.'
+      'R2 storage is not configured. Set R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME environment variables.'
     );
   }
 
   const s3 = getS3Client();
   await s3.send(
     new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET!,
+      Bucket: process.env.R2_BUCKET_NAME!,
       Key: key,
       Body: body,
       ContentType: contentType,
     })
   );
-  return `${process.env.R2_PUBLIC_BASE_URL}/${key}`;
+  return `${process.env.R2_PUBLIC_URL}/${key}`;
 }
