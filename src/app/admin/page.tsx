@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PawPrint, Package, Users, Leaf, ScrollText } from 'lucide-react';
+import { ArrowLeft, PawPrint, Package, Users, Leaf, ScrollText, Phone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Asset } from '@prisma/client';
@@ -89,12 +89,20 @@ export default function AdminPage() {
       <header className="bg-card shadow-sm">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Admin Panel</h1>
-          <Link href="/" className="flex items-center gap-2">
-            <Button variant="ghost">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/call-intake">
+              <Button variant="outline" size="sm">
+                <Phone className="h-4 w-4 mr-2" />
+                Call Intake
+              </Button>
+            </Link>
+            <Link href="/" className="flex items-center gap-2">
+              <Button variant="ghost">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">

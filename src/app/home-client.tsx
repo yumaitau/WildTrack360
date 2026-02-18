@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, ShieldCheck, ShieldAlert, User, RefreshCw, LogOut, Building, AlertTriangle, Clock } from 'lucide-react';
+import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, ShieldCheck, ShieldAlert, User, RefreshCw, LogOut, Building, AlertTriangle, Clock, Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Animal } from '@prisma/client';
 
@@ -608,11 +608,19 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                 </div>
               </div>
               {userRole !== 'CARER' && (
-                <Link href="/admin">
-                  <Button size="sm">
-                    {userRole === 'ADMIN' ? 'Admin' : 'Coordinator'}
-                  </Button>
-                </Link>
+                <>
+                  <Link href="/admin/call-intake">
+                    <Button size="sm" variant="outline">
+                      <Phone className="h-4 w-4 mr-2" />
+                      Call Intake
+                    </Button>
+                  </Link>
+                  <Link href="/admin">
+                    <Button size="sm">
+                      {userRole === 'ADMIN' ? 'Admin' : 'Coordinator'}
+                    </Button>
+                  </Link>
+                </>
               )}
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />

@@ -72,6 +72,7 @@ model Animal {
   transfers     AnimalTransfer[]
   permanentCare PermanentCareApproval?
   preservedSpecimen PreservedSpecimen?
+  pindropSessions PindropSession[]
 
   @@map("animals")
 }
@@ -634,4 +635,51 @@ enum PermanentCareCategory {
 enum PermanentCareStatus {
   ALIVE
   DEAD
+}
+
+// ─── Pindrop Session ────────────────────────────────────────────────────────
+
+enum PindropStatus {
+  PENDING
+  SUBMITTED
+  REVIEWED
+  LINKED
+}
+
+model PindropSession {
+  id          String        @id @default(cuid())
+  accessToken String        @unique
+  status      PindropStatus @default(PENDING)
+
+  // Admin-entered fields
+  callerName  String
+  callerPhone String
+  description String?
+  species     String?
+
+  // Caller-filled fields
+  lat         Float?
+  lng         Float?
+  address     String?
+  photoUrls   String[]
+  callerNotes String?
+
+  // Provenance
+  userAgent   String?
+  submittedAt DateTime?
+
+  // Link to Animal
+  linkedAnimalId String?
+  linkedAnimal   Animal? @relation(fields: [linkedAnimalId], references: [id])
+
+  // Multi-tenancy
+  clerkOrganizationId String
+  clerkUserId         String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clerkOrganizationId])
+  @@index([accessToken])
+  @@map("pindrop_sessions")
 }
