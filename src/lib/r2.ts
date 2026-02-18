@@ -1,8 +1,6 @@
 import 'server-only';
 
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import fs from 'fs/promises';
-import path from 'path';
 
 const isR2Configured =
   !!process.env.R2_ENDPOINT &&
@@ -26,31 +24,27 @@ function getS3Client(): S3Client {
 }
 
 /**
- * Upload a file. Uses Cloudflare R2 when configured,
- * otherwise falls back to local /public/uploads/ directory.
+ * Upload a file to Cloudflare R2.
  */
 export async function uploadToR2(
   key: string,
   body: Buffer,
   contentType: string
 ): Promise<string> {
-  if (isR2Configured) {
-    const s3 = getS3Client();
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET!,
-        Key: key,
-        Body: body,
-        ContentType: contentType,
-      })
+  if (!isR2Configured) {
+    throw new Error(
+      'R2 storage is not configured. Set R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET environment variables.'
     );
-    return `${process.env.R2_PUBLIC_BASE_URL}/${key}`;
   }
 
-  // Local fallback: write to public/uploads/
-  const uploadsDir = path.join(process.cwd(), 'public', 'uploads', path.dirname(key));
-  await fs.mkdir(uploadsDir, { recursive: true });
-  const filePath = path.join(process.cwd(), 'public', 'uploads', key);
-  await fs.writeFile(filePath, body);
-  return `/uploads/${key}`;
+  const s3 = getS3Client();
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET!,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    })
+  );
+  return `${process.env.R2_PUBLIC_BASE_URL}/${key}`;
 }
