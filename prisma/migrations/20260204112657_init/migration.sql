@@ -1,0 +1,2 @@
+-- Initial migration (already applied to database)
+-- This file was restored as a placeholder after being lost from the filesystem.

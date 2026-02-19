@@ -20,8 +20,8 @@ export async function POST() {
 
   try {
     // Check if already migrated
-    const existing = await prisma.orgMember.findUnique({
-      where: { userId_orgId: { userId, orgId } },
+    const existing = await prisma.orgMember.findFirst({
+      where: { userId, orgId },
     });
     if (existing) {
       return NextResponse.json(

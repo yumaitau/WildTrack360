@@ -33,7 +33,8 @@ export default function PhotoGallery({ initialPhotos, animalId, animalSpecies }:
       createdAt: new Date(),
       updatedAt: new Date(),
       clerkUserId: '',
-      clerkOrganizationId: ''
+      clerkOrganizationId: '',
+      environment: 'PRODUCTION',
     };
     setPhotos([photo, ...photos]);
   };

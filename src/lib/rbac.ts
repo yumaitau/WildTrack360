@@ -74,8 +74,8 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
  * Falls back to CARER if no OrgMember record exists.
  */
 export async function getUserRole(userId: string, orgId: string): Promise<OrgRole> {
-  const member = await prisma.orgMember.findUnique({
-    where: { userId_orgId: { userId, orgId } },
+  const member = await prisma.orgMember.findFirst({
+    where: { userId, orgId },
   });
   return member?.role ?? 'CARER';
 }
@@ -84,8 +84,8 @@ export async function getUserRole(userId: string, orgId: string): Promise<OrgRol
  * Get the full OrgMember record (includes speciesAssignments).
  */
 export async function getOrgMember(userId: string, orgId: string) {
-  return prisma.orgMember.findUnique({
-    where: { userId_orgId: { userId, orgId } },
+  return prisma.orgMember.findFirst({
+    where: { userId, orgId },
     include: {
       speciesAssignments: {
         include: { speciesGroup: true },
@@ -220,8 +220,8 @@ export async function setUserRole(
   return prisma.$transaction(async (tx) => {
     // Prevent removing the last ADMIN
     if (role !== 'ADMIN') {
-      const currentMember = await tx.orgMember.findUnique({
-        where: { userId_orgId: { userId, orgId } },
+      const currentMember = await tx.orgMember.findFirst({
+        where: { userId, orgId },
       });
       if (currentMember?.role === 'ADMIN') {
         const adminCount = await tx.orgMember.count({
@@ -234,7 +234,7 @@ export async function setUserRole(
     }
 
     return tx.orgMember.upsert({
-      where: { userId_orgId: { userId, orgId } },
+      where: { userId_orgId_environment: { userId, orgId, environment: process.env.ENVIRONMENT ?? 'PRODUCTION' } },
       create: { userId, orgId, role },
       update: { role },
     });
@@ -367,7 +367,7 @@ export async function removeCoordinatorFromSpeciesGroup(
 
   return prisma.coordinatorSpeciesAssignment.delete({
     where: {
-      orgMemberId_speciesGroupId: { orgMemberId, speciesGroupId },
+      orgMemberId_speciesGroupId_environment: { orgMemberId, speciesGroupId, environment: process.env.ENVIRONMENT ?? 'PRODUCTION' },
     },
   });
 }
