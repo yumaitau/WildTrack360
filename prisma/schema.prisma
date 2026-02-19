@@ -73,6 +73,9 @@ model Animal {
   permanentCare PermanentCareApproval?
   preservedSpecimen PreservedSpecimen?
 
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("animals")
 }
 
@@ -94,6 +97,9 @@ model Record {
   animalId String
   animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
 
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("records")
 }
 
@@ -113,6 +119,9 @@ model Photo {
   animalId String
   animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
 
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("photos")
 }
 
@@ -130,6 +139,9 @@ model Species {
   clerkUserId         String
   clerkOrganizationId String
 
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("species")
 }
 
@@ -171,6 +183,9 @@ model CarerProfile {
   // Hygiene Logs
   hygieneLogs HygieneLog[]
 
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("carers")
 }
 
@@ -202,9 +217,12 @@ model CarerTraining {
   clerkUserId         String
   clerkOrganizationId String
 
+  environment String @default("PRODUCTION")
+
   @@index([carerId])
   @@index([expiryDate])
   @@index([clerkOrganizationId])
+  @@index([environment])
   @@map("carer_trainings")
 }
 
@@ -233,6 +251,9 @@ model HygieneLog {
   clerkUserId         String
   clerkOrganizationId String
 
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("hygiene_logs")
 }
 
@@ -259,6 +280,9 @@ model IncidentReport {
   clerkUserId         String
   clerkOrganizationId String
 
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("incident_reports")
 }
 
@@ -285,6 +309,9 @@ model ReleaseChecklist {
   // Animal Relation
   animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
 
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("release_checklists")
 }
 
@@ -306,6 +333,9 @@ model Asset {
   clerkUserId         String
   clerkOrganizationId String
 
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("assets")
 }
 
@@ -384,7 +414,10 @@ model AnimalTransfer {
   updatedAt DateTime @updatedAt
   clerkUserId String
   clerkOrganizationId String
-  
+
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("animal_transfers")
 }
 
@@ -422,7 +455,10 @@ model PermanentCareApproval {
   updatedAt DateTime @updatedAt
   clerkUserId String
   clerkOrganizationId String
-  
+
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("permanent_care_approvals")
 }
 
@@ -457,7 +493,10 @@ model PreservedSpecimen {
   updatedAt DateTime @updatedAt
   clerkUserId String
   clerkOrganizationId String
-  
+
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("preserved_specimens")
 }
 
@@ -494,7 +533,10 @@ model NSWReportMetadata {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   clerkOrganizationId String
-  
+
+  environment String @default("PRODUCTION")
+
+  @@index([environment])
   @@map("nsw_report_metadata")
 }
 
@@ -556,8 +598,11 @@ model OrgMember {
   // A coordinator can be assigned to one or more species groups
   speciesAssignments CoordinatorSpeciesAssignment[]
 
-  @@unique([userId, orgId])
+  environment String @default("PRODUCTION")
+
+  @@unique([userId, orgId, environment])
   @@index([orgId])
+  @@index([environment])
   @@map("org_members")
 }
 
@@ -574,8 +619,11 @@ model SpeciesGroup {
 
   coordinators CoordinatorSpeciesAssignment[]
 
-  @@unique([slug, orgId])
+  environment String @default("PRODUCTION")
+
+  @@unique([slug, orgId, environment])
   @@index([orgId])
+  @@index([environment])
   @@map("species_groups")
 }
 
@@ -589,7 +637,10 @@ model CoordinatorSpeciesAssignment {
   orgMember    OrgMember    @relation(fields: [orgMemberId], references: [id], onDelete: Cascade)
   speciesGroup SpeciesGroup @relation(fields: [speciesGroupId], references: [id], onDelete: Cascade)
 
-  @@unique([orgMemberId, speciesGroupId])
+  environment String @default("PRODUCTION")
+
+  @@unique([orgMemberId, speciesGroupId, environment])
+  @@index([environment])
   @@map("coordinator_species_assignments")
 }
 
@@ -607,10 +658,13 @@ model AuditLog {
   metadata  Json?       // Additional context (changed fields, old/new values, etc.)
   createdAt DateTime    @default(now())
 
+  environment String @default("PRODUCTION")
+
   @@index([orgId])
   @@index([userId])
   @@index([entity])
   @@index([createdAt])
+  @@index([environment])
   @@map("audit_logs")
 }
 

@@ -325,7 +325,7 @@ describe('setUserRole', () => {
 
     await setUserRole('u1', 'o1', 'COORDINATOR');
     expect(mockPrisma.orgMember.upsert).toHaveBeenCalledWith({
-      where: { userId_orgId: { userId: 'u1', orgId: 'o1' } },
+      where: { userId_orgId_environment: { userId: 'u1', orgId: 'o1', environment: 'PRODUCTION' } },
       create: { userId: 'u1', orgId: 'o1', role: 'COORDINATOR' },
       update: { role: 'COORDINATOR' },
     });

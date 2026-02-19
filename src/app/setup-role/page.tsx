@@ -16,8 +16,8 @@ export default async function SetupRolePage() {
   }
 
   // If the user already has an OrgMember record, they're migrated — send them home
-  const existing = await prisma.orgMember.findUnique({
-    where: { userId_orgId: { userId, orgId } },
+  const existing = await prisma.orgMember.findFirst({
+    where: { userId, orgId },
   });
   if (existing) {
     redirect('/');
