@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpeciesIcon } from "@/components/icons";
 import RecordTimeline from "@/components/record-timeline";
-import { ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus } from "lucide-react";
+import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -92,21 +93,16 @@ export default function AnimalDetailClient({
           { value: 'Other', label: 'Other' }
         ];
         
-        // Set up default carers if none exist
-        const defaultCarers = [
-          { value: 'default-carer', label: 'Default Carer' }
-        ];
-        
         if (species && species.length > 0) {
           setSpeciesOptions(species.map((s: any) => ({ value: s.name, label: s.name })));
         } else {
           setSpeciesOptions(defaultSpecies);
         }
-        
+
         if (carers && carers.length > 0) {
           setCarerOptions(carers.map((c: any) => ({ value: c.id, label: c.name })));
         } else {
-          setCarerOptions(defaultCarers);
+          setCarerOptions([]);
         }
       } catch (e) {
         console.error('Failed loading lookups', e);
@@ -115,9 +111,7 @@ export default function AnimalDetailClient({
           { value: 'Kangaroo', label: 'Kangaroo' },
           { value: 'Other', label: 'Other' }
         ]);
-        setCarerOptions([
-          { value: 'default-carer', label: 'Default Carer' }
-        ]);
+        setCarerOptions([]);
       }
     };
     loadLookups();
@@ -643,18 +637,27 @@ export default function AnimalDetailClient({
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Select value={selectedCarerId} onValueChange={setSelectedCarerId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a carer" />
-              </SelectTrigger>
-              <SelectContent>
-                {carerOptions.map((c: any) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {carerOptions.length > 0 ? (
+              <Select value={selectedCarerId} onValueChange={setSelectedCarerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a carer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {carerOptions.map((c: any) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Alert variant="default" className="border-amber-200 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 text-sm">
+                  No eligible carers available. A carer must have a completed profile and be assigned to a species group before they can be assigned to an animal.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             {animal.carerId && (
@@ -669,7 +672,7 @@ export default function AnimalDetailClient({
                 Remove Carer
               </Button>
             )}
-            <Button onClick={handleAssignCarer} disabled={isAssigningCarer || !selectedCarerId}>
+            <Button onClick={handleAssignCarer} disabled={isAssigningCarer || !selectedCarerId || carerOptions.length === 0}>
               {isAssigningCarer ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>

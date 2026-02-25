@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { format, parse } from "date-fns"
-import { CalendarIcon, Loader2, Rocket } from "lucide-react"
+import { AlertTriangle, CalendarIcon, Loader2, Rocket } from "lucide-react"
 
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Animal } from '@prisma/client';
 
 type CreateAnimalData = {
@@ -324,7 +325,7 @@ export function AddAnimalDialog({
       rescueAddress: data.rescueAddress || null,
       rescueSuburb: data.rescueSuburb || null,
       rescuePostcode: data.rescuePostcode || null,
-      carerId: data.carer || null,
+      carerId: (data.carer && data.carer !== 'default' && data.carer !== 'default-carer') ? data.carer : null,
       // NSW-specific fields
       encounterType: data.encounterType || null,
       initialWeightGrams: data.initialWeightGrams || null,
@@ -526,30 +527,38 @@ export function AddAnimalDialog({
              <FormField
               control={form.control}
               name="carer"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Carer</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a carer" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {carers && carers.length > 0 ? (
-                        carers.map(c => (
-                          <SelectItem key={c.value || 'default'} value={c.value || 'default'}>
-                            {c.label || c.value || 'Default Carer'}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="default">Default Carer</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const validCarers = (carers || []).filter((c: any) => c.value);
+                return (
+                  <FormItem>
+                    <FormLabel>Carer</FormLabel>
+                    {validCarers.length > 0 ? (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a carer" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {validCarers.map((c: any) => (
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.label || c.value}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Alert variant="default" className="border-amber-200 bg-amber-50">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        <AlertDescription className="text-amber-800 text-sm">
+                          No eligible carers available. A carer must have a completed profile and be assigned to a species group before they can be assigned to an animal.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}
