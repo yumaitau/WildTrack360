@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Skip linting and type-checking during build (run these in CI instead)
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 export default withSentryConfig(nextConfig, {
@@ -24,6 +31,11 @@ export default withSentryConfig(nextConfig, {
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
+
+  // Disable source map upload on VPS builds to save CPU/memory
+  sourcemaps: {
+    disable: !process.env.CI,
+  },
 
   // For all available options, see:
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
