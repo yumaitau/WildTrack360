@@ -1,9 +1,11 @@
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getRecordIcon } from './icons';
 import type { Record } from '@prisma/client';
 import { FileText, MapPin, AlertTriangle, User, Clock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { getJurisdictionComplianceConfig } from '@/lib/compliance-rules';
 
 interface RecordTimelineProps {
   records: Record[];
@@ -25,6 +27,12 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 export default function RecordTimeline({ records, userMap = {}, rescueLocation, jurisdiction }: RecordTimelineProps) {
+  const distanceReq = useMemo(() => {
+    if (!jurisdiction) return null;
+    const config = getJurisdictionComplianceConfig(jurisdiction);
+    return config.distanceRequirements;
+  }, [jurisdiction]);
+
   return (
     <Card className="shadow-lg h-full">
       <CardHeader>
@@ -105,7 +113,7 @@ export default function RecordTimeline({ records, userMap = {}, rescueLocation, 
                           Coordinates: {record.location.lat.toFixed(6)}, {record.location.lng.toFixed(6)}
                         </p>
                       </div>
-                      {jurisdiction === 'ACT' && rescueLocation && (
+                      {distanceReq?.enforced && rescueLocation && (
                         (() => {
                           const distance = calculateDistance(
                             rescueLocation.lat,
@@ -113,18 +121,18 @@ export default function RecordTimeline({ records, userMap = {}, rescueLocation, 
                             record.location.lat,
                             record.location.lng
                           );
-                          const isNonCompliant = distance < 10;
+                          const isNonCompliant = distance < distanceReq.releaseDistance;
                           return isNonCompliant ? (
                             <Alert className="border-orange-200 bg-orange-50">
                               <AlertTriangle className="h-4 w-4 text-orange-600" />
                               <AlertDescription className="text-orange-800">
-                                <strong>ACT Compliance Warning:</strong> Release location is {distance.toFixed(2)}km from rescue location.
-                                ACT Wildlife Code requires release sites to be at least 10km from the rescue location.
+                                <strong>{jurisdiction} Compliance Warning:</strong> Release location is {distance.toFixed(2)}{distanceReq.unit} from rescue location.
+                                Release sites must be at least {distanceReq.releaseDistance}{distanceReq.unit} from the rescue location.
                               </AlertDescription>
                             </Alert>
                           ) : (
                             <div className="text-xs text-green-600 bg-green-50 p-2 rounded border border-green-200">
-                              ✓ Compliant: Release location is {distance.toFixed(2)}km from rescue location
+                              ✓ Compliant: Release location is {distance.toFixed(2)}{distanceReq.unit} from rescue location
                             </div>
                           );
                         })()

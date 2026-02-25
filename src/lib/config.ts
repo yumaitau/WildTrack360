@@ -76,6 +76,14 @@ const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     maxRetentionYears: 3,
     codeOfPractice: 'Northern Territory Territory Parks and Wildlife Conservation Act 1976',
   },
+  NATIONAL: {
+    enabledForms: ['releaseChecklist'],
+    templates: [],
+    enforceReleaseDistance: false,
+    requireVetSignOff: false,
+    maxRetentionYears: 0,
+    codeOfPractice: '',
+  },
 };
 
 // Get jurisdiction from environment variable
@@ -95,6 +103,16 @@ export const getCurrentJurisdiction = (): string => {
 
   // Default if not present on organization metadata
   console.warn('Jurisdiction not set on Clerk organization publicMetadata. Defaulting to ACT.');
+  return 'ACT';
+};
+
+// Derive jurisdiction reactively from a Clerk organization object
+export const getJurisdictionFromOrg = (organization: { publicMetadata?: Record<string, unknown> } | null | undefined): string => {
+  const value = (organization?.publicMetadata?.jurisdiction as string | undefined)?.toString().trim();
+  if (value) {
+    const upper = value.toUpperCase();
+    if (DEFAULT_JURISDICTION_CONFIGS[upper]) return upper;
+  }
   return 'ACT';
 };
 

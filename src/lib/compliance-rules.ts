@@ -756,6 +756,35 @@ export const JURISDICTION_COMPLIANCE_CONFIGS: { [key: string]: JurisdictionCompl
       forJuveniles: true,
       forSpecificSpecies: ['Endangered species']
     }
+  },
+  // National – no state-specific compliance rules but core platform features (release checklists) are enabled
+  NATIONAL: {
+    enabledForms: ['releaseChecklist'],
+    templates: [],
+    enforceReleaseDistance: false,
+    requireVetSignOff: false,
+    maxRetentionYears: 0,
+    codeOfPractice: '',
+    sections: [],
+    retentionRequirements: {
+      animalRecords: 0,
+      incidentReports: 0,
+      hygieneLogs: 0,
+      releaseChecklists: 0,
+      carerRecords: 0
+    },
+    mandatoryForms: ['release-checklist'],
+    optionalForms: [],
+    distanceRequirements: {
+      releaseDistance: 0,
+      unit: 'km',
+      enforced: false
+    },
+    vetRequirements: {
+      signOffRequired: false,
+      forJuveniles: false,
+      forSpecificSpecies: []
+    }
   }
 };
 
