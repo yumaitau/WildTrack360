@@ -829,14 +829,18 @@ export function AddAnimalDialog({
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
-              {isEditMode && animalToEdit && (animalToEdit.status === 'IN_CARE' || animalToEdit.status === 'READY_FOR_RELEASE') && (
+              {isEditMode && animalToEdit && (form.watch('status') === 'IN_CARE' || form.watch('status') === 'READY_FOR_RELEASE') && (
                 <Button
                   type="button"
                   variant="default"
                   className="bg-green-600 hover:bg-green-700"
+                  disabled={isLoading}
                   onClick={() => {
-                    setIsOpen(false);
-                    router.push(`/compliance/release-checklist/new?animalId=${animalToEdit.id}`);
+                    form.handleSubmit(async (data) => {
+                      await onSubmit(data);
+                      setIsOpen(false);
+                      router.push(`/compliance/release-checklist/new?animalId=${animalToEdit.id}`);
+                    })();
                   }}
                 >
                   <Rocket className="mr-2 h-4 w-4" />
