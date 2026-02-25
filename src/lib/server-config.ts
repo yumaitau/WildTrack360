@@ -99,8 +99,8 @@ const JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
   },
   NATIONAL: {
     fullName: 'National',
-    shortName: 'NATIONAL',
-    enabledForms: [],
+    shortName: 'NATL',
+    enabledForms: ['releaseChecklist'],
     templates: [],
     enforceReleaseDistance: false,
     requireVetSignOff: false,

@@ -6,6 +6,7 @@ import { MapPin, AlertTriangle, Map, Satellite, Expand } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { GoogleMap, Marker, useJsApiLoader, Polyline } from '@react-google-maps/api';
 import { Button } from '@/components/ui/button';
+import { getJurisdictionComplianceConfig } from '@/lib/compliance-rules';
 import {
   Dialog,
   DialogContent,
@@ -56,18 +57,21 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
     libraries: ['places']
   });
 
+  const complianceConfig = useMemo(() => jurisdiction ? getJurisdictionComplianceConfig(jurisdiction) : null, [jurisdiction]);
+  const distanceReq = complianceConfig?.distanceRequirements;
+
   const isNonCompliant = useMemo(() => {
-    if (jurisdiction !== 'ACT' || !rescueLocation || !releaseLocation) {
+    if (!distanceReq?.enforced || !rescueLocation || !releaseLocation) {
       return false;
     }
     const distance = calculateDistance(
-      rescueLocation.lat, 
-      rescueLocation.lng, 
-      releaseLocation.lat, 
+      rescueLocation.lat,
+      rescueLocation.lng,
+      releaseLocation.lat,
       releaseLocation.lng
     );
-    return distance < 10;
-  }, [jurisdiction, rescueLocation, releaseLocation]);
+    return distance < distanceReq.releaseDistance;
+  }, [distanceReq, rescueLocation, releaseLocation]);
 
   const center = useMemo(() => {
     if (rescueLocation) {
@@ -262,12 +266,12 @@ containerStyle={mapContainerStyle} />
         </div>
         
         <div className="p-4 space-y-3">
-          {isNonCompliant && (
+          {isNonCompliant && distanceReq && (
             <Alert className="border-orange-200 bg-orange-50">
               <AlertTriangle className="h-4 w-4 text-orange-600" />
               <AlertDescription className="text-orange-800">
-                <strong>ACT Compliance Warning:</strong> Release location is within 10km of rescue location. 
-                ACT Wildlife Code requires release sites to be at least 10km from the rescue location.
+                <strong>{jurisdiction} Compliance Warning:</strong> Release location is within {distanceReq.releaseDistance}{distanceReq.unit} of rescue location.
+                Release sites must be at least {distanceReq.releaseDistance}{distanceReq.unit} from the rescue location.
               </AlertDescription>
             </Alert>
           )}

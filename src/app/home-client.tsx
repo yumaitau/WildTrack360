@@ -37,7 +37,7 @@ import { AdminComplianceChecklist } from '@/components/admin-compliance-checklis
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { getCurrentJurisdiction } from '@/lib/config';
+import { getJurisdictionFromOrg } from '@/lib/config';
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -203,7 +203,7 @@ function AdminCoordinatorView({
   return (
     <>
       {/* Admin Compliance Checklist */}
-      {userRole === 'ADMIN' && jurisdiction !== 'NATIONAL' && (
+      {userRole === 'ADMIN' && (
         <AdminComplianceChecklist
           carers={carersList}
           organization={organization}
@@ -399,7 +399,9 @@ function AdminCoordinatorView({
           </Link>
         </div>
         <p className="text-sm text-muted-foreground">
-          View compliance overview, registers, hygiene logs, incident reports, and release checklists. Generate reports for your organization.
+          {jurisdiction === 'NATIONAL'
+            ? 'Manage release checklists for your animals. State-specific compliance features are available when a jurisdiction is configured.'
+            : 'View compliance overview, registers, hygiene logs, incident reports, and release checklists. Generate reports for your organization.'}
         </p>
       </div>
 
@@ -435,7 +437,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(false);
   const [greeting, setGreeting] = useState('');
-  const [orgJurisdiction, setOrgJurisdiction] = useState<string>('');
+  const orgJurisdiction = useMemo(() => getJurisdictionFromOrg(organization), [organization]);
   const [userRole, setUserRole] = useState<string>('CARER');
   const [hasIncompleteProfile, setHasIncompleteProfile] = useState(false);
 
@@ -496,15 +498,6 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
     setGreeting(msg);
   }, []);
 
-  useEffect(() => {
-    // Resolve jurisdiction from Clerk org/user public metadata or env fallback
-    try {
-      const j = getCurrentJurisdiction();
-      setOrgJurisdiction(j);
-    } catch {
-      setOrgJurisdiction('ACT');
-    }
-  }, []);
 
   const handleAddAnimal = async (animalData: CreateAnimalData) => {
     if (!user || !organization) return;
