@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { LocationPicker } from "@/components/location-picker";
 import { recordTypes } from "@/lib/types";
 
 const addRecordSchema = z.object({
@@ -48,11 +47,6 @@ const addRecordSchema = z.object({
   medication: z.string().optional(),
   foodType: z.string().optional(),
   foodAmount: z.string().optional(),
-  location: z.object({
-    lat: z.number(),
-    lng: z.number(),
-    address: z.string(),
-  }).optional(),
 });
 
 type AddRecordFormValues = z.infer<typeof addRecordSchema>;
@@ -64,16 +58,6 @@ interface AddRecordFormProps {
 
 export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
   const { toast } = useToast();
-  const [isCheckingRelease, setIsCheckingRelease] = React.useState(false);
-  const [locationData, setLocationData] = React.useState<{
-    lat: number;
-    lng: number;
-    address: string;
-  }>({
-    lat: -35.2809,
-    lng: 149.1300,
-    address: 'Canberra ACT, Australia'
-  });
   
   const form = useForm<AddRecordFormValues>({
     resolver: zodResolver(addRecordSchema),
@@ -88,15 +72,6 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
   const recordType = form.watch("type");
 
   async function onSubmit(data: AddRecordFormValues) {
-    // Check if this is a release and show notification
-    if (data.type === 'Release') {
-      setIsCheckingRelease(true);
-      toast({
-        title: "Starting Release Process",
-        description: "Redirecting to the release checklist to ensure compliance before releasing this animal...",
-      });
-    }
-    
     const details: { [key: string]: string | number } = {};
     if (data.type === 'Growth') {
         if (data.weight) details.weight = data.weight;
@@ -120,7 +95,6 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
       'Growth': 'WEIGHT',
       'Feeding': 'FEEDING',
       'Sighting': 'LOCATION',
-      'Release': 'RELEASE',
       'General': 'OTHER',
     };
 
@@ -134,14 +108,9 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
       datetime: datetimeStr,
       notes: data.notes,
       details: Object.keys(details).length > 0 ? details : undefined,
-      location: data.type === 'Release' ? locationData.address : undefined,
-      coordinates: data.type === 'Release' ? { lat: locationData.lat, lng: locationData.lng } : undefined,
     };
 
     await onRecordAdd(newRecord);
-    
-    // Reset checking state if we didn't redirect
-    setIsCheckingRelease(false);
 
     toast({
       title: "Record Added",
@@ -179,14 +148,14 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
                     <FormLabel>Record Type</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger disabled={isCheckingRelease}>
+                        <SelectTrigger>
                           <SelectValue placeholder="Select a record type" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {recordTypes.map((type) => (
                           <SelectItem key={type} value={type}>
-                            {type === 'Release' ? 'Release (Start Checklist)' : type}
+                            {type}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -331,13 +300,6 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
               </div>
             )}
 
-            {recordType === 'Release' && (
-              <LocationPicker
-                onLocationChange={setLocationData}
-                initialLocation={locationData}
-              />
-            )}
-
 
             <FormField
               control={form.control}
@@ -357,9 +319,9 @@ export function AddRecordForm({ animalId, onRecordAdd }: AddRecordFormProps) {
             />
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={isCheckingRelease}>
+              <Button type="submit">
                 <PlusCircle className="mr-2" />
-                {isCheckingRelease ? 'Checking Release Requirements...' : 'Add Record'}
+                Add Record
               </Button>
             </div>
           </form>

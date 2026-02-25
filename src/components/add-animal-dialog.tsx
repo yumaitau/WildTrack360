@@ -5,8 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { format, parse } from "date-fns"
-import { CalendarIcon, Loader2 } from "lucide-react"
+import { CalendarIcon, Loader2, Rocket } from "lucide-react"
 
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -127,6 +128,7 @@ export function AddAnimalDialog({
   carers
 }: AddAnimalDialogProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const [isLoading, setIsLoading] = React.useState(false)
   const [locationData, setLocationData] = React.useState<{
     lat: number;
@@ -827,6 +829,24 @@ export function AddAnimalDialog({
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
+              {isEditMode && animalToEdit && (form.watch('status') === 'IN_CARE' || form.watch('status') === 'READY_FOR_RELEASE') && (
+                <Button
+                  type="button"
+                  variant="default"
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={isLoading}
+                  onClick={() => {
+                    form.handleSubmit(async (data) => {
+                      await onSubmit(data);
+                      setIsOpen(false);
+                      router.push(`/compliance/release-checklist/new?animalId=${animalToEdit.id}`);
+                    })();
+                  }}
+                >
+                  <Rocket className="mr-2 h-4 w-4" />
+                  Release Animal
+                </Button>
+              )}
               <Button type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditMode ? 'Save Changes' : 'Save Animal'}

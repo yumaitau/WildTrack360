@@ -124,15 +124,6 @@ export default function AnimalDetailClient({
   }, [organization, animal.species]);
 
   const handleAddRecord = async (newRecord: any) => {
-    // Check if this is a release record - redirect to release checklist
-    if (newRecord.type === 'RELEASE') {
-      // Always redirect to release checklist for releases
-      // The checklist will handle the entire release process
-      window.location.href = `/compliance/release-checklist/new?animalId=${animal.id}`;
-      return;
-    }
-    
-    // For non-release records, persist via API
     const recordResponse = await fetch('/api/records', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
