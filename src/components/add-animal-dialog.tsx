@@ -200,6 +200,8 @@ export function AddAnimalDialog({
     }
   })
 
+  const watchedStatus = form.watch('status')
+
   // Only reset form when dialog transitions from closed to open, or when animalToEdit changes
   React.useEffect(() => {
     // Check if dialog just opened (was closed, now open)
@@ -811,7 +813,7 @@ export function AddAnimalDialog({
             />
             
             {/* Show release location fields when status is RELEASED */}
-            {form.watch('status') === 'RELEASED' && (
+            {watchedStatus === 'RELEASED' && (
               <div className="space-y-4">
                 <h4 className="text-sm font-medium text-green-700">Release Location Details</h4>
                 <p className="text-xs text-muted-foreground">
@@ -829,14 +831,17 @@ export function AddAnimalDialog({
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
-              {isEditMode && animalToEdit && (animalToEdit.status === 'IN_CARE' || animalToEdit.status === 'READY_FOR_RELEASE') && (
+              {isEditMode && animalToEdit && (watchedStatus === 'IN_CARE' || watchedStatus === 'READY_FOR_RELEASE') && (
                 <Button
                   type="button"
                   variant="default"
                   className="bg-green-600 hover:bg-green-700"
+                  disabled={isLoading}
                   onClick={() => {
-                    setIsOpen(false);
-                    router.push(`/compliance/release-checklist/new?animalId=${animalToEdit.id}`);
+                    form.handleSubmit(async (data) => {
+                      await onSubmit(data);
+                      router.push(`/compliance/release-checklist/new?animalId=${animalToEdit.id}`);
+                    })();
                   }}
                 >
                   <Rocket className="mr-2 h-4 w-4" />
