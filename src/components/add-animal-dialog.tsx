@@ -325,7 +325,7 @@ export function AddAnimalDialog({
       rescueAddress: data.rescueAddress || null,
       rescueSuburb: data.rescueSuburb || null,
       rescuePostcode: data.rescuePostcode || null,
-      carerId: (data.carer && data.carer !== 'default' && data.carer !== 'default-carer') ? data.carer : null,
+      carerId: (data.carer && data.carer !== 'default' && data.carer !== 'default-carer' && (carers || []).some((c: any) => c.value === data.carer)) ? data.carer : null,
       // NSW-specific fields
       encounterType: data.encounterType || null,
       initialWeightGrams: data.initialWeightGrams || null,
@@ -529,6 +529,9 @@ export function AddAnimalDialog({
               name="carer"
               render={({ field }) => {
                 const validCarers = (carers || []).filter((c: any) => c.value);
+                if (validCarers.length === 0 && field.value) {
+                  field.onChange('');
+                }
                 return (
                   <FormItem>
                     <FormLabel>Carer</FormLabel>

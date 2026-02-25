@@ -202,14 +202,15 @@ export default function AnimalDetailClient({
     }
   };
 
-  const handleAssignCarer = async () => {
+  const handleAssignCarer = async (explicitCarerId?: string | null) => {
     setIsAssigningCarer(true);
+    const carerId = explicitCarerId !== undefined ? explicitCarerId : selectedCarerId;
     try {
       const res = await fetch(`/api/animals/${animal.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          carerId: selectedCarerId || null,
+          carerId: carerId || null,
           clerkOrganizationId: organization?.id,
         }),
       });
@@ -665,14 +666,14 @@ export default function AnimalDetailClient({
                 variant="outline"
                 onClick={() => {
                   setSelectedCarerId("");
-                  handleAssignCarer();
+                  handleAssignCarer(null);
                 }}
                 disabled={isAssigningCarer}
               >
                 Remove Carer
               </Button>
             )}
-            <Button onClick={handleAssignCarer} disabled={isAssigningCarer || !selectedCarerId || carerOptions.length === 0}>
+            <Button onClick={() => handleAssignCarer()} disabled={isAssigningCarer || !selectedCarerId || carerOptions.length === 0}>
               {isAssigningCarer ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
