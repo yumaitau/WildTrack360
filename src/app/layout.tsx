@@ -14,7 +14,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+        allowedRedirectOrigins={[
+          `https://*.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`,
+          `http://*.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`,
+        ]}
+      >
       <html lang="en" suppressHydrationWarning>
         <head>
           <link rel="preconnect" href="https://fonts.googleapis.com" />
