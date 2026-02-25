@@ -81,7 +81,7 @@ export default async function Home() {
       getEnrichedCarers(organizationId),
     ]);
 
-    const showOnboarding = role === 'ADMIN' && (animals.length === 0 || species.length === 0);
+    const showOnboarding = role === 'ADMIN' && species.length === 0;
 
     return (
       <>
@@ -89,8 +89,7 @@ export default async function Home() {
           <div className="w-full text-white" style={{ backgroundColor: '#00768d' }}>
             <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
               <div className="text-sm md:text-base font-medium">
-                No {animals.length === 0 ? 'animals' : ''}{animals.length === 0 && species.length === 0 ? ' or ' : ''}{species.length === 0 ? 'species' : ''} found.
-                Add your first entries to get started.
+                No species found. Add your first species to get started.
               </div>
               <a
                 href="/admin"
