@@ -203,7 +203,7 @@ function AdminCoordinatorView({
   return (
     <>
       {/* Admin Compliance Checklist */}
-      {userRole === 'ADMIN' && (
+      {userRole === 'ADMIN' && jurisdiction !== 'NATIONAL' && (
         <AdminComplianceChecklist
           carers={carersList}
           organization={organization}

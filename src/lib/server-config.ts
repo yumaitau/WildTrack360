@@ -97,6 +97,16 @@ const JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     maxRetentionYears: 2,
     codeOfPractice: 'Northern Territory Wildlife Act 2000',
   },
+  NATIONAL: {
+    fullName: 'National',
+    shortName: 'NATIONAL',
+    enabledForms: [],
+    templates: [],
+    enforceReleaseDistance: false,
+    requireVetSignOff: false,
+    maxRetentionYears: 0,
+    codeOfPractice: '',
+  },
 };
 
 // Get organization jurisdiction from Clerk (server-side)

@@ -729,6 +729,34 @@ export const JURISDICTION_COMPLIANCE_CONFIGS: { [key: string]: JurisdictionCompl
       forSpecificSpecies: []
     }
   },
+  NATIONAL: {
+    enabledForms: [],
+    templates: [],
+    enforceReleaseDistance: false,
+    requireVetSignOff: false,
+    maxRetentionYears: 0,
+    codeOfPractice: '',
+    sections: [],
+    retentionRequirements: {
+      animalRecords: 0,
+      incidentReports: 0,
+      hygieneLogs: 0,
+      releaseChecklists: 0,
+      carerRecords: 0
+    },
+    mandatoryForms: [],
+    optionalForms: [],
+    distanceRequirements: {
+      releaseDistance: 0,
+      unit: 'km',
+      enforced: false
+    },
+    vetRequirements: {
+      signOffRequired: false,
+      forJuveniles: false,
+      forSpecificSpecies: []
+    }
+  },
   VIC: {
     enabledForms: ['releaseChecklist', 'incidentLog', 'hygieneLog'],
     templates: ['VICRegister'],

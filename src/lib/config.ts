@@ -76,6 +76,14 @@ const DEFAULT_JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
     maxRetentionYears: 3,
     codeOfPractice: 'Northern Territory Territory Parks and Wildlife Conservation Act 1976',
   },
+  NATIONAL: {
+    enabledForms: [],
+    templates: [],
+    enforceReleaseDistance: false,
+    requireVetSignOff: false,
+    maxRetentionYears: 0,
+    codeOfPractice: '',
+  },
 };
 
 // Get jurisdiction from environment variable
