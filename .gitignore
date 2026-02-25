@@ -47,3 +47,8 @@ firestore-debug.log
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Jetbrains
+.idea/
+# Sentry Config File
+.env.sentry-build-plugin
