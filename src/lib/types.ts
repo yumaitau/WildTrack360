@@ -38,7 +38,7 @@ export interface EnrichedCarer {
 export const assetTypes = ['Equipment', 'Cage', 'Tracker', 'Dataset', 'Other'] as const;
 export type AssetType = typeof assetTypes[number];
 
-export const recordTypes = ['Health Check', 'Growth', 'Feeding', 'Sighting', 'Release', 'General'] as const;
+export const recordTypes = ['Health Check', 'Growth', 'Feeding', 'Sighting', 'General'] as const;
 export type RecordType = typeof recordTypes[number];
 
 // RBAC types for client-side use
