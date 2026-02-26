@@ -16,27 +16,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { emailAddress } = await request.json();
+  let emailAddress: string;
+  try {
+    const body = await request.json();
+    emailAddress = body.emailAddress;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
   if (!emailAddress) {
     return NextResponse.json({ error: "Email address is required" }, { status: 400 });
   }
 
-  const clerk = await clerkClient();
-  const org = await clerk.organizations.getOrganization({ organizationId: orgId });
-  const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
+  try {
+    const clerk = await clerkClient();
+    const org = await clerk.organizations.getOrganization({ organizationId: orgId });
+    const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
 
-  const protocol = ROOT_DOMAIN.startsWith("localhost") ? "http" : "https";
-  const redirectUrl = orgUrl
-    ? `${protocol}://${orgUrl}.${ROOT_DOMAIN}/`
-    : `${protocol}://${ROOT_DOMAIN}/`;
+    const protocol = ROOT_DOMAIN.startsWith("localhost") ? "http" : "https";
+    const safeHostname = orgUrl && /^[a-zA-Z0-9-]+$/.test(orgUrl);
+    const redirectUrl = safeHostname
+      ? `${protocol}://${orgUrl}.${ROOT_DOMAIN}/`
+      : `${protocol}://${ROOT_DOMAIN}/`;
 
-  const invitation = await clerk.organizations.createOrganizationInvitation({
-    organizationId: orgId,
-    emailAddress,
-    role: "org:member",
-    inviterUserId: userId,
-    redirectUrl,
-  });
+    const invitation = await clerk.organizations.createOrganizationInvitation({
+      organizationId: orgId,
+      emailAddress,
+      role: "org:member",
+      inviterUserId: userId,
+      redirectUrl,
+    });
 
-  return NextResponse.json({ id: invitation.id });
+    return NextResponse.json({ id: invitation.id });
+  } catch (error) {
+    console.error("Clerk API error during invitation:", error);
+    return NextResponse.json({ error: "Failed to create invitation" }, { status: 502 });
+  }
 }

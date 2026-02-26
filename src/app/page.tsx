@@ -25,12 +25,19 @@ export default async function Home() {
   const subdomain = extractSubdomain(host, ROOT_DOMAIN);
 
   if (!subdomain && orgId) {
-    const clerk = await clerkClient();
-    const org = await clerk.organizations.getOrganization({ organizationId: orgId });
-    const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
-    if (orgUrl) {
-      const protocol = ROOT_DOMAIN.startsWith("localhost") ? "http" : "https";
-      redirect(`${protocol}://${orgUrl}.${ROOT_DOMAIN}/`);
+    try {
+      const clerk = await clerkClient();
+      const org = await clerk.organizations.getOrganization({ organizationId: orgId });
+      const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
+      if (orgUrl) {
+        const protocol = ROOT_DOMAIN.startsWith("localhost") ? "http" : "https";
+        redirect(`${protocol}://${orgUrl}.${ROOT_DOMAIN}/`);
+      }
+    } catch (error) {
+      // Re-throw Next.js redirect (it throws a special error internally)
+      const digest = error instanceof Error && "digest" in error ? (error as { digest: string }).digest : "";
+      if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) throw error;
+      console.error("Failed to look up org for subdomain redirect:", error);
     }
   }
 
