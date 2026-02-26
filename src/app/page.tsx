@@ -1,4 +1,5 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import HomeClient from "./home-client";
 import { getSpecies } from "@/lib/database";
@@ -6,6 +7,9 @@ import { createOrUpdateClerkUser, createOrUpdateClerkOrganization } from "@/lib/
 import { getEnrichedCarers } from "@/lib/carer-helpers";
 import { prisma } from "@/lib/prisma";
 import { getUserRole, getAuthorisedSpecies, getOrgMember } from "@/lib/rbac";
+import { extractSubdomain } from "@/lib/subdomain";
+
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
 
 export default async function Home() {
   const { userId, orgId } = await auth();
@@ -13,6 +17,21 @@ export default async function Home() {
 
   if (!userId) {
     redirect("/landing");
+  }
+
+  // If user is on the root domain but has an active org, redirect to their tenant subdomain
+  const headersList = await headers();
+  const host = headersList.get("host") ?? "";
+  const subdomain = extractSubdomain(host, ROOT_DOMAIN);
+
+  if (!subdomain && orgId) {
+    const clerk = await clerkClient();
+    const org = await clerk.organizations.getOrganization({ organizationId: orgId });
+    const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
+    if (orgUrl) {
+      const protocol = ROOT_DOMAIN.startsWith("localhost") ? "http" : "https";
+      redirect(`${protocol}://${orgUrl}.${ROOT_DOMAIN}/`);
+    }
   }
 
   // Use the active Clerk organization

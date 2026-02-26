@@ -227,15 +227,24 @@ export function PeopleManagement() {
 
     setSendingInvite(true);
     try {
-      await organization.inviteMember({ emailAddress: inviteEmail, role: 'org:member' });
+      const res = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailAddress: inviteEmail }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to send invitation');
+      }
       toast.success(`Invitation sent to ${inviteEmail}`);
       setInviteEmail('');
       refreshAll();
     } catch (error: any) {
-      if (error.errors?.[0]?.code === 'duplicate_record') {
+      const msg = error.message || 'Failed to send invitation';
+      if (msg.includes('duplicate') || msg.includes('already')) {
         toast.error('This user is already a member or has a pending invitation');
       } else {
-        toast.error(error.errors?.[0]?.message || 'Failed to send invitation');
+        toast.error(msg);
       }
     } finally {
       setSendingInvite(false);
