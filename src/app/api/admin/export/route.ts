@@ -46,7 +46,6 @@ export async function GET() {
 		const [
 			animals,
 			records,
-			photos,
 			species,
 			carerProfiles,
 			carerTrainings,
@@ -54,8 +53,6 @@ export async function GET() {
 			incidentReports,
 			releaseChecklists,
 			assets,
-			animalTransfers,
-			permanentCareApprovals,
 			preservedSpecimens,
 			orgMembers,
 			speciesGroups,
@@ -69,11 +66,6 @@ export async function GET() {
 			prisma.record.findMany({
 				where: { clerkOrganizationId: orgId },
 				include: { animal: { select: { name: true, species: true } } },
-				orderBy: { date: 'desc' },
-			}),
-			prisma.photo.findMany({
-				where: { clerkOrganizationId: orgId },
-				include: { animal: { select: { name: true } } },
 				orderBy: { date: 'desc' },
 			}),
 			prisma.species.findMany({
@@ -104,16 +96,6 @@ export async function GET() {
 			}),
 			prisma.asset.findMany({
 				where: { clerkOrganizationId: orgId },
-				orderBy: { createdAt: 'desc' },
-			}),
-			prisma.animalTransfer.findMany({
-				where: { clerkOrganizationId: orgId },
-				include: { animal: { select: { name: true, species: true } } },
-				orderBy: { transferDate: 'desc' },
-			}),
-			prisma.permanentCareApproval.findMany({
-				where: { clerkOrganizationId: orgId },
-				include: { animal: { select: { name: true, species: true } } },
 				orderBy: { createdAt: 'desc' },
 			}),
 			prisma.preservedSpecimen.findMany({
@@ -258,33 +240,7 @@ export async function GET() {
 		}
 		styleHeaderRow(recordsSheet)
 
-		// ── 3. Photos ───────────────────────────────────────────────────────
-		const photosSheet = workbook.addWorksheet('Photos')
-		photosSheet.columns = [
-			{ header: 'ID', key: 'id', width: 28 },
-			{ header: 'URL', key: 'url', width: 40 },
-			{ header: 'Description', key: 'description', width: 30 },
-			{ header: 'Date', key: 'date', width: 18 },
-			{ header: 'Animal ID', key: 'animalId', width: 28 },
-			{ header: 'Animal Name', key: 'animalName', width: 20 },
-			{ header: 'Created At', key: 'createdAt', width: 22 },
-			{ header: 'Updated At', key: 'updatedAt', width: 22 },
-		]
-		for (const p of photos) {
-			photosSheet.addRow({
-				id: p.id,
-				url: p.url,
-				description: p.description,
-				date: fmtDate(p.date),
-				animalId: p.animalId,
-				animalName: p.animal.name,
-				createdAt: fmtDate(p.createdAt),
-				updatedAt: fmtDate(p.updatedAt),
-			})
-		}
-		styleHeaderRow(photosSheet)
-
-		// ── 4. Species ──────────────────────────────────────────────────────
+		// ── 3. Species ──────────────────────────────────────────────────────
 		const speciesSheet = workbook.addWorksheet('Species')
 		speciesSheet.columns = [
 			{ header: 'ID', key: 'id', width: 28 },
@@ -558,115 +514,7 @@ export async function GET() {
 		}
 		styleHeaderRow(assetsSheet)
 
-		// ── 11. Animal Transfers ────────────────────────────────────────────
-		const transfersSheet = workbook.addWorksheet('Animal Transfers')
-		transfersSheet.columns = [
-			{ header: 'ID', key: 'id', width: 28 },
-			{ header: 'Animal ID', key: 'animalId', width: 28 },
-			{ header: 'Animal Name', key: 'animalName', width: 20 },
-			{ header: 'Animal Species', key: 'animalSpecies', width: 20 },
-			{ header: 'Transfer Date', key: 'transferDate', width: 18 },
-			{ header: 'Reason for Transfer', key: 'reasonForTransfer', width: 30 },
-			{ header: 'Receiving Entity', key: 'receivingEntity', width: 25 },
-			{ header: 'Receiving Entity Type', key: 'receivingEntityType', width: 20 },
-			{ header: 'Receiving License', key: 'receivingLicense', width: 18 },
-			{ header: 'Receiving Contact Name', key: 'receivingContactName', width: 22 },
-			{ header: 'Receiving Contact Phone', key: 'receivingContactPhone', width: 20 },
-			{ header: 'Receiving Contact Email', key: 'receivingContactEmail', width: 25 },
-			{ header: 'Receiving Org Animal ID', key: 'receivingOrgAnimalId', width: 24 },
-			{ header: 'Receiving Address', key: 'receivingAddress', width: 25 },
-			{ header: 'Receiving Suburb', key: 'receivingSuburb', width: 16 },
-			{ header: 'Receiving State', key: 'receivingState', width: 14 },
-			{ header: 'Receiving Postcode', key: 'receivingPostcode', width: 16 },
-			{ header: 'Transfer Authorized By', key: 'transferAuthorizedBy', width: 22 },
-			{ header: 'Transfer Notes', key: 'transferNotes', width: 30 },
-			{ header: 'Documents', key: 'documents', width: 30 },
-			{ header: 'Created At', key: 'createdAt', width: 22 },
-			{ header: 'Updated At', key: 'updatedAt', width: 22 },
-		]
-		for (const t of animalTransfers) {
-			transfersSheet.addRow({
-				id: t.id,
-				animalId: t.animalId,
-				animalName: t.animal.name,
-				animalSpecies: t.animal.species,
-				transferDate: fmtDate(t.transferDate),
-				reasonForTransfer: t.reasonForTransfer,
-				receivingEntity: t.receivingEntity,
-				receivingEntityType: t.receivingEntityType || '',
-				receivingLicense: t.receivingLicense || '',
-				receivingContactName: t.receivingContactName || '',
-				receivingContactPhone: t.receivingContactPhone || '',
-				receivingContactEmail: t.receivingContactEmail || '',
-				receivingOrgAnimalId: t.receivingOrgAnimalId || '',
-				receivingAddress: t.receivingAddress || '',
-				receivingSuburb: t.receivingSuburb || '',
-				receivingState: t.receivingState || '',
-				receivingPostcode: t.receivingPostcode || '',
-				transferAuthorizedBy: t.transferAuthorizedBy || '',
-				transferNotes: t.transferNotes || '',
-				documents: fmtJson(t.documents),
-				createdAt: fmtDate(t.createdAt),
-				updatedAt: fmtDate(t.updatedAt),
-			})
-		}
-		styleHeaderRow(transfersSheet)
-
-		// ── 12. Permanent Care Approvals ────────────────────────────────────
-		const permCareSheet = workbook.addWorksheet('Permanent Care')
-		permCareSheet.columns = [
-			{ header: 'ID', key: 'id', width: 28 },
-			{ header: 'Animal ID', key: 'animalId', width: 28 },
-			{ header: 'Animal Name', key: 'animalName', width: 20 },
-			{ header: 'Animal Species', key: 'animalSpecies', width: 20 },
-			{ header: 'NPWS Approval Date', key: 'npwsApprovalDate', width: 18 },
-			{ header: 'NPWS Approval Number', key: 'npwsApprovalNumber', width: 22 },
-			{ header: 'Approval Category', key: 'approvalCategory', width: 18 },
-			{ header: 'Facility Name', key: 'facilityName', width: 25 },
-			{ header: 'License Number', key: 'licenseNumber', width: 18 },
-			{ header: 'Keeper Name', key: 'keeperName', width: 20 },
-			{ header: 'Address', key: 'address', width: 25 },
-			{ header: 'Suburb', key: 'suburb', width: 16 },
-			{ header: 'State', key: 'state', width: 10 },
-			{ header: 'Postcode', key: 'postcode', width: 10 },
-			{ header: 'Status', key: 'status', width: 12 },
-			{ header: 'Status Last Updated', key: 'statusLastUpdated', width: 18 },
-			{ header: 'Death Date', key: 'deathDate', width: 18 },
-			{ header: 'Death Reason', key: 'deathReason', width: 25 },
-			{ header: 'Approval Document URL', key: 'approvalDocumentUrl', width: 30 },
-			{ header: 'Notes', key: 'notes', width: 30 },
-			{ header: 'Created At', key: 'createdAt', width: 22 },
-			{ header: 'Updated At', key: 'updatedAt', width: 22 },
-		]
-		for (const pc of permanentCareApprovals) {
-			permCareSheet.addRow({
-				id: pc.id,
-				animalId: pc.animalId,
-				animalName: pc.animal.name,
-				animalSpecies: pc.animal.species,
-				npwsApprovalDate: fmtDate(pc.npwsApprovalDate),
-				npwsApprovalNumber: pc.npwsApprovalNumber,
-				approvalCategory: pc.approvalCategory,
-				facilityName: pc.facilityName,
-				licenseNumber: pc.licenseNumber,
-				keeperName: pc.keeperName || '',
-				address: pc.address,
-				suburb: pc.suburb,
-				state: pc.state,
-				postcode: pc.postcode,
-				status: pc.status,
-				statusLastUpdated: fmtDate(pc.statusLastUpdated),
-				deathDate: fmtDate(pc.deathDate),
-				deathReason: pc.deathReason || '',
-				approvalDocumentUrl: pc.approvalDocumentUrl || '',
-				notes: pc.notes || '',
-				createdAt: fmtDate(pc.createdAt),
-				updatedAt: fmtDate(pc.updatedAt),
-			})
-		}
-		styleHeaderRow(permCareSheet)
-
-		// ── 13. Preserved Specimens ─────────────────────────────────────────
+		// ── 10. Preserved Specimens ─────────────────────────────────────────
 		const specimensSheet = workbook.addWorksheet('Preserved Specimens')
 		specimensSheet.columns = [
 			{ header: 'ID', key: 'id', width: 28 },
@@ -807,11 +655,10 @@ export async function GET() {
 			entity: 'DataExport',
 			metadata: {
 				format: 'xlsx',
-				tables: 16,
+				tables: 13,
 				rowCounts: {
 					animals: animals.length,
 					records: records.length,
-					photos: photos.length,
 					species: species.length,
 					carerProfiles: carerProfiles.length,
 					carerTrainings: carerTrainings.length,
@@ -819,8 +666,6 @@ export async function GET() {
 					incidentReports: incidentReports.length,
 					releaseChecklists: releaseChecklists.length,
 					assets: assets.length,
-					animalTransfers: animalTransfers.length,
-					permanentCareApprovals: permanentCareApprovals.length,
 					preservedSpecimens: preservedSpecimens.length,
 					orgMembers: orgMembers.length,
 					speciesGroups: speciesGroups.length,
