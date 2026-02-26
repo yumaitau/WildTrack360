@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpeciesIcon } from "@/components/icons";
 import RecordTimeline from "@/components/record-timeline";
-import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus } from "lucide-react";
+import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
@@ -536,14 +537,86 @@ export default function AnimalDetailClient({
                   <CardHeader>
                     <CardTitle className="text-green-800">Animal Successfully Released</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-green-700">
-                      This animal has been released on {animal.dateReleased ? new Date(animal.dateReleased).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Unknown date'}.
-                    </p>
-                    {animal.releaseLocation && (
-                      <p className="text-sm text-green-700 mt-2">
-                        Release location: {animal.releaseLocation}
+                  <CardContent className="space-y-4">
+                    {/* Release Information */}
+                    <div className="space-y-2">
+                      <p className="text-sm text-green-700">
+                        Released on {animal.dateReleased ? new Date(animal.dateReleased).toLocaleDateString('en-AU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Unknown date'}
                       </p>
+                      {(animal.releaseLocation || releaseChecklist?.releaseLocation) && (
+                        <p className="text-sm text-green-700">
+                          <span className="font-medium">Location:</span> {animal.releaseLocation || releaseChecklist?.releaseLocation}
+                        </p>
+                      )}
+                      {releaseChecklist?.releaseType && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-green-700">Release Type:</span>
+                          <Badge variant="outline" className="border-green-300 text-green-800">
+                            {releaseChecklist.releaseType}
+                          </Badge>
+                        </div>
+                      )}
+                      {releaseChecklist && typeof releaseChecklist.within10km === 'boolean' && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-green-700">Distance Check:</span>
+                          <Badge variant={releaseChecklist.within10km ? "default" : "secondary"}>
+                            {releaseChecklist.within10km ? "Within 10km" : "Outside 10km"}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Fitness Indicators */}
+                    {releaseChecklist?.fitnessIndicators && Array.isArray(releaseChecklist.fitnessIndicators) && releaseChecklist.fitnessIndicators.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-green-700">Fitness Indicators</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(releaseChecklist.fitnessIndicators as string[]).map((indicator: string, index: number) => (
+                            <Badge key={index} variant="outline" className="border-green-300 text-green-800 text-xs">
+                              {indicator}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Veterinary Sign-off */}
+                    {releaseChecklist?.vetSignOff && (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-green-700">Veterinary Sign-off</p>
+                        <div className="text-sm text-green-700 space-y-0.5">
+                          {(releaseChecklist.vetSignOff as any)?.name && (
+                            <p>Vet: {(releaseChecklist.vetSignOff as any).name}</p>
+                          )}
+                          {(releaseChecklist.vetSignOff as any)?.date && (
+                            <p>Date: {(releaseChecklist.vetSignOff as any).date}</p>
+                          )}
+                          {(releaseChecklist.vetSignOff as any)?.license && (
+                            <p>License: {(releaseChecklist.vetSignOff as any).license}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Release Notes */}
+                    {(releaseChecklist?.notes || animal.releaseNotes) && (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-green-700">Notes</p>
+                        <p className="text-sm text-green-700">{releaseChecklist?.notes || animal.releaseNotes}</p>
+                      </div>
+                    )}
+
+                    {/* Link to full checklist */}
+                    {releaseChecklist?.id && (
+                      <div className="pt-1">
+                        <Link
+                          href={`/compliance/release-checklist/${releaseChecklist.id}`}
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 hover:text-green-900 underline underline-offset-2"
+                        >
+                          <ClipboardCheck className="h-4 w-4" />
+                          View Full Release Checklist
+                        </Link>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
