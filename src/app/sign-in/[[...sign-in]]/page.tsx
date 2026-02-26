@@ -32,7 +32,7 @@ export default function SignInPage() {
   if (showFullSignIn) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-background to-muted/20">
-        <SignIn forceRedirectUrl="/" />
+        <SignIn />
       </div>
     );
   }
@@ -80,7 +80,7 @@ export default function SignInPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <SignInButton mode="redirect" forceRedirectUrl="/">
+                  <SignInButton mode="redirect">
                     <Button className="w-full" size="lg">
                       <LogIn className="mr-2 h-5 w-5" />
                       Sign In with Email
