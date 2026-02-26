@@ -29,7 +29,7 @@ export default async function Home() {
       const clerk = await clerkClient();
       const org = await clerk.organizations.getOrganization({ organizationId: orgId });
       const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
-      if (orgUrl) {
+      if (orgUrl && /^[a-zA-Z0-9-]+$/.test(orgUrl)) {
         const protocol = ROOT_DOMAIN.startsWith("localhost") ? "http" : "https";
         redirect(`${protocol}://${orgUrl}.${ROOT_DOMAIN}/`);
       }
