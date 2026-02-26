@@ -6,18 +6,30 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PawPrint, ArrowLeft, Shield, Users, BarChart3, CheckCircle, LogIn } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function SignInPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [showFullSignIn, setShowFullSignIn] = useState(false);
-  
+
   // Check if we should show the full Clerk sign-in (when redirected from Clerk)
   useEffect(() => {
     // Clerk often puts params in the hash fragment (#/?redirect_url=...),
     // which useSearchParams() cannot read. Check both query and hash.
     const hash = window.location.hash;
+    const fullUrl = window.location.href;
+
+    // If the redirect_url contains __clerk_status=sign_up, this is an invitation
+    // flow — the user needs to sign up, not sign in.
+    if (fullUrl.includes('__clerk_status%3Dsign_up') || fullUrl.includes('__clerk_status=sign_up')) {
+      // Redirect to /sign-up preserving all query params and hash
+      const signUpUrl = window.location.href.replace('/sign-in', '/sign-up');
+      router.replace(signUpUrl);
+      return;
+    }
+
     const hasClerkQueryParams =
       searchParams.get('redirect_url') || searchParams.get('after_sign_in_url');
     const hasClerkHashParams =
@@ -26,7 +38,7 @@ export default function SignInPage() {
     if (hasClerkQueryParams || hasClerkHashParams) {
       setShowFullSignIn(true);
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   // If showing full Clerk sign-in
   if (showFullSignIn) {
