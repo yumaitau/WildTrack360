@@ -740,9 +740,9 @@ export function PeopleManagement() {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Remove User</AlertDialogTitle>
+                                  <AlertDialogTitle>Delete User</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Are you sure you want to remove {member.firstName || member.email} from the organization? This action cannot be undone.
+                                    Are you sure you want to permanently delete {member.firstName || member.email}? This will remove their account globally across all organizations and cannot be undone.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>

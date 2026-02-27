@@ -29,24 +29,24 @@ export async function DELETE(
   try {
     const clerk = await clerkClient();
 
-    // Clean up database records before deleting the Clerk user.
-    // Unlink animals so they aren't orphaned.
-    await prisma.animal.updateMany({
-      where: { carerId: targetUserId },
-      data: { carerId: null },
-    });
+    // Clean up all database records atomically before deleting the Clerk user.
+    await prisma.$transaction([
+      // Unlink animals so they aren't orphaned.
+      prisma.animal.updateMany({
+        where: { carerId: targetUserId },
+        data: { carerId: null },
+      }),
+      // Delete OrgMember across all orgs (cascades CoordinatorSpeciesAssignment)
+      prisma.orgMember.deleteMany({
+        where: { userId: targetUserId },
+      }),
+      // Delete CarerProfile (cascades CarerTraining)
+      prisma.carerProfile.deleteMany({
+        where: { id: targetUserId },
+      }),
+    ]);
 
-    // Delete OrgMember (cascades CoordinatorSpeciesAssignment)
-    await prisma.orgMember.deleteMany({
-      where: { userId: targetUserId, orgId },
-    });
-
-    // Delete CarerProfile (cascades CarerTraining)
-    await prisma.carerProfile.deleteMany({
-      where: { id: targetUserId },
-    });
-
-    // Delete the Clerk user entirely
+    // Delete the Clerk user entirely (only after DB cleanup succeeds)
     await clerk.users.deleteUser(targetUserId);
 
     return NextResponse.json({ success: true });
