@@ -52,7 +52,7 @@ import { toast } from 'sonner';
 import { SpeciesGroupBadges } from './species-group-badges';
 import type { OrgMemberWithAssignments, SpeciesGroupWithCoordinators, EnrichedCarer } from '@/lib/types';
 
-const MAX_USERS = 25;
+const MAX_USERS = 20;
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -222,7 +222,7 @@ export function PeopleManagement() {
     if (!organization) return;
 
     if (!inviteEmail) { toast.error('Please enter an email address'); return; }
-    if (people.length >= MAX_USERS) { toast.error(`Maximum of ${MAX_USERS} users per organization reached`); return; }
+    if (people.length >= MAX_USERS) { toast.error(`Maximum of ${MAX_USERS} users per organisation reached`); return; }
     if (!validateEmail(inviteEmail)) { toast.error('Please enter a valid email address'); return; }
 
     setSendingInvite(true);
@@ -347,7 +347,7 @@ export function PeopleManagement() {
 
   const handleRemoveUser = async (userId: string) => {
     if (!organization) return;
-    if (userId === user?.id) { toast.error('You cannot remove yourself from the organization'); return; }
+    if (userId === user?.id) { toast.error('You cannot remove yourself from the organisation'); return; }
 
     setDeletingUserId(userId);
     try {
@@ -444,7 +444,7 @@ export function PeopleManagement() {
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          No organization found. Please ensure you&apos;re part of an organization.
+          No organisation found. Please ensure you&apos;re part of an organisation.
         </AlertDescription>
       </Alert>
     );
@@ -460,7 +460,7 @@ export function PeopleManagement() {
             Invite New User
           </CardTitle>
           <CardDescription>
-            Invite users to your organization by email address
+            Invite users to your organisation by email address
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -591,7 +591,7 @@ export function PeopleManagement() {
             </div>
           ) : people.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No members found in this organization.
+              No members found in this organisation.
             </div>
           ) : (
             <Table>
@@ -733,7 +733,7 @@ export function PeopleManagement() {
                                   variant="ghost"
                                   size="icon"
                                   disabled={deletingUserId === member.userId}
-                                  title="Remove from organization"
+                                  title="Remove from organisation"
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
@@ -742,7 +742,7 @@ export function PeopleManagement() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Delete User</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Are you sure you want to permanently delete {member.firstName || member.email}? This will remove their account globally across all organizations and cannot be undone.
+                                    Are you sure you want to permanently delete {member.firstName || member.email}? This will remove their account globally across all organisations and cannot be undone.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
