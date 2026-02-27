@@ -35,9 +35,11 @@ export async function POST(request: NextRequest) {
 
     const protocol = ROOT_DOMAIN.startsWith("localhost") ? "http" : "https";
     const safeHostname = orgUrl && /^[a-zA-Z0-9-]+$/.test(orgUrl);
+    // Point to /sign-up so the invited user lands on a public route
+    // where the __clerk_ticket param is preserved and handled properly.
     const redirectUrl = safeHostname
-      ? `${protocol}://${orgUrl}.${ROOT_DOMAIN}/`
-      : `${protocol}://${ROOT_DOMAIN}/`;
+      ? `${protocol}://${orgUrl}.${ROOT_DOMAIN}/sign-up`
+      : `${protocol}://${ROOT_DOMAIN}/sign-up`;
 
     const invitation = await clerk.organizations.createOrganizationInvitation({
       organizationId: orgId,
