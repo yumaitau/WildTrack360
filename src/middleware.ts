@@ -21,12 +21,25 @@ export default clerkMiddleware(async (auth, request) => {
   if (!subdomain) {
     if (!isPublicRoute(request)) {
       await auth.protect();
+    } else if (request.nextUrl.pathname.startsWith("/unauthorized")) {
+      // Prevent authorized users from manually navigating to /unauthorized
+      const session = await auth();
+      if (session?.userId) {
+        return NextResponse.redirect(new URL("/", request.url));
+      }
     }
     return;
   }
 
   // On a subdomain — allow public routes through (sign-in page must be accessible)
+  // But prevent authorized users from manually navigating to /unauthorized
   if (isPublicRoute(request)) {
+    if (request.nextUrl.pathname.startsWith("/unauthorized")) {
+      const session = await auth();
+      if (session?.sessionClaims?.org_url === subdomain) {
+        return NextResponse.redirect(new URL("/", request.url));
+      }
+    }
     return;
   }
 

@@ -52,7 +52,7 @@ import { toast } from 'sonner';
 import { SpeciesGroupBadges } from './species-group-badges';
 import type { OrgMemberWithAssignments, SpeciesGroupWithCoordinators, EnrichedCarer } from '@/lib/types';
 
-const MAX_USERS = 25;
+const MAX_USERS = 20;
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -460,7 +460,7 @@ export function PeopleManagement() {
             Invite New User
           </CardTitle>
           <CardDescription>
-            Invite users to your organization by email address
+            Invite users to your organisation by email address
           </CardDescription>
         </CardHeader>
         <CardContent>
