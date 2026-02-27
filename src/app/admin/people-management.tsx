@@ -351,12 +351,16 @@ export function PeopleManagement() {
 
     setDeletingUserId(userId);
     try {
-      await organization.removeMember(userId);
-      toast.success('User removed from organization');
+      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete user');
+      }
+      toast.success('User removed and deleted successfully');
       refreshAll();
     } catch (error) {
       console.error('Error removing user:', error);
-      toast.error('Failed to remove user from organization');
+      toast.error(error instanceof Error ? error.message : 'Failed to remove user');
     } finally {
       setDeletingUserId(null);
     }
