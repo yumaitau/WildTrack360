@@ -351,12 +351,16 @@ export function PeopleManagement() {
 
     setDeletingUserId(userId);
     try {
-      await organization.removeMember(userId);
-      toast.success('User removed from organization');
+      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete user');
+      }
+      toast.success('User removed and deleted successfully');
       refreshAll();
     } catch (error) {
       console.error('Error removing user:', error);
-      toast.error('Failed to remove user from organization');
+      toast.error(error instanceof Error ? error.message : 'Failed to remove user');
     } finally {
       setDeletingUserId(null);
     }
@@ -736,9 +740,9 @@ export function PeopleManagement() {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Remove User</AlertDialogTitle>
+                                  <AlertDialogTitle>Delete User</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Are you sure you want to remove {member.firstName || member.email} from the organization? This action cannot be undone.
+                                    Are you sure you want to permanently delete {member.firstName || member.email}? This will remove their account globally across all organizations and cannot be undone.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
