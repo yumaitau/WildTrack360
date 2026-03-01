@@ -53,7 +53,7 @@ export function ManageReminders({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: message.trim(),
-          expiresAt: expiresAt || null,
+          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         }),
       });
 
