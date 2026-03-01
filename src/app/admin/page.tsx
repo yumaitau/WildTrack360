@@ -42,7 +42,7 @@ export default function AdminPage() {
           apiJson<any>('/api/rbac/my-role'),
         ]);
         const role = roleData.role || 'CARER';
-        if (role === 'CARER') {
+        if (role === 'CARER' || role === 'CARER_ALL') {
           router.replace('/');
           return;
         }

@@ -46,7 +46,7 @@ export interface OrgMemberWithAssignments {
   id: string;
   userId: string;
   orgId: string;
-  role: 'ADMIN' | 'COORDINATOR' | 'CARER';
+  role: 'ADMIN' | 'COORDINATOR_ALL' | 'COORDINATOR' | 'CARER_ALL' | 'CARER';
   createdAt: string;
   updatedAt: string;
   speciesAssignments: {
@@ -74,7 +74,7 @@ export interface SpeciesGroupWithCoordinators {
     orgMember: {
       id: string;
       userId: string;
-      role: 'ADMIN' | 'COORDINATOR' | 'CARER';
+      role: 'ADMIN' | 'COORDINATOR_ALL' | 'COORDINATOR' | 'CARER_ALL' | 'CARER';
     };
   }[];
 }

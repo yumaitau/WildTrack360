@@ -220,7 +220,7 @@ export function SpeciesGroupManagement() {
         setMemberNamesByOrgMemberId(nameMap);
 
         const coordinatorMembers = orgMembers.filter(
-          (m) => m.role === 'COORDINATOR'
+          (m) => m.role === 'COORDINATOR' || m.role === 'COORDINATOR_ALL'
         );
 
         const options: CoordinatorOption[] = coordinatorMembers.map((m) => ({
@@ -471,7 +471,7 @@ export function SpeciesGroupManagement() {
       </div>
       {editingGroup && (() => {
         const editCoordinatorAssignments = editingGroup.coordinators.filter(
-          (c) => c.orgMember.role === 'COORDINATOR'
+          (c) => c.orgMember.role === 'COORDINATOR' || c.orgMember.role === 'COORDINATOR_ALL'
         );
         return (
         <div className="space-y-2">
@@ -638,7 +638,7 @@ export function SpeciesGroupManagement() {
                 {groups.map((group) => {
                   // Only show actual coordinators (not carers) in the Coordinators column
                   const coordinatorAssignments = group.coordinators.filter(
-                    (c) => c.orgMember.role === 'COORDINATOR'
+                    (c) => c.orgMember.role === 'COORDINATOR' || c.orgMember.role === 'COORDINATOR_ALL'
                   );
                   const assignedCoordinatorIds = coordinatorAssignments.map(
                     (c) => c.orgMember.userId

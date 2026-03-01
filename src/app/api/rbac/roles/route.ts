@@ -45,9 +45,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!['ADMIN', 'COORDINATOR', 'CARER'].includes(role)) {
+    if (!['ADMIN', 'COORDINATOR_ALL', 'COORDINATOR', 'CARER_ALL', 'CARER'].includes(role)) {
       return NextResponse.json(
-        { error: 'role must be ADMIN, COORDINATOR, or CARER' },
+        { error: 'role must be ADMIN, COORDINATOR_ALL, COORDINATOR, CARER_ALL, or CARER' },
         { status: 400 }
       );
     }

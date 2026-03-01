@@ -18,8 +18,8 @@ export async function GET(request: Request) {
 
 		const role = await getUserRole(userId, requestedOrgId)
 
-		// ADMIN: sees all animals in the org
-		if (role === 'ADMIN') {
+		// ADMIN / COORDINATOR_ALL / CARER_ALL: sees all animals in the org
+		if (role === 'ADMIN' || role === 'COORDINATOR_ALL' || role === 'CARER_ALL') {
 			const animals = await prisma.animal.findMany({
 				where: { clerkOrganizationId: requestedOrgId },
 				include: { carer: true, records: true, photos: true },

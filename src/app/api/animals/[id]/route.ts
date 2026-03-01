@@ -20,19 +20,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const role = await getUserRole(userId, orgId)
 
-    // ADMIN and COORDINATOR (in scope) can edit any animal they can access
-    // CARER can only edit animals assigned to them
+    // Fail-closed: explicitly enumerate allowed roles
     if (role === 'CARER') {
+      // Can only edit animals assigned to them
       if (animal.carerId !== userId) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
     } else if (role === 'COORDINATOR') {
+      // Can edit animals in their species groups
       const allowed = await canAccessAnimal(userId, orgId, animal)
       if (!allowed) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
+    } else if (role === 'ADMIN' || role === 'COORDINATOR_ALL' || role === 'CARER_ALL') {
+      // Can always edit — no additional check needed
+    } else {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-    // ADMIN can always edit
 
     const updated = await updateAnimal(id, body)
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'Animal', entityId: id, metadata: { fields: Object.keys(body) } })
