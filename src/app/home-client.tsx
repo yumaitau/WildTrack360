@@ -461,6 +461,8 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         if (role !== 'ADMIN' && role !== 'COORDINATOR_ALL' && role !== 'CARER_ALL' && user) {
           const currentCarer = (newCarers || []).find((c: any) => c.id === user.id);
           setHasIncompleteProfile(currentCarer?.hasProfile === false);
+        } else {
+          setHasIncompleteProfile(false);
         }
       } catch (error) {
         console.error('Error loading species/carers:', error);
@@ -545,6 +547,8 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
       if (userRole !== 'ADMIN' && userRole !== 'COORDINATOR_ALL' && userRole !== 'CARER_ALL' && user) {
         const currentCarer = (newCarers || []).find((c: any) => c.id === user.id);
         setHasIncompleteProfile(currentCarer?.hasProfile === false);
+      } else {
+        setHasIncompleteProfile(false);
       }
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -656,7 +660,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
           </div>
         )}
 
-        {userRole === 'CARER' ? (
+        {userRole === 'CARER' || userRole === 'CARER_ALL' ? (
           <CarerView
             animals={animals}
             viewMode={viewMode}
