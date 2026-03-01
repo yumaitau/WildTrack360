@@ -67,6 +67,13 @@ const SimpleMap: React.FC<SimpleMapProps> = ({ center, onLocationChange, initial
     mapRef.current = map;
   }, []);
 
+  // Pan map when center prop changes (e.g. when geolocation resolves)
+  useEffect(() => {
+    if (mapRef.current && !markerPosition) {
+      mapRef.current.panTo(center);
+    }
+  }, [center, markerPosition]);
+
   useEffect(() => {
     if (initialMarker) {
       setMarkerPosition(initialMarker);

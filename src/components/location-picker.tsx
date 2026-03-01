@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Crosshair } from 'lucide-react';
 import SimpleMap from './simple-map';
+import { useUserLocation } from '@/hooks/use-user-location';
 
 interface LocationPickerProps {
   onLocationChange: (location: { 
@@ -23,13 +24,29 @@ interface LocationPickerProps {
 }
 
 export function LocationPicker({ onLocationChange, initialLocation }: LocationPickerProps) {
-  const [lat, setLat] = useState<number>(initialLocation?.lat || -35.2809);
-  const [lng, setLng] = useState<number>(initialLocation?.lng || 149.1300);
+  const { location: userLocation, isLocating } = useUserLocation();
+  const [lat, setLat] = useState<number>(initialLocation?.lat || userLocation.lat);
+  const [lng, setLng] = useState<number>(initialLocation?.lng || userLocation.lng);
   const [address, setAddress] = useState<string>(initialLocation?.address || '');
   const [isLoading, setIsLoading] = useState(false);
+  const hasAutoLocated = useRef(false);
+
+  // When geolocation resolves and no initial location was provided, update the map center
+  useEffect(() => {
+    if (!initialLocation && !isLocating && !hasAutoLocated.current) {
+      hasAutoLocated.current = true;
+      setLat(userLocation.lat);
+      setLng(userLocation.lng);
+    }
+  }, [initialLocation, isLocating, userLocation]);
 
   // Canberra ACT coordinates
   const CANBERRA_CENTER = { lat: -35.2809, lng: 149.1300 };
+
+  // Determine the effective map center
+  const mapCenter = initialLocation
+    ? { lat: initialLocation.lat, lng: initialLocation.lng }
+    : userLocation;
 
   const handleLocationChange = (newLat: number, newLng: number) => {
     setLat(newLat);
@@ -168,7 +185,7 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
       <Card>
         <CardContent className="p-0">
           <SimpleMap
-            center={initialLocation ? { lat: initialLocation.lat, lng: initialLocation.lng } : CANBERRA_CENTER}
+            center={mapCenter}
             onLocationChange={handleLocationChange}
             initialMarker={initialLocation ? { lat: initialLocation.lat, lng: initialLocation.lng } : undefined}
           />
@@ -213,8 +230,8 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Click on the map to drop a pin, or enter coordinates manually. 
-        The map is centered on Canberra ACT by default.
+        Click on the map to drop a pin, or enter coordinates manually.
+        The map centres on your current location, or Canberra ACT if location access is unavailable.
       </p>
     </div>
   );
