@@ -51,14 +51,27 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  let body: any;
   try {
-    const body = await req.json();
-    const { message, expiresAt } = body;
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
-    if (!message || typeof message !== 'string' || message.trim().length === 0) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+  const { message, expiresAt } = body;
+
+  if (!message || typeof message !== 'string' || message.trim().length === 0) {
+    return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+  }
+
+  if (expiresAt !== undefined && expiresAt !== null) {
+    const parsed = new Date(expiresAt);
+    if (isNaN(parsed.getTime())) {
+      return NextResponse.json({ error: 'Invalid expiresAt date' }, { status: 400 });
     }
+  }
 
+  try {
     // Verify the animal exists in this org
     const animal = await prisma.animal.findFirst({
       where: { id: animalId, clerkOrganizationId: orgId },
@@ -94,7 +107,7 @@ export async function POST(
       action: 'CREATE',
       entity: 'AnimalReminder',
       entityId: reminder.id,
-      metadata: { animalId, message: message.trim() },
+      metadata: { animalId, reminderId: reminder.id, messageLength: message.trim().length },
     });
 
     return NextResponse.json(reminder, { status: 201 });

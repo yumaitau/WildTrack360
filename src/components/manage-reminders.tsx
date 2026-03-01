@@ -22,19 +22,20 @@ import type { AnimalReminder } from "@/lib/types";
 interface ManageRemindersProps {
   animalId: string;
   animalName: string;
-  initialReminders: AnimalReminder[];
+  reminders: AnimalReminder[];
   currentUserId: string;
   isAdmin?: boolean;
+  onRemindersChange?: (reminders: AnimalReminder[]) => void;
 }
 
 export function ManageReminders({
   animalId,
   animalName,
-  initialReminders,
+  reminders,
   currentUserId,
   isAdmin = false,
+  onRemindersChange,
 }: ManageRemindersProps) {
-  const [reminders, setReminders] = useState<AnimalReminder[]>(initialReminders);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
@@ -62,7 +63,7 @@ export function ManageReminders({
       }
 
       const reminder = await res.json();
-      setReminders((prev) => [reminder, ...prev]);
+      onRemindersChange?.([reminder, ...reminders]);
       setMessage("");
       setExpiresAt("");
       setIsAddOpen(false);
@@ -90,7 +91,7 @@ export function ManageReminders({
         throw new Error(err.error);
       }
 
-      setReminders((prev) => prev.filter((r) => r.id !== reminderId));
+      onRemindersChange?.(reminders.filter((r) => r.id !== reminderId));
       toast({ title: "Reminder Deleted", description: "The reminder has been removed." });
     } catch (e) {
       toast({
@@ -155,7 +156,7 @@ export function ManageReminders({
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         Expires{" "}
-                        {new Date(reminder.expiresAt).toLocaleDateString("en-AU", {
+                        {new Date(reminder.expiresAt).toLocaleString("en-AU", {
                           day: "numeric",
                           month: "short",
                           year: "numeric",

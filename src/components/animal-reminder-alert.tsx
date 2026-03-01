@@ -18,8 +18,15 @@ interface AnimalReminderAlertProps {
   animalName: string;
 }
 
+const DISMISSED_KEY = "animalReminderDismissed";
+
 export function AnimalReminderAlert({ reminders, animalName }: AnimalReminderAlertProps) {
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem(DISMISSED_KEY) === "true";
+    }
+    return false;
+  });
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -69,7 +76,7 @@ export function AnimalReminderAlert({ reminders, animalName }: AnimalReminderAle
                   <span>By {reminder.createdByName}</span>
                 )}
                 <span>
-                  {new Date(reminder.createdAt).toLocaleDateString("en-AU", {
+                  {new Date(reminder.createdAt).toLocaleString("en-AU", {
                     day: "numeric",
                     month: "short",
                     year: "numeric",
@@ -99,6 +106,7 @@ export function AnimalReminderAlert({ reminders, animalName }: AnimalReminderAle
             onClick={() => {
               setDismissed(true);
               setOpen(false);
+              sessionStorage.setItem(DISMISSED_KEY, "true");
             }}
           >
             I understand, continue

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import AnimalDetailClient from "./animal-detail-client";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { isOrgAdmin } from "@/lib/authz";
 
 export default async function AnimalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -60,6 +61,8 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
     );
   }
 
+  const adminFlag = organizationId ? await isOrgAdmin(userId, organizationId) : false;
+
   return (
     <AnimalDetailClient
       initialAnimal={animal}
@@ -69,6 +72,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       userMap={userMap}
       initialReminders={activeReminders}
       currentUserId={userId}
+      isAdmin={adminFlag}
     />
   );
 }

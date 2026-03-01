@@ -48,6 +48,7 @@ interface AnimalDetailClientProps {
   userMap?: { [clerkUserId: string]: string };
   initialReminders?: AnimalReminder[];
   currentUserId?: string;
+  isAdmin?: boolean;
 }
 
 export default function AnimalDetailClient({
@@ -58,6 +59,7 @@ export default function AnimalDetailClient({
   userMap = {},
   initialReminders = [],
   currentUserId = "",
+  isAdmin = false,
 }: AnimalDetailClientProps) {
   const [animal, setAnimal] = useState<Animal>(initialAnimal);
   const [records, setRecords] = useState<Record[]>(initialRecords);
@@ -66,6 +68,7 @@ export default function AnimalDetailClient({
   const { user } = useUser();
   const [liveUserMap, setLiveUserMap] = useState<{ [clerkUserId: string]: string }>(userMap);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [reminders, setReminders] = useState<AnimalReminder[]>(initialReminders);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isAssignCarerOpen, setIsAssignCarerOpen] = useState(false);
   const [selectedCarerId, setSelectedCarerId] = useState<string>(animal.carerId || "");
@@ -249,7 +252,7 @@ export default function AnimalDetailClient({
 
   return (
     <div className="min-h-screen bg-background">
-      <AnimalReminderAlert reminders={initialReminders} animalName={animal.name} />
+      <AnimalReminderAlert reminders={reminders} animalName={animal.name} />
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         <div className="mb-6">
           <Link href="/">
@@ -646,8 +649,10 @@ export default function AnimalDetailClient({
               <ManageReminders
                 animalId={animal.id}
                 animalName={animal.name}
-                initialReminders={initialReminders}
+                reminders={reminders}
                 currentUserId={currentUserId}
+                isAdmin={isAdmin}
+                onRemindersChange={setReminders}
               />
               <LocationMap 
                 rescueLocation={((): { lat: number; lng: number; address: string } | undefined => {
