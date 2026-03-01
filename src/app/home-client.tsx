@@ -59,6 +59,7 @@ function CarerView({
   onRefresh,
   onEdit,
   carersList,
+  userRole,
 }: {
   animals: Animal[];
   viewMode: 'grid' | 'list';
@@ -67,7 +68,9 @@ function CarerView({
   onRefresh: () => void;
   onEdit: (animal: Animal) => void;
   carersList: any[];
+  userRole: string;
 }) {
+  const isOrgWide = userRole === 'CARER_ALL';
   const recentlyAdmitted = useMemo(() => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -80,12 +83,12 @@ function CarerView({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Animals in My Care</CardTitle>
+            <CardTitle className="text-sm font-medium">{isOrgWide ? 'All Animals' : 'Animals in My Care'}</CardTitle>
             <PawPrint className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{animals.length}</div>
-            <p className="text-xs text-muted-foreground">Currently assigned to you</p>
+            <p className="text-xs text-muted-foreground">{isOrgWide ? 'Organisation-wide caseload' : 'Currently assigned to you'}</p>
           </CardContent>
         </Card>
         <Card>
@@ -102,7 +105,7 @@ function CarerView({
 
       {/* View Controls */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">My Caseload</h2>
+        <h2 className="text-2xl font-bold">{isOrgWide ? 'All Animals' : 'My Caseload'}</h2>
         <div className="flex items-center gap-2">
           <Button
             variant={viewMode === 'grid' ? 'default' : 'outline'}
@@ -133,8 +136,8 @@ function CarerView({
       {animals.length === 0 ? (
         <Card className="p-8 text-center">
           <PawPrint className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-lg font-medium text-muted-foreground">No animals currently assigned to you</p>
-          <p className="text-sm text-muted-foreground mt-1">Animals will appear here once they are assigned to your care.</p>
+          <p className="text-lg font-medium text-muted-foreground">{isOrgWide ? 'No animals in the organisation yet' : 'No animals currently assigned to you'}</p>
+          <p className="text-sm text-muted-foreground mt-1">{isOrgWide ? 'Animals will appear here once they are added to the organisation.' : 'Animals will appear here once they are assigned to your care.'}</p>
         </Card>
       ) : (
         <div className="bg-card rounded-lg shadow-md p-6 mb-8">
@@ -168,7 +171,7 @@ function CarerView({
       {/* Quick link */}
       <div className="text-center">
         <Link href="/animals">
-          <Button variant="outline">View All My Animals</Button>
+          <Button variant="outline">{isOrgWide ? 'View All Animals' : 'View All My Animals'}</Button>
         </Link>
       </div>
     </>
@@ -669,6 +672,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
             onRefresh={handleRefresh}
             onEdit={handleEditAnimal}
             carersList={carersList}
+            userRole={userRole}
           />
         ) : (
           <AdminCoordinatorView

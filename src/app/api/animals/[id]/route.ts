@@ -21,7 +21,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const role = await getUserRole(userId, orgId)
 
     // Fail-closed: explicitly enumerate allowed roles
-    if (role === 'CARER' || role === 'CARER_ALL') {
+    if (role === 'CARER') {
       // Can only edit animals assigned to them
       if (animal.carerId !== userId) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -32,7 +32,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (!allowed) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
-    } else if (role === 'ADMIN' || role === 'COORDINATOR_ALL') {
+    } else if (role === 'ADMIN' || role === 'COORDINATOR_ALL' || role === 'CARER_ALL') {
       // Can always edit — no additional check needed
     } else {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
