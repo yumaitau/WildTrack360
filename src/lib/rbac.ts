@@ -30,7 +30,9 @@ export type Permission =
   | 'report:view_species'
   | 'report:export'
   | 'settings:manage'
-  | 'carer:view_workload';
+  | 'carer:view_workload'
+  | 'reminder:create'
+  | 'reminder:delete_any';
 
 // ─── Permission Matrix ───────────────────────────────────────────────────────
 const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
@@ -51,6 +53,8 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'report:export',
     'settings:manage',
     'carer:view_workload',
+    'reminder:create',
+    'reminder:delete_any',
   ]),
   COORDINATOR_ALL: new Set([
     'animal:view_all',
@@ -63,6 +67,7 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'report:view_species',
     'report:export',
     'carer:view_workload',
+    'reminder:create',
   ]),
   COORDINATOR: new Set([
     'animal:view_species_group',
@@ -74,15 +79,18 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'report:view_species',
     'report:export',
     'carer:view_workload',
+    'reminder:create',
   ]),
   CARER_ALL: new Set([
     'animal:view_all',
     'animal:view_own',
     'animal:edit_own',
+    'reminder:create',
   ]),
   CARER: new Set([
     'animal:view_own',
     'animal:edit_own',
+    'reminder:create',
   ]),
 };
 

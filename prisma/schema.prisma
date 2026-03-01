@@ -73,6 +73,7 @@ model Animal {
   transfers     AnimalTransfer[]
   permanentCare PermanentCareApproval?
   preservedSpecimen PreservedSpecimen?
+  reminders     AnimalReminder[]
 
   @@map("animals")
 }
@@ -349,6 +350,24 @@ enum ReleaseType {
   HARD
   SOFT
   PASSIVE
+}
+
+model AnimalReminder {
+  id                  String    @id @default(cuid())
+  animalId            String
+  animal              Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  message             String
+  isActive            Boolean   @default(true)
+  expiresAt           DateTime?
+  createdByUserId     String
+  createdByName       String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  clerkOrganizationId String
+
+  @@index([animalId, isActive])
+  @@index([clerkOrganizationId])
+  @@map("animal_reminders")
 }
 
 // NSW-specific models for compliance reporting
