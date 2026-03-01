@@ -1,5 +1,5 @@
 // Re-export Prisma types for app-wide use
-export type { Animal, Record, Photo, Asset, Species, CarerProfile, CarerTraining, HygieneLog, IncidentReport, ReleaseChecklist, OrgMember, SpeciesGroup, CoordinatorSpeciesAssignment } from '@prisma/client';
+export type { Animal, Record, Photo, Asset, Species, CarerProfile, CarerTraining, HygieneLog, IncidentReport, ReleaseChecklist, OrgMember, SpeciesGroup, CoordinatorSpeciesAssignment, AnimalReminder } from '@prisma/client';
 export type AnimalStatus = import('@prisma/client').$Enums.AnimalStatus;
 export type AssetStatus = import('@prisma/client').$Enums.AssetStatus;
 export type OrgRole = import('@prisma/client').$Enums.OrgRole;

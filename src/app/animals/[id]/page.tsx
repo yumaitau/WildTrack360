@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import AnimalDetailClient from "./animal-detail-client";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { isOrgAdmin } from "@/lib/authz";
 
 export default async function AnimalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,7 +16,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
   });
   if (!animal) notFound();
 
-  const [records, photos, releaseChecklist] = await Promise.all([
+  const [records, photos, releaseChecklist, activeReminders] = await Promise.all([
     prisma.record.findMany({
       where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { date: "desc" },
@@ -27,6 +28,18 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
     prisma.releaseChecklist.findFirst({
       where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { releaseDate: "desc" },
+    }),
+    prisma.animalReminder.findMany({
+      where: {
+        animalId: id,
+        clerkOrganizationId: organizationId,
+        isActive: true,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
     }),
   ]);
 
@@ -48,6 +61,8 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
     );
   }
 
+  const adminFlag = organizationId ? await isOrgAdmin(userId, organizationId) : false;
+
   return (
     <AnimalDetailClient
       initialAnimal={animal}
@@ -55,6 +70,9 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       initialPhotos={photos}
       releaseChecklist={releaseChecklist}
       userMap={userMap}
+      initialReminders={activeReminders}
+      currentUserId={userId}
+      isAdmin={adminFlag}
     />
   );
 }

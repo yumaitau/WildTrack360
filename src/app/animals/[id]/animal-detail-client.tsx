@@ -33,6 +33,9 @@ import { getCurrentJurisdiction } from "@/lib/config";
 import { AnimalStatus, RecordType } from "@prisma/client";
 import { AddAnimalDialog } from "@/components/add-animal-dialog";
 import { DeleteAnimalDialog } from "@/components/delete-animal-dialog";
+import { AnimalReminderAlert } from "@/components/animal-reminder-alert";
+import { ManageReminders } from "@/components/manage-reminders";
+import type { AnimalReminder } from "@/lib/types";
 import { useOrganization, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +46,9 @@ interface AnimalDetailClientProps {
   initialPhotos: Photo[];
   releaseChecklist?: any;
   userMap?: { [clerkUserId: string]: string };
+  initialReminders?: AnimalReminder[];
+  currentUserId?: string;
+  isAdmin?: boolean;
 }
 
 export default function AnimalDetailClient({
@@ -51,6 +57,9 @@ export default function AnimalDetailClient({
   initialPhotos,
   releaseChecklist,
   userMap = {},
+  initialReminders = [],
+  currentUserId = "",
+  isAdmin = false,
 }: AnimalDetailClientProps) {
   const [animal, setAnimal] = useState<Animal>(initialAnimal);
   const [records, setRecords] = useState<Record[]>(initialRecords);
@@ -59,6 +68,7 @@ export default function AnimalDetailClient({
   const { user } = useUser();
   const [liveUserMap, setLiveUserMap] = useState<{ [clerkUserId: string]: string }>(userMap);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [reminders, setReminders] = useState<AnimalReminder[]>(initialReminders);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isAssignCarerOpen, setIsAssignCarerOpen] = useState(false);
   const [selectedCarerId, setSelectedCarerId] = useState<string>(animal.carerId || "");
@@ -242,6 +252,7 @@ export default function AnimalDetailClient({
 
   return (
     <div className="min-h-screen bg-background">
+      <AnimalReminderAlert reminders={reminders} animalName={animal.name} />
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         <div className="mb-6">
           <Link href="/">
@@ -635,6 +646,14 @@ export default function AnimalDetailClient({
               />
             </div>
             <div className="space-y-8">
+              <ManageReminders
+                animalId={animal.id}
+                animalName={animal.name}
+                reminders={reminders}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
+                onRemindersChange={setReminders}
+              />
               <LocationMap 
                 rescueLocation={((): { lat: number; lng: number; address: string } | undefined => {
                   const rc = animal.rescueCoordinates as unknown as { lat?: number; lng?: number } | null;
