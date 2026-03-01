@@ -540,7 +540,9 @@ model NSWLifeStage {
 
 enum OrgRole {
   ADMIN
+  COORDINATOR_ALL
   COORDINATOR
+  CARER_ALL
   CARER
 }
 

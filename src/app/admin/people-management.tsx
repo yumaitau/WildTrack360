@@ -91,7 +91,7 @@ interface PeopleMember {
   imageUrl: string;
   email: string;
   joinedAt: string;
-  role: 'ADMIN' | 'COORDINATOR' | 'CARER' | null;
+  role: 'ADMIN' | 'COORDINATOR_ALL' | 'COORDINATOR' | 'CARER_ALL' | 'CARER' | null;
   orgMemberId: string | null;
   speciesAssignments: OrgMemberWithAssignments['speciesAssignments'];
   carerProfile: EnrichedCarer | null;
@@ -424,7 +424,9 @@ export function PeopleManagement() {
   const getRoleIcon = (role: string | null) => {
     switch (role) {
       case 'ADMIN': return <ShieldAlert className="h-3 w-3" />;
+      case 'COORDINATOR_ALL': return <ShieldCheck className="h-3 w-3" />;
       case 'COORDINATOR': return <ShieldCheck className="h-3 w-3" />;
+      case 'CARER_ALL': return <Shield className="h-3 w-3" />;
       default: return <Shield className="h-3 w-3" />;
     }
   };
@@ -432,7 +434,9 @@ export function PeopleManagement() {
   const getRoleBadgeVariant = (role: string | null): "default" | "secondary" | "outline" => {
     switch (role) {
       case 'ADMIN': return 'default';
+      case 'COORDINATOR_ALL': return 'secondary';
       case 'COORDINATOR': return 'secondary';
+      case 'CARER_ALL': return 'outline';
       default: return 'outline';
     }
   };
@@ -567,7 +571,9 @@ export function PeopleManagement() {
         <AlertDescription className="text-blue-800">
           <div className="mt-2 space-y-1 text-sm">
             <p><strong>Admin</strong> &mdash; Full control. Manages users, species groups, org settings, and can see all animals.</p>
+            <p><strong>Coordinator (All)</strong> &mdash; Same as Coordinator but can see and manage animals across all species groups without needing assignments.</p>
             <p><strong>Coordinator</strong> &mdash; Manages animals within their assigned species groups. Can assign animals to carers and view carer workloads.</p>
+            <p><strong>Carer (All)</strong> &mdash; Can see all animals across all species groups, but can only edit animals assigned to them.</p>
             <p><strong>Carer</strong> &mdash; Can only see and update animals assigned to them.</p>
           </div>
         </AlertDescription>
@@ -660,10 +666,22 @@ export function PeopleManagement() {
                                   Admin
                                 </span>
                               </SelectItem>
+                              <SelectItem value="COORDINATOR_ALL">
+                                <span className="flex items-center gap-1">
+                                  <ShieldCheck className="h-3 w-3" />
+                                  Coordinator (All)
+                                </span>
+                              </SelectItem>
                               <SelectItem value="COORDINATOR">
                                 <span className="flex items-center gap-1">
                                   <ShieldCheck className="h-3 w-3" />
                                   Coordinator
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="CARER_ALL">
+                                <span className="flex items-center gap-1">
+                                  <Shield className="h-3 w-3" />
+                                  Carer (All)
                                 </span>
                               </SelectItem>
                               <SelectItem value="CARER">
@@ -692,6 +710,8 @@ export function PeopleManagement() {
                           <span className="text-xs text-muted-foreground">Assign a role first</span>
                         ) : member.role === 'ADMIN' ? (
                           <span className="text-xs text-muted-foreground">All species (admin)</span>
+                        ) : member.role === 'COORDINATOR_ALL' || member.role === 'CARER_ALL' ? (
+                          <span className="text-xs text-muted-foreground">All species</span>
                         ) : (
                           <span className="text-xs text-muted-foreground">&mdash;</span>
                         )}

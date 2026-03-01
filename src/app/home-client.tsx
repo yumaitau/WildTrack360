@@ -457,8 +457,8 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
         const role = roleData.role || 'CARER';
         setUserRole(role);
 
-        // Check if current user has an incomplete profile (CARER/COORDINATOR only)
-        if (role !== 'ADMIN' && user) {
+        // Check if current user has an incomplete profile (CARER/COORDINATOR only, not *_ALL)
+        if (role !== 'ADMIN' && role !== 'COORDINATOR_ALL' && role !== 'CARER_ALL' && user) {
           const currentCarer = (newCarers || []).find((c: any) => c.id === user.id);
           setHasIncompleteProfile(currentCarer?.hasProfile === false);
         }
@@ -542,7 +542,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
       setCarersList(newCarers);
 
       // Re-check incomplete profile on refresh
-      if (userRole !== 'ADMIN' && user) {
+      if (userRole !== 'ADMIN' && userRole !== 'COORDINATOR_ALL' && userRole !== 'CARER_ALL' && user) {
         const currentCarer = (newCarers || []).find((c: any) => c.id === user.id);
         setHasIncompleteProfile(currentCarer?.hasProfile === false);
       }
@@ -591,16 +591,16 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                         {organization.name}
                       </span>
                     )}
-                    <Badge variant={userRole === 'ADMIN' ? 'default' : userRole === 'COORDINATOR' ? 'secondary' : 'outline'} className="text-xs">
+                    <Badge variant={userRole === 'ADMIN' ? 'default' : (userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') ? 'secondary' : 'outline'} className="text-xs">
                       {userRole === 'ADMIN' && <ShieldAlert className="h-3 w-3 mr-1" />}
-                      {userRole === 'COORDINATOR' && <ShieldCheck className="h-3 w-3 mr-1" />}
-                      {userRole === 'CARER' && <Shield className="h-3 w-3 mr-1" />}
-                      {userRole}
+                      {(userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') && <ShieldCheck className="h-3 w-3 mr-1" />}
+                      {(userRole === 'CARER' || userRole === 'CARER_ALL') && <Shield className="h-3 w-3 mr-1" />}
+                      {userRole === 'COORDINATOR_ALL' ? 'Coordinator (All)' : userRole === 'CARER_ALL' ? 'Carer (All)' : userRole}
                     </Badge>
                   </div>
                 </div>
               </div>
-              {userRole !== 'CARER' && (
+              {userRole !== 'CARER' && userRole !== 'CARER_ALL' && (
                 <Link href="/admin">
                   <Button size="sm">
                     {userRole === 'ADMIN' ? 'Admin' : 'Coordinator'}

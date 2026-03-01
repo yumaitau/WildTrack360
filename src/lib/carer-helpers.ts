@@ -171,8 +171,8 @@ export async function getEligibleCarerIdsForSpecies(
 
   const eligible = new Set<string>();
   for (const m of orgMembers) {
-    // Always include admins — they are eligible for all species
-    if (m.role === 'ADMIN') {
+    // Always include admins and *_ALL roles — they are eligible for all species
+    if (m.role === 'ADMIN' || m.role === 'COORDINATOR_ALL' || m.role === 'CARER_ALL') {
       eligible.add(m.userId);
     }
     // Include if assigned to a matching species group

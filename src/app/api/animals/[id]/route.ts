@@ -20,9 +20,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const role = await getUserRole(userId, orgId)
 
-    // ADMIN and COORDINATOR (in scope) can edit any animal they can access
-    // CARER can only edit animals assigned to them
-    if (role === 'CARER') {
+    // ADMIN and COORDINATOR_ALL can edit any animal
+    // COORDINATOR (in scope) can edit animals in their species groups
+    // CARER / CARER_ALL can only edit animals assigned to them
+    if (role === 'CARER' || role === 'CARER_ALL') {
       if (animal.carerId !== userId) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
@@ -32,7 +33,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
     }
-    // ADMIN can always edit
+    // ADMIN and COORDINATOR_ALL can always edit
 
     const updated = await updateAnimal(id, body)
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'Animal', entityId: id, metadata: { fields: Object.keys(body) } })

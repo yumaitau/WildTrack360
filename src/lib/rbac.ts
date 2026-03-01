@@ -4,10 +4,12 @@ import { prisma } from './prisma';
 import type { OrgRole } from '@prisma/client';
 
 // ─── Role Hierarchy ──────────────────────────────────────────────────────────
-// ADMIN > COORDINATOR > CARER
+// ADMIN > COORDINATOR_ALL = COORDINATOR > CARER_ALL = CARER
 const ROLE_RANK: Record<OrgRole, number> = {
   ADMIN: 3,
+  COORDINATOR_ALL: 2,
   COORDINATOR: 2,
+  CARER_ALL: 1,
   CARER: 1,
 };
 
@@ -50,6 +52,18 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'settings:manage',
     'carer:view_workload',
   ]),
+  COORDINATOR_ALL: new Set([
+    'animal:view_all',
+    'animal:view_species_group',
+    'animal:view_own',
+    'animal:create',
+    'animal:assign',
+    'animal:edit_any',
+    'animal:edit_own',
+    'report:view_species',
+    'report:export',
+    'carer:view_workload',
+  ]),
   COORDINATOR: new Set([
     'animal:view_species_group',
     'animal:view_own',
@@ -60,6 +74,11 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'report:view_species',
     'report:export',
     'carer:view_workload',
+  ]),
+  CARER_ALL: new Set([
+    'animal:view_all',
+    'animal:view_own',
+    'animal:edit_own',
   ]),
   CARER: new Set([
     'animal:view_own',
@@ -159,8 +178,8 @@ export async function getAuthorisedSpecies(
   const member = await getOrgMember(userId, orgId);
   if (!member) return [];
 
-  // Admin sees everything — null means "no filter"
-  if (member.role === 'ADMIN') return null;
+  // Admin / *_ALL roles see everything — null means "no filter"
+  if (member.role === 'ADMIN' || member.role === 'COORDINATOR_ALL' || member.role === 'CARER_ALL') return null;
 
   // Coordinator sees species in their assigned groups
   // Preserve original casing so Prisma queries match DB values
@@ -192,7 +211,7 @@ export async function canAccessAnimal(
     return animal.carerId === userId;
   }
 
-  if (member.role === 'ADMIN') return true;
+  if (member.role === 'ADMIN' || member.role === 'COORDINATOR_ALL' || member.role === 'CARER_ALL') return true;
 
   if (member.role === 'COORDINATOR') {
     const authorisedSpecies = member.speciesAssignments.flatMap(
