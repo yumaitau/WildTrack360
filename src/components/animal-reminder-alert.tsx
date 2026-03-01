@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AlertTriangle, Clock } from "lucide-react";
 import {
   Dialog,
@@ -18,22 +18,8 @@ interface AnimalReminderAlertProps {
   animalName: string;
 }
 
-const DISMISSED_KEY = "animalReminderDismissed";
-
 export function AnimalReminderAlert({ reminders, animalName }: AnimalReminderAlertProps) {
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem(DISMISSED_KEY) === "true";
-    }
-    return false;
-  });
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (reminders.length > 0 && !dismissed) {
-      setOpen(true);
-    }
-  }, [reminders, dismissed]);
+  const [open, setOpen] = useState(reminders.length > 0);
 
   if (reminders.length === 0) return null;
 
@@ -104,9 +90,7 @@ export function AnimalReminderAlert({ reminders, animalName }: AnimalReminderAle
           <Button
             variant="destructive"
             onClick={() => {
-              setDismissed(true);
               setOpen(false);
-              sessionStorage.setItem(DISMISSED_KEY, "true");
             }}
           >
             I understand, continue
