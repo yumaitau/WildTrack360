@@ -6,57 +6,57 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 // Core Wildlife Management Models
 model Animal {
-  id          String   @id @default(cuid())
-  name        String
-  species     String
-  sex         String?
-  ageClass    String?
-  age         String?
-  dateOfBirth DateTime?
-  status      AnimalStatus
-  dateFound   DateTime
-  dateReleased DateTime?
-  outcomeDate DateTime?
-  outcome     String?
-  photo       String?
-  notes       String?
-  rescueLocation String?
+  id                String       @id @default(cuid())
+  name              String
+  species           String
+  sex               String?
+  ageClass          String?
+  age               String?
+  dateOfBirth       DateTime?
+  status            AnimalStatus
+  dateFound         DateTime
+  dateReleased      DateTime?
+  outcomeDate       DateTime?
+  outcome           String?
+  photo             String?
+  notes             String?
+  rescueLocation    String?
   rescueCoordinates Json? // { lat: number, lng: number }
-  
+
   // Detailed rescue address fields (required for NSW reporting)
-  rescueAddress String? @map("rescue_address")      // Street address where animal was found
-  rescueSuburb String? @map("rescue_suburb")        // Suburb/town where animal was found
-  rescuePostcode String? @map("rescue_postcode")    // Postcode of rescue location
-  
-  releaseLocation String?
+  rescueAddress  String? @map("rescue_address") // Street address where animal was found
+  rescueSuburb   String? @map("rescue_suburb") // Suburb/town where animal was found
+  rescuePostcode String? @map("rescue_postcode") // Postcode of rescue location
+
+  releaseLocation    String?
   releaseCoordinates Json? // { lat: number, lng: number }
-  releaseNotes String?
-  
+  releaseNotes       String?
+
   // Detailed release address fields
-  releaseAddress String? @map("release_address")    // Street address where animal was released
-  releaseSuburb String? @map("release_suburb")      // Suburb/town where animal was released  
-  releasePostcode String? @map("release_postcode")  // Postcode of release location
-  
+  releaseAddress  String? @map("release_address") // Street address where animal was released
+  releaseSuburb   String? @map("release_suburb") // Suburb/town where animal was released  
+  releasePostcode String? @map("release_postcode") // Postcode of release location
+
   // NSW-specific fields
-  encounterType String? @map("encounter_type")
-  initialWeightGrams Int? @map("initial_weight_grams")
-  weightUnit String? @default("g") @map("weight_unit")
-  animalCondition String? @map("animal_condition")
-  pouchCondition String? @map("pouch_condition")
-  fate String?
-  markBandMicrochip String? @map("mark_band_microchip")
-  lifeStage String? @map("life_stage")
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  encounterType      String? @map("encounter_type")
+  initialWeightGrams Int?    @map("initial_weight_grams")
+  weightUnit         String? @default("g") @map("weight_unit")
+  animalCondition    String? @map("animal_condition")
+  pouchCondition     String? @map("pouch_condition")
+  fate               String?
+  markBandMicrochip  String? @map("mark_band_microchip")
+  lifeStage          String? @map("life_stage")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Clerk Relations
   clerkUserId         String
@@ -66,27 +66,28 @@ model Animal {
   carerId String?
   carer   CarerProfile? @relation(fields: [carerId], references: [id])
 
-  records       Record[]
-  photos        Photo[]
+  records           Record[]
+  photos            Photo[]
   releaseChecklists ReleaseChecklist[]
   incidentReports   IncidentReport[]
-  transfers     AnimalTransfer[]
-  permanentCare PermanentCareApproval?
+  transfers         AnimalTransfer[]
+  permanentCare     PermanentCareApproval?
   preservedSpecimen PreservedSpecimen?
-  reminders     AnimalReminder[]
+  reminders         AnimalReminder[]
+  callLogs          CallLog[]
 
   @@map("animals")
 }
 
 model Record {
-  id          String      @id @default(cuid())
+  id          String     @id @default(cuid())
   type        RecordType
   date        DateTime
   description String
   location    String?
   notes       String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   // Clerk Relations
   clerkUserId         String
@@ -119,14 +120,14 @@ model Photo {
 }
 
 model Species {
-  id          String   @id @default(cuid())
-  name        String
-  scientificName String?
-  type        String?  // 'Mammal', 'Bird', 'Reptile', 'Amphibian'
-  description String?
+  id               String   @id @default(cuid())
+  name             String
+  scientificName   String?
+  type             String? // 'Mammal', 'Bird', 'Reptile', 'Amphibian'
+  description      String?
   careRequirements String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Clerk Relations
   clerkUserId         String
@@ -136,30 +137,30 @@ model Species {
 }
 
 model CarerProfile {
-  id          String   @id // Clerk user ID — single source of truth for identity
-  phone       String?
+  id            String    @id // Clerk user ID — single source of truth for identity
+  phone         String?
   licenseNumber String?
   licenseExpiry DateTime?
-  jurisdiction String?
-  specialties String[] // Array of specialty areas
-  notes       String?
-  active      Boolean  @default(true)
+  jurisdiction  String?
+  specialties   String[] // Array of specialty areas
+  notes         String?
+  active        Boolean   @default(true)
 
   // NSW-specific fields
-  streetAddress String? @map("street_address")
-  suburb String?
-  state String? @default("NSW")
-  postcode String?
-  executivePosition String? @map("executive_position")
-  speciesCoordinatorFor String? @map("species_coordinator_for")
-  rehabilitatesKoala Boolean @default(false) @map("rehabilitates_koala")
-  rehabilitatesFlyingFox Boolean @default(false) @map("rehabilitates_flying_fox")
-  rehabilitatesBirdOfPrey Boolean @default(false) @map("rehabilitates_bird_of_prey")
-  memberSince DateTime? @map("member_since")
-  trainingLevel String? @map("training_level")
+  streetAddress           String?   @map("street_address")
+  suburb                  String?
+  state                   String?   @default("NSW")
+  postcode                String?
+  executivePosition       String?   @map("executive_position")
+  speciesCoordinatorFor   String?   @map("species_coordinator_for")
+  rehabilitatesKoala      Boolean   @default(false) @map("rehabilitates_koala")
+  rehabilitatesFlyingFox  Boolean   @default(false) @map("rehabilitates_flying_fox")
+  rehabilitatesBirdOfPrey Boolean   @default(false) @map("rehabilitates_bird_of_prey")
+  memberSince             DateTime? @map("member_since")
+  trainingLevel           String?   @map("training_level")
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Clerk Relations
   clerkOrganizationId String
@@ -177,28 +178,28 @@ model CarerProfile {
 }
 
 model CarerTraining {
-  id          String   @id @default(cuid())
-  carerId     String
-  carer       CarerProfile @relation(fields: [carerId], references: [id], onDelete: Cascade)
-  
+  id      String       @id @default(cuid())
+  carerId String
+  carer   CarerProfile @relation(fields: [carerId], references: [id], onDelete: Cascade)
+
   // Training details
-  courseName  String   // e.g., "Wildlife First Aid", "Koala Handling"
-  provider    String?  // e.g., "NSW Wildlife Council", "TAFE NSW"
-  date        DateTime // Date training was completed
-  expiryDate  DateTime? // When certification expires
-  
+  courseName String // e.g., "Wildlife First Aid", "Koala Handling"
+  provider   String? // e.g., "NSW Wildlife Council", "TAFE NSW"
+  date       DateTime // Date training was completed
+  expiryDate DateTime? // When certification expires
+
   // Documentation
-  certificateUrl String? // Link to certificate document
+  certificateUrl    String? // Link to certificate document
   certificateNumber String? // Certificate ID/number if applicable
-  
+
   // Additional fields
-  trainingType String? // e.g., "Mandatory", "Specialist", "Refresher"
-  trainingHours Int?   // Duration of training in hours
-  notes       String?  // Any additional notes
-  
+  trainingType  String? // e.g., "Mandatory", "Specialist", "Refresher"
+  trainingHours Int? // Duration of training in hours
+  notes         String? // Any additional notes
+
   // Metadata
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Clerk Relations
   clerkUserId         String
@@ -211,25 +212,25 @@ model CarerTraining {
 }
 
 model HygieneLog {
-  id          String   @id @default(cuid())
-  date        DateTime
-  type        String
-  description String
-  completed   Boolean  @default(false)
+  id                      String       @id @default(cuid())
+  date                    DateTime
+  type                    String
+  description             String
+  completed               Boolean      @default(false)
   // Checklist fields
-  enclosureCleaned        Boolean  @default(false)
-  ppeUsed                 Boolean  @default(false)
-  handwashAvailable       Boolean  @default(false)
-  feedingBowlsDisinfected Boolean  @default(false)
-  quarantineSignsPresent  Boolean  @default(false)
+  enclosureCleaned        Boolean      @default(false)
+  ppeUsed                 Boolean      @default(false)
+  handwashAvailable       Boolean      @default(false)
+  feedingBowlsDisinfected Boolean      @default(false)
+  quarantineSignsPresent  Boolean      @default(false)
   // Attachments (array of URLs or objects)
-  photos      Json?
+  photos                  Json?
   // Relations
-  carerId     String
-  carer       CarerProfile @relation(fields: [carerId], references: [id])
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  carerId                 String
+  carer                   CarerProfile @relation(fields: [carerId], references: [id])
+  notes                   String?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
 
   // Clerk Relations
   clerkUserId         String
@@ -239,23 +240,23 @@ model HygieneLog {
 }
 
 model IncidentReport {
-  id          String   @id @default(cuid())
-  date        DateTime
-  type        String
-  description String
-  severity    IncidentSeverity
-  resolved    Boolean  @default(false)
-  resolution  String?
+  id             String           @id @default(cuid())
+  date           DateTime
+  type           String
+  description    String
+  severity       IncidentSeverity
+  resolved       Boolean          @default(false)
+  resolution     String?
   personInvolved String?
   reportedTo     String?
   actionTaken    String?
   location       String?
   animalId       String?
-  animal         Animal? @relation(fields: [animalId], references: [id])
+  animal         Animal?          @relation(fields: [animalId], references: [id])
   notes          String?
   attachments    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   // Clerk Relations
   clerkUserId         String
@@ -265,20 +266,20 @@ model IncidentReport {
 }
 
 model ReleaseChecklist {
-  id               String   @id @default(cuid())
-  releaseDate      DateTime
-  animalId         String
-  releaseLocation  String
+  id                 String      @id @default(cuid())
+  releaseDate        DateTime
+  animalId           String
+  releaseLocation    String
   releaseCoordinates Json?
-  within10km       Boolean  @default(false)
-  releaseType      ReleaseType
-  fitnessIndicators String[]
-  vetSignOff       Json?
-  photos           Json?
-  completed        Boolean  @default(false)
-  notes            String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  within10km         Boolean     @default(false)
+  releaseType        ReleaseType
+  fitnessIndicators  String[]
+  vetSignOff         Json?
+  photos             Json?
+  completed          Boolean     @default(false)
+  notes              String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   // Clerk Relations
   clerkUserId         String
@@ -291,18 +292,18 @@ model ReleaseChecklist {
 }
 
 model Asset {
-  id          String   @id @default(cuid())
-  name        String
-  type        String
-  description String?
-  status      AssetStatus
-  location    String?
-  assignedTo  String?
-  purchaseDate DateTime?
+  id              String      @id @default(cuid())
+  name            String
+  type            String
+  description     String?
+  status          AssetStatus
+  location        String?
+  assignedTo      String?
+  purchaseDate    DateTime?
   lastMaintenance DateTime?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   // Clerk Relations
   clerkUserId         String
@@ -372,186 +373,186 @@ model AnimalReminder {
 
 // NSW-specific models for compliance reporting
 model AnimalTransfer {
-  id String @id @default(cuid())
+  id       String @id @default(cuid())
   animalId String
-  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  
-  transferDate DateTime
+  animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  transferDate      DateTime
   reasonForTransfer String
-  
+
   // Receiving entity details
-  receivingEntity String
-  receivingEntityType String? // organisation, zoo, vet, individual
-  receivingLicense String?
-  receivingContactName String?
+  receivingEntity       String
+  receivingEntityType   String? // organisation, zoo, vet, individual
+  receivingLicense      String?
+  receivingContactName  String?
   receivingContactPhone String?
   receivingContactEmail String?
-  receivingOrgAnimalId String? // Their unique ID for the same animal
-  
+  receivingOrgAnimalId  String? // Their unique ID for the same animal
+
   // Address details
-  receivingAddress String?
-  receivingSuburb String?
-  receivingState String?
+  receivingAddress  String?
+  receivingSuburb   String?
+  receivingState    String?
   receivingPostcode String?
-  
+
   // Additional tracking
   transferAuthorizedBy String?
-  transferNotes String?
-  documents Json? // Array of document URLs/references
-  
+  transferNotes        String?
+  documents            Json? // Array of document URLs/references
+
   // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  clerkUserId String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  clerkUserId         String
   clerkOrganizationId String
-  
+
   @@map("animal_transfers")
 }
 
 model PermanentCareApproval {
-  id String @id @default(cuid())
+  id       String @id @default(cuid())
   animalId String @unique
-  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  
+  animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
   // Approval details
-  npwsApprovalDate DateTime
+  npwsApprovalDate   DateTime
   npwsApprovalNumber String
-  approvalCategory PermanentCareCategory
-  
+  approvalCategory   PermanentCareCategory
+
   // Facility/keeper details
-  facilityName String
+  facilityName  String
   licenseNumber String
-  keeperName String?
-  address String
-  suburb String
-  state String @default("NSW")
-  postcode String
-  
+  keeperName    String?
+  address       String
+  suburb        String
+  state         String  @default("NSW")
+  postcode      String
+
   // Status tracking
-  status PermanentCareStatus @default(ALIVE)
+  status            PermanentCareStatus @default(ALIVE)
   statusLastUpdated DateTime?
-  deathDate DateTime?
-  deathReason String?
-  
+  deathDate         DateTime?
+  deathReason       String?
+
   // Documentation
   approvalDocumentUrl String?
-  notes String?
-  
+  notes               String?
+
   // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  clerkUserId String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  clerkUserId         String
   clerkOrganizationId String
-  
+
   @@map("permanent_care_approvals")
 }
 
 model PreservedSpecimen {
-  id String @id @default(cuid())
+  id       String  @id @default(cuid())
   animalId String? @unique
-  animal Animal? @relation(fields: [animalId], references: [id], onDelete: SetNull)
-  
+  animal   Animal? @relation(fields: [animalId], references: [id], onDelete: SetNull)
+
   // Specimen details
-  species String
-  registerReferenceNumber String @unique
-  specimenDescription String
-  preservationMethod String?
-  preservationDate DateTime?
-  
+  species                 String
+  registerReferenceNumber String    @unique
+  specimenDescription     String
+  preservationMethod      String?
+  preservationDate        DateTime?
+
   // Storage location
-  facilityName String
+  facilityName    String
   facilityLicense String?
-  storageAddress String
-  storageSuburb String
-  storageState String @default("NSW")
+  storageAddress  String
+  storageSuburb   String
+  storageState    String  @default("NSW")
   storagePostcode String
-  
+
   // Additional info
   scientificPurpose String?
-  authorizedBy String?
-  notes String?
-  photos Json?
-  
+  authorizedBy      String?
+  notes             String?
+  photos            Json?
+
   // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  clerkUserId String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  clerkUserId         String
   clerkOrganizationId String
-  
+
   @@map("preserved_specimens")
 }
 
 model NSWReportMetadata {
-  id String @id @default(cuid())
-  reportYear Int
+  id                String   @id @default(cuid())
+  reportYear        Int
   reportPeriodStart DateTime
-  reportPeriodEnd DateTime
-  
+  reportPeriodEnd   DateTime
+
   // Organization details at time of report
   organizationName String
-  licenseNumber String
-  contactName String
-  contactEmail String
-  contactPhone String?
-  
+  licenseNumber    String
+  contactName      String
+  contactEmail     String
+  contactPhone     String?
+
   // Report submission details
   submittedDate DateTime?
-  submittedBy String?
-  nilReturn Boolean @default(false)
-  
+  submittedBy   String?
+  nilReturn     Boolean   @default(false)
+
   // Report statistics snapshot
-  totalAnimals Int @default(0)
-  totalTransfers Int @default(0)
-  totalPermanentCare Int @default(0)
+  totalAnimals            Int @default(0)
+  totalTransfers          Int @default(0)
+  totalPermanentCare      Int @default(0)
   totalPreservedSpecimens Int @default(0)
-  totalMembers Int @default(0)
-  
+  totalMembers            Int @default(0)
+
   // File reference
   reportFileUrl String?
-  reportHash String? // For integrity checking
-  
+  reportHash    String? // For integrity checking
+
   // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
   clerkOrganizationId String
-  
+
   @@map("nsw_report_metadata")
 }
 
 // NSW Lookup Tables (read-only reference)
 model NSWEncounterType {
-  key String @id
-  category String
-  displayOrder Int @default(0)
-  
+  key          String @id
+  category     String
+  displayOrder Int    @default(0)
+
   @@map("nsw_encounter_types")
 }
 
 model NSWFate {
-  key String @id
-  displayOrder Int @default(0)
-  
+  key          String @id
+  displayOrder Int    @default(0)
+
   @@map("nsw_fates")
 }
 
 model NSWPouchCondition {
-  key String @id
-  displayOrder Int @default(0)
-  
+  key          String @id
+  displayOrder Int    @default(0)
+
   @@map("nsw_pouch_conditions")
 }
 
 model NSWAnimalCondition {
-  key String @id
-  displayOrder Int @default(0)
-  
+  key          String @id
+  displayOrder Int    @default(0)
+
   @@map("nsw_animal_conditions")
 }
 
 model NSWLifeStage {
-  key String @id
-  displayOrder Int @default(0)
-  
+  key          String @id
+  displayOrder Int    @default(0)
+
   @@map("nsw_life_stages")
 }
 
@@ -569,8 +570,8 @@ enum OrgRole {
 // This replaces reliance on Clerk's built-in org:admin / org:member roles.
 model OrgMember {
   id        String   @id @default(cuid())
-  userId    String   // Clerk user ID
-  orgId     String   // Clerk organization ID
+  userId    String // Clerk user ID
+  orgId     String // Clerk organization ID
   role      OrgRole  @default(CARER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -585,14 +586,14 @@ model OrgMember {
 
 // Configurable species groups per organisation (e.g. Macropods, Bats, Koalas).
 model SpeciesGroup {
-  id          String   @id @default(cuid())
-  slug        String   // machine-readable key, e.g. "macropods"
-  name        String   // display name, e.g. "Macropods"
-  description String?
+  id           String   @id @default(cuid())
+  slug         String // machine-readable key, e.g. "macropods"
+  name         String // display name, e.g. "Macropods"
+  description  String?
   speciesNames String[] // species names that belong to this group (matched against Animal.species)
-  orgId       String   // Clerk organization ID
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  orgId        String // Clerk organization ID
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   coordinators CoordinatorSpeciesAssignment[]
 
@@ -603,10 +604,10 @@ model SpeciesGroup {
 
 // Junction table: which coordinators manage which species groups.
 model CoordinatorSpeciesAssignment {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   orgMemberId    String
   speciesGroupId String
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime @default(now())
 
   orgMember    OrgMember    @relation(fields: [orgMemberId], references: [id], onDelete: Cascade)
   speciesGroup SpeciesGroup @relation(fields: [speciesGroupId], references: [id], onDelete: Cascade)
@@ -619,14 +620,14 @@ model CoordinatorSpeciesAssignment {
 
 model AuditLog {
   id        String      @id @default(cuid())
-  userId    String      // Clerk user ID of the actor
-  userName  String?     // Display name of the actor at the time of the action
-  userEmail String?     // Email of the actor at the time of the action
-  orgId     String      // Clerk organization ID
+  userId    String // Clerk user ID of the actor
+  userName  String? // Display name of the actor at the time of the action
+  userEmail String? // Email of the actor at the time of the action
+  orgId     String // Clerk organization ID
   action    AuditAction
-  entity    String      // e.g. "Animal", "Species", "HygieneLog"
-  entityId  String?     // ID of the affected record (null for bulk ops)
-  metadata  Json?       // Additional context (changed fields, old/new values, etc.)
+  entity    String // e.g. "Animal", "Species", "HygieneLog"
+  entityId  String? // ID of the affected record (null for bulk ops)
+  metadata  Json? // Additional context (changed fields, old/new values, etc.)
   createdAt DateTime    @default(now())
 
   @@index([orgId])
@@ -656,4 +657,113 @@ enum PermanentCareCategory {
 enum PermanentCareStatus {
   ALIVE
   DEAD
+}
+
+// ─── Call Log Models ────────────────────────────────────────────────────────
+
+enum CallLogStatus {
+  OPEN
+  CLOSED
+}
+
+model CallLog {
+  id       String        @id @default(cuid())
+  dateTime DateTime      @map("date_time")
+  status   CallLogStatus @default(OPEN)
+
+  // Caller details
+  callerName  String  @map("caller_name")
+  callerPhone String? @map("caller_phone")
+  callerEmail String? @map("caller_email")
+
+  // Species involved
+  species String?
+
+  // Location / GPS where the animal was reported
+  location    String?
+  coordinates Json? // { lat: number, lng: number }
+  suburb      String?
+  postcode    String?
+
+  // Notes / comments
+  notes String?
+
+  // Lookup values (free text stored, referencing org-specific lookup lists)
+  reason   String? // from CallLogReason lookup
+  referrer String? // from CallLogReferrer lookup
+  action   String? // from CallLogAction lookup
+  outcome  String? // from CallLogOutcome lookup
+
+  // Taken by — auto-captured from Clerk auth
+  takenByUserId   String  @map("taken_by_user_id")
+  takenByUserName String? @map("taken_by_user_name")
+
+  // Assigned to — which carer/coordinator the call is assigned to
+  assignedToUserId   String? @map("assigned_to_user_id")
+  assignedToUserName String? @map("assigned_to_user_name")
+
+  // Link to Animal — optional FK
+  animalId String? @map("animal_id")
+  animal   Animal? @relation(fields: [animalId], references: [id], onDelete: SetNull)
+
+  // Organisation scoping (multi-tenancy)
+  clerkOrganizationId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clerkOrganizationId])
+  @@index([status])
+  @@index([dateTime])
+  @@map("call_logs")
+}
+
+// Configurable lookup lists — each org maintains their own values.
+
+model CallLogReason {
+  id                  String  @id @default(cuid())
+  label               String
+  displayOrder        Int     @default(0) @map("display_order")
+  active              Boolean @default(true)
+  clerkOrganizationId String
+
+  @@unique([label, clerkOrganizationId])
+  @@index([clerkOrganizationId])
+  @@map("call_log_reasons")
+}
+
+model CallLogReferrer {
+  id                  String  @id @default(cuid())
+  label               String
+  displayOrder        Int     @default(0) @map("display_order")
+  active              Boolean @default(true)
+  clerkOrganizationId String
+
+  @@unique([label, clerkOrganizationId])
+  @@index([clerkOrganizationId])
+  @@map("call_log_referrers")
+}
+
+model CallLogAction {
+  id                  String  @id @default(cuid())
+  label               String
+  displayOrder        Int     @default(0) @map("display_order")
+  active              Boolean @default(true)
+  clerkOrganizationId String
+
+  @@unique([label, clerkOrganizationId])
+  @@index([clerkOrganizationId])
+  @@map("call_log_actions")
+}
+
+model CallLogOutcome {
+  id                  String  @id @default(cuid())
+  label               String
+  displayOrder        Int     @default(0) @map("display_order")
+  active              Boolean @default(true)
+  clerkOrganizationId String
+
+  @@unique([label, clerkOrganizationId])
+  @@index([clerkOrganizationId])
+  @@map("call_log_outcomes")
 }

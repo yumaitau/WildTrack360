@@ -45,7 +45,6 @@ export default async function CompliancePage() {
   const completedChecklists = releaseChecklists.filter((c: any) => c.completed).length;
   const totalIncidents = incidents.length;
   const criticalIncidents = incidents.filter((i: any) => i.severity === 'CRITICAL').length;
-
   const complianceModules = [
     {
       title: "Compliance Register",

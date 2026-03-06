@@ -21,6 +21,7 @@ const EXPORT_TABLES = [
   { name: "Preserved Specimens", description: "Preserved specimen registry with storage details" },
   { name: "Organisation Members", description: "User roles and species group assignments" },
   { name: "Species Groups", description: "Configurable species groupings and coordinator assignments" },
+  { name: "Call Logs", description: "Incoming wildlife rescue call records with caller details, species, location, and outcomes" },
   { name: "Audit Logs", description: "Immutable record of all create, update, and delete actions (up to 10,000 most recent)" },
 ];
 
