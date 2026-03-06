@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@clerk/nextjs/server'
 import { logAudit } from '@/lib/audit'
 
-async function createCallLogRecord(callLog: any, userId: string, orgId: string) {
+async function createCallLogRecord(callLog: any, userId: string, orgId: string, tx?: any) {
+  const db = tx || prisma
   const parts = [
     `Call from ${callLog.callerName}`,
     callLog.reason ? `Reason: ${callLog.reason}` : null,
@@ -12,7 +13,7 @@ async function createCallLogRecord(callLog: any, userId: string, orgId: string) 
     callLog.referrer ? `Referred by: ${callLog.referrer}` : null,
   ].filter(Boolean)
 
-  await prisma.record.create({
+  await db.record.create({
     data: {
       type: 'OTHER',
       date: callLog.dateTime,
@@ -66,6 +67,33 @@ export async function PATCH(
   try {
     const body = await request.json()
 
+    // Validate that body is a plain object
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Request body must be a JSON object' }, { status: 400 })
+    }
+
+    // Validate animalId if provided
+    if (body.animalId !== undefined && body.animalId !== null) {
+      if (typeof body.animalId !== 'string' || body.animalId.trim() === '') {
+        return NextResponse.json({ error: 'animalId must be a non-empty string' }, { status: 400 })
+      }
+    }
+
+    // Validate dateTime if provided
+    if (body.dateTime !== undefined) {
+      const parsed = new Date(body.dateTime)
+      if (isNaN(parsed.getTime())) {
+        return NextResponse.json({ error: 'dateTime must be a valid date' }, { status: 400 })
+      }
+    }
+
+    // Validate assignedToUserId if provided
+    if (body.assignedToUserId !== undefined && body.assignedToUserId !== null) {
+      if (typeof body.assignedToUserId !== 'string' || body.assignedToUserId.trim() === '') {
+        return NextResponse.json({ error: 'assignedToUserId must be a non-empty string' }, { status: 400 })
+      }
+    }
+
     // Ensure the call log belongs to this org
     const existing = await prisma.callLog.findFirst({
       where: { id, clerkOrganizationId: orgId },
@@ -84,37 +112,43 @@ export async function PATCH(
       }
     }
 
-    const callLog = await prisma.callLog.update({
-      where: { id },
-      data: {
-        ...(body.dateTime !== undefined ? { dateTime: new Date(body.dateTime) } : {}),
-        ...(body.status !== undefined ? { status: body.status } : {}),
-        ...(body.callerName !== undefined ? { callerName: body.callerName } : {}),
-        ...(body.callerPhone !== undefined ? { callerPhone: body.callerPhone } : {}),
-        ...(body.callerEmail !== undefined ? { callerEmail: body.callerEmail } : {}),
-        ...(body.species !== undefined ? { species: body.species } : {}),
-        ...(body.location !== undefined ? { location: body.location } : {}),
-        ...(body.coordinates !== undefined ? { coordinates: body.coordinates } : {}),
-        ...(body.suburb !== undefined ? { suburb: body.suburb } : {}),
-        ...(body.postcode !== undefined ? { postcode: body.postcode } : {}),
-        ...(body.notes !== undefined ? { notes: body.notes } : {}),
-        ...(body.reason !== undefined ? { reason: body.reason } : {}),
-        ...(body.referrer !== undefined ? { referrer: body.referrer } : {}),
-        ...(body.action !== undefined ? { action: body.action } : {}),
-        ...(body.outcome !== undefined ? { outcome: body.outcome } : {}),
-        ...(body.assignedToUserId !== undefined ? { assignedToUserId: body.assignedToUserId } : {}),
-        ...(body.assignedToUserName !== undefined ? { assignedToUserName: body.assignedToUserName } : {}),
-        ...(body.animalId !== undefined ? { animalId: body.animalId } : {}),
-      },
+    const updateData = {
+      ...(body.dateTime !== undefined ? { dateTime: new Date(body.dateTime) } : {}),
+      ...(body.status !== undefined ? { status: body.status } : {}),
+      ...(body.callerName !== undefined ? { callerName: body.callerName } : {}),
+      ...(body.callerPhone !== undefined ? { callerPhone: body.callerPhone } : {}),
+      ...(body.callerEmail !== undefined ? { callerEmail: body.callerEmail } : {}),
+      ...(body.species !== undefined ? { species: body.species } : {}),
+      ...(body.location !== undefined ? { location: body.location } : {}),
+      ...(body.coordinates !== undefined ? { coordinates: body.coordinates } : {}),
+      ...(body.suburb !== undefined ? { suburb: body.suburb } : {}),
+      ...(body.postcode !== undefined ? { postcode: body.postcode } : {}),
+      ...(body.notes !== undefined ? { notes: body.notes } : {}),
+      ...(body.reason !== undefined ? { reason: body.reason } : {}),
+      ...(body.referrer !== undefined ? { referrer: body.referrer } : {}),
+      ...(body.action !== undefined ? { action: body.action } : {}),
+      ...(body.outcome !== undefined ? { outcome: body.outcome } : {}),
+      ...(body.assignedToUserId !== undefined ? { assignedToUserId: body.assignedToUserId } : {}),
+      ...(body.assignedToUserName !== undefined ? { assignedToUserName: body.assignedToUserName } : {}),
+      ...(body.animalId !== undefined ? { animalId: body.animalId } : {}),
+    }
+
+    const callLog = await prisma.$transaction(async (tx) => {
+      const updated = await tx.callLog.update({
+        where: { id },
+        data: updateData,
+      })
+
+      // If an animal was newly linked or changed to a different animal, create a record on the animal's timeline
+      const animalChanged = updated.animalId && updated.animalId !== existing.animalId
+      if (animalChanged) {
+        await createCallLogRecord(updated, userId, orgId, tx)
+      }
+
+      return updated
     })
 
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'CallLog', entityId: id, metadata: { fields: Object.keys(body) } })
-
-    // If an animal was newly linked or changed to a different animal, create a record on the animal's timeline
-    const animalChanged = callLog.animalId && callLog.animalId !== existing.animalId
-    if (animalChanged) {
-      await createCallLogRecord(callLog, userId, orgId)
-    }
 
     return NextResponse.json(callLog)
   } catch (error) {
