@@ -43,56 +43,71 @@ export async function POST(request: Request) {
   }
 
   try {
-    const created = await prisma.callLog.create({
-      data: {
-        dateTime: body.dateTime ? new Date(body.dateTime) : new Date(),
-        status: body.status || 'OPEN',
-        callerName: body.callerName,
-        callerPhone: body.callerPhone ?? null,
-        callerEmail: body.callerEmail ?? null,
-        species: body.species ?? null,
-        location: body.location ?? null,
-        coordinates: body.coordinates ?? null,
-        suburb: body.suburb ?? null,
-        postcode: body.postcode ?? null,
-        notes: body.notes ?? null,
-        reason: body.reason ?? null,
-        referrer: body.referrer ?? null,
-        action: body.action ?? null,
-        outcome: body.outcome ?? null,
-        takenByUserId: userId,
-        takenByUserName: userName,
-        assignedToUserId: body.assignedToUserId ?? null,
-        assignedToUserName: body.assignedToUserName ?? null,
-        animalId: body.animalId ?? null,
-        clerkOrganizationId: orgId,
-      },
-    })
-    logAudit({ userId, orgId, action: 'CREATE', entity: 'CallLog', entityId: created.id, metadata: { callerName: body.callerName, reason: body.reason } })
+    // Verify the target animal belongs to this org
+    if (body.animalId) {
+      const animal = await prisma.animal.findFirst({
+        where: { id: body.animalId, clerkOrganizationId: orgId },
+      })
+      if (!animal) {
+        return NextResponse.json({ error: 'Animal not found in this organization' }, { status: 400 })
+      }
+    }
 
-    // If linked to an animal, create a record on the animal's timeline
-    if (created.animalId) {
-      const parts = [
-        `Call from ${created.callerName}`,
-        created.reason ? `Reason: ${created.reason}` : null,
-        created.action ? `Action: ${created.action}` : null,
-        created.outcome ? `Outcome: ${created.outcome}` : null,
-        created.referrer ? `Referred by: ${created.referrer}` : null,
-      ].filter(Boolean)
-
-      await prisma.record.create({
+    const created = await prisma.$transaction(async (tx) => {
+      const callLog = await tx.callLog.create({
         data: {
-          type: 'OTHER',
-          date: created.dateTime,
-          description: `[CallLog:${created.id}] ${parts.join(' | ')}`,
-          location: [created.location, created.suburb, created.postcode].filter(Boolean).join(', ') || null,
-          notes: created.notes,
-          animalId: created.animalId,
-          clerkUserId: userId,
+          dateTime: body.dateTime ? new Date(body.dateTime) : new Date(),
+          status: body.status || 'OPEN',
+          callerName: body.callerName,
+          callerPhone: body.callerPhone ?? null,
+          callerEmail: body.callerEmail ?? null,
+          species: body.species ?? null,
+          location: body.location ?? null,
+          coordinates: body.coordinates ?? null,
+          suburb: body.suburb ?? null,
+          postcode: body.postcode ?? null,
+          notes: body.notes ?? null,
+          reason: body.reason ?? null,
+          referrer: body.referrer ?? null,
+          action: body.action ?? null,
+          outcome: body.outcome ?? null,
+          takenByUserId: userId,
+          takenByUserName: userName,
+          assignedToUserId: body.assignedToUserId ?? null,
+          assignedToUserName: body.assignedToUserName ?? null,
+          animalId: body.animalId ?? null,
           clerkOrganizationId: orgId,
         },
       })
-    }
+
+      // If linked to an animal, create a record on the animal's timeline
+      if (callLog.animalId) {
+        const parts = [
+          `Call from ${callLog.callerName}`,
+          callLog.reason ? `Reason: ${callLog.reason}` : null,
+          callLog.action ? `Action: ${callLog.action}` : null,
+          callLog.outcome ? `Outcome: ${callLog.outcome}` : null,
+          callLog.referrer ? `Referred by: ${callLog.referrer}` : null,
+        ].filter(Boolean)
+
+        await tx.record.create({
+          data: {
+            type: 'OTHER',
+            date: callLog.dateTime,
+            description: `[CallLog:${callLog.id}] ${parts.join(' | ')}`,
+            location: [callLog.location, callLog.suburb, callLog.postcode].filter(Boolean).join(', ') || null,
+            notes: callLog.notes,
+            animalId: callLog.animalId,
+            clerkUserId: userId,
+            clerkOrganizationId: orgId,
+          },
+        })
+      }
+
+      return callLog
+    })
+
+    logAudit({ userId, orgId, action: 'CREATE', entity: 'CallLog', entityId: created.id, metadata: { callerName: body.callerName, reason: body.reason } })
 
     return NextResponse.json(created, { status: 201 })
   } catch (error) {

@@ -17,7 +17,9 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useOrganization } from '@clerk/nextjs';
 import { useToast } from "@/hooks/use-toast";
-import { useJsApiLoader } from '@react-google-maps/api';
+import { useJsApiLoader, type Libraries } from '@react-google-maps/api';
+
+const GOOGLE_MAPS_LIBRARIES: Libraries = ['places'];
 
 interface LookupItem {
   id: string;
@@ -69,7 +71,7 @@ export default function NewCallLogPage() {
 
   const { isLoaded: mapsLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '',
-    libraries: ['places'],
+    libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
   useEffect(() => {

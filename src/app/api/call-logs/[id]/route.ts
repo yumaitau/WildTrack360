@@ -74,6 +74,16 @@ export async function PATCH(
       return NextResponse.json({ error: 'Call log not found' }, { status: 404 })
     }
 
+    // Verify the target animal belongs to this org
+    if (body.animalId) {
+      const animal = await prisma.animal.findFirst({
+        where: { id: body.animalId, clerkOrganizationId: orgId },
+      })
+      if (!animal) {
+        return NextResponse.json({ error: 'Animal not found in this organization' }, { status: 403 })
+      }
+    }
+
     const callLog = await prisma.callLog.update({
       where: { id },
       data: {

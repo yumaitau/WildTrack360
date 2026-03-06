@@ -60,6 +60,7 @@ export async function seedCallLogDefaults(orgId: string) {
       data: DEFAULT_REASONS.map((label, i) => ({
         label, displayOrder: i + 1, active: true, clerkOrganizationId: orgId,
       })),
+      skipDuplicates: true,
     }))
   }
 
@@ -68,6 +69,7 @@ export async function seedCallLogDefaults(orgId: string) {
       data: DEFAULT_ACTIONS.map((label, i) => ({
         label, displayOrder: i + 1, active: true, clerkOrganizationId: orgId,
       })),
+      skipDuplicates: true,
     }))
   }
 
@@ -76,6 +78,7 @@ export async function seedCallLogDefaults(orgId: string) {
       data: DEFAULT_REFERRERS.map((label, i) => ({
         label, displayOrder: i + 1, active: true, clerkOrganizationId: orgId,
       })),
+      skipDuplicates: true,
     }))
   }
 
@@ -84,6 +87,7 @@ export async function seedCallLogDefaults(orgId: string) {
       data: DEFAULT_OUTCOMES.map((label, i) => ({
         label, displayOrder: i + 1, active: true, clerkOrganizationId: orgId,
       })),
+      skipDuplicates: true,
     }))
   }
 
