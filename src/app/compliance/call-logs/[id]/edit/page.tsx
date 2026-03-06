@@ -72,6 +72,8 @@ export default function EditCallLogPage() {
         ]);
 
         if (!callLogRes.ok) throw new Error('Call log not found');
+        if (!animalsRes.ok) throw new Error('Failed to load animals');
+        if (!lookupsRes.ok) throw new Error('Failed to load lookups');
 
         const callLog = await callLogRes.json();
         const animalsData = await animalsRes.json();
@@ -190,12 +192,12 @@ export default function EditCallLogPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href={`/compliance/call-logs/${id}`}>
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" aria-label="Back to call log">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
           <Link href="/">
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" aria-label="Home">
               <Home className="h-4 w-4" />
             </Button>
           </Link>

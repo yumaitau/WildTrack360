@@ -41,9 +41,13 @@ export default function CallLogLookupsPage() {
   const [loading, setLoading] = useState(true);
 
   const loadLookups = useCallback(async () => {
-    if (!organization) return;
+    if (!organization) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`/api/call-log-lookups?orgId=${organization.id}`);
+      if (!res.ok) throw new Error('Failed to fetch lookups');
       const data = await res.json();
       setLookups(data);
     } catch (error) {
@@ -132,12 +136,12 @@ export default function CallLogLookupsPage() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/compliance/call-logs">
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" aria-label="Back to call logs">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <Link href="/">
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" aria-label="Home">
             <Home className="h-4 w-4" />
           </Button>
         </Link>
@@ -211,6 +215,7 @@ export default function CallLogLookupsPage() {
                                 size="sm"
                                 onClick={() => handleToggle(lt.key, item)}
                                 title={item.active ? 'Deactivate' : 'Activate'}
+                                aria-label={item.active ? `Deactivate ${item.label}` : `Activate ${item.label}`}
                               >
                                 {item.active ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
                               </Button>
@@ -220,6 +225,7 @@ export default function CallLogLookupsPage() {
                                 onClick={() => handleDelete(lt.key, item)}
                                 className="text-destructive hover:text-destructive"
                                 title="Delete"
+                                aria-label={`Delete ${item.label}`}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

@@ -122,6 +122,9 @@ export default function NewCallLogPage() {
           organization.getMemberships(),
           fetch(`/api/species?orgId=${organization.id}`),
         ]);
+        if (!animalsRes.ok) throw new Error('Failed to load animals');
+        if (!lookupsRes.ok) throw new Error('Failed to load lookups');
+        if (!speciesRes.ok) throw new Error('Failed to load species');
         const animalsData = await animalsRes.json();
         const lookupsData = await lookupsRes.json();
         const speciesData = await speciesRes.json();
@@ -168,10 +171,10 @@ export default function NewCallLogPage() {
         location: location || null,
         suburb: suburb || null,
         postcode: postcode || null,
-        reason: reason || null,
-        referrer: referrer || null,
-        action: action || null,
-        outcome: outcome || null,
+        reason: (reason && reason !== 'none') ? reason : null,
+        referrer: (referrer && referrer !== 'none') ? referrer : null,
+        action: (action && action !== 'none') ? action : null,
+        outcome: (outcome && outcome !== 'none') ? outcome : null,
         assignedToUserId: (assignedToUserId && assignedToUserId !== 'none') ? assignedToUserId : null,
         assignedToUserName: assignedToUserName || null,
         animalId: (animalId && animalId !== 'none') ? animalId : null,
@@ -212,12 +215,12 @@ export default function NewCallLogPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/compliance/call-logs">
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" aria-label="Back to call logs">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
           <Link href="/">
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" aria-label="Home">
               <Home className="h-4 w-4" />
             </Button>
           </Link>

@@ -74,13 +74,27 @@ export async function PATCH(
       return NextResponse.json({ error: 'Call log not found' }, { status: 404 })
     }
 
-    const { clerkOrganizationId: _orgId, id: _id, createdAt: _c, ...updateData } = body
-
     const callLog = await prisma.callLog.update({
       where: { id },
       data: {
-        ...updateData,
-        ...(updateData.dateTime ? { dateTime: new Date(updateData.dateTime) } : {}),
+        ...(body.dateTime !== undefined ? { dateTime: new Date(body.dateTime) } : {}),
+        ...(body.status !== undefined ? { status: body.status } : {}),
+        ...(body.callerName !== undefined ? { callerName: body.callerName } : {}),
+        ...(body.callerPhone !== undefined ? { callerPhone: body.callerPhone } : {}),
+        ...(body.callerEmail !== undefined ? { callerEmail: body.callerEmail } : {}),
+        ...(body.species !== undefined ? { species: body.species } : {}),
+        ...(body.location !== undefined ? { location: body.location } : {}),
+        ...(body.coordinates !== undefined ? { coordinates: body.coordinates } : {}),
+        ...(body.suburb !== undefined ? { suburb: body.suburb } : {}),
+        ...(body.postcode !== undefined ? { postcode: body.postcode } : {}),
+        ...(body.notes !== undefined ? { notes: body.notes } : {}),
+        ...(body.reason !== undefined ? { reason: body.reason } : {}),
+        ...(body.referrer !== undefined ? { referrer: body.referrer } : {}),
+        ...(body.action !== undefined ? { action: body.action } : {}),
+        ...(body.outcome !== undefined ? { outcome: body.outcome } : {}),
+        ...(body.assignedToUserId !== undefined ? { assignedToUserId: body.assignedToUserId } : {}),
+        ...(body.assignedToUserName !== undefined ? { assignedToUserName: body.assignedToUserName } : {}),
+        ...(body.animalId !== undefined ? { animalId: body.animalId } : {}),
       },
     })
 
