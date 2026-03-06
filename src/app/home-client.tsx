@@ -34,6 +34,7 @@ import CarerWorkloadDashboard from '@/components/carer-workload-dashboard';
 import ReleasesVsAdmissionsChart from '@/components/releases-vs-admissions-chart';
 import { TrainingExpiryAlerts } from '@/components/training-expiry-alerts';
 import { AdminComplianceChecklist } from '@/components/admin-compliance-checklist';
+import { CallLogDashboard } from '@/components/call-log-dashboard';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -256,6 +257,9 @@ function AdminCoordinatorView({
           </Button>
         </div>
       </div>
+
+      {/* Call Log */}
+      <CallLogDashboard />
 
       {/* Dashboard Stats */}
       <div className="grid grid-cols-1 gap-6 mb-8">

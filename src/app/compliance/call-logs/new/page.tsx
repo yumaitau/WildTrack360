@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format } from "date-fns";
-import { CalendarIcon, Phone, ArrowLeft, Home } from "lucide-react";
+import { CalendarIcon, Phone, ArrowLeft, Home, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useOrganization } from '@clerk/nextjs';
 import { useToast } from "@/hooks/use-toast";
+import { useJsApiLoader } from '@react-google-maps/api';
 
 interface LookupItem {
   id: string;
@@ -57,20 +59,75 @@ export default function NewCallLogPage() {
   const [assignedToUserName, setAssignedToUserName] = useState('');
   const [animalId, setAnimalId] = useState('');
   const [notes, setNotes] = useState('');
+  const [speciesList, setSpeciesList] = useState<string[]>([]);
+  const [speciesOpen, setSpeciesOpen] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
+  const placesService = useRef<google.maps.places.PlacesService | null>(null);
+  const placesDiv = useRef<HTMLDivElement | null>(null);
+
+  const { isLoaded: mapsLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '',
+    libraries: ['places'],
+  });
+
+  useEffect(() => {
+    if (mapsLoaded && !autocompleteService.current) {
+      autocompleteService.current = new google.maps.places.AutocompleteService();
+      if (placesDiv.current) {
+        placesService.current = new google.maps.places.PlacesService(placesDiv.current);
+      }
+    }
+  }, [mapsLoaded]);
+
+  const searchAddress = useCallback((input: string) => {
+    if (!autocompleteService.current || input.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+    autocompleteService.current.getPlacePredictions(
+      { input, componentRestrictions: { country: 'au' }, types: ['address'] },
+      (predictions) => {
+        setAddressSuggestions(predictions || []);
+      }
+    );
+  }, []);
+
+  const selectAddress = useCallback((placeId: string) => {
+    if (!placesService.current) return;
+    placesService.current.getDetails(
+      { placeId, fields: ['address_components', 'formatted_address', 'geometry'] },
+      (place) => {
+        if (!place) return;
+        setLocation(place.formatted_address || '');
+        const components = place.address_components || [];
+        const suburbComp = components.find(c => c.types.includes('locality'));
+        const postcodeComp = components.find(c => c.types.includes('postal_code'));
+        if (suburbComp) setSuburb(suburbComp.long_name);
+        if (postcodeComp) setPostcode(postcodeComp.long_name);
+        setAddressOpen(false);
+        setAddressSuggestions([]);
+      }
+    );
+  }, []);
 
   useEffect(() => {
     if (!organization) return;
     const load = async () => {
       try {
-        const [animalsRes, lookupsRes, membersRes] = await Promise.all([
+        const [animalsRes, lookupsRes, membersRes, speciesRes] = await Promise.all([
           fetch(`/api/animals?orgId=${organization.id}`),
           fetch(`/api/call-log-lookups?orgId=${organization.id}`),
           organization.getMemberships(),
+          fetch(`/api/species?orgId=${organization.id}`),
         ]);
         const animalsData = await animalsRes.json();
         const lookupsData = await lookupsRes.json();
+        const speciesData = await speciesRes.json();
         setAnimals(animalsData);
         setLookups(lookupsData);
+        setSpeciesList((speciesData || []).map((s: any) => s.name));
         const members = membersRes.data?.map((m: any) => ({
           userId: m.publicUserData?.userId,
           name: [m.publicUserData?.firstName, m.publicUserData?.lastName].filter(Boolean).join(' ') || m.publicUserData?.identifier || 'Unknown',
@@ -273,11 +330,60 @@ export default function NewCallLogPage() {
                 {/* Species */}
                 <div className="space-y-2">
                   <Label>Species</Label>
-                  <Input
-                    value={species}
-                    onChange={(e) => setSpecies(e.target.value)}
-                    placeholder="Species involved (e.g. Eastern Grey Kangaroo)"
-                  />
+                  <Popover open={speciesOpen} onOpenChange={setSpeciesOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={speciesOpen}
+                        className="w-full justify-between font-normal"
+                      >
+                        {species || "Select or type species..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                      <Command>
+                        <CommandInput
+                          placeholder="Search species..."
+                          value={species}
+                          onValueChange={setSpecies}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            {species ? (
+                              <button
+                                type="button"
+                                className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-sm"
+                                onClick={() => setSpeciesOpen(false)}
+                              >
+                                Use &quot;{species}&quot;
+                              </button>
+                            ) : (
+                              "Type to search species..."
+                            )}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {speciesList
+                              .filter(s => s.toLowerCase().includes((species || '').toLowerCase()))
+                              .map((s) => (
+                                <CommandItem
+                                  key={s}
+                                  value={s}
+                                  onSelect={(val) => {
+                                    setSpecies(val);
+                                    setSpeciesOpen(false);
+                                  }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", species === s ? "opacity-100" : "opacity-0")} />
+                                  {s}
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </CardContent>
@@ -374,14 +480,53 @@ export default function NewCallLogPage() {
               <CardDescription>Where the animal was reported</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div ref={placesDiv} className="hidden" />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2 md:col-span-3">
                   <Label>Address / Location Description</Label>
-                  <Input
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Street address or location description"
-                  />
+                  <Popover open={addressOpen} onOpenChange={setAddressOpen}>
+                    <PopoverTrigger asChild>
+                      <div>
+                        <Input
+                          value={location}
+                          onChange={(e) => {
+                            setLocation(e.target.value);
+                            searchAddress(e.target.value);
+                            setAddressOpen(e.target.value.length >= 3);
+                          }}
+                          onFocus={() => {
+                            if (addressSuggestions.length > 0) setAddressOpen(true);
+                          }}
+                          placeholder="Start typing an address..."
+                          autoComplete="nope"
+                          name="call-log-location-search"
+                        />
+                      </div>
+                    </PopoverTrigger>
+                    {addressSuggestions.length > 0 && (
+                      <PopoverContent
+                        className="w-[var(--radix-popover-trigger-width)] p-0"
+                        align="start"
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                      >
+                        <div className="max-h-60 overflow-y-auto">
+                          {addressSuggestions.map((prediction) => (
+                            <button
+                              key={prediction.place_id}
+                              type="button"
+                              className="w-full px-3 py-2 text-sm text-left hover:bg-accent transition-colors border-b last:border-b-0"
+                              onClick={() => selectAddress(prediction.place_id)}
+                            >
+                              {prediction.description}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="px-3 py-1 text-[10px] text-muted-foreground text-right border-t">
+                          Powered by Google
+                        </div>
+                      </PopoverContent>
+                    )}
+                  </Popover>
                 </div>
                 <div className="space-y-2">
                   <Label>Suburb</Label>

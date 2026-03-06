@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { seedCallLogDefaults } from '@/lib/call-log-defaults'
 
 const LOOKUP_MODELS = {
   reason: 'callLogReason',
@@ -35,6 +36,9 @@ export async function GET(request: Request) {
       })
       return NextResponse.json({ [type]: items })
     }
+
+    // Auto-seed defaults if all lookup lists are empty for this org
+    await seedCallLogDefaults(orgId)
 
     const [reasons, referrers, actions, outcomes] = await Promise.all([
       prisma.callLogReason.findMany({ where: { clerkOrganizationId: orgId }, orderBy: { displayOrder: 'asc' } }),

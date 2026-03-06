@@ -56,6 +56,7 @@ export async function GET() {
 			preservedSpecimens,
 			orgMembers,
 			speciesGroups,
+			callLogs,
 			auditLogs,
 		] = await Promise.all([
 			prisma.animal.findMany({
@@ -116,6 +117,11 @@ export async function GET() {
 					coordinators: { include: { orgMember: true } },
 				},
 				orderBy: { name: 'asc' },
+			}),
+			prisma.callLog.findMany({
+				where: { clerkOrganizationId: orgId },
+				include: { animal: { select: { name: true, species: true } } },
+				orderBy: { dateTime: 'desc' },
 			}),
 			prisma.auditLog.findMany({
 				where: { orgId },
@@ -616,6 +622,58 @@ export async function GET() {
 		}
 		styleHeaderRow(groupsSheet)
 
+		// ── Call Logs ───────────────────────────────────────────────────────
+		const callLogsSheet = workbook.addWorksheet('Call Logs')
+		callLogsSheet.columns = [
+			{ header: 'ID', key: 'id', width: 28 },
+			{ header: 'Date/Time', key: 'dateTime', width: 22 },
+			{ header: 'Status', key: 'status', width: 10 },
+			{ header: 'Caller Name', key: 'callerName', width: 20 },
+			{ header: 'Caller Phone', key: 'callerPhone', width: 16 },
+			{ header: 'Caller Email', key: 'callerEmail', width: 25 },
+			{ header: 'Species', key: 'species', width: 20 },
+			{ header: 'Reason', key: 'reason', width: 18 },
+			{ header: 'Referrer', key: 'referrer', width: 18 },
+			{ header: 'Action', key: 'action', width: 18 },
+			{ header: 'Outcome', key: 'outcome', width: 18 },
+			{ header: 'Location', key: 'location', width: 30 },
+			{ header: 'Suburb', key: 'suburb', width: 16 },
+			{ header: 'Postcode', key: 'postcode', width: 10 },
+			{ header: 'Coordinates', key: 'coordinates', width: 22 },
+			{ header: 'Taken By', key: 'takenByUserName', width: 20 },
+			{ header: 'Assigned To', key: 'assignedToUserName', width: 20 },
+			{ header: 'Linked Animal', key: 'animalName', width: 20 },
+			{ header: 'Notes', key: 'notes', width: 35 },
+			{ header: 'Created At', key: 'createdAt', width: 22 },
+			{ header: 'Updated At', key: 'updatedAt', width: 22 },
+		]
+		for (const cl of callLogs) {
+			callLogsSheet.addRow({
+				id: cl.id,
+				dateTime: fmtDate(cl.dateTime),
+				status: cl.status,
+				callerName: cl.callerName,
+				callerPhone: cl.callerPhone || '',
+				callerEmail: cl.callerEmail || '',
+				species: cl.species || '',
+				reason: cl.reason || '',
+				referrer: cl.referrer || '',
+				action: cl.action || '',
+				outcome: cl.outcome || '',
+				location: cl.location || '',
+				suburb: cl.suburb || '',
+				postcode: cl.postcode || '',
+				coordinates: fmtJson(cl.coordinates),
+				takenByUserName: cl.takenByUserName || '',
+				assignedToUserName: cl.assignedToUserName || '',
+				animalName: cl.animal?.name || '',
+				notes: cl.notes || '',
+				createdAt: fmtDate(cl.createdAt),
+				updatedAt: fmtDate(cl.updatedAt),
+			})
+		}
+		styleHeaderRow(callLogsSheet)
+
 		// ── 16. Audit Logs ──────────────────────────────────────────────────
 		const auditSheet = workbook.addWorksheet('Audit Logs')
 		auditSheet.columns = [
@@ -655,7 +713,7 @@ export async function GET() {
 			entity: 'DataExport',
 			metadata: {
 				format: 'xlsx',
-				tables: 13,
+				tables: 14,
 				rowCounts: {
 					animals: animals.length,
 					records: records.length,
@@ -669,6 +727,7 @@ export async function GET() {
 					preservedSpecimens: preservedSpecimens.length,
 					orgMembers: orgMembers.length,
 					speciesGroups: speciesGroups.length,
+					callLogs: callLogs.length,
 					auditLogs: auditLogs.length,
 				},
 			},

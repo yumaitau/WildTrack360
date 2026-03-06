@@ -3,6 +3,29 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@clerk/nextjs/server'
 import { logAudit } from '@/lib/audit'
 
+async function createCallLogRecord(callLog: any, userId: string, orgId: string) {
+  const parts = [
+    `Call from ${callLog.callerName}`,
+    callLog.reason ? `Reason: ${callLog.reason}` : null,
+    callLog.action ? `Action: ${callLog.action}` : null,
+    callLog.outcome ? `Outcome: ${callLog.outcome}` : null,
+    callLog.referrer ? `Referred by: ${callLog.referrer}` : null,
+  ].filter(Boolean)
+
+  await prisma.record.create({
+    data: {
+      type: 'OTHER',
+      date: callLog.dateTime,
+      description: `[CallLog:${callLog.id}] ${parts.join(' | ')}`,
+      location: [callLog.location, callLog.suburb, callLog.postcode].filter(Boolean).join(', ') || null,
+      notes: callLog.notes,
+      animalId: callLog.animalId,
+      clerkUserId: userId,
+      clerkOrganizationId: orgId,
+    },
+  })
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -62,6 +85,13 @@ export async function PATCH(
     })
 
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'CallLog', entityId: id, metadata: { fields: Object.keys(body) } })
+
+    // If an animal was newly linked or changed to a different animal, create a record on the animal's timeline
+    const animalChanged = callLog.animalId && callLog.animalId !== existing.animalId
+    if (animalChanged) {
+      await createCallLogRecord(callLog, userId, orgId)
+    }
+
     return NextResponse.json(callLog)
   } catch (error) {
     console.error('Error updating call log:', error)

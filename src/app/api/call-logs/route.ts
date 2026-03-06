@@ -68,6 +68,31 @@ export async function POST(request: Request) {
       },
     })
     logAudit({ userId, orgId, action: 'CREATE', entity: 'CallLog', entityId: created.id, metadata: { callerName: body.callerName, reason: body.reason } })
+
+    // If linked to an animal, create a record on the animal's timeline
+    if (created.animalId) {
+      const parts = [
+        `Call from ${created.callerName}`,
+        created.reason ? `Reason: ${created.reason}` : null,
+        created.action ? `Action: ${created.action}` : null,
+        created.outcome ? `Outcome: ${created.outcome}` : null,
+        created.referrer ? `Referred by: ${created.referrer}` : null,
+      ].filter(Boolean)
+
+      await prisma.record.create({
+        data: {
+          type: 'OTHER',
+          date: created.dateTime,
+          description: `[CallLog:${created.id}] ${parts.join(' | ')}`,
+          location: [created.location, created.suburb, created.postcode].filter(Boolean).join(', ') || null,
+          notes: created.notes,
+          animalId: created.animalId,
+          clerkUserId: userId,
+          clerkOrganizationId: orgId,
+        },
+      })
+    }
+
     return NextResponse.json(created, { status: 201 })
   } catch (error) {
     console.error('Error creating call log:', error)

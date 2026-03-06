@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, Home, FileSpreadsheet, Phone } from "lucide-react";
+import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, Home, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from '@/lib/prisma';
@@ -18,9 +18,9 @@ export default async function CompliancePage() {
   const config = await getServerJurisdictionConfig(orgId);
 
   // Fetch all data server-side
-  let animals, carers, releaseChecklists, incidents, callLogs;
+  let animals, carers, releaseChecklists, incidents;
   try {
-    [animals, carers, releaseChecklists, incidents, callLogs] = await Promise.all([
+    [animals, carers, releaseChecklists, incidents] = await Promise.all([
       prisma.animal.findMany({
         where: { clerkOrganizationId: orgId },
       }),
@@ -29,9 +29,6 @@ export default async function CompliancePage() {
         where: { clerkOrganizationId: orgId },
       }),
       prisma.incidentReport.findMany({
-        where: { clerkOrganizationId: orgId },
-      }),
-      prisma.callLog.findMany({
         where: { clerkOrganizationId: orgId },
       }),
     ]);
@@ -48,9 +45,6 @@ export default async function CompliancePage() {
   const completedChecklists = releaseChecklists.filter((c: any) => c.completed).length;
   const totalIncidents = incidents.length;
   const criticalIncidents = incidents.filter((i: any) => i.severity === 'CRITICAL').length;
-  const totalCallLogs = callLogs.length;
-  const openCallLogs = callLogs.filter((c: any) => c.status === 'OPEN').length;
-
   const complianceModules = [
     {
       title: "Compliance Register",
@@ -93,16 +87,6 @@ export default async function CompliancePage() {
       count: totalIncidents,
       color: "text-red-600",
       alert: criticalIncidents > 0
-    },
-    {
-      title: "Call Log",
-      description: "Record and track incoming wildlife rescue calls",
-      icon: Phone,
-      href: "/compliance/call-logs",
-      status: openCallLogs > 0 ? "action-required" : "updated",
-      count: totalCallLogs,
-      color: "text-amber-600",
-      alert: openCallLogs > 0
     },
     {
       title: "Hygiene Records",

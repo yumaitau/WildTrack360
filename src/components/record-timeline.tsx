@@ -1,11 +1,16 @@
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import { getRecordIcon } from './icons';
 import type { Record } from '@prisma/client';
-import { FileText, MapPin, AlertTriangle, User, Clock } from 'lucide-react';
+import { FileText, MapPin, AlertTriangle, User, Clock, Phone } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getJurisdictionComplianceConfig } from '@/lib/compliance-rules';
+
+const CALL_LOG_ID_PATTERN = /^\[CallLog:([^\]]+)\]\s*/;
+const CALL_LOG_LEGACY_PATTERN = /^Call Log:\s*/;
 
 interface RecordTimelineProps {
   records: Record[];
@@ -68,9 +73,39 @@ export default function RecordTimeline({ records, userMap = {}, rescueLocation, 
                   )}
 
                   {/* Description */}
-                  {record.description && (
-                    <p className="mt-2 text-foreground">{record.description}</p>
-                  )}
+                  {record.description && (() => {
+                    const callLogIdMatch = record.description.match(CALL_LOG_ID_PATTERN);
+                    if (callLogIdMatch) {
+                      const callLogId = callLogIdMatch[1];
+                      const displayText = record.description.replace(CALL_LOG_ID_PATTERN, '');
+                      return (
+                        <div className="mt-2">
+                          <p className="text-foreground">{displayText}</p>
+                          <Link href={`/compliance/call-logs/${callLogId}`}>
+                            <Button variant="outline" size="sm" className="mt-2">
+                              <Phone className="h-3.5 w-3.5 mr-1.5" />
+                              View Call Log
+                            </Button>
+                          </Link>
+                        </div>
+                      );
+                    }
+                    if (CALL_LOG_LEGACY_PATTERN.test(record.description)) {
+                      const displayText = record.description.replace(CALL_LOG_LEGACY_PATTERN, '');
+                      return (
+                        <div className="mt-2">
+                          <p className="text-foreground">{displayText}</p>
+                          <Link href="/compliance/call-logs">
+                            <Button variant="outline" size="sm" className="mt-2">
+                              <Phone className="h-3.5 w-3.5 mr-1.5" />
+                              View Call Logs
+                            </Button>
+                          </Link>
+                        </div>
+                      );
+                    }
+                    return <p className="mt-2 text-foreground">{record.description}</p>;
+                  })()}
 
                   {/* Notes */}
                   {record.notes && (
