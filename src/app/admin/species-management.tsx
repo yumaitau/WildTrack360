@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { SpeciesCombobox } from '@/components/species-combobox';
+
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -356,6 +356,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
                   onClick={toggleSelectAll}
                   className="flex items-center justify-center"
                   disabled={filteredSpecies.length === 0}
+                  aria-label={allFilteredSelected ? "Deselect all filtered species" : "Select all filtered species"}
                 >
                   {allFilteredSelected ? (
                     <CheckSquare className="h-4 w-4" />

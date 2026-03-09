@@ -11,8 +11,8 @@ export async function POST(request: Request) {
 	try {
 		const { ids } = await request.json()
 
-		if (!Array.isArray(ids) || ids.length === 0) {
-			return NextResponse.json({ error: 'ids array is required' }, { status: 400 })
+		if (!Array.isArray(ids) || ids.length === 0 || !ids.every((id: unknown) => typeof id === 'string' && id.trim().length > 0)) {
+			return NextResponse.json({ error: 'ids must be a non-empty array of non-empty strings' }, { status: 400 })
 		}
 
 		const result = await prisma.species.deleteMany({
