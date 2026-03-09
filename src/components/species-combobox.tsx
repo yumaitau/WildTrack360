@@ -4,7 +4,6 @@ import * as React from "react";
 import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { speciesSeedData } from "../../prisma/species-seed-data";
 
 interface SpeciesOption {
   value: string;
@@ -18,6 +17,7 @@ interface SpeciesComboboxProps {
   onValueChange: (value: string) => void;
   onSpeciesSelect?: (species: { name: string; scientificName?: string; type?: string }) => void;
   placeholder?: string;
+  species?: Array<{ name: string; scientificName?: string | null; type?: string | null }>;
 }
 
 export function SpeciesCombobox({
@@ -25,23 +25,24 @@ export function SpeciesCombobox({
   onValueChange,
   onSpeciesSelect,
   placeholder = "Select species...",
+  species = [],
 }: SpeciesComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState("");
   const containerRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  // Convert species seed data to options, sorted alphabetically
+  // Convert species data to options, sorted alphabetically
   const speciesOptions: SpeciesOption[] = React.useMemo(() => {
-    return speciesSeedData
-      .map((species) => ({
-        value: species.name,
-        label: species.name,
-        type: species.type,
-        scientificName: species.scientificName,
+    return species
+      .map((s) => ({
+        value: s.name,
+        label: s.name,
+        type: s.type || undefined,
+        scientificName: s.scientificName || undefined,
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, []);
+  }, [species]);
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
