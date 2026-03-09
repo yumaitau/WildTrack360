@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -18,9 +18,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
-import { Pen, PlusCircle, Trash, Save, X, Search } from 'lucide-react';
+import { Pen, PlusCircle, Trash, Save, X, Search, Download, CheckSquare, Square, MinusSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { SpeciesCombobox } from '@/components/species-combobox';
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -57,9 +57,10 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [speciesToDelete, setSpeciesToDelete] = useState<SpeciesItem | null>(null);
   const [loading, setLoading] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const { toast } = useToast();
-  
-  // Add search/filter state
+
+  // Search/filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
 
@@ -71,13 +72,17 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
   const [addDescription, setAddDescription] = useState('');
   const [addCareRequirements, setAddCareRequirements] = useState('');
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+
   // Filter species based on search term and type
   const filteredSpecies = species.filter(s => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.scientificName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
     const matchesType = filterType === 'all' || (() => {
       const speciesType = s.type?.toLowerCase() || '';
       switch (filterType) {
@@ -88,28 +93,52 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
         default: return true;
       }
     })();
-    
+
     return matchesSearch && matchesType;
   });
 
-  const refreshSpecies = async () => {
+  const refreshSpecies = useCallback(async () => {
     try {
       const orgId = organization?.id || 'default-org';
       const updatedSpecies = await apiJson<SpeciesItem[]>(`/api/species?orgId=${orgId}`);
       setSpecies(updatedSpecies);
+      setSelectedIds(new Set());
     } catch (error) {
       console.error('Error refreshing species:', error);
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error', 
-        description: 'Failed to refresh species list.' 
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to refresh species list.'
       });
     }
-  };
+  }, [organization, toast]);
 
   useEffect(() => {
     refreshSpecies();
-  }, [organization]);
+  }, [refreshSpecies]);
+
+  const handleSeedSpecies = async () => {
+    setSeeding(true);
+    try {
+      const result = await apiJson<{ inserted: number; message: string }>('/api/species/seed', {
+        method: 'POST',
+      });
+      await refreshSpecies();
+      toast({
+        title: 'Success',
+        description: result.message,
+      });
+    } catch (error) {
+      console.error('Error seeding species:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to load default species.',
+      });
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const openAddDialog = () => {
     setAddName('');
@@ -127,16 +156,16 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
     }
     setLoading(true);
     try {
-      await apiJson(`/api/species`, { 
-        method: 'POST', 
-        body: JSON.stringify({ 
+      await apiJson(`/api/species`, {
+        method: 'POST',
+        body: JSON.stringify({
           name: addName.trim(),
           scientificName: addScientificName || null,
           type: addType || null,
           description: addDescription || null,
           careRequirements: addCareRequirements || null,
-          clerkOrganizationId: organization?.id 
-        }) 
+          clerkOrganizationId: organization?.id
+        })
       });
       setIsAddDialogOpen(false);
       setAddName('');
@@ -161,15 +190,15 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
     }
     setLoading(true);
     try {
-      await apiJson(`/api/species/${editingSpecies.id}`, { 
-        method: 'PATCH', 
-        body: JSON.stringify({ 
-          name: editName.trim(), 
+      await apiJson(`/api/species/${editingSpecies.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: editName.trim(),
           scientificName: editScientificName || null,
           type: editType || null,
           description: editDescription || null,
           careRequirements: editCareRequirements || null
-        }) 
+        })
       });
       setEditingSpecies(null);
       setEditName('');
@@ -205,6 +234,25 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setLoading(true);
+    try {
+      const result = await apiJson<{ deleted: number; message: string }>('/api/species/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      setIsBulkDeleteDialogOpen(false);
+      await refreshSpecies();
+      toast({ title: 'Success', description: result.message });
+    } catch (error) {
+      console.error('Error bulk deleting species:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete selected species.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const openEditDialog = (item: SpeciesItem) => {
     setEditingSpecies(item);
     setEditName(item.name);
@@ -215,10 +263,30 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
     setIsEditDialogOpen(true);
   };
 
-  const openDeleteDialog = (species: SpeciesItem) => {
-    setSpeciesToDelete(species);
+  const openDeleteDialog = (s: SpeciesItem) => {
+    setSpeciesToDelete(s);
     setIsDeleteDialogOpen(true);
   };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredSpecies.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredSpecies.map(s => s.id)));
+    }
+  };
+
+  const allFilteredSelected = filteredSpecies.length > 0 && selectedIds.size === filteredSpecies.length;
+  const someFilteredSelected = selectedIds.size > 0 && selectedIds.size < filteredSpecies.length;
 
   return (
     <div className="space-y-4">
@@ -247,14 +315,30 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
         </Select>
       </div>
 
-      {/* Add Species Bar */}
-      <div className="flex justify-end">
+      {/* Action Bar */}
+      <div className="flex flex-wrap items-center gap-2 justify-between">
+        <div className="flex items-center gap-2">
+          <Button onClick={handleSeedSpecies} disabled={seeding || loading} variant="outline">
+            <Download className="mr-2 h-4 w-4" />
+            {seeding ? 'Loading...' : 'Load Default Species'}
+          </Button>
+          {selectedIds.size > 0 && (
+            <Button
+              variant="destructive"
+              onClick={() => setIsBulkDeleteDialogOpen(true)}
+              disabled={loading}
+            >
+              <Trash className="mr-2 h-4 w-4" />
+              Delete Selected ({selectedIds.size})
+            </Button>
+          )}
+        </div>
         <Button onClick={openAddDialog} disabled={loading}>
-          <PlusCircle className="mr-2 h-4 w-4" /> 
-          Add Species
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add Custom Species
         </Button>
       </div>
-      
+
       {/* Results Count */}
       <div className="text-sm text-muted-foreground">
         Showing {filteredSpecies.length} of {species.length} species
@@ -266,6 +350,22 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  className="flex items-center justify-center"
+                  disabled={filteredSpecies.length === 0}
+                >
+                  {allFilteredSelected ? (
+                    <CheckSquare className="h-4 w-4" />
+                  ) : someFilteredSelected ? (
+                    <MinusSquare className="h-4 w-4" />
+                  ) : (
+                    <Square className="h-4 w-4" />
+                  )}
+                </button>
+              </TableHead>
               <TableHead>Common Name</TableHead>
               <TableHead>Scientific Name</TableHead>
               <TableHead>Type</TableHead>
@@ -276,7 +376,13 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
           </TableHeader>
           <TableBody>
             {filteredSpecies.map((s) => (
-              <TableRow key={s.id}>
+              <TableRow key={s.id} className={selectedIds.has(s.id) ? 'bg-muted/50' : ''}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedIds.has(s.id)}
+                    onCheckedChange={() => toggleSelect(s.id)}
+                  />
+                </TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
                 <TableCell>
                   {s.scientificName ? (
@@ -305,8 +411,8 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
                   </span>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="icon"
                     onClick={() => openEditDialog(s)}
                     disabled={loading}
@@ -326,9 +432,9 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
             ))}
             {filteredSpecies.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
-                  {species.length === 0 
-                    ? "No species found. Add your first species above."
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  {species.length === 0
+                    ? 'No species found. Click "Load Default Species" to populate your species list, or add custom species.'
                     : searchTerm || filterType !== 'all'
                     ? "No species match your search criteria. Try adjusting your filters."
                     : "No species found."
@@ -344,32 +450,20 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-[600px] mx-auto">
           <DialogHeader>
-            <DialogTitle>Add Species</DialogTitle>
+            <DialogTitle>Add Custom Species</DialogTitle>
             <DialogDescription>
-              Provide details for the new species.
+              Add a species that isn&apos;t in the default list.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
             <div className="space-y-2">
               <Label htmlFor="add-name">Common Name *</Label>
-              <div className="space-y-2">
-                <SpeciesCombobox
-                  value={addName}
-                  onValueChange={setAddName}
-                  onSpeciesSelect={(species) => {
-                    setAddName(species.name);
-                    if (species.scientificName) setAddScientificName(species.scientificName);
-                    if (species.type) setAddType(species.type);
-                  }}
-                  placeholder="Select from existing species..."
-                />
-                <Input
-                  id="add-name"
-                  placeholder="Or enter a custom species name"
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                />
-              </div>
+              <Input
+                id="add-name"
+                placeholder="Enter species name"
+                value={addName}
+                onChange={(e) => setAddName(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="add-scientific">Scientific Name</Label>
@@ -429,7 +523,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog (full fields) */}
+      {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-[600px] mx-auto">
           <DialogHeader>
@@ -439,21 +533,21 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
             <div className="space-y-2">
               <Label htmlFor="edit-name">Common Name *</Label>
-              <Input 
+              <Input
                 id="edit-name"
-                placeholder="e.g., Eastern Grey Kangaroo" 
-                value={editName} 
-                onChange={(e) => setEditName(e.target.value)} 
+                placeholder="e.g., Eastern Grey Kangaroo"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-scientific">Scientific Name</Label>
-              <Input 
+              <Input
                 id="edit-scientific"
-                placeholder="e.g., Macropus giganteus" 
-                value={editScientificName} 
+                placeholder="e.g., Macropus giganteus"
+                value={editScientificName}
                 onChange={(e) => setEditScientificName(e.target.value)}
-                className="italic" 
+                className="italic"
               />
             </div>
             <div className="space-y-2">
@@ -472,36 +566,36 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-description">Description</Label>
-              <Textarea 
+              <Textarea
                 id="edit-description"
-                placeholder="General description of the species..." 
-                value={editDescription} 
+                placeholder="General description of the species..."
+                value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                rows={3} 
+                rows={3}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-care">Care Requirements</Label>
-              <Textarea 
+              <Textarea
                 id="edit-care"
-                placeholder="Specific care requirements, dietary needs, habitat requirements..." 
-                value={editCareRequirements} 
+                placeholder="Specific care requirements, dietary needs, habitat requirements..."
+                value={editCareRequirements}
                 onChange={(e) => setEditCareRequirements(e.target.value)}
-                rows={4} 
+                rows={4}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsEditDialogOpen(false)}
               disabled={loading}
             >
               <X className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button 
-              onClick={handleEditSpecies} 
+            <Button
+              onClick={handleEditSpecies}
               disabled={loading || !editName.trim()}
             >
               <Save className="mr-2 h-4 w-4" />
@@ -511,7 +605,7 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
+      {/* Single Delete Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -521,21 +615,51 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
               disabled={loading}
             >
               <X className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button 
+            <Button
               variant="destructive"
-              onClick={handleDeleteSpecies} 
+              onClick={handleDeleteSpecies}
               disabled={loading}
             >
               <Trash className="mr-2 h-4 w-4" />
               {loading ? 'Deleting...' : 'Delete Species'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Dialog */}
+      <Dialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {selectedIds.size} Species</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {selectedIds.size} selected species? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsBulkDeleteDialogOpen(false)}
+              disabled={loading}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={loading}
+            >
+              <Trash className="mr-2 h-4 w-4" />
+              {loading ? 'Deleting...' : `Delete ${selectedIds.size} Species`}
             </Button>
           </DialogFooter>
         </DialogContent>
