@@ -5,8 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { format, parse } from "date-fns"
-import { AlertTriangle, CalendarIcon, Loader2, Rocket } from "lucide-react"
+import { AlertTriangle, CalendarIcon, Camera, Loader2, Rocket, X } from "lucide-react"
 
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -80,6 +81,7 @@ type CreateAnimalData = {
   fate?: string | null;
 };
 import { LocationPicker } from "@/components/location-picker"
+import { getPhotoUrl } from "@/lib/photo-url"
 import { getCurrentJurisdiction } from '@/lib/config'
 import { NSW_ENCOUNTER_TYPES, NSW_FATE_OPTIONS, NSW_POUCH_CONDITIONS, NSW_ANIMAL_CONDITIONS } from '@/lib/compliance-rules'
 
@@ -131,6 +133,12 @@ export function AddAnimalDialog({
   const { toast } = useToast()
   const router = useRouter()
   const [isLoading, setIsLoading] = React.useState(false)
+  const [selectedPhoto, setSelectedPhoto] = React.useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = React.useState<string | null>(null)
+  // The raw S3 key for the existing photo (separate from the display URL)
+  const [existingPhotoKey, setExistingPhotoKey] = React.useState<string | null>(null)
+  const [isUploadingPhoto, setIsUploadingPhoto] = React.useState(false)
+  const photoInputRef = React.useRef<HTMLInputElement>(null)
   const [locationData, setLocationData] = React.useState<{
     lat: number;
     lng: number;
@@ -215,7 +223,15 @@ export function AddAnimalDialog({
     // Only reset if dialog just opened or animal changed while open
     if (!justOpened && !animalChanged) return;
     
+    // Reset photo state when dialog opens
+    setSelectedPhoto(null)
+    setIsUploadingPhoto(false)
+    if (photoInputRef.current) photoInputRef.current.value = ''
+
     if (animalToEdit) {
+        // Track the raw S3 key and show preview via authenticated proxy
+        setExistingPhotoKey(animalToEdit.photo || null)
+        setPhotoPreview(getPhotoUrl(animalToEdit.photo) || null)
         // Ensure we have valid values for all fields
         const carerValue = animalToEdit.carerId || '';
         const speciesValue = animalToEdit.species || '';
@@ -249,6 +265,8 @@ export function AddAnimalDialog({
           address: animalToEdit.rescueLocation || 'Canberra ACT, Australia'
         });
     } else {
+        setExistingPhotoKey(null)
+        setPhotoPreview(null)
         form.reset({
             name: "",
             species: "",
@@ -298,13 +316,68 @@ export function AddAnimalDialog({
   }, [locationData, form]);
 
 
-  async function onSubmit(data: AddAnimalFormValues) {
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setSelectedPhoto(file)
+    const reader = new FileReader()
+    reader.onloadend = () => setPhotoPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemovePhoto = () => {
+    setSelectedPhoto(null)
+    setPhotoPreview(null)
+    // Clear the existing S3 key so the photo is removed on save
+    setExistingPhotoKey(null)
+    if (photoInputRef.current) photoInputRef.current.value = ''
+  }
+
+  async function uploadPhoto(): Promise<string | null> {
+    if (!selectedPhoto) return photoPreview // Return existing URL if no new file selected
+    setIsUploadingPhoto(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedPhoto)
+      const res = await fetch('/api/upload/image', { method: 'POST', body: formData })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Photo upload failed')
+      }
+      const { url } = await res.json()
+      return url
+    } catch (error) {
+      toast({
+        title: "Photo Upload Failed",
+        description: error instanceof Error ? error.message : "Failed to upload photo",
+        variant: "destructive",
+      })
+      return null
+    } finally {
+      setIsUploadingPhoto(false)
+    }
+  }
+
+  async function onSubmit(data: AddAnimalFormValues): Promise<boolean> {
     setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Upload photo first if a new file was selected
+    let photoKey: string | null = null
+    if (selectedPhoto) {
+      photoKey = await uploadPhoto()
+      if (!photoKey) {
+        // Upload failed — stop submission so the user can retry or remove the photo
+        setIsLoading(false)
+        return false
+      }
+    } else if (existingPhotoKey) {
+      // Keep existing S3 key (edit mode, no new photo selected)
+      photoKey = existingPhotoKey
+    }
 
     // Check if status is RELEASED to handle release location data
     const isReleased = data.status === 'RELEASED';
-    
+
     const payload: CreateAnimalData = {
       name: data.name,
       species: data.species,
@@ -317,7 +390,7 @@ export function AddAnimalDialog({
       dateReleased: isReleased ? new Date() : null,
       outcomeDate: isReleased ? new Date() : null,
       outcome: isReleased ? 'Successfully released' : null,
-      photo: null,
+      photo: photoKey,
       notes: null,
       rescueLocation: data.rescueLocation || locationData.address || null,
       rescueCoordinates: data.rescueCoordinates || (locationData ? { lat: locationData.lat, lng: locationData.lng } : null),
@@ -352,6 +425,7 @@ export function AddAnimalDialog({
 
     setIsLoading(false)
     setIsOpen(false)
+    return true
   }
 
   const statusOptions = [
@@ -387,6 +461,49 @@ export function AddAnimalDialog({
                 </FormItem>
               )}
             />
+            {/* Photo Upload */}
+            <div className="space-y-2">
+              <FormLabel>Photo</FormLabel>
+              {photoPreview ? (
+                <div className="relative w-full aspect-video rounded-md overflow-hidden border">
+                  <Image src={photoPreview} alt="Animal photo preview" fill className="object-cover" />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-7 w-7"
+                    onClick={handleRemovePhoto}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="flex flex-col items-center justify-center w-full aspect-video rounded-md border-2 border-dashed border-muted-foreground/25 cursor-pointer hover:border-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+                  onClick={() => photoInputRef.current?.click()}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); photoInputRef.current?.click() } }}
+                >
+                  <Camera className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground">Click to upload a photo</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">JPEG, PNG, WebP, or GIF (max 10MB)</p>
+                </div>
+              )}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handlePhotoSelect}
+              />
+              {photoPreview && (
+                <Button type="button" variant="outline" size="sm" onClick={() => photoInputRef.current?.click()}>
+                  Change Photo
+                </Button>
+              )}
+            </div>
+
             <FormField
               control={form.control}
               name="species"
@@ -849,8 +966,8 @@ export function AddAnimalDialog({
                   disabled={isLoading}
                   onClick={() => {
                     form.handleSubmit(async (data) => {
-                      await onSubmit(data);
-                      setIsOpen(false);
+                      const success = await onSubmit(data);
+                      if (!success) return;
                       router.push(`/compliance/release-checklist/new?animalId=${animalToEdit.id}`);
                     })();
                   }}
@@ -859,9 +976,9 @@ export function AddAnimalDialog({
                   Release Animal
                 </Button>
               )}
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditMode ? 'Save Changes' : 'Save Animal'}
+              <Button type="submit" disabled={isLoading || isUploadingPhoto}>
+                {(isLoading || isUploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isUploadingPhoto ? 'Uploading Photo...' : isEditMode ? 'Save Changes' : 'Save Animal'}
               </Button>
             </DialogFooter>
           </form>

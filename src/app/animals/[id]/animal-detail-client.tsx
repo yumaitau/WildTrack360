@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import Link from 'next/link';
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpeciesIcon } from "@/components/icons";
 import RecordTimeline from "@/components/record-timeline";
+import PhotoGallery from "@/components/photo-gallery";
 import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -39,6 +40,7 @@ import type { AnimalReminder } from "@/lib/types";
 import { useOrganization, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { getPhotoUrl } from "@/lib/photo-url";
 
 interface AnimalDetailClientProps {
   initialAnimal: Animal;
@@ -49,6 +51,7 @@ interface AnimalDetailClientProps {
   initialReminders?: AnimalReminder[];
   currentUserId?: string;
   isAdmin?: boolean;
+  canManagePhotos?: boolean;
 }
 
 export default function AnimalDetailClient({
@@ -60,6 +63,7 @@ export default function AnimalDetailClient({
   initialReminders = [],
   currentUserId = "",
   isAdmin = false,
+  canManagePhotos = false,
 }: AnimalDetailClientProps) {
   const [animal, setAnimal] = useState<Animal>(initialAnimal);
   const [records, setRecords] = useState<Record[]>(initialRecords);
@@ -265,8 +269,18 @@ export default function AnimalDetailClient({
         
         <main>
           <Card className="mb-8 overflow-hidden shadow-lg">
-            <div>
-              <div className="p-6 flex flex-col justify-between">
+            <div className={getPhotoUrl(animal.photo) ? "grid grid-cols-1 md:grid-cols-3" : ""}>
+              {getPhotoUrl(animal.photo) && (
+                <div className="relative aspect-square md:aspect-auto md:min-h-[300px] overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={getPhotoUrl(animal.photo)!}
+                    alt={`Photo of ${animal.name}`}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <div className={`p-6 flex flex-col justify-between ${getPhotoUrl(animal.photo) ? "md:col-span-2" : ""}`}>
                 <div>
                   <StatusBadge status={animal.status} className="mb-4" />
                   <h1 className="font-headline text-4xl lg:text-5xl font-bold text-primary flex items-center gap-4">
@@ -675,7 +689,12 @@ export default function AnimalDetailClient({
                 animalName={animal.name}
                 jurisdiction={jurisdiction}
               />
-              {/* Photo gallery removed per request */}
+              <PhotoGallery
+                initialPhotos={initialPhotos}
+                animalId={animal.id}
+                animalSpecies={animal.species}
+                canManagePhotos={canManagePhotos}
+              />
             </div>
           </div>
         </main>
