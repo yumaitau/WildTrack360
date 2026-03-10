@@ -55,6 +55,11 @@ model Animal {
   markBandMicrochip  String? @map("mark_band_microchip")
   lifeStage          String? @map("life_stage")
 
+  // NSW compliance workflow fields
+  dateAdmitted  DateTime? @map("date_admitted")
+  orgAnimalId   String?   @map("org_animal_id")
+  outcomeReason String?   @map("outcome_reason")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -70,9 +75,10 @@ model Animal {
   photos            Photo[]
   releaseChecklists ReleaseChecklist[]
   incidentReports   IncidentReport[]
-  transfers         AnimalTransfer[]
-  permanentCare     PermanentCareApproval?
-  preservedSpecimen PreservedSpecimen?
+  transfers                  AnimalTransfer[]
+  permanentCare              PermanentCareApproval?
+  permanentCareApplications  PermanentCareApplication[]
+  preservedSpecimen          PreservedSpecimen?
   reminders         AnimalReminder[]
   callLogs          CallLog[]
 
@@ -320,6 +326,7 @@ enum AnimalStatus {
   RELEASED
   DECEASED
   TRANSFERRED
+  PERMANENT_CARE
 }
 
 enum RecordType {
@@ -378,7 +385,12 @@ model AnimalTransfer {
   animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
 
   transferDate      DateTime
+  transferType      TransferType @default(INTERNAL_CARER)
   reasonForTransfer String
+
+  // From/to custody
+  fromCarerId String? @map("from_carer_id")
+  toCarerId   String? @map("to_carer_id")
 
   // Receiving entity details
   receivingEntity       String
@@ -389,14 +401,20 @@ model AnimalTransfer {
   receivingContactEmail String?
   receivingOrgAnimalId  String? // Their unique ID for the same animal
 
+  // Receiving authority details
+  receivingAuthorityType String? @map("receiving_authority_type")
+  authorityEvidenceUrl   String? @map("authority_evidence_url")
+
   // Address details
   receivingAddress  String?
   receivingSuburb   String?
   receivingState    String?
   receivingPostcode String?
 
-  // Additional tracking
+  // Authorization and verification
   transferAuthorizedBy String?
+  verifiedByUserId     String? @map("verified_by_user_id")
+  verifiedAt           DateTime? @map("verified_at")
   transferNotes        String?
   documents            Json? // Array of document URLs/references
 
@@ -406,7 +424,17 @@ model AnimalTransfer {
   clerkUserId         String
   clerkOrganizationId String
 
+  @@index([animalId])
+  @@index([clerkOrganizationId])
   @@map("animal_transfers")
+}
+
+enum TransferType {
+  INTERNAL_CARER
+  INTER_ORGANISATION
+  VET_TRANSFER
+  PERMANENT_CARE_PLACEMENT
+  RELEASE_TRANSFER
 }
 
 model PermanentCareApproval {
@@ -445,6 +473,65 @@ model PermanentCareApproval {
   clerkOrganizationId String
 
   @@map("permanent_care_approvals")
+}
+
+model PermanentCareApplication {
+  id       String @id @default(cuid())
+  animalId String
+  animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  // Application workflow
+  status             ApplicationStatus @default(DRAFT)
+  createdByUserId    String            @map("created_by_user_id")
+  submittedByUserId  String?           @map("submitted_by_user_id")
+  submittedAt        DateTime?         @map("submitted_at")
+
+  // Non-releasable reasons and justification
+  nonReleasableReasons     String   @map("non_releasable_reasons")
+  euthanasiaJustification  String   @map("euthanasia_justification")
+
+  // Vet report (required before submission)
+  vetReportUrl String? @map("vet_report_url")
+  vetName      String? @map("vet_name")
+  vetClinic    String? @map("vet_clinic")
+  vetContact   String? @map("vet_contact")
+
+  // NPWS approval details (populated on approval)
+  npwsApprovalNumber String?   @map("npws_approval_number")
+  npwsApprovalDate   DateTime? @map("npws_approval_date")
+
+  // Permanent care keeper/facility
+  keeperName       String? @map("keeper_name")
+  facilityName     String? @map("facility_name")
+  facilityAddress  String? @map("facility_address")
+  facilitySuburb   String? @map("facility_suburb")
+  facilityState    String? @default("NSW") @map("facility_state")
+  facilityPostcode String? @map("facility_postcode")
+  category         PermanentCareCategory?
+
+  // Review
+  reviewedByUserId String?   @map("reviewed_by_user_id")
+  reviewedAt       DateTime? @map("reviewed_at")
+  rejectionReason  String?   @map("rejection_reason")
+
+  notes String?
+
+  // Metadata
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  clerkOrganizationId String
+
+  @@index([animalId])
+  @@index([clerkOrganizationId])
+  @@index([status])
+  @@map("permanent_care_applications")
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
 }
 
 model PreservedSpecimen {
@@ -645,6 +732,10 @@ enum AuditAction {
   ROLE_CHANGE
   ASSIGN
   UNASSIGN
+  SUBMIT
+  APPROVE
+  REJECT
+  EXPORT
 }
 
 // Additional enums for NSW models

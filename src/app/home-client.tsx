@@ -13,7 +13,7 @@ import { Animal } from '@prisma/client';
 type CreateAnimalData = {
   name: string;
   species: string;
-  status: 'ADMITTED' | 'IN_CARE' | 'READY_FOR_RELEASE' | 'RELEASED' | 'DECEASED' | 'TRANSFERRED';
+  status: 'ADMITTED' | 'IN_CARE' | 'READY_FOR_RELEASE' | 'RELEASED' | 'DECEASED' | 'TRANSFERRED' | 'PERMANENT_CARE';
   dateFound: Date;
   dateReleased: Date | null;
   outcomeDate: Date | null;

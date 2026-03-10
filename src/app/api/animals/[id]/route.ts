@@ -38,6 +38,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Compliance guardrails: validate status transitions
+    if (body.status && body.status !== animal.status) {
+      const { validateStatusTransition } = await import('@/lib/compliance-guardrails')
+      const result = await validateStatusTransition(id, orgId, body.status)
+      if (!result.allowed) {
+        // Allow admin override if explicitly requested
+        if (!(body._overrideValidation && hasPermission(role, 'compliance:override_validation'))) {
+          return NextResponse.json({ error: result.reason }, { status: 422 })
+        }
+        // Log the override
+        logAudit({ userId, orgId, action: 'UPDATE', entity: 'Animal', entityId: id, metadata: { overrideReason: result.reason, newStatus: body.status } })
+      }
+    }
+
+    // Remove internal flags before saving
+    delete body._overrideValidation
+
     const updated = await updateAnimal(id, body)
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'Animal', entityId: id, metadata: { fields: Object.keys(body) } })
     return NextResponse.json(updated)

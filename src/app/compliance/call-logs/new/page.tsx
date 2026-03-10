@@ -17,9 +17,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useOrganization } from '@clerk/nextjs';
 import { useToast } from "@/hooks/use-toast";
-import { useJsApiLoader, type Libraries } from '@react-google-maps/api';
-
-const GOOGLE_MAPS_LIBRARIES: Libraries = ['places'];
+import { useGoogleMaps } from '@/components/google-maps-provider';
 
 interface LookupItem {
   id: string;
@@ -69,10 +67,7 @@ export default function NewCallLogPage() {
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
   const placesDiv = useRef<HTMLDivElement | null>(null);
 
-  const { isLoaded: mapsLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '',
-    libraries: GOOGLE_MAPS_LIBRARIES,
-  });
+  const { isLoaded: mapsLoaded } = useGoogleMaps();
 
   useEffect(() => {
     if (mapsLoaded && !autocompleteService.current) {

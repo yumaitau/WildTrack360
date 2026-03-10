@@ -27,6 +27,7 @@ export interface TransferRecord {
   species: string;
   markBandMicrochip?: string;
   dateOfTransfer: Date;
+  transferType?: string;
   reasonForTransfer: string;
   recipientName: string;
   recipientLicense: string;

@@ -7,7 +7,7 @@ import * as z from "zod"
 import { format, parse } from "date-fns"
 import { AlertTriangle, CalendarIcon, Camera, Loader2, Rocket, X } from "lucide-react"
 
-import Image from "next/image"
+
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -52,7 +52,7 @@ type CreateAnimalData = {
   ageClass?: string | null;
   age?: string | null;
   dateOfBirth?: Date | null;
-  status: 'ADMITTED' | 'IN_CARE' | 'READY_FOR_RELEASE' | 'RELEASED' | 'DECEASED' | 'TRANSFERRED';
+  status: 'ADMITTED' | 'IN_CARE' | 'READY_FOR_RELEASE' | 'RELEASED' | 'DECEASED' | 'TRANSFERRED' | 'PERMANENT_CARE';
   dateFound: Date;
   dateReleased: Date | null;
   outcomeDate: Date | null;
@@ -94,7 +94,7 @@ const addAnimalSchema = z.object({
   dateOfBirth: z.date().optional().nullable(),
   dateFound: z.date({ required_error: "Date found is required" }),
   carer: z.string().optional(),
-  status: z.enum(["ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED"], {
+  status: z.enum(["ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED","PERMANENT_CARE"], {
     required_error: "Status is required"
   }),
   rescueLocation: z.string().optional(),
@@ -416,7 +416,28 @@ export function AddAnimalDialog({
       })
     };
 
-    await onAnimalAdd(payload)
+    try {
+      await onAnimalAdd(payload)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to save animal'
+
+      // Provide actionable guidance for compliance guardrails
+      let description = message
+      if (message.includes('TRANSFERRED') && message.includes('transfer record')) {
+        description = 'To mark this animal as transferred, first go to the Transfers tab and record the transfer details.'
+      } else if (message.includes('PERMANENT_CARE') && message.includes('permanent care application')) {
+        description = 'To mark this animal as permanent care, first go to the Permanent Care tab and submit an approved application.'
+      }
+
+      toast({
+        variant: 'destructive',
+        title: 'Status change blocked',
+        description,
+        duration: 8000,
+      })
+      setIsLoading(false)
+      return false
+    }
 
     toast({
       title: isEditMode ? "Animal Updated" : "Animal Added",
@@ -434,7 +455,8 @@ export function AddAnimalDialog({
     { value: "READY_FOR_RELEASE", label: "Ready for Release" },
     { value: "RELEASED", label: "Released" },
     { value: "DECEASED", label: "Deceased" },
-    { value: "TRANSFERRED", label: "Transferred" }
+    { value: "TRANSFERRED", label: "Transferred" },
+    { value: "PERMANENT_CARE", label: "Permanent Care" }
   ];
 
   return (
@@ -466,7 +488,8 @@ export function AddAnimalDialog({
               <FormLabel>Photo</FormLabel>
               {photoPreview ? (
                 <div className="relative w-full aspect-video rounded-md overflow-hidden border">
-                  <Image src={photoPreview} alt="Animal photo preview" fill className="object-cover" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photoPreview} alt="Animal photo preview" className="absolute inset-0 w-full h-full object-cover" />
                   <Button
                     type="button"
                     variant="destructive"

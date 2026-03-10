@@ -32,7 +32,13 @@ export type Permission =
   | 'settings:manage'
   | 'carer:view_workload'
   | 'reminder:create'
-  | 'reminder:delete_any';
+  | 'reminder:delete_any'
+  | 'compliance:draft_permanent_care'
+  | 'compliance:submit_permanent_care'
+  | 'compliance:approve_permanent_care'
+  | 'compliance:manage_transfers'
+  | 'compliance:override_validation'
+  | 'compliance:export_registers';
 
 // ─── Permission Matrix ───────────────────────────────────────────────────────
 const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
@@ -55,6 +61,12 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'carer:view_workload',
     'reminder:create',
     'reminder:delete_any',
+    'compliance:draft_permanent_care',
+    'compliance:submit_permanent_care',
+    'compliance:approve_permanent_care',
+    'compliance:manage_transfers',
+    'compliance:override_validation',
+    'compliance:export_registers',
   ]),
   COORDINATOR_ALL: new Set([
     'animal:view_all',
@@ -68,6 +80,9 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'report:export',
     'carer:view_workload',
     'reminder:create',
+    'compliance:draft_permanent_care',
+    'compliance:submit_permanent_care',
+    'compliance:manage_transfers',
   ]),
   COORDINATOR: new Set([
     'animal:view_species_group',
@@ -80,17 +95,22 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'report:export',
     'carer:view_workload',
     'reminder:create',
+    'compliance:draft_permanent_care',
+    'compliance:submit_permanent_care',
+    'compliance:manage_transfers',
   ]),
   CARER_ALL: new Set([
     'animal:view_all',
     'animal:view_own',
     'animal:edit_own',
     'reminder:create',
+    'compliance:draft_permanent_care',
   ]),
   CARER: new Set([
     'animal:view_own',
     'animal:edit_own',
     'reminder:create',
+    'compliance:draft_permanent_care',
   ]),
 };
 

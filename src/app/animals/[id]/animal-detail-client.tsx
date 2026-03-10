@@ -7,7 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpeciesIcon } from "@/components/icons";
 import RecordTimeline from "@/components/record-timeline";
 import PhotoGallery from "@/components/photo-gallery";
-import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck } from "lucide-react";
+import { PermanentCareTab } from "@/components/permanent-care-tab";
+import { TransfersTab } from "@/components/transfers-tab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck, ArrowRightLeft, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -28,7 +31,7 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { AddRecordForm } from "@/components/add-record-form";
 import LocationMap from "@/components/location-map";
-import { type Animal, type Photo, type Record } from "@/lib/types";
+import { type Animal, type Photo, type Record, type PermanentCareApplication, type AnimalTransfer } from "@/lib/types";
 import React, { useState, useMemo, useEffect } from "react";
 import { getCurrentJurisdiction } from "@/lib/config";
 import { AnimalStatus, RecordType } from "@prisma/client";
@@ -52,6 +55,12 @@ interface AnimalDetailClientProps {
   currentUserId?: string;
   isAdmin?: boolean;
   canManagePhotos?: boolean;
+  initialPermanentCareApplications?: PermanentCareApplication[];
+  initialTransfers?: AnimalTransfer[];
+  canDraftPermanentCare?: boolean;
+  canSubmitPermanentCare?: boolean;
+  canApprovePermanentCare?: boolean;
+  canManageTransfers?: boolean;
 }
 
 export default function AnimalDetailClient({
@@ -64,6 +73,12 @@ export default function AnimalDetailClient({
   currentUserId = "",
   isAdmin = false,
   canManagePhotos = false,
+  initialPermanentCareApplications = [],
+  initialTransfers = [],
+  canDraftPermanentCare = false,
+  canSubmitPermanentCare = false,
+  canApprovePermanentCare = false,
+  canManageTransfers = false,
 }: AnimalDetailClientProps) {
   const [animal, setAnimal] = useState<Animal>(initialAnimal);
   const [records, setRecords] = useState<Record[]>(initialRecords);
@@ -541,6 +556,24 @@ export default function AnimalDetailClient({
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
+              <Tabs defaultValue="records" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="records">Care Records</TabsTrigger>
+                  <TabsTrigger value="transfers" className="flex items-center gap-1">
+                    <ArrowRightLeft className="h-3.5 w-3.5" /> Transfers
+                    {initialTransfers.length > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{initialTransfers.length}</Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="permanent-care" className="flex items-center gap-1">
+                    <Shield className="h-3.5 w-3.5" /> Permanent Care
+                    {initialPermanentCareApplications.length > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{initialPermanentCareApplications.length}</Badge>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="records" className="space-y-8 mt-4">
               {animal.status !== AnimalStatus.RELEASED ? (
                 <>
                   {animal.status === AnimalStatus.IN_CARE && (
@@ -658,6 +691,36 @@ export default function AnimalDetailClient({
                 })()}
                 jurisdiction={jurisdiction}
               />
+                </TabsContent>
+
+                <TabsContent value="transfers" className="mt-4">
+                  <TransfersTab
+                    animalId={animal.id}
+                    animalName={animal.name}
+                    animalStatus={animal.status}
+                    initialTransfers={initialTransfers}
+                    canManageTransfers={canManageTransfers}
+                    onAnimalStatusChange={(updatedAnimal) => {
+                      setAnimal(prev => ({ ...prev, ...updatedAnimal }));
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="permanent-care" className="mt-4">
+                  <PermanentCareTab
+                    animalId={animal.id}
+                    animalName={animal.name}
+                    animalStatus={animal.status}
+                    initialApplications={initialPermanentCareApplications}
+                    canDraft={canDraftPermanentCare}
+                    canSubmit={canSubmitPermanentCare}
+                    canApprove={canApprovePermanentCare}
+                    onAnimalStatusChange={(updatedAnimal) => {
+                      setAnimal(prev => ({ ...prev, ...updatedAnimal }));
+                    }}
+                  />
+                </TabsContent>
+              </Tabs>
             </div>
             <div className="space-y-8">
               <ManageReminders
@@ -704,27 +767,20 @@ export default function AnimalDetailClient({
         isOpen={isEditOpen}
         setIsOpen={setIsEditOpen}
         onAnimalAdd={async (data: any) => {
-          try {
-            const res = await fetch(`/api/animals/${animal.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...data, clerkOrganizationId: organization?.id }),
-            });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({ error: 'Failed to update animal' }));
-              throw new Error(err.error || 'Failed to update animal');
-            }
-            const updated = await res.json();
-            setAnimal(prev => ({ ...prev, ...updated }));
-            setIsEditOpen(false);
-          } catch (e) {
-            console.error('Failed to save animal', e);
-            toast({
-              variant: 'destructive',
-              title: 'Update failed',
-              description: e instanceof Error ? e.message : 'Failed to update animal',
-            });
+          const res = await fetch(`/api/animals/${animal.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...data, clerkOrganizationId: organization?.id }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Failed to update animal' }));
+            const errorMsg = err.error || 'Failed to update animal';
+            // Throw so the dialog knows the save failed and doesn't show success
+            throw new Error(errorMsg);
           }
+          const updated = await res.json();
+          setAnimal(prev => ({ ...prev, ...updated }));
+          setIsEditOpen(false);
         }}
         animalToEdit={animal as any}
         species={speciesOptions}

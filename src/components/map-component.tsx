@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, Marker } from '@react-google-maps/api';
+import { useGoogleMaps } from '@/components/google-maps-provider';
 import { Button } from '@/components/ui/button';
 import { Map, Satellite, Expand } from 'lucide-react';
 import {
@@ -39,10 +40,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ center, onLocationChange, i
   const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
   const [isFullscreen, setIsFullscreen] = useState(false);
   
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '',
-    libraries: ['places']
-  });
+  const { isLoaded } = useGoogleMaps();
 
   const handleMapClick = useCallback((event: google.maps.MapMouseEvent) => {
     if (event.latLng) {
