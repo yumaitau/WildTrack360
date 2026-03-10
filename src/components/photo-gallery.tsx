@@ -95,6 +95,7 @@ export default function PhotoGallery({
                           variant="destructive"
                           size="icon"
                           className="absolute top-2 right-2 h-8 w-8"
+                          aria-label="Delete photo"
                           disabled={deletingPhotoId === photo.id}
                           onClick={() => handleDeletePhoto(photo.id)}
                         >

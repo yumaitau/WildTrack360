@@ -58,13 +58,8 @@ export async function DELETE(
   }
 
   try {
-    // Delete from S3 (the url field stores the S3 key)
-    try {
-      await deleteObjectFromS3(photo.url)
-    } catch (s3Error) {
-      // Log but don't block — the DB record should still be removed
-      console.error('S3 delete failed (proceeding with DB delete):', s3Error)
-    }
+    // Delete from S3 first — if this fails, do not remove the DB record
+    await deleteObjectFromS3(photo.url)
 
     // Delete the DB record
     await prisma.photo.delete({ where: { id } })

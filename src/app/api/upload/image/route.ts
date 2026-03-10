@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { randomUUID } from 'crypto'
 import { uploadToS3 } from '@/lib/s3'
 import { logAudit } from '@/lib/audit'
 
@@ -30,9 +31,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File too large. Maximum size is 10MB' }, { status: 400 })
     }
 
-    const timestamp = Date.now()
+    const uuid = randomUUID()
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const key = `orgs/${orgId}/animal-photos/${timestamp}-${sanitizedName}`
+    const key = `orgs/${orgId}/animal-photos/${uuid}-${sanitizedName}`
 
     const buffer = Buffer.from(await file.arrayBuffer())
     // Returns the S3 key (NOT a public URL) — objects are private

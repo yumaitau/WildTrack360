@@ -328,6 +328,7 @@ export function AddAnimalDialog({
   const handleRemovePhoto = () => {
     setSelectedPhoto(null)
     setPhotoPreview(null)
+    // Clear the existing S3 key so the photo is removed on save
     setExistingPhotoKey(null)
     if (photoInputRef.current) photoInputRef.current.value = ''
   }
@@ -357,7 +358,7 @@ export function AddAnimalDialog({
     }
   }
 
-  async function onSubmit(data: AddAnimalFormValues) {
+  async function onSubmit(data: AddAnimalFormValues): Promise<boolean> {
     setIsLoading(true)
 
     // Upload photo first if a new file was selected
@@ -367,7 +368,7 @@ export function AddAnimalDialog({
       if (!photoKey) {
         // Upload failed — stop submission so the user can retry or remove the photo
         setIsLoading(false)
-        return
+        return false
       }
     } else if (existingPhotoKey) {
       // Keep existing S3 key (edit mode, no new photo selected)
@@ -424,6 +425,7 @@ export function AddAnimalDialog({
 
     setIsLoading(false)
     setIsOpen(false)
+    return true
   }
 
   const statusOptions = [
@@ -477,8 +479,11 @@ export function AddAnimalDialog({
                 </div>
               ) : (
                 <div
-                  className="flex flex-col items-center justify-center w-full aspect-video rounded-md border-2 border-dashed border-muted-foreground/25 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                  role="button"
+                  tabIndex={0}
+                  className="flex flex-col items-center justify-center w-full aspect-video rounded-md border-2 border-dashed border-muted-foreground/25 cursor-pointer hover:border-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
                   onClick={() => photoInputRef.current?.click()}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); photoInputRef.current?.click() } }}
                 >
                   <Camera className="h-8 w-8 text-muted-foreground/50 mb-2" />
                   <p className="text-sm text-muted-foreground">Click to upload a photo</p>
@@ -961,8 +966,8 @@ export function AddAnimalDialog({
                   disabled={isLoading}
                   onClick={() => {
                     form.handleSubmit(async (data) => {
-                      await onSubmit(data);
-                      setIsOpen(false);
+                      const success = await onSubmit(data);
+                      if (!success) return;
                       router.push(`/compliance/release-checklist/new?animalId=${animalToEdit.id}`);
                     })();
                   }}

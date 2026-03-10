@@ -19,7 +19,6 @@ import { getObjectFromS3, extractOrgIdFromKey } from '@/lib/s3'
 export async function GET(request: Request) {
   // 1. Authenticate
   const { userId, orgId } = await auth()
-  console.log('[photo-serve] auth:', { userId: !!userId, orgId })
 
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 })
@@ -31,7 +30,6 @@ export async function GET(request: Request) {
   // 2. Get the S3 key from the query parameter
   const { searchParams } = new URL(request.url)
   const s3Key = searchParams.get('key')
-  console.log('[photo-serve] key:', s3Key)
   if (!s3Key) {
     return new NextResponse('Missing key parameter', { status: 400 })
   }
