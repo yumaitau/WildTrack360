@@ -559,20 +559,24 @@ export default function AnimalDetailClient({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
               <Tabs defaultValue="records" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className={`grid w-full ${jurisdiction === 'NSW' ? 'grid-cols-3' : 'grid-cols-1'}`}>
                   <TabsTrigger value="records">Care Records</TabsTrigger>
-                  <TabsTrigger value="transfers" className="flex items-center gap-1">
-                    <ArrowRightLeft className="h-3.5 w-3.5" /> Transfers
-                    {transferCount > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{transferCount}</Badge>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="permanent-care" className="flex items-center gap-1">
-                    <Shield className="h-3.5 w-3.5" /> Permanent Care
-                    {permanentCareCount > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{permanentCareCount}</Badge>
-                    )}
-                  </TabsTrigger>
+                  {jurisdiction === 'NSW' && (
+                    <TabsTrigger value="transfers" className="flex items-center gap-1">
+                      <ArrowRightLeft className="h-3.5 w-3.5" /> Transfers
+                      {transferCount > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{transferCount}</Badge>
+                      )}
+                    </TabsTrigger>
+                  )}
+                  {jurisdiction === 'NSW' && (
+                    <TabsTrigger value="permanent-care" className="flex items-center gap-1">
+                      <Shield className="h-3.5 w-3.5" /> Permanent Care
+                      {permanentCareCount > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{permanentCareCount}</Badge>
+                      )}
+                    </TabsTrigger>
+                  )}
                 </TabsList>
 
                 <TabsContent value="records" className="space-y-8 mt-4">
@@ -695,35 +699,39 @@ export default function AnimalDetailClient({
               />
                 </TabsContent>
 
-                <TabsContent value="transfers" className="mt-4">
-                  <TransfersTab
-                    animalId={animal.id}
-                    animalName={animal.name}
-                    animalStatus={animal.status}
-                    initialTransfers={initialTransfers}
-                    canManageTransfers={canManageTransfers}
-                    onAnimalStatusChange={(updatedAnimal) => {
-                      setAnimal(prev => ({ ...prev, ...updatedAnimal }));
-                    }}
-                    onCountChange={setTransferCount}
-                  />
-                </TabsContent>
+                {jurisdiction === 'NSW' && (
+                  <TabsContent value="transfers" className="mt-4">
+                    <TransfersTab
+                      animalId={animal.id}
+                      animalName={animal.name}
+                      animalStatus={animal.status}
+                      initialTransfers={initialTransfers}
+                      canManageTransfers={canManageTransfers}
+                      onAnimalStatusChange={(updatedAnimal) => {
+                        setAnimal(prev => ({ ...prev, ...updatedAnimal }));
+                      }}
+                      onCountChange={setTransferCount}
+                    />
+                  </TabsContent>
+                )}
 
-                <TabsContent value="permanent-care" className="mt-4">
-                  <PermanentCareTab
-                    animalId={animal.id}
-                    animalName={animal.name}
-                    animalStatus={animal.status}
-                    initialApplications={initialPermanentCareApplications}
-                    canDraft={canDraftPermanentCare}
-                    canSubmit={canSubmitPermanentCare}
-                    canApprove={canApprovePermanentCare}
-                    onAnimalStatusChange={(updatedAnimal) => {
-                      setAnimal(prev => ({ ...prev, ...updatedAnimal }));
-                    }}
-                    onCountChange={setPermanentCareCount}
-                  />
-                </TabsContent>
+                {jurisdiction === 'NSW' && (
+                  <TabsContent value="permanent-care" className="mt-4">
+                    <PermanentCareTab
+                      animalId={animal.id}
+                      animalName={animal.name}
+                      animalStatus={animal.status}
+                      initialApplications={initialPermanentCareApplications}
+                      canDraft={canDraftPermanentCare}
+                      canSubmit={canSubmitPermanentCare}
+                      canApprove={canApprovePermanentCare}
+                      onAnimalStatusChange={(updatedAnimal) => {
+                        setAnimal(prev => ({ ...prev, ...updatedAnimal }));
+                      }}
+                      onCountChange={setPermanentCareCount}
+                    />
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
             <div className="space-y-8">
