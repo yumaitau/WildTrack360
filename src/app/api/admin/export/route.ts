@@ -58,6 +58,8 @@ export async function GET() {
 			speciesGroups,
 			callLogs,
 			auditLogs,
+			permanentCareApplications,
+			animalTransfers,
 		] = await Promise.all([
 			prisma.animal.findMany({
 				where: { clerkOrganizationId: orgId },
@@ -128,6 +130,16 @@ export async function GET() {
 				orderBy: { createdAt: 'desc' },
 				take: 10000,
 			}),
+			prisma.permanentCareApplication.findMany({
+				where: { clerkOrganizationId: orgId },
+				include: { animal: { select: { name: true, species: true } } },
+				orderBy: { createdAt: 'desc' },
+			}),
+			prisma.animalTransfer.findMany({
+				where: { clerkOrganizationId: orgId },
+				include: { animal: { select: { name: true, species: true } } },
+				orderBy: { transferDate: 'desc' },
+			}),
 		])
 
 		const workbook = new ExcelJS.Workbook()
@@ -169,6 +181,9 @@ export async function GET() {
 			{ header: 'Fate', key: 'fate', width: 14 },
 			{ header: 'Mark/Band/Microchip', key: 'markBandMicrochip', width: 22 },
 			{ header: 'Life Stage', key: 'lifeStage', width: 14 },
+			{ header: 'Date Admitted', key: 'dateAdmitted', width: 18 },
+			{ header: 'Org Animal ID', key: 'orgAnimalId', width: 18 },
+			{ header: 'Outcome Reason', key: 'outcomeReason', width: 25 },
 			{ header: 'Carer ID', key: 'carerId', width: 28 },
 			{ header: 'Created At', key: 'createdAt', width: 22 },
 			{ header: 'Updated At', key: 'updatedAt', width: 22 },
@@ -207,6 +222,9 @@ export async function GET() {
 				fate: a.fate || '',
 				markBandMicrochip: a.markBandMicrochip || '',
 				lifeStage: a.lifeStage || '',
+				dateAdmitted: fmtDate(a.dateAdmitted),
+				orgAnimalId: a.orgAnimalId || '',
+				outcomeReason: a.outcomeReason || '',
 				carerId: a.carerId || '',
 				createdAt: fmtDate(a.createdAt),
 				updatedAt: fmtDate(a.updatedAt),
@@ -674,6 +692,116 @@ export async function GET() {
 		}
 		styleHeaderRow(callLogsSheet)
 
+		// ── Permanent Care Applications ─────────────────────────────────────
+		const pcaSheet = workbook.addWorksheet('Permanent Care Applications')
+		pcaSheet.columns = [
+			{ header: 'ID', key: 'id', width: 28 },
+			{ header: 'Animal ID', key: 'animalId', width: 28 },
+			{ header: 'Animal Name', key: 'animalName', width: 20 },
+			{ header: 'Status', key: 'status', width: 12 },
+			{ header: 'Non-Releasable Reasons', key: 'nonReleasableReasons', width: 35 },
+			{ header: 'Euthanasia Justification', key: 'euthanasiaJustification', width: 35 },
+			{ header: 'Vet Name', key: 'vetName', width: 18 },
+			{ header: 'Vet Clinic', key: 'vetClinic', width: 18 },
+			{ header: 'Vet Report', key: 'vetReportUrl', width: 12 },
+			{ header: 'NPWS Approval Number', key: 'npwsApprovalNumber', width: 22 },
+			{ header: 'NPWS Approval Date', key: 'npwsApprovalDate', width: 18 },
+			{ header: 'Category', key: 'category', width: 14 },
+			{ header: 'Facility Name', key: 'facilityName', width: 20 },
+			{ header: 'Keeper Name', key: 'keeperName', width: 18 },
+			{ header: 'Submitted At', key: 'submittedAt', width: 22 },
+			{ header: 'Reviewed At', key: 'reviewedAt', width: 22 },
+			{ header: 'Rejection Reason', key: 'rejectionReason', width: 30 },
+			{ header: 'Notes', key: 'notes', width: 30 },
+			{ header: 'Created At', key: 'createdAt', width: 22 },
+		]
+		for (const pca of permanentCareApplications) {
+			pcaSheet.addRow({
+				id: pca.id,
+				animalId: pca.animalId,
+				animalName: pca.animal.name,
+				status: pca.status,
+				nonReleasableReasons: pca.nonReleasableReasons,
+				euthanasiaJustification: pca.euthanasiaJustification,
+				vetName: pca.vetName || '',
+				vetClinic: pca.vetClinic || '',
+				vetReportUrl: pca.vetReportUrl ? 'Yes' : 'No',
+				npwsApprovalNumber: pca.npwsApprovalNumber || '',
+				npwsApprovalDate: fmtDate(pca.npwsApprovalDate),
+				category: pca.category || '',
+				facilityName: pca.facilityName || '',
+				keeperName: pca.keeperName || '',
+				submittedAt: fmtDate(pca.submittedAt),
+				reviewedAt: fmtDate(pca.reviewedAt),
+				rejectionReason: pca.rejectionReason || '',
+				notes: pca.notes || '',
+				createdAt: fmtDate(pca.createdAt),
+			})
+		}
+		styleHeaderRow(pcaSheet)
+
+		// ── Animal Transfers ────────────────────────────────────────────────
+		const transfersSheet = workbook.addWorksheet('Animal Transfers')
+		transfersSheet.columns = [
+			{ header: 'ID', key: 'id', width: 28 },
+			{ header: 'Animal ID', key: 'animalId', width: 28 },
+			{ header: 'Animal Name', key: 'animalName', width: 20 },
+			{ header: 'Transfer Date', key: 'transferDate', width: 18 },
+			{ header: 'Transfer Type', key: 'transferType', width: 22 },
+			{ header: 'Reason', key: 'reasonForTransfer', width: 30 },
+			{ header: 'From Carer', key: 'fromCarerId', width: 28 },
+			{ header: 'To Carer', key: 'toCarerId', width: 28 },
+			{ header: 'Receiving Entity', key: 'receivingEntity', width: 25 },
+			{ header: 'Entity Type', key: 'receivingEntityType', width: 16 },
+			{ header: 'Receiving Licence', key: 'receivingLicense', width: 20 },
+			{ header: 'Contact Name', key: 'receivingContactName', width: 20 },
+			{ header: 'Contact Phone', key: 'receivingContactPhone', width: 16 },
+			{ header: 'Contact Email', key: 'receivingContactEmail', width: 25 },
+			{ header: 'Receiving Org Animal ID', key: 'receivingOrgAnimalId', width: 22 },
+			{ header: 'Authority Type', key: 'receivingAuthorityType', width: 18 },
+			{ header: 'Address', key: 'receivingAddress', width: 25 },
+			{ header: 'Suburb', key: 'receivingSuburb', width: 15 },
+			{ header: 'State', key: 'receivingState', width: 8 },
+			{ header: 'Postcode', key: 'receivingPostcode', width: 10 },
+			{ header: 'Authorised By', key: 'transferAuthorizedBy', width: 20 },
+			{ header: 'Verified By', key: 'verifiedByUserId', width: 28 },
+			{ header: 'Verified At', key: 'verifiedAt', width: 22 },
+			{ header: 'Notes', key: 'transferNotes', width: 30 },
+			{ header: 'Documents', key: 'documents', width: 20 },
+			{ header: 'Created At', key: 'createdAt', width: 22 },
+		]
+		for (const t of animalTransfers) {
+			transfersSheet.addRow({
+				id: t.id,
+				animalId: t.animalId,
+				animalName: t.animal.name,
+				transferDate: fmtDate(t.transferDate),
+				transferType: t.transferType,
+				reasonForTransfer: t.reasonForTransfer,
+				fromCarerId: t.fromCarerId || '',
+				toCarerId: t.toCarerId || '',
+				receivingEntity: t.receivingEntity,
+				receivingEntityType: t.receivingEntityType || '',
+				receivingLicense: t.receivingLicense || '',
+				receivingContactName: t.receivingContactName || '',
+				receivingContactPhone: t.receivingContactPhone || '',
+				receivingContactEmail: t.receivingContactEmail || '',
+				receivingOrgAnimalId: t.receivingOrgAnimalId || '',
+				receivingAuthorityType: t.receivingAuthorityType || '',
+				receivingAddress: t.receivingAddress || '',
+				receivingSuburb: t.receivingSuburb || '',
+				receivingState: t.receivingState || '',
+				receivingPostcode: t.receivingPostcode || '',
+				transferAuthorizedBy: t.transferAuthorizedBy || '',
+				verifiedByUserId: t.verifiedByUserId || '',
+				verifiedAt: fmtDate(t.verifiedAt),
+				transferNotes: t.transferNotes || '',
+				documents: fmtJson(t.documents),
+				createdAt: fmtDate(t.createdAt),
+			})
+		}
+		styleHeaderRow(transfersSheet)
+
 		// ── 16. Audit Logs ──────────────────────────────────────────────────
 		const auditSheet = workbook.addWorksheet('Audit Logs')
 		auditSheet.columns = [
@@ -709,11 +837,11 @@ export async function GET() {
 		logAudit({
 			userId,
 			orgId,
-			action: 'CREATE',
+			action: 'EXPORT',
 			entity: 'DataExport',
 			metadata: {
 				format: 'xlsx',
-				tables: 14,
+				tables: 16,
 				rowCounts: {
 					animals: animals.length,
 					records: records.length,
@@ -729,6 +857,8 @@ export async function GET() {
 					speciesGroups: speciesGroups.length,
 					callLogs: callLogs.length,
 					auditLogs: auditLogs.length,
+					permanentCareApplications: permanentCareApplications.length,
+					animalTransfers: animalTransfers.length,
 				},
 			},
 		})

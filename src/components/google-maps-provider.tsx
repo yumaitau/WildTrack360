@@ -1,29 +1,29 @@
 "use client"
 
-import { LoadScript } from '@react-google-maps/api';
-import { ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
+import { useJsApiLoader, type Libraries } from '@react-google-maps/api';
 
-interface GoogleMapsProviderProps {
-  children: ReactNode;
+const GOOGLE_MAPS_LIBRARIES: Libraries = ['places'];
+
+interface GoogleMapsContextValue {
+  isLoaded: boolean;
 }
 
-const libraries: ("places" | "drawing" | "geometry" | "visualization")[] = ["places"];
+const GoogleMapsContext = createContext<GoogleMapsContextValue>({ isLoaded: false });
 
-export function GoogleMapsProvider({ children }: GoogleMapsProviderProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
-
-  if (!apiKey) {
-    console.error('Google Maps API key is missing. Please add NEXT_PUBLIC_GOOGLE_MAPS_KEY to your environment variables.');
-    return <div>{children}</div>;
-  }
+export function GoogleMapsProvider({ children }: { children: ReactNode }) {
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '',
+    libraries: GOOGLE_MAPS_LIBRARIES,
+  });
 
   return (
-    <LoadScript
-      googleMapsApiKey={apiKey}
-      libraries={libraries}
-      loadingElement={<div>Loading maps...</div>}
-    >
+    <GoogleMapsContext.Provider value={{ isLoaded }}>
       {children}
-    </LoadScript>
+    </GoogleMapsContext.Provider>
   );
+}
+
+export function useGoogleMaps() {
+  return useContext(GoogleMapsContext);
 }

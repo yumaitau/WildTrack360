@@ -4,7 +4,8 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, AlertTriangle, Map, Satellite, Expand } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { GoogleMap, Marker, useJsApiLoader, Polyline } from '@react-google-maps/api';
+import { GoogleMap, Marker, Polyline } from '@react-google-maps/api';
+import { useGoogleMaps } from '@/components/google-maps-provider';
 import { Button } from '@/components/ui/button';
 import { getJurisdictionComplianceConfig } from '@/lib/compliance-rules';
 import {
@@ -52,10 +53,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
   const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
   const [isFullscreen, setIsFullscreen] = useState(false);
   
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '',
-    libraries: ['places']
-  });
+  const { isLoaded } = useGoogleMaps();
 
   const complianceConfig = useMemo(() => jurisdiction ? getJurisdictionComplianceConfig(jurisdiction) : null, [jurisdiction]);
   const distanceReq = complianceConfig?.distanceRequirements;

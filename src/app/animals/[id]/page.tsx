@@ -17,7 +17,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
   });
   if (!animal) notFound();
 
-  const [records, photos, releaseChecklist, activeReminders] = await Promise.all([
+  const [records, photos, releaseChecklist, activeReminders, permanentCareApplications, transfers] = await Promise.all([
     prisma.record.findMany({
       where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { date: "desc" },
@@ -42,6 +42,14 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.permanentCareApplication.findMany({
+      where: { animalId: id, clerkOrganizationId: organizationId },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.animalTransfer.findMany({
+      where: { animalId: id, clerkOrganizationId: organizationId },
+      orderBy: { transferDate: "desc" },
+    }),
   ]);
 
   // Resolve Clerk user IDs to display names for the record timeline
@@ -64,17 +72,23 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
 
   const adminFlag = organizationId ? await isOrgAdmin(userId, organizationId) : false;
 
-  // Compute whether the current user can manage photos for this animal
+  // Compute permissions for this user
   let canManagePhotos = false;
+  let canDraftPermanentCare = false;
+  let canSubmitPermanentCare = false;
+  let canApprovePermanentCare = false;
+  let canManageTransfers = false;
   if (organizationId) {
     const role = await getUserRole(userId, organizationId);
     if (hasPermission(role, 'animal:edit_any')) {
-      // Admin / Coordinator — check species-level access
       canManagePhotos = await canAccessAnimal(userId, organizationId, animal);
     } else if (hasPermission(role, 'animal:edit_own')) {
-      // Carer — only if animal is assigned to them
       canManagePhotos = animal.carerId === userId;
     }
+    canDraftPermanentCare = hasPermission(role, 'compliance:draft_permanent_care');
+    canSubmitPermanentCare = hasPermission(role, 'compliance:submit_permanent_care');
+    canApprovePermanentCare = hasPermission(role, 'compliance:approve_permanent_care');
+    canManageTransfers = hasPermission(role, 'compliance:manage_transfers');
   }
 
   return (
@@ -88,6 +102,12 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       currentUserId={userId}
       isAdmin={adminFlag}
       canManagePhotos={canManagePhotos}
+      initialPermanentCareApplications={permanentCareApplications}
+      initialTransfers={transfers}
+      canDraftPermanentCare={canDraftPermanentCare}
+      canSubmitPermanentCare={canSubmitPermanentCare}
+      canApprovePermanentCare={canApprovePermanentCare}
+      canManageTransfers={canManageTransfers}
     />
   );
 }

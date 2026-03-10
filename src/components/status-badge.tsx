@@ -20,6 +20,8 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
 				return 'Ready for Release';
 			case 'TRANSFERRED':
 				return 'Transferred';
+			case 'PERMANENT_CARE':
+				return 'Permanent Care';
 			default:
 				return status;
 		}
@@ -34,6 +36,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
 			  'bg-gray-100 text-gray-800 border-gray-300': status === 'DECEASED',
 			  'bg-yellow-100 text-yellow-800 border-yellow-300': status === 'READY_FOR_RELEASE',
 			  'bg-purple-100 text-purple-800 border-purple-300': status === 'TRANSFERRED',
+			  'bg-orange-100 text-orange-800 border-orange-300': status === 'PERMANENT_CARE',
 			})}
 		  >
 			{getStatusLabel(status)}
