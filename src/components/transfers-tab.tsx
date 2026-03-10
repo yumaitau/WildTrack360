@@ -35,6 +35,7 @@ interface TransfersTabProps {
   initialTransfers: AnimalTransfer[];
   canManageTransfers: boolean;
   onAnimalStatusChange?: (updatedAnimal: any) => void;
+  onCountChange?: (count: number) => void;
 }
 
 const TRANSFER_TYPE_LABELS: Record<string, string> = {
@@ -68,6 +69,7 @@ export function TransfersTab({
   initialTransfers,
   canManageTransfers,
   onAnimalStatusChange,
+  onCountChange,
 }: TransfersTabProps) {
   const isPermanentCare = animalStatus === "PERMANENT_CARE";
   const [transfers, setTransfers] = useState<AnimalTransfer[]>(initialTransfers);
@@ -130,7 +132,11 @@ export function TransfersTab({
         throw new Error(err.error || "Failed to create transfer");
       }
       const data = await res.json();
-      setTransfers((prev) => [data.transfer, ...prev]);
+      setTransfers((prev) => {
+        const updated = [data.transfer, ...prev];
+        onCountChange?.(updated.length);
+        return updated;
+      });
       setIsCreateOpen(false);
       resetForm();
 
@@ -152,7 +158,11 @@ export function TransfersTab({
     try {
       const res = await fetch(`/api/transfers/${transferId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete transfer");
-      setTransfers((prev) => prev.filter((t) => t.id !== transferId));
+      setTransfers((prev) => {
+        const updated = prev.filter((t) => t.id !== transferId);
+        onCountChange?.(updated.length);
+        return updated;
+      });
       toast({ title: "Deleted", description: "Transfer record deleted." });
     } catch (e) {
       toast({ variant: "destructive", title: "Error", description: e instanceof Error ? e.message : "Failed to delete" });

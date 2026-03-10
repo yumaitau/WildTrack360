@@ -1,4 +1,4 @@
-'server-only';
+import 'server-only';
 
 import { prisma } from './prisma';
 import type { AnimalStatus } from '@prisma/client';
@@ -97,6 +97,13 @@ export function validateApprovalDetails(data: {
     return {
       allowed: false,
       reason: 'NPWS approval date is required.',
+    };
+  }
+  const parsedDate = data.npwsApprovalDate instanceof Date ? data.npwsApprovalDate : new Date(data.npwsApprovalDate);
+  if (isNaN(parsedDate.getTime())) {
+    return {
+      allowed: false,
+      reason: 'NPWS approval date is invalid.',
     };
   }
   return { allowed: true };

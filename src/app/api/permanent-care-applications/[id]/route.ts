@@ -45,6 +45,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         return NextResponse.json({ error: 'Can only submit draft applications' }, { status: 422 })
       }
 
+
       // Use latest data (merge body updates with existing)
       const vetReportUrl = body.vetReportUrl ?? application.vetReportUrl
       const validation = validateApplicationSubmission({
@@ -176,6 +177,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     // Regular field update (draft editing)
+    if (!hasPermission(role, 'compliance:draft_permanent_care')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     if (application.status !== 'DRAFT') {
       return NextResponse.json({ error: 'Can only edit draft applications' }, { status: 422 })
     }
@@ -191,10 +195,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (field in body) safeFields[field] = body[field]
     }
 
-    const updated = await prisma.permanentCareApplication.update({
-      where: { id },
+    // Atomic: only update if still DRAFT (prevents race conditions)
+    const result = await prisma.permanentCareApplication.updateMany({
+      where: { id, clerkOrganizationId: orgId, status: 'DRAFT' },
       data: safeFields,
     })
+    if (result.count === 0) {
+      return NextResponse.json({ error: 'Application is no longer in draft status' }, { status: 409 })
+    }
+    const updated = await prisma.permanentCareApplication.findUnique({ where: { id } })
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'PermanentCareApplication', entityId: id, metadata: { fields: Object.keys(safeFields) } })
     return NextResponse.json(updated)
   } catch (e) {

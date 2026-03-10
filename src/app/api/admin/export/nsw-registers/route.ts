@@ -45,8 +45,16 @@ export async function GET(request: Request) {
 
   try {
     const dateFilter: Record<string, unknown> = {}
-    if (startDate) dateFilter.gte = new Date(startDate)
-    if (endDate) dateFilter.lte = new Date(endDate)
+    if (startDate) {
+      const parsed = new Date(startDate)
+      if (isNaN(parsed.getTime())) return NextResponse.json({ error: 'Invalid startDate' }, { status: 400 })
+      dateFilter.gte = parsed
+    }
+    if (endDate) {
+      const parsed = new Date(endDate)
+      if (isNaN(parsed.getTime())) return NextResponse.json({ error: 'Invalid endDate' }, { status: 400 })
+      dateFilter.lte = parsed
+    }
 
     const includeTransfers = register === 'transfers' || register === 'all'
     const includePermanentCare = register === 'permanent-care' || register === 'all'

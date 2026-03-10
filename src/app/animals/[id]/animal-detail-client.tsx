@@ -88,6 +88,8 @@ export default function AnimalDetailClient({
   const [liveUserMap, setLiveUserMap] = useState<{ [clerkUserId: string]: string }>(userMap);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [reminders, setReminders] = useState<AnimalReminder[]>(initialReminders);
+  const [transferCount, setTransferCount] = useState(initialTransfers.length);
+  const [permanentCareCount, setPermanentCareCount] = useState(initialPermanentCareApplications.length);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isAssignCarerOpen, setIsAssignCarerOpen] = useState(false);
   const [selectedCarerId, setSelectedCarerId] = useState<string>(animal.carerId || "");
@@ -561,14 +563,14 @@ export default function AnimalDetailClient({
                   <TabsTrigger value="records">Care Records</TabsTrigger>
                   <TabsTrigger value="transfers" className="flex items-center gap-1">
                     <ArrowRightLeft className="h-3.5 w-3.5" /> Transfers
-                    {initialTransfers.length > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{initialTransfers.length}</Badge>
+                    {transferCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{transferCount}</Badge>
                     )}
                   </TabsTrigger>
                   <TabsTrigger value="permanent-care" className="flex items-center gap-1">
                     <Shield className="h-3.5 w-3.5" /> Permanent Care
-                    {initialPermanentCareApplications.length > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{initialPermanentCareApplications.length}</Badge>
+                    {permanentCareCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{permanentCareCount}</Badge>
                     )}
                   </TabsTrigger>
                 </TabsList>
@@ -703,6 +705,7 @@ export default function AnimalDetailClient({
                     onAnimalStatusChange={(updatedAnimal) => {
                       setAnimal(prev => ({ ...prev, ...updatedAnimal }));
                     }}
+                    onCountChange={setTransferCount}
                   />
                 </TabsContent>
 
@@ -718,6 +721,7 @@ export default function AnimalDetailClient({
                     onAnimalStatusChange={(updatedAnimal) => {
                       setAnimal(prev => ({ ...prev, ...updatedAnimal }));
                     }}
+                    onCountChange={setPermanentCareCount}
                   />
                 </TabsContent>
               </Tabs>

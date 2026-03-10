@@ -38,6 +38,7 @@ interface PermanentCareTabProps {
   canSubmit: boolean;
   canApprove: boolean;
   onAnimalStatusChange?: (updatedAnimal: any) => void;
+  onCountChange?: (count: number) => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -56,6 +57,7 @@ export function PermanentCareTab({
   canSubmit,
   canApprove,
   onAnimalStatusChange,
+  onCountChange,
 }: PermanentCareTabProps) {
   const isTransferred = animalStatus === "TRANSFERRED";
   const [applications, setApplications] = useState<PermanentCareApplication[]>(initialApplications);
@@ -114,20 +116,24 @@ export function PermanentCareTab({
     }
   };
 
-  const handleCreate = async () => {
+  const handleCreate = async (submitNow: boolean) => {
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/permanent-care-applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ animalId, ...createForm }),
+        body: JSON.stringify({ animalId, ...createForm, submitNow }),
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Failed to create application");
       }
       const created = await res.json();
-      setApplications((prev) => [created, ...prev]);
+      setApplications((prev) => {
+        const updated = [created, ...prev];
+        onCountChange?.(updated.length);
+        return updated;
+      });
       setIsCreateOpen(false);
       resetCreateForm();
       toast({ title: "Application Created", description: `Permanent care application for ${animalName} has been ${created.status === 'SUBMITTED' ? 'submitted' : 'saved as draft'}.` });
@@ -626,14 +632,14 @@ export function PermanentCareTab({
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
             <Button
-              onClick={() => { setCreateForm((p) => ({ ...p, submitNow: false })); handleCreate(); }}
+              onClick={() => handleCreate(false)}
               disabled={isSubmitting || !createForm.nonReleasableReasons || !createForm.euthanasiaJustification}
             >
               Save as Draft
             </Button>
             {canSubmit && (
               <Button
-                onClick={() => { setCreateForm((p) => ({ ...p, submitNow: true })); handleCreate(); }}
+                onClick={() => handleCreate(true)}
                 disabled={isSubmitting || !createForm.nonReleasableReasons || !createForm.euthanasiaJustification || !createForm.vetReportUrl}
                 className="bg-blue-600 hover:bg-blue-700"
               >

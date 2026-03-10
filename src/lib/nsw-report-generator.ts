@@ -143,6 +143,7 @@ export class NSWReportGenerator {
         'Species',
         'Mark/Band/Microchip number (if applicable)',
         'Date of transfer',
+        'Transfer type',
         'Reason for transfer',
         'Recipient of transferred animal',
         'Licence #',
@@ -158,6 +159,7 @@ export class NSWReportGenerator {
       transfer.species,
       transfer.markBandMicrochip || 'NA',
       format(transfer.dateOfTransfer, 'yyyy-MM-dd'),
+      transfer.transferType || '',
       transfer.reasonForTransfer,
       transfer.recipientName,
       transfer.recipientLicense,
@@ -169,7 +171,7 @@ export class NSWReportGenerator {
 
     const ws = wb.addWorksheet('Transferred Animal Register');
     this.addRowsToSheet(ws, [...headers, ...dataRows]);
-    this.setColumnWidths(ws, [20, 20, 20, 15, 20, 25, 15, 20, 30, 20, 10]);
+    this.setColumnWidths(ws, [20, 20, 20, 15, 22, 20, 25, 15, 20, 30, 20, 10]);
   }
 
   private addPermanentCareRegister(wb: ExcelJS.Workbook) {

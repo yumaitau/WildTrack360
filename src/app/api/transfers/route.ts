@@ -43,6 +43,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'animalId, transferDate, reasonForTransfer, and receivingEntity are required' }, { status: 400 })
   }
 
+  // Validate transferDate is a valid date
+  const parsedTransferDate = new Date(body.transferDate)
+  if (isNaN(parsedTransferDate.getTime())) {
+    return NextResponse.json({ error: 'transferDate is not a valid date' }, { status: 400 })
+  }
+
   // Verify animal belongs to this org
   const animal = await prisma.animal.findFirst({
     where: { id: body.animalId, clerkOrganizationId: orgId },
@@ -79,14 +85,14 @@ export async function POST(request: Request) {
   const transferType = body.transferType || 'INTERNAL_CARER'
 
   // Determine the new animal status based on transfer type
+  // Internal carer transfers preserve the animal's current status (just changing carer, not disposition)
   const statusForType: Record<string, string> = {
     INTER_ORGANISATION: 'TRANSFERRED',
     VET_TRANSFER: 'TRANSFERRED',
     PERMANENT_CARE_PLACEMENT: 'PERMANENT_CARE',
     RELEASE_TRANSFER: 'TRANSFERRED',
-    INTERNAL_CARER: 'TRANSFERRED',
   }
-  const newStatus = statusForType[transferType] || 'TRANSFERRED'
+  const newStatus = transferType === 'INTERNAL_CARER' ? animal.status : (statusForType[transferType] || 'TRANSFERRED')
 
   try {
     // Create transfer and update animal status in a single transaction
@@ -94,7 +100,7 @@ export async function POST(request: Request) {
       prisma.animalTransfer.create({
         data: {
           animalId: body.animalId,
-          transferDate: new Date(body.transferDate),
+          transferDate: parsedTransferDate,
           transferType,
           reasonForTransfer: body.reasonForTransfer,
           fromCarerId: body.fromCarerId || null,
@@ -123,8 +129,7 @@ export async function POST(request: Request) {
         where: { id: body.animalId },
         data: {
           status: newStatus as any,
-          outcomeDate: new Date(body.transferDate),
-          outcomeReason: body.reasonForTransfer,
+          ...(transferType !== 'INTERNAL_CARER' ? { outcomeDate: parsedTransferDate, outcomeReason: body.reasonForTransfer } : {}),
         },
       }),
     ])
