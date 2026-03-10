@@ -15,12 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 import type { Photo } from "@prisma/client";
 
 interface ImageUploadDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onPhotoAdd: (photo: { id: string; animalId: string; url: string; date: Date; description: string }) => void;
+  onPhotoAdd: (photo: Photo) => void;
   animalId: string;
 }
 
@@ -31,7 +32,9 @@ export default function ImageUploadDialog({
   animalId,
 }: ImageUploadDialogProps) {
   const [preview, setPreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [description, setDescription] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 
@@ -39,46 +42,79 @@ export default function ImageUploadDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setSelectedFile(file);
     const reader = new FileReader();
     reader.onloadend = () => {
-      const dataUri = reader.result as string;
-      setPreview(dataUri);
+      setPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const resetForm = () => {
+    setPreview(null);
+    setSelectedFile(null);
+    setDescription("");
+    formRef.current?.reset();
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // This is where you would normally handle the form submission to your backend
-    // For this demo, we'll just add the photo to the client-side state
-    if (preview && description) {
-        onPhotoAdd({
-            id: `photo-${Date.now()}`,
-            animalId,
-            url: preview,
-            date: new Date(),
-            description: description
-        });
-        toast({
-            title: "Photo Added",
-            description: "The new photo has been added to the gallery.",
-        });
-        setIsOpen(false);
-        setPreview(null);
-        setDescription("");
-        formRef.current?.reset();
-    } else {
-        toast({
-            title: "Incomplete Information",
-            description: "Please select a photo and add a description.",
-            variant: "destructive",
-        })
+
+    if (!selectedFile || !description) {
+      toast({
+        title: "Incomplete Information",
+        description: "Please select a photo and add a description.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("animalId", animalId);
+      formData.append("description", description);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Upload failed");
+      }
+
+      const photo: Photo = await response.json();
+      onPhotoAdd(photo);
+
+      toast({
+        title: "Photo Uploaded",
+        description: "The photo has been uploaded and added to the gallery.",
+      });
+
+      setIsOpen(false);
+      resetForm();
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
-
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!isUploading) {
+        setIsOpen(open);
+        if (!open) resetForm();
+      }
+    }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Photo</DialogTitle>
@@ -89,7 +125,15 @@ export default function ImageUploadDialog({
         <form ref={formRef} onSubmit={handleSubmit} className="grid gap-4 py-4">
           <div className="grid w-full max-w-sm items-center gap-1.5">
             <Label htmlFor="picture">Picture</Label>
-            <Input id="picture" type="file" accept="image/*" onChange={handleFileChange} required />
+            <Input
+              id="picture"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleFileChange}
+              disabled={isUploading}
+              required
+            />
+            <p className="text-xs text-muted-foreground">Max 10MB. JPEG, PNG, WebP, or GIF.</p>
           </div>
 
           {preview && (
@@ -106,13 +150,25 @@ export default function ImageUploadDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
+              disabled={isUploading}
               required
             />
           </div>
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button type="submit">Save Photo</Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} disabled={isUploading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isUploading}>
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                "Save Photo"
+              )}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

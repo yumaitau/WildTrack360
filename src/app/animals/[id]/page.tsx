@@ -3,6 +3,7 @@ import AnimalDetailClient from "./animal-detail-client";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { isOrgAdmin } from "@/lib/authz";
+import { getUserRole, hasPermission, canAccessAnimal } from "@/lib/rbac";
 
 export default async function AnimalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -63,6 +64,19 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
 
   const adminFlag = organizationId ? await isOrgAdmin(userId, organizationId) : false;
 
+  // Compute whether the current user can manage photos for this animal
+  let canManagePhotos = false;
+  if (organizationId) {
+    const role = await getUserRole(userId, organizationId);
+    if (hasPermission(role, 'animal:edit_any')) {
+      // Admin / Coordinator — check species-level access
+      canManagePhotos = await canAccessAnimal(userId, organizationId, animal);
+    } else if (hasPermission(role, 'animal:edit_own')) {
+      // Carer — only if animal is assigned to them
+      canManagePhotos = animal.carerId === userId;
+    }
+  }
+
   return (
     <AnimalDetailClient
       initialAnimal={animal}
@@ -73,6 +87,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       initialReminders={activeReminders}
       currentUserId={userId}
       isAdmin={adminFlag}
+      canManagePhotos={canManagePhotos}
     />
   );
 }
