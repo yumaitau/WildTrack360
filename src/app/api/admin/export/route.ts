@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma'
 import { getUserRole } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
 import ExcelJS from 'exceljs'
+import archiver from 'archiver'
+import { getObjectFromS3 } from '@/lib/s3'
+import { PassThrough } from 'stream'
 
 // Helper formatters
 const fmtDate = (d: Date | null | undefined) => (d ? d.toISOString() : '')
@@ -60,6 +63,7 @@ export async function GET() {
 			auditLogs,
 			permanentCareApplications,
 			animalTransfers,
+			photos,
 		] = await Promise.all([
 			prisma.animal.findMany({
 				where: { clerkOrganizationId: orgId },
@@ -139,6 +143,10 @@ export async function GET() {
 				where: { clerkOrganizationId: orgId },
 				include: { animal: { select: { name: true, species: true } } },
 				orderBy: { transferDate: 'desc' },
+			}),
+			prisma.photo.findMany({
+				where: { clerkOrganizationId: orgId },
+				select: { url: true, animalId: true, animal: { select: { name: true } } },
 			}),
 		])
 
@@ -831,7 +839,116 @@ export async function GET() {
 		styleHeaderRow(auditSheet)
 
 		// Generate the Excel buffer
-		const buffer = await workbook.xlsx.writeBuffer()
+		const xlsxBuffer = await workbook.xlsx.writeBuffer()
+
+		// ── Collect all S3 file keys ───────────────────────────────────────
+		const fileEntries: { folder: string; key: string; filename: string }[] = []
+
+		// Helper to extract S3 keys from JSON fields (string arrays or objects with url/key)
+		function collectJsonKeys(json: unknown, folder: string, prefix: string) {
+			if (!json) return
+			const items = Array.isArray(json) ? json : [json]
+			for (const item of items) {
+				const key = typeof item === 'string' ? item : (item?.key || item?.url)
+				if (typeof key === 'string' && key.startsWith('orgs/')) {
+					const ext = key.split('.').pop() || 'bin'
+					fileEntries.push({ folder, key, filename: `${prefix}-${fileEntries.length}.${ext}` })
+				}
+			}
+		}
+
+		// Animal profile photos
+		for (const a of animals) {
+			if (a.photo && a.photo.startsWith('orgs/')) {
+				const ext = a.photo.split('.').pop() || 'jpg'
+				const safeName = (a.name || a.id).replace(/[^a-zA-Z0-9_-]/g, '_')
+				fileEntries.push({ folder: 'animal-photos', key: a.photo, filename: `${safeName}.${ext}` })
+			}
+		}
+
+		// Animal gallery photos (Photo model)
+		for (const p of photos) {
+			if (p.url && p.url.startsWith('orgs/')) {
+				const ext = p.url.split('.').pop() || 'jpg'
+				const safeName = (p.animal?.name || p.animalId).replace(/[^a-zA-Z0-9_-]/g, '_')
+				fileEntries.push({ folder: 'animal-gallery', key: p.url, filename: `${safeName}-${fileEntries.length}.${ext}` })
+			}
+		}
+
+		// Vet reports from permanent care applications
+		for (const pca of permanentCareApplications) {
+			if (pca.vetReportUrl && pca.vetReportUrl.startsWith('orgs/')) {
+				const safeName = (pca.animal.name || pca.animalId).replace(/[^a-zA-Z0-9_-]/g, '_')
+				fileEntries.push({ folder: 'vet-reports', key: pca.vetReportUrl, filename: `${safeName}-vet-report.pdf` })
+			}
+		}
+
+		// Hygiene log photos
+		for (const h of hygieneLogs) {
+			collectJsonKeys(h.photos, 'hygiene-photos', `hygiene-${h.id.slice(-6)}`)
+		}
+
+		// Incident report attachments
+		for (const i of incidentReports) {
+			collectJsonKeys(i.attachments, 'incident-attachments', `incident-${i.id.slice(-6)}`)
+		}
+
+		// Preserved specimen photos
+		for (const ps of preservedSpecimens) {
+			collectJsonKeys(ps.photos, 'specimen-photos', `specimen-${ps.id.slice(-6)}`)
+		}
+
+		// Transfer documents
+		for (const t of animalTransfers) {
+			collectJsonKeys(t.documents, 'transfer-documents', `transfer-${t.id.slice(-6)}`)
+		}
+
+		// Release checklist photos
+		for (const rc of releaseChecklists) {
+			collectJsonKeys(rc.photos, 'release-photos', `release-${rc.id.slice(-6)}`)
+		}
+
+		// ── Build zip archive ──────────────────────────────────────────────
+		const today = new Date().toISOString().split('T')[0]
+		const zipFilename = `wildtrack360-export-${today}.zip`
+
+		const archive = archiver('zip', { zlib: { level: 5 } })
+		const passthrough = new PassThrough()
+		archive.pipe(passthrough)
+
+		// Add the XLSX spreadsheet
+		archive.append(Buffer.from(xlsxBuffer as ArrayBuffer), { name: `wildtrack360-export-${today}.xlsx` })
+
+		// Fetch and add files from S3 (with concurrency control)
+		const BATCH_SIZE = 10
+		let filesAdded = 0
+		let filesFailed = 0
+		for (let i = 0; i < fileEntries.length; i += BATCH_SIZE) {
+			const batch = fileEntries.slice(i, i + BATCH_SIZE)
+			const results = await Promise.allSettled(
+				batch.map(async (entry) => {
+					const { body } = await getObjectFromS3(entry.key)
+					return { ...entry, body }
+				})
+			)
+			for (const result of results) {
+				if (result.status === 'fulfilled') {
+					archive.append(result.value.body, { name: `files/${result.value.folder}/${result.value.filename}` })
+					filesAdded++
+				} else {
+					filesFailed++
+				}
+			}
+		}
+
+		archive.finalize()
+
+		// Collect the zip buffer from the passthrough stream
+		const chunks: Buffer[] = []
+		for await (const chunk of passthrough) {
+			chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+		}
+		const zipBuffer = Buffer.concat(chunks)
 
 		// Log the export action
 		logAudit({
@@ -840,8 +957,11 @@ export async function GET() {
 			action: 'EXPORT',
 			entity: 'DataExport',
 			metadata: {
-				format: 'xlsx',
+				format: 'zip',
 				tables: 16,
+				filesAdded,
+				filesFailed,
+				totalFileEntries: fileEntries.length,
 				rowCounts: {
 					animals: animals.length,
 					records: records.length,
@@ -863,15 +983,11 @@ export async function GET() {
 			},
 		})
 
-		const today = new Date().toISOString().split('T')[0]
-		const filename = `wildtrack360-export-${today}.xlsx`
-
-		return new NextResponse(buffer, {
+		return new NextResponse(zipBuffer, {
 			status: 200,
 			headers: {
-				'Content-Type':
-					'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-				'Content-Disposition': `attachment; filename="${filename}"`,
+				'Content-Type': 'application/zip',
+				'Content-Disposition': `attachment; filename="${zipFilename}"`,
 			},
 		})
 	} catch (err) {

@@ -23,6 +23,7 @@ const EXPORT_TABLES = [
   { name: "Species Groups", description: "Configurable species groupings and coordinator assignments" },
   { name: "Call Logs", description: "Incoming wildlife rescue call records with caller details, species, location, and outcomes" },
   { name: "Audit Logs", description: "Immutable record of all create, update, and delete actions (up to 10,000 most recent)" },
+  { name: "Uploaded Files", description: "All uploaded files including animal photos, gallery images, vet reports, and documents bundled into the zip" },
 ];
 
 export function DataExport() {
@@ -51,7 +52,7 @@ export function DataExport() {
       // Extract filename from Content-Disposition header or use default
       const disposition = res.headers.get("Content-Disposition");
       const filenameMatch = disposition?.match(/filename="(.+)"/);
-      a.download = filenameMatch?.[1] || "wildtrack360-export.xlsx";
+      a.download = filenameMatch?.[1] || "wildtrack360-export.zip";
 
       document.body.appendChild(a);
       a.click();
@@ -73,9 +74,9 @@ export function DataExport() {
           Data Export
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Export all organisation data as an Excel workbook. Each database table
-          is exported to a dedicated sheet. Data is scoped to your organisation
-          only.
+          Export all organisation data as a zip archive containing an Excel workbook
+          and all uploaded files (animal photos, vet reports, documents). Each database
+          table is exported to a dedicated sheet. Data is scoped to your organisation only.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -129,9 +130,9 @@ export function DataExport() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          The export file is generated server-side and contains only data
-          belonging to your organisation. This action is recorded in the audit
-          log.
+          The export is generated server-side and contains only data and files
+          belonging to your organisation. The zip includes the Excel workbook plus
+          all uploaded files organised by type. This action is recorded in the audit log.
         </p>
       </CardContent>
     </Card>
