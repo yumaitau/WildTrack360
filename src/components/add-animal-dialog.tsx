@@ -449,7 +449,7 @@ export function AddAnimalDialog({
     return true
   }
 
-  const statusOptions = [
+  const allStatusOptions = [
     { value: "ADMITTED", label: "Admitted" },
     { value: "IN_CARE", label: "In Care" },
     { value: "READY_FOR_RELEASE", label: "Ready for Release" },
@@ -458,6 +458,9 @@ export function AddAnimalDialog({
     { value: "TRANSFERRED", label: "Transferred" },
     { value: "PERMANENT_CARE", label: "Permanent Care" }
   ];
+  const statusOptions = jurisdiction === 'NSW'
+    ? allStatusOptions
+    : allStatusOptions.filter(s => s.value !== 'TRANSFERRED' && s.value !== 'PERMANENT_CARE');
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
