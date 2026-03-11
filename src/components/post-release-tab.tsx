@@ -66,6 +66,7 @@ export function PostReleaseTab({
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -142,10 +143,14 @@ export function PostReleaseTab({
         setIsUploadingPhotos(false);
       }
 
-      const coordinates =
-        form.latitude && form.longitude
-          ? { lat: parseFloat(form.latitude), lng: parseFloat(form.longitude) }
-          : null;
+      let coordinates: { lat: number; lng: number } | null = null;
+      if (form.latitude && form.longitude) {
+        const lat = parseFloat(form.latitude);
+        const lng = parseFloat(form.longitude);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          coordinates = { lat, lng };
+        }
+      }
 
       const res = await fetch("/api/post-release-monitoring", {
         method: "POST",
@@ -254,7 +259,7 @@ export function PostReleaseTab({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(record.id)}
+                          onClick={() => setDeleteId(record.id)}
                           className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -302,6 +307,32 @@ export function PostReleaseTab({
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Sighting Record</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this post-release sighting? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (deleteId) {
+                  await handleDelete(deleteId);
+                  setDeleteId(null);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Sighting Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>

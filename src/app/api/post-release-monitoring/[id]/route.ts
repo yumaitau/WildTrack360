@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@clerk/nextjs/server'
 import { logAudit } from '@/lib/audit'
+import { getUserRole, hasPermission } from '@/lib/rbac'
 
 export async function GET(
   request: Request,
@@ -38,7 +39,20 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const role = await getUserRole(userId, orgId)
+  if (!hasPermission(role, 'compliance:manage_post_release')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
+    // Verify record belongs to this org
+    const existing = await prisma.postReleaseMonitoring.findFirst({
+      where: { id, clerkOrganizationId: orgId },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Record not found' }, { status: 404 })
+    }
+
     const body = await request.json()
 
     // Allowlist safe fields
@@ -85,7 +99,20 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const role = await getUserRole(userId, orgId)
+  if (!hasPermission(role, 'compliance:manage_post_release')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
+    // Verify record belongs to this org before deleting
+    const existing = await prisma.postReleaseMonitoring.findFirst({
+      where: { id, clerkOrganizationId: orgId },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Record not found' }, { status: 404 })
+    }
+
     await prisma.postReleaseMonitoring.delete({ where: { id } })
     logAudit({
       userId,
