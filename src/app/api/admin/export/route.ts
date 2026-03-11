@@ -64,6 +64,7 @@ export async function GET() {
 			permanentCareApplications,
 			animalTransfers,
 			photos,
+			postReleaseRecords,
 		] = await Promise.all([
 			prisma.animal.findMany({
 				where: { clerkOrganizationId: orgId },
@@ -147,6 +148,11 @@ export async function GET() {
 			prisma.photo.findMany({
 				where: { clerkOrganizationId: orgId },
 				select: { url: true, animalId: true, animal: { select: { name: true } } },
+			}),
+			prisma.postReleaseMonitoring.findMany({
+				where: { clerkOrganizationId: orgId },
+				include: { animal: { select: { name: true, species: true } } },
+				orderBy: { date: 'desc' },
 			}),
 		])
 
@@ -810,6 +816,42 @@ export async function GET() {
 		}
 		styleHeaderRow(transfersSheet)
 
+		// ── Post-Release Monitoring ─────────────────────────────────────────
+		const postReleaseSheet = workbook.addWorksheet('Post-Release Monitoring')
+		postReleaseSheet.columns = [
+			{ header: 'ID', key: 'id', width: 28 },
+			{ header: 'Animal ID', key: 'animalId', width: 28 },
+			{ header: 'Animal Name', key: 'animalName', width: 20 },
+			{ header: 'Animal Species', key: 'animalSpecies', width: 20 },
+			{ header: 'Date', key: 'date', width: 18 },
+			{ header: 'Time', key: 'time', width: 10 },
+			{ header: 'Location', key: 'location', width: 30 },
+			{ header: 'Coordinates', key: 'coordinates', width: 22 },
+			{ header: 'Animal Condition', key: 'animalCondition', width: 16 },
+			{ header: 'Notes', key: 'notes', width: 40 },
+			{ header: 'Photos', key: 'photos', width: 30 },
+			{ header: 'Created At', key: 'createdAt', width: 22 },
+			{ header: 'Updated At', key: 'updatedAt', width: 22 },
+		]
+		for (const pr of postReleaseRecords) {
+			postReleaseSheet.addRow({
+				id: pr.id,
+				animalId: pr.animalId,
+				animalName: pr.animal.name,
+				animalSpecies: pr.animal.species,
+				date: fmtDate(pr.date),
+				time: pr.time || '',
+				location: pr.location || '',
+				coordinates: fmtJson(pr.coordinates),
+				animalCondition: pr.animalCondition || '',
+				notes: pr.notes,
+				photos: fmtJson(pr.photos),
+				createdAt: fmtDate(pr.createdAt),
+				updatedAt: fmtDate(pr.updatedAt),
+			})
+		}
+		styleHeaderRow(postReleaseSheet)
+
 		// ── 16. Audit Logs ──────────────────────────────────────────────────
 		const auditSheet = workbook.addWorksheet('Audit Logs')
 		auditSheet.columns = [
@@ -908,6 +950,11 @@ export async function GET() {
 			collectJsonKeys(rc.photos, 'release-photos', `release-${rc.id.slice(-6)}`)
 		}
 
+		// Post-release monitoring photos
+		for (const pr of postReleaseRecords) {
+			collectJsonKeys(pr.photos, 'post-release-photos', `post-release-${pr.id.slice(-6)}`)
+		}
+
 		// ── Build zip archive ──────────────────────────────────────────────
 		const today = new Date().toISOString().split('T')[0]
 		const zipFilename = `wildtrack360-export-${today}.zip`
@@ -958,7 +1005,7 @@ export async function GET() {
 			entity: 'DataExport',
 			metadata: {
 				format: 'zip',
-				tables: 16,
+				tables: 17,
 				filesAdded,
 				filesFailed,
 				totalFileEntries: fileEntries.length,
@@ -979,6 +1026,7 @@ export async function GET() {
 					auditLogs: auditLogs.length,
 					permanentCareApplications: permanentCareApplications.length,
 					animalTransfers: animalTransfers.length,
+					postReleaseRecords: postReleaseRecords.length,
 				},
 			},
 		})

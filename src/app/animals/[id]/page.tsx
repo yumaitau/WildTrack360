@@ -17,7 +17,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
   });
   if (!animal) notFound();
 
-  const [records, photos, releaseChecklist, activeReminders, permanentCareApplications, transfers] = await Promise.all([
+  const [records, photos, releaseChecklist, activeReminders, permanentCareApplications, transfers, postReleaseRecords] = await Promise.all([
     prisma.record.findMany({
       where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { date: "desc" },
@@ -50,6 +50,10 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { transferDate: "desc" },
     }),
+    prisma.postReleaseMonitoring.findMany({
+      where: { animalId: id, clerkOrganizationId: organizationId },
+      orderBy: { date: "desc" },
+    }),
   ]);
 
   // Resolve Clerk user IDs to display names for the record timeline
@@ -78,6 +82,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
   let canSubmitPermanentCare = false;
   let canApprovePermanentCare = false;
   let canManageTransfers = false;
+  let canManagePostRelease = false;
   if (organizationId) {
     const role = await getUserRole(userId, organizationId);
     if (hasPermission(role, 'animal:edit_any')) {
@@ -89,6 +94,8 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
     canSubmitPermanentCare = hasPermission(role, 'compliance:submit_permanent_care');
     canApprovePermanentCare = hasPermission(role, 'compliance:approve_permanent_care');
     canManageTransfers = hasPermission(role, 'compliance:manage_transfers');
+    canManagePostRelease = hasPermission(role, 'compliance:manage_post_release')
+      || (hasPermission(role, 'animal:edit_own') && animal.carerId === userId);
   }
 
   return (
@@ -108,6 +115,8 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       canSubmitPermanentCare={canSubmitPermanentCare}
       canApprovePermanentCare={canApprovePermanentCare}
       canManageTransfers={canManageTransfers}
+      initialPostReleaseRecords={postReleaseRecords}
+      canManagePostRelease={canManagePostRelease}
     />
   );
 }
