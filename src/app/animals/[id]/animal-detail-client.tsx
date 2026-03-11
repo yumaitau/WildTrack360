@@ -9,8 +9,9 @@ import RecordTimeline from "@/components/record-timeline";
 import PhotoGallery from "@/components/photo-gallery";
 import { PermanentCareTab } from "@/components/permanent-care-tab";
 import { TransfersTab } from "@/components/transfers-tab";
+import { PostReleaseTab } from "@/components/post-release-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck, ArrowRightLeft, Shield } from "lucide-react";
+import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck, ArrowRightLeft, Shield, Binoculars } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -31,7 +32,7 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { AddRecordForm } from "@/components/add-record-form";
 import LocationMap from "@/components/location-map";
-import { type Animal, type Photo, type Record, type PermanentCareApplication, type AnimalTransfer } from "@/lib/types";
+import { type Animal, type Photo, type Record, type PermanentCareApplication, type AnimalTransfer, type PostReleaseMonitoring } from "@/lib/types";
 import React, { useState, useMemo, useEffect } from "react";
 import { getCurrentJurisdiction } from "@/lib/config";
 import { AnimalStatus, RecordType } from "@prisma/client";
@@ -61,6 +62,8 @@ interface AnimalDetailClientProps {
   canSubmitPermanentCare?: boolean;
   canApprovePermanentCare?: boolean;
   canManageTransfers?: boolean;
+  initialPostReleaseRecords?: PostReleaseMonitoring[];
+  canManagePostRelease?: boolean;
 }
 
 export default function AnimalDetailClient({
@@ -79,6 +82,8 @@ export default function AnimalDetailClient({
   canSubmitPermanentCare = false,
   canApprovePermanentCare = false,
   canManageTransfers = false,
+  initialPostReleaseRecords = [],
+  canManagePostRelease = false,
 }: AnimalDetailClientProps) {
   const [animal, setAnimal] = useState<Animal>(initialAnimal);
   const [records, setRecords] = useState<Record[]>(initialRecords);
@@ -90,6 +95,7 @@ export default function AnimalDetailClient({
   const [reminders, setReminders] = useState<AnimalReminder[]>(initialReminders);
   const [transferCount, setTransferCount] = useState(initialTransfers.length);
   const [permanentCareCount, setPermanentCareCount] = useState(initialPermanentCareApplications.length);
+  const [postReleaseCount, setPostReleaseCount] = useState(initialPostReleaseRecords.length);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isAssignCarerOpen, setIsAssignCarerOpen] = useState(false);
   const [selectedCarerId, setSelectedCarerId] = useState<string>(animal.carerId || "");
@@ -559,7 +565,11 @@ export default function AnimalDetailClient({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
               <Tabs defaultValue="records" className="w-full">
-                <TabsList className={`grid w-full ${jurisdiction === 'NSW' ? 'grid-cols-3' : 'grid-cols-1'}`}>
+                <TabsList className={`grid w-full ${
+                  animal.status === AnimalStatus.RELEASED
+                    ? jurisdiction === 'NSW' ? 'grid-cols-4' : 'grid-cols-2'
+                    : jurisdiction === 'NSW' ? 'grid-cols-3' : 'grid-cols-1'
+                }`}>
                   <TabsTrigger value="records">Care Records</TabsTrigger>
                   {jurisdiction === 'NSW' && (
                     <TabsTrigger value="transfers" className="flex items-center gap-1">
@@ -574,6 +584,14 @@ export default function AnimalDetailClient({
                       <Shield className="h-3.5 w-3.5" /> Permanent Care
                       {permanentCareCount > 0 && (
                         <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{permanentCareCount}</Badge>
+                      )}
+                    </TabsTrigger>
+                  )}
+                  {animal.status === AnimalStatus.RELEASED && (
+                    <TabsTrigger value="post-release" className="flex items-center gap-1">
+                      <Binoculars className="h-3.5 w-3.5" /> Post-Release
+                      {postReleaseCount > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{postReleaseCount}</Badge>
                       )}
                     </TabsTrigger>
                   )}
@@ -729,6 +747,18 @@ export default function AnimalDetailClient({
                         setAnimal(prev => ({ ...prev, ...updatedAnimal }));
                       }}
                       onCountChange={setPermanentCareCount}
+                    />
+                  </TabsContent>
+                )}
+
+                {animal.status === AnimalStatus.RELEASED && (
+                  <TabsContent value="post-release" className="mt-4">
+                    <PostReleaseTab
+                      animalId={animal.id}
+                      animalName={animal.name}
+                      initialRecords={initialPostReleaseRecords}
+                      canManagePostRelease={canManagePostRelease}
+                      onCountChange={setPostReleaseCount}
                     />
                   </TabsContent>
                 )}

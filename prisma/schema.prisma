@@ -79,8 +79,9 @@ model Animal {
   permanentCare              PermanentCareApproval?
   permanentCareApplications  PermanentCareApplication[]
   preservedSpecimen          PreservedSpecimen?
-  reminders         AnimalReminder[]
-  callLogs          CallLog[]
+  reminders                AnimalReminder[]
+  callLogs                 CallLog[]
+  postReleaseMonitoring    PostReleaseMonitoring[]
 
   @@map("animals")
 }
@@ -295,6 +296,31 @@ model ReleaseChecklist {
   animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
 
   @@map("release_checklists")
+}
+
+model PostReleaseMonitoring {
+  id       String @id @default(cuid())
+  animalId String
+  animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  // Core observation data
+  date            DateTime // Date of sighting/observation
+  time            String?  // Time of sighting (HH:mm)
+  location        String?  // Human-readable location description
+  coordinates     Json?    // { lat: number, lng: number }
+  animalCondition String?  @map("animal_condition") // e.g., "Healthy", "Injured", "Distressed", "Unknown"
+  notes           String   // Observation notes (required)
+  photos          Json?    // Array of S3 keys
+
+  // Metadata
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  clerkUserId         String
+  clerkOrganizationId String
+
+  @@index([animalId])
+  @@index([clerkOrganizationId])
+  @@map("post_release_monitoring")
 }
 
 model Asset {
