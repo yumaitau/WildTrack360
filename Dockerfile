@@ -67,6 +67,7 @@ COPY --from=build-stage --chown=node:node /usr/src/app/.next ./.next
 COPY --from=build-stage --chown=node:node /usr/src/app/node_modules ./node_modules
 COPY --from=build-stage --chown=node:node /usr/src/app/package*.json ./
 COPY --from=build-stage --chown=node:node /usr/src/app/prisma ./prisma
+COPY --from=build-stage --chown=node:node /usr/src/app/public ./public
 
 # Switch to non-root user for security best practices
 USER node
