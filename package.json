@@ -24,7 +24,9 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
+    "db:migrate:prod": "npx prisma migrate deploy",
     "db:reset": "prisma migrate reset",
+    "prod_start": "npm run db:migrate:prod && npm run start",
     "test": "vitest run",
     "test:watch": "vitest"
   },
