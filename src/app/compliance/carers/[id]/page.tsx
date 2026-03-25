@@ -101,7 +101,7 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={`/compliance/carers/${id}/edit`}>
-            <Button size="sm" className="sm:size-default">Edit Profile</Button>
+            <Button size="sm" className="sm:h-9 sm:px-4">Edit Profile</Button>
           </Link>
         </div>
       </div>

@@ -238,7 +238,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="relative map-scroll-fix">
+          <div className="relative">
             <MapView
 containerStyle={mapContainerStyle} />
             <div className="absolute top-2 right-2 z-10 flex gap-1">

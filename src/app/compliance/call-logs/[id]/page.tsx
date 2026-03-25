@@ -48,7 +48,7 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
             {callLog.status}
           </Badge>
           <Link href={`/compliance/call-logs/${callLog.id}/edit`}>
-            <Button variant="outline" size="sm" className="sm:size-default">
+            <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
               <Pencil className="h-4 w-4 mr-2" />
               Edit
             </Button>

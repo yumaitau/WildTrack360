@@ -69,21 +69,16 @@
   }
 }
 
-/* Improve tap targets on mobile */
-@media (max-width: 640px) {
-  .container {
-    @apply px-4;
-  }
-}
-
-/* Prevent Google Maps from hijacking page scroll on mobile */
+/*
+ * Utility: Apply to a scrollable container wrapping an embedded map to allow
+ * vertical page scrolling on touch devices. Only targets the wrapper element
+ * itself — map children retain normal touch-action so panning within the map
+ * still works. Uses !important to override inline styles set by Google Maps.
+ */
 @media (max-width: 1023px) {
   .map-scroll-fix {
     touch-action: pan-y !important;
     pointer-events: auto;
-  }
-  .map-scroll-fix * {
-    touch-action: pan-y !important;
   }
 }
 

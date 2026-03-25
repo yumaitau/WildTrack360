@@ -23,7 +23,7 @@ export default function LogoutSuccessPage() {
               </h1>
             </div>
             <Link href="/landing">
-              <Button variant="outline" size="sm" className="sm:size-default">
+              <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
                 <Home className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Back to Home</span>
                 <span className="sm:hidden">Home</span>

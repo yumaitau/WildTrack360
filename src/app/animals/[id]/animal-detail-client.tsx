@@ -537,12 +537,12 @@ export default function AnimalDetailClient({
                   </div>
                 </div>
                  <div className="mt-6 flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="sm:size-default" onClick={() => setIsEditOpen(true)}>Edit Animal</Button>
+                  <Button variant="outline" size="sm" className="sm:h-9 sm:px-4" onClick={() => setIsEditOpen(true)}>Edit Animal</Button>
                   {(animal.status === AnimalStatus.IN_CARE || animal.status === AnimalStatus.READY_FOR_RELEASE) && (
                     <Button
                       variant="default"
                       size="sm"
-                      className="sm:size-default bg-green-600 hover:bg-green-700"
+                      className="sm:h-9 sm:px-4 bg-green-600 hover:bg-green-700"
                       onClick={() => {
                         window.location.href = `/compliance/release-checklist/new?animalId=${animal.id}`;
                       }}
@@ -554,7 +554,7 @@ export default function AnimalDetailClient({
                   <Button
                     variant="destructive"
                     size="sm"
-                    className="sm:size-default"
+                    className="sm:h-9 sm:px-4"
                     onClick={() => setIsDeleteOpen(true)}
                   >
                     <Trash2 className="mr-1 sm:mr-2 h-4 w-4" />

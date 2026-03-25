@@ -105,7 +105,7 @@ export default function HygieneLogPage() {
           <Button
             variant="outline"
             size="sm"
-            className="sm:size-default"
+            className="sm:h-9 sm:px-4"
             onClick={() => {
               // Generate CSV export
               const csvContent = [
@@ -143,7 +143,7 @@ export default function HygieneLogPage() {
           <Button
             variant="outline"
             size="sm"
-            className="sm:size-default"
+            className="sm:h-9 sm:px-4"
             onClick={() => {
               // Generate PDF export
               const doc = new jsPDF();
@@ -257,7 +257,7 @@ export default function HygieneLogPage() {
             Export PDF
           </Button>
           <Link href="/compliance/hygiene/new">
-            <Button size="sm" className="sm:size-default">
+            <Button size="sm" className="sm:h-9 sm:px-4">
               <Plus className="h-4 w-4 mr-2" />
               New Log Entry
             </Button>

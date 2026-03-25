@@ -51,13 +51,13 @@ export default async function CallLogsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/compliance/call-logs/lookups">
-            <Button variant="outline" size="sm" className="sm:size-default">
+            <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
               <Settings className="h-4 w-4 mr-2" />
               Manage Lists
             </Button>
           </Link>
           <Link href="/compliance/call-logs/new">
-            <Button size="sm" className="sm:size-default">
+            <Button size="sm" className="sm:h-9 sm:px-4">
               <Plus className="h-4 w-4 mr-2" />
               New Call
             </Button>

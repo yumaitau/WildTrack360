@@ -85,12 +85,12 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" className="sm:size-default">
+          <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
           <Link href={`/compliance/hygiene/${id}/edit`}>
-            <Button size="sm" className="sm:size-default">Edit Log</Button>
+            <Button size="sm" className="sm:h-9 sm:px-4">Edit Log</Button>
           </Link>
         </div>
       </div>

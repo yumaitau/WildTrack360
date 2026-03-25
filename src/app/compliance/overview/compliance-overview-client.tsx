@@ -70,7 +70,7 @@ export default function ComplianceOverviewClient({ jurisdiction, organizationId 
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">Loading compliance data...</div>
         </div>
@@ -80,7 +80,7 @@ export default function ComplianceOverviewClient({ jurisdiction, organizationId 
 
   if (!data) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg text-red-600">Error loading data</div>
         </div>
@@ -184,7 +184,7 @@ export default function ComplianceOverviewClient({ jurisdiction, organizationId 
           <Button
             variant="outline"
             size="sm"
-            className="sm:size-default"
+            className="sm:h-9 sm:px-4"
             onClick={() => {
               // Create PDF report
               const doc = new jsPDF();

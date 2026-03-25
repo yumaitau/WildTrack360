@@ -129,7 +129,7 @@ export default function WildlifeRegisterPage() {
           <Button
             variant="outline"
             size="sm"
-            className="sm:size-default"
+            className="sm:h-9 sm:px-4"
             onClick={() => {
               // Generate CSV export
               const csvContent = [
@@ -164,7 +164,7 @@ export default function WildlifeRegisterPage() {
           <Button
             variant="outline"
             size="sm"
-            className="sm:size-default"
+            className="sm:h-9 sm:px-4"
             onClick={() => {
               // Generate PDF export
               const doc = new jsPDF();
@@ -281,7 +281,7 @@ export default function WildlifeRegisterPage() {
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
-          <Button size="sm" className="sm:size-default" onClick={() => setIsAddAnimalOpen(true)}>
+          <Button size="sm" className="sm:h-9 sm:px-4" onClick={() => setIsAddAnimalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Animal
           </Button>
@@ -354,7 +354,7 @@ export default function WildlifeRegisterPage() {
       </Card>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">{animals.length}</div>

@@ -451,6 +451,11 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
 
+  // Close mobile menu when viewport switches to desktop
+  useEffect(() => {
+    if (!isMobile) setMobileMenuOpen(false);
+  }, [isMobile]);
+
   // Load species, carers, and user role from API for current organization
   useEffect(() => {
     const fetchLookups = async () => {
@@ -634,6 +639,8 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
               size="sm"
               className="md:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>

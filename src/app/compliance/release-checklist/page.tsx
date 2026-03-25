@@ -97,7 +97,7 @@ export default async function ReleaseChecklistPage() {
             type="release-checklist"
           />
           <Link href="/compliance/release-checklist/new">
-            <Button size="sm" className="sm:size-default">
+            <Button size="sm" className="sm:h-9 sm:px-4">
               <Plus className="h-4 w-4 mr-2" />
               New Assessment
             </Button>

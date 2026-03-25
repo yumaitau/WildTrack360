@@ -242,12 +242,12 @@ export default function CarerManagementClient({ carers }: CarerManagementClientP
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="sm:size-default" onClick={handleExportPDF}>
+          <Button variant="outline" size="sm" className="sm:h-9 sm:px-4" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>
           <Link href="/compliance/carers/training">
-            <Button variant="outline" size="sm" className="sm:size-default">
+            <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
               <Calendar className="h-4 w-4 mr-2" />
               Training Certificates
             </Button>
