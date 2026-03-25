@@ -133,21 +133,21 @@ export default function CallLogLookupsPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex items-center gap-3">
         <Link href="/compliance/call-logs">
-          <Button variant="outline" size="icon" aria-label="Back to call logs">
+          <Button variant="outline" size="icon" className="shrink-0" aria-label="Back to call logs">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <Link href="/">
-          <Button variant="outline" size="icon" aria-label="Home">
+          <Button variant="outline" size="icon" className="shrink-0" aria-label="Home">
             <Home className="h-4 w-4" />
           </Button>
         </Link>
-        <div>
-          <h1 className="text-3xl font-bold">Call Log Lookup Lists</h1>
-          <p className="text-muted-foreground">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold">Call Log Lookup Lists</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Configure the dropdown options for your organisation&apos;s call logs
           </p>
         </div>

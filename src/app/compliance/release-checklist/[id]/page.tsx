@@ -66,27 +66,23 @@ export default async function ReleaseChecklistDetailPage({
   // const rescueCoords = checklist.animal?.rescueCoordinates as any;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/compliance/release-checklist">
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">Release Checklist</h1>
-            <p className="text-muted-foreground">
-              {checklist.animal?.name} - {checklist.animal?.species}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/">
-            <Button variant="outline" size="icon">
-              <Home className="h-4 w-4" />
-            </Button>
-          </Link>
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/compliance/release-checklist">
+          <Button variant="outline" size="icon" className="shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <Link href="/">
+          <Button variant="outline" size="icon" className="shrink-0">
+            <Home className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold">Release Checklist</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            {checklist.animal?.name} - {checklist.animal?.species}
+          </p>
         </div>
       </div>
 

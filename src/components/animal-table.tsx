@@ -209,62 +209,64 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4 gap-4">
+      <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center py-4 gap-3 sm:gap-4">
         <Input
           placeholder="Filter by name..."
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn("name")?.setFilterValue(event.target.value)
           }
-          className="max-w-sm"
+          className="w-full sm:max-w-sm"
         />
-        <Select
-            value={
-                (table.getColumn("status")?.getFilterValue() as string) ?? "all"
-            }
-            onValueChange={(value) => {
-                if (value === "all") {
-                    table.getColumn("status")?.setFilterValue(undefined);
-                } else {
-                    table.getColumn("status")?.setFilterValue(value);
-                }
-            }}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {statusOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-            value={
-                (table.getColumn("species")?.getFilterValue() as string) ?? "all"
-            }
-            onValueChange={(value) => {
-                if (value === "all") {
-                    table.getColumn("species")?.setFilterValue(undefined);
-                } else {
-                    table.getColumn("species")?.setFilterValue(value);
-                }
-            }}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by species" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Species</SelectItem>
-            {speciesOptions.map((species) => (
-                <SelectItem key={species} value={species}>{species}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+          <Select
+              value={
+                  (table.getColumn("status")?.getFilterValue() as string) ?? "all"
+              }
+              onValueChange={(value) => {
+                  if (value === "all") {
+                      table.getColumn("status")?.setFilterValue(undefined);
+                  } else {
+                      table.getColumn("status")?.setFilterValue(value);
+                  }
+              }}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {statusOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+              value={
+                  (table.getColumn("species")?.getFilterValue() as string) ?? "all"
+              }
+              onValueChange={(value) => {
+                  if (value === "all") {
+                      table.getColumn("species")?.setFilterValue(undefined);
+                  } else {
+                      table.getColumn("species")?.setFilterValue(value);
+                  }
+              }}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by species" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Species</SelectItem>
+              {speciesOptions.map((species) => (
+                  <SelectItem key={species} value={species}>{species}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" className="sm:ml-auto">
               Columns <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -289,7 +291,7 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="rounded-md border bg-card">
+      <div className="rounded-md border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -339,12 +341,12 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row items-center justify-end gap-2 sm:space-x-2 py-4">
+        <div className="text-sm text-muted-foreground order-2 sm:order-1 sm:flex-1">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
-        <div className="space-x-2">
+        <div className="space-x-2 order-1 sm:order-2">
           <Button
             variant="outline"
             size="sm"

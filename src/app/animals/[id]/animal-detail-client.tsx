@@ -291,7 +291,7 @@ export default function AnimalDetailClient({
         </div>
         
         <main>
-          <Card className="mb-8 overflow-hidden shadow-lg">
+          <Card className="mb-8 shadow-lg">
             <div className={getPhotoUrl(animal.photo) ? "grid grid-cols-1 md:grid-cols-3" : ""}>
               {getPhotoUrl(animal.photo) && (
                 <div className="relative aspect-square md:aspect-auto md:min-h-[300px] overflow-hidden">
@@ -303,10 +303,10 @@ export default function AnimalDetailClient({
                   />
                 </div>
               )}
-              <div className={`p-6 flex flex-col justify-between ${getPhotoUrl(animal.photo) ? "md:col-span-2" : ""}`}>
+              <div className={`p-4 sm:p-6 flex flex-col justify-between ${getPhotoUrl(animal.photo) ? "md:col-span-2" : ""}`}>
                 <div>
                   <StatusBadge status={animal.status} className="mb-4" />
-                  <h1 className="font-headline text-4xl lg:text-5xl font-bold text-primary flex items-center gap-4">
+                  <h1 className="font-headline text-2xl sm:text-4xl lg:text-5xl font-bold text-primary flex items-center gap-2 sm:gap-4">
                     {getSpeciesIcon(animal.species, { className: "h-10 w-10"})}
                     {animal.name}
                   </h1>
@@ -536,25 +536,28 @@ export default function AnimalDetailClient({
                     )}
                   </div>
                 </div>
-                 <div className="mt-6 flex gap-2">
-                  <Button variant="outline" onClick={() => setIsEditOpen(true)}>Edit Animal</Button>
+                 <div className="mt-6 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" className="sm:size-default" onClick={() => setIsEditOpen(true)}>Edit Animal</Button>
                   {(animal.status === AnimalStatus.IN_CARE || animal.status === AnimalStatus.READY_FOR_RELEASE) && (
-                    <Button 
-                      variant="default" 
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="sm:size-default bg-green-600 hover:bg-green-700"
                       onClick={() => {
                         window.location.href = `/compliance/release-checklist/new?animalId=${animal.id}`;
                       }}
-                      className="bg-green-600 hover:bg-green-700"
                     >
-                      <Rocket className="mr-2 h-4 w-4" />
+                      <Rocket className="mr-1 sm:mr-2 h-4 w-4" />
                       Release Animal
                     </Button>
                   )}
-                  <Button 
-                    variant="destructive" 
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="sm:size-default"
                     onClick={() => setIsDeleteOpen(true)}
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <Trash2 className="mr-1 sm:mr-2 h-4 w-4" />
                     Delete
                   </Button>
                 </div>
@@ -565,11 +568,7 @@ export default function AnimalDetailClient({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
               <Tabs defaultValue="records" className="w-full">
-                <TabsList className={`grid w-full ${
-                  animal.status === AnimalStatus.RELEASED
-                    ? jurisdiction === 'NSW' ? 'grid-cols-4' : 'grid-cols-2'
-                    : jurisdiction === 'NSW' ? 'grid-cols-3' : 'grid-cols-1'
-                }`}>
+                <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
                   <TabsTrigger value="records">Care Records</TabsTrigger>
                   {jurisdiction === 'NSW' && (
                     <TabsTrigger value="transfers" className="flex items-center gap-1">
@@ -765,6 +764,12 @@ export default function AnimalDetailClient({
               </Tabs>
             </div>
             <div className="space-y-8">
+              <PhotoGallery
+                initialPhotos={initialPhotos}
+                animalId={animal.id}
+                animalSpecies={animal.species}
+                canManagePhotos={canManagePhotos}
+              />
               <ManageReminders
                 animalId={animal.id}
                 animalName={animal.name}
@@ -773,7 +778,7 @@ export default function AnimalDetailClient({
                 isAdmin={isAdmin}
                 onRemindersChange={setReminders}
               />
-              <LocationMap 
+              <LocationMap
                 rescueLocation={((): { lat: number; lng: number; address: string } | undefined => {
                   const rc = animal.rescueCoordinates as unknown as { lat?: number; lng?: number } | null;
                   if (rc && typeof rc.lat === 'number' && typeof rc.lng === 'number') {
@@ -785,7 +790,7 @@ export default function AnimalDetailClient({
                   // Try Animal model first, then ReleaseChecklist
                   const coords = (animal.releaseCoordinates || releaseChecklist?.releaseCoordinates) as { lat?: number; lng?: number } | null;
                   const location = animal.releaseLocation || releaseChecklist?.releaseLocation;
-                  
+
                   if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number' && location) {
                     return { lat: coords.lat, lng: coords.lng, address: location };
                   }
@@ -793,12 +798,6 @@ export default function AnimalDetailClient({
                 })()}
                 animalName={animal.name}
                 jurisdiction={jurisdiction}
-              />
-              <PhotoGallery
-                initialPhotos={initialPhotos}
-                animalId={animal.id}
-                animalSpecies={animal.species}
-                canManagePhotos={canManagePhotos}
               />
             </div>
           </div>

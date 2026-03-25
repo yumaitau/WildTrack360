@@ -157,32 +157,34 @@ export default function ComplianceOverviewClient({ jurisdiction, organizationId 
   const overallCompliance = Math.round(complianceFactors.reduce((sum, factor) => sum + factor.score, 0) / complianceFactors.length);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
           <Link href="/compliance">
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" className="shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
           <Link href="/">
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" className="shrink-0">
               <Home className="h-4 w-4" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-3xl font-bold">Compliance Overview</h1>
-            <p className="text-muted-foreground">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold">Compliance Overview</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               {jurisdiction} Wildlife Compliance Status Dashboard
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Based on {complianceConfig.codeOfPractice}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button 
+        <div className="flex flex-wrap gap-2">
+          <Button
             variant="outline"
+            size="sm"
+            className="sm:size-default"
             onClick={() => {
               // Create PDF report
               const doc = new jsPDF();
@@ -361,7 +363,6 @@ export default function ComplianceOverviewClient({ jurisdiction, organizationId 
             Generate Report
           </Button>
         </div>
-
       </div>
 
       {/* Overall Compliance Score */}

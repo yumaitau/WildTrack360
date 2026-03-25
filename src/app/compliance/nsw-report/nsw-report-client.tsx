@@ -250,17 +250,15 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Link href="/compliance">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Compliance
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold">NSW Annual Report Generator</h1>
-        </div>
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+        <Link href="/compliance">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Compliance
+          </Button>
+        </Link>
+        <h1 className="text-2xl sm:text-3xl font-bold">NSW Annual Report Generator</h1>
       </div>
 
       <Card>

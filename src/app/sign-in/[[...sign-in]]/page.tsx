@@ -58,7 +58,7 @@ export default function SignInPage() {
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-3">
               <PawPrint className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold font-headline text-primary">
+              <h1 className="text-2xl sm:text-3xl font-bold font-headline text-primary">
                 WildTrack360
               </h1>
             </div>

@@ -169,24 +169,25 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
     <div className="flex flex-col min-h-screen bg-background">
       <header className="bg-card shadow-md">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 sm:h-20">
+            <div className="flex items-center gap-3 sm:gap-4">
               <Link href="/">
                 <Button variant="outline" size="sm">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Home
+                  <ArrowLeft className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Back to Home</span>
+                  <span className="sm:hidden">Back</span>
                 </Button>
               </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary rounded-full">
-                  <PawPrint className="h-6 w-6 text-primary-foreground" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-primary rounded-full">
+                  <PawPrint className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
                 </div>
-                <h1 className="text-3xl font-bold font-headline text-primary">
+                <h1 className="text-xl sm:text-3xl font-bold font-headline text-primary">
                   All Animal Records
                 </h1>
               </div>
             </div>
-            <Button onClick={handleOpenAddDialog}>
+            <Button onClick={handleOpenAddDialog} className="w-full sm:w-auto">
               <PlusCircle className="mr-2" />
               Add Animal
             </Button>

@@ -106,7 +106,7 @@ export default function AdminPage() {
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
         <Tabs value={activeTab ?? (isAdmin ? "people" : "assets")} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-1'}`}>
+          <TabsList className={`flex flex-wrap w-full gap-1 h-auto p-1 ${isAdmin ? '' : ''}`}>
             {isAdmin && (
               <TabsTrigger value="people">
                 <Users className="mr-2 h-4 w-4" />

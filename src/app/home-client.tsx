@@ -5,9 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, ShieldCheck, ShieldAlert, User, RefreshCw, LogOut, Building, AlertTriangle, Clock } from 'lucide-react';
+import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, ShieldCheck, ShieldAlert, User, RefreshCw, LogOut, Building, AlertTriangle, Clock, Menu, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Animal } from '@prisma/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Local type for create-animal payload
 type CreateAnimalData = {
@@ -141,7 +142,7 @@ function CarerView({
           <p className="text-sm text-muted-foreground mt-1">{isOrgWide ? 'Animals will appear here once they are added to the organisation.' : 'Animals will appear here once they are assigned to your care.'}</p>
         </Card>
       ) : (
-        <div className="bg-card rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-card rounded-lg shadow-md p-4 sm:p-6 mb-8">
           {viewMode === 'list' ? (
             <AnimalTable
               animals={animals}
@@ -272,10 +273,10 @@ function AdminCoordinatorView({
       </div>
 
       {/* Animals Table/Grid */}
-      <div className="bg-card rounded-lg shadow-md p-6 mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Animals</h2>
-          <div className="flex items-center gap-2">
+      <div className="bg-card rounded-lg shadow-md p-4 sm:p-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold">Animals</h2>
+          <div className="flex items-center gap-2 flex-wrap">
             <Button size="sm" onClick={onAddNew}>
               <PlusCircle className="h-4 w-4 mr-1" />
               Add New Animal
@@ -398,9 +399,9 @@ function AdminCoordinatorView({
       )}
 
       {/* Compliance Section */}
-      <div className="bg-card rounded-lg shadow-md p-6 mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Compliance</h2>
+      <div className="bg-card rounded-lg shadow-md p-4 sm:p-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold">Compliance</h2>
           <Link href="/compliance">
             <Button size="sm" variant="secondary">Open Compliance</Button>
           </Link>
@@ -447,6 +448,8 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
   const orgJurisdiction = useMemo(() => getJurisdictionFromOrg(organization), [organization]);
   const [userRole, setUserRole] = useState<string>('CARER');
   const [hasIncompleteProfile, setHasIncompleteProfile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   // Load species, carers, and user role from API for current organization
   useEffect(() => {
@@ -581,15 +584,16 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
       {/* Navigation Header */}
       <header className="bg-card shadow-md">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <Link href="/" className="flex items-center gap-3">
-              <PawPrint className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold font-headline text-primary">
+          <div className="flex items-center justify-between h-16 sm:h-20">
+            <Link href="/" className="flex items-center gap-2 sm:gap-3">
+              <PawPrint className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              <h1 className="text-xl sm:text-3xl font-bold font-headline text-primary">
                 WildTrack360
               </h1>
             </Link>
-            
-            <div className="flex items-center gap-4">
+
+            {/* Desktop nav */}
+            <div className="hidden md:flex items-center gap-4">
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-sm font-medium">
@@ -623,13 +627,63 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                 Sign Out
               </Button>
             </div>
+
+            {/* Mobile menu button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
           </div>
+
+          {/* Mobile menu dropdown */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t py-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div>
+                  <p className="text-sm font-medium">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {organization?.name && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Building className="w-3 h-3" />
+                        {organization.name}
+                      </span>
+                    )}
+                    <Badge variant={userRole === 'ADMIN' ? 'default' : (userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') ? 'secondary' : 'outline'} className="text-xs">
+                      {userRole === 'ADMIN' && <ShieldAlert className="h-3 w-3 mr-1" />}
+                      {(userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') && <ShieldCheck className="h-3 w-3 mr-1" />}
+                      {(userRole === 'CARER' || userRole === 'CARER_ALL') && <Shield className="h-3 w-3 mr-1" />}
+                      {userRole === 'COORDINATOR_ALL' ? 'Coordinator (All)' : userRole === 'CARER_ALL' ? 'Carer (All)' : userRole}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                {userRole !== 'CARER' && userRole !== 'CARER_ALL' && (
+                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
+                    <Button size="sm" className="w-full">
+                      {userRole === 'ADMIN' ? 'Admin' : 'Coordinator'}
+                    </Button>
+                  </Link>
+                )}
+                <Button variant="outline" size="sm" className="w-full" onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Brandmark Logo Section */}
-      <div className="flex justify-center py-4">
-        <div className="relative h-40 w-96">
+      <div className="flex justify-center py-4 px-4">
+        <div className="relative h-28 w-64 sm:h-40 sm:w-96">
           <Image
             src="/Brandmark-Text-Vert.svg"
             alt="WildTrack360 Logo"

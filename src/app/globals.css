@@ -65,6 +65,25 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+/* Improve tap targets on mobile */
+@media (max-width: 640px) {
+  .container {
+    @apply px-4;
+  }
+}
+
+/* Prevent Google Maps from hijacking page scroll on mobile */
+@media (max-width: 1023px) {
+  .map-scroll-fix {
+    touch-action: pan-y !important;
+    pointer-events: auto;
+  }
+  .map-scroll-fix * {
+    touch-action: pan-y !important;
   }
 }
 
