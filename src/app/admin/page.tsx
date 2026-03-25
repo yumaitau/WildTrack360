@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PawPrint, Package, Users, Leaf, ScrollText, FileSpreadsheet, ChevronDown } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, PawPrint, Package, Users, Leaf, ScrollText, FileSpreadsheet, ChevronDown, LayoutDashboard, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
@@ -28,6 +28,59 @@ async function apiJson<T>(url: string): Promise<T> {
   return res.json();
 }
 
+interface QuickAction {
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  tab: string;
+  adminOnly: boolean;
+}
+
+const QUICK_ACTIONS: QuickAction[] = [
+  {
+    label: 'Manage People',
+    description: 'View and manage organisation members, assign roles to carers and coordinators.',
+    icon: <Users className="h-6 w-6" />,
+    tab: 'people',
+    adminOnly: true,
+  },
+  {
+    label: 'Species Groups',
+    description: 'Create species groups and assign coordinators to manage them. View the assignment overview.',
+    icon: <Leaf className="h-6 w-6" />,
+    tab: 'species-groups',
+    adminOnly: true,
+  },
+  {
+    label: 'Manage Species',
+    description: 'Add, edit, or remove species from your organisation\'s species list.',
+    icon: <PawPrint className="h-6 w-6" />,
+    tab: 'species',
+    adminOnly: true,
+  },
+  {
+    label: 'Assets',
+    description: 'Track and manage equipment, supplies, and other assets used in wildlife care.',
+    icon: <Package className="h-6 w-6" />,
+    tab: 'assets',
+    adminOnly: false,
+  },
+  {
+    label: 'Audit Log',
+    description: 'View an immutable record of all actions taken within the organisation.',
+    icon: <ScrollText className="h-6 w-6" />,
+    tab: 'audit-log',
+    adminOnly: true,
+  },
+  {
+    label: 'Data Export',
+    description: 'Export organisation data for reporting, compliance, or backup purposes.',
+    icon: <FileSpreadsheet className="h-6 w-6" />,
+    tab: 'data-export',
+    adminOnly: true,
+  },
+];
+
 export default function AdminPage() {
   const [species, setSpecies] = useState<string[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -39,14 +92,20 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!organization?.id) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+
     const loadData = async () => {
       try {
-        const orgId = organization?.id || 'default-org';
+        const orgId = organization.id;
         const [speciesData, assetsData, roleData] = await Promise.all([
           apiJson<any[]>(`/api/species?orgId=${orgId}`),
           apiJson<Asset[]>(`/api/assets?orgId=${orgId}`),
           apiJson<any>('/api/rbac/my-role'),
         ]);
+        if (cancelled) return;
         const role = roleData.role || 'CARER';
         if (role === 'CARER' || role === 'CARER_ALL') {
           router.replace('/');
@@ -55,18 +114,39 @@ export default function AdminPage() {
         setSpecies(speciesData.map(s => s.name));
         setAssets(assetsData);
         setUserRole(role);
-        setActiveTab(role === 'ADMIN' ? 'people' : 'assets');
       } catch (error) {
+        if (cancelled) return;
         console.error('Error loading admin data:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadData();
-  }, [organization]);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id, user?.id]);
 
   const isAdmin = userRole === 'ADMIN';
+
+  const allowedTabs = useMemo(() => {
+    const tabs = ['home', 'assets'];
+    if (isAdmin) {
+      tabs.push('people', 'species-groups', 'species', 'audit-log', 'data-export');
+    }
+    return tabs;
+  }, [isAdmin]);
+
+  // Clamp activeTab to an allowed value when role/org changes
+  useEffect(() => {
+    if (activeTab && !allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0] || 'home');
+    }
+  }, [activeTab, allowedTabs]);
 
   if (loading) {
     return (
@@ -91,6 +171,8 @@ export default function AdminPage() {
     );
   }
 
+  const visibleActions = QUICK_ACTIONS.filter((a) => !a.adminOnly || isAdmin);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card shadow-sm">
@@ -105,8 +187,12 @@ export default function AdminPage() {
         </div>
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-        <Tabs value={activeTab ?? (isAdmin ? "people" : "assets")} onValueChange={setActiveTab}>
-          <TabsList className={`flex flex-wrap w-full gap-1 h-auto p-1 ${isAdmin ? '' : ''}`}>
+        <Tabs value={activeTab ?? 'home'} onValueChange={setActiveTab}>
+          <TabsList className="flex flex-wrap w-full gap-1 h-auto p-1">
+            <TabsTrigger value="home">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              Home
+            </TabsTrigger>
             {isAdmin && (
               <TabsTrigger value="people">
                 <Users className="mr-2 h-4 w-4" />
@@ -172,6 +258,49 @@ export default function AdminPage() {
               </DropdownMenu>
             )}
           </TabsList>
+
+          {/* Home / Landing Tab */}
+          <TabsContent value="home">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  Welcome{user?.firstName ? `, ${user.firstName}` : ''}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {organization?.name ? `Managing ${organization.name}. ` : ''}
+                  Choose a quick action below or use the tabs above to navigate.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleActions.map((action) => (
+                  <button
+                    key={action.tab}
+                    onClick={() => setActiveTab(action.tab)}
+                    className="text-left group"
+                  >
+                    <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2 rounded-lg">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div className="rounded-lg bg-primary/10 text-primary p-2.5">
+                            {action.icon}
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                        </div>
+                        <CardTitle className="text-base mt-3">{action.label}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <CardDescription className="text-sm leading-relaxed">
+                          {action.description}
+                        </CardDescription>
+                      </CardContent>
+                    </Card>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
           {isAdmin && (
             <TabsContent value="people">
               <PeopleManagement />

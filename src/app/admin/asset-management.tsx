@@ -85,7 +85,8 @@ export function AssetManagement({ initialAssets }: AssetManagementProps) {
 
   useEffect(() => {
     refreshAssets();
-  }, [user, organization]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, organization?.id]);
 
   // Add dialog state fields
   const [addName, setAddName] = useState('');
