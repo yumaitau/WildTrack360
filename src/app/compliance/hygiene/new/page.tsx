@@ -181,7 +181,7 @@ export default function NewHygieneLogPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4 sm:p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">Loading users...</div>
         </div>
@@ -190,26 +190,28 @@ export default function NewHygieneLogPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button asChild variant="outline" size="sm">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Button asChild variant="outline" size="sm" className="shrink-0">
             <Link href="/compliance/hygiene">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Hygiene Logs
             </Link>
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold">New Hygiene Log Entry</h1>
-            <p className="text-muted-foreground">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold">New Hygiene Log Entry</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Section 5.2.x - Daily cleaning and biosecurity protocols for {jurisdiction}
             </p>
           </div>
         </div>
-        <Badge variant="outline">
-          {jurisdiction} Jurisdiction
-        </Badge>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">
+            {jurisdiction} Jurisdiction
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

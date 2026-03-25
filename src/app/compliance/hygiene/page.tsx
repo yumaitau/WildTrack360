@@ -37,7 +37,7 @@ export default function HygieneLogPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">Loading hygiene data...</div>
         </div>
@@ -47,7 +47,7 @@ export default function HygieneLogPage() {
 
   if (!data) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg text-red-600">Error loading data</div>
         </div>
@@ -81,29 +81,31 @@ export default function HygieneLogPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
           <Link href="/compliance">
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" className="shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
           <Link href="/">
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" className="shrink-0">
               <Home className="h-4 w-4" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-3xl font-bold">Daily Hygiene & Biosecurity Log</h1>
-            <p className="text-muted-foreground">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold">Daily Hygiene & Biosecurity Log</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Section 5.2.x - Daily cleaning and biosecurity protocols
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button 
+        <div className="flex flex-wrap gap-2">
+          <Button
             variant="outline"
+            size="sm"
+            className="sm:h-9 sm:px-4"
             onClick={() => {
               // Generate CSV export
               const csvContent = [
@@ -138,8 +140,10 @@ export default function HygieneLogPage() {
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <Button 
+          <Button
             variant="outline"
+            size="sm"
+            className="sm:h-9 sm:px-4"
             onClick={() => {
               // Generate PDF export
               const doc = new jsPDF();
@@ -253,7 +257,7 @@ export default function HygieneLogPage() {
             Export PDF
           </Button>
           <Link href="/compliance/hygiene/new">
-            <Button>
+            <Button size="sm" className="sm:h-9 sm:px-4">
               <Plus className="h-4 w-4 mr-2" />
               New Log Entry
             </Button>
@@ -262,7 +266,7 @@ export default function HygieneLogPage() {
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">{hygieneLogs.length}</div>

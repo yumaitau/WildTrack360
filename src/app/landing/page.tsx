@@ -44,8 +44,8 @@ export default function LandingPage() {
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section */}
         <div className="text-center py-16 space-y-8">
-          <div className="flex justify-center">
-            <div className="relative h-48 w-96">
+          <div className="flex justify-center px-4">
+            <div className="relative h-36 w-72 sm:h-48 sm:w-96">
               <Image
                 src="/Brandmark-Text-Vert.svg"
                 alt="WildTrack360 Logo"
@@ -84,17 +84,17 @@ export default function LandingPage() {
         </div>
         
         {/* Trust Indicators */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-12 max-w-4xl mx-auto">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="h-5 w-5 text-green-600" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 py-8 sm:py-12 max-w-4xl mx-auto">
+          <div className="flex items-center justify-center sm:justify-start gap-3">
+            <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
             <span className="text-sm font-medium">ACT Wildlife Compliant</span>
           </div>
-          <div className="flex items-center gap-3">
-            <CheckCircle className="h-5 w-5 text-green-600" />
+          <div className="flex items-center justify-center sm:justify-start gap-3">
+            <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
             <span className="text-sm font-medium">Multi-Jurisdiction Support</span>
           </div>
-          <div className="flex items-center gap-3">
-            <CheckCircle className="h-5 w-5 text-green-600" />
+          <div className="flex items-center justify-center sm:justify-start gap-3">
+            <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
             <span className="text-sm font-medium">Secure Cloud Storage</span>
           </div>
         </div>

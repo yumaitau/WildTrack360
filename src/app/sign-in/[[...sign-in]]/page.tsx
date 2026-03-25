@@ -58,7 +58,7 @@ export default function SignInPage() {
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-3">
               <PawPrint className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold font-headline text-primary">
+              <h1 className="text-2xl sm:text-3xl font-bold font-headline text-primary">
                 WildTrack360
               </h1>
             </div>
@@ -78,7 +78,7 @@ export default function SignInPage() {
           <div className="order-2 lg:order-1">
             <div className="max-w-md mx-auto space-y-6">
               <div className="text-center">
-                <h2 className="text-3xl font-bold mb-2">Welcome Back</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold mb-2">Welcome Back</h2>
                 <p className="text-muted-foreground">
                   Choose how you&apos;d like to sign in to your account
                 </p>
@@ -127,7 +127,7 @@ export default function SignInPage() {
                 </div>
               </div>
               
-              <h3 className="text-2xl font-bold mb-4">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4">
                 Comprehensive Wildlife Management
               </h3>
               <p className="text-muted-foreground mb-8">

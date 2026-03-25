@@ -234,7 +234,7 @@ function NewReleaseChecklistForm() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4 sm:p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">Loading animals...</div>
         </div>
@@ -243,26 +243,28 @@ function NewReleaseChecklistForm() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button asChild variant="outline" size="sm">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Button asChild variant="outline" size="sm" className="shrink-0">
             <Link href="/compliance/release-checklist">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Release Checklists
             </Link>
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold">New Release Checklist</h1>
-            <p className="text-muted-foreground">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold">New Release Checklist</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Create a new release checklist for {jurisdiction}
             </p>
           </div>
         </div>
-        <Badge variant="outline">
-          {jurisdiction} Jurisdiction
-        </Badge>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">
+            {jurisdiction} Jurisdiction
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -514,7 +516,7 @@ function NewReleaseChecklistForm() {
 // Loading component for Suspense fallback
 function LoadingForm() {
   return (
-    <div className="container mx-auto px-6 py-8">
+    <div className="container mx-auto px-4 sm:px-6 py-8">
       <div className="animate-pulse">
         <div className="h-8 w-64 bg-gray-200 rounded mb-4"></div>
         <div className="h-4 w-96 bg-gray-200 rounded mb-8"></div>

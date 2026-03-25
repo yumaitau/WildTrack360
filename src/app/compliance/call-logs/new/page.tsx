@@ -208,25 +208,23 @@ export default function NewCallLogPage() {
   const activeLookups = (items: LookupItem[]) => items.filter((i) => i.active);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/compliance/call-logs">
-            <Button variant="outline" size="icon" aria-label="Back to call logs">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link href="/">
-            <Button variant="outline" size="icon" aria-label="Home">
-              <Home className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">New Call</h1>
-            <p className="text-muted-foreground">
-              Record an incoming wildlife rescue call
-            </p>
-          </div>
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/compliance/call-logs">
+          <Button variant="outline" size="icon" className="shrink-0" aria-label="Back to call logs">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <Link href="/">
+          <Button variant="outline" size="icon" className="shrink-0" aria-label="Home">
+            <Home className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold">New Call</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            Record an incoming wildlife rescue call
+          </p>
         </div>
       </div>
 

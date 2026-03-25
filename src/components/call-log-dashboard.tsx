@@ -76,10 +76,10 @@ export function CallLogDashboard() {
   }
 
   return (
-    <div className="bg-card rounded-lg shadow-md p-6 mb-8">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Phone className="h-6 w-6" />
+    <div className="bg-card rounded-lg shadow-md p-4 sm:p-6 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+          <Phone className="h-5 w-5 sm:h-6 sm:w-6" />
           Call Log
         </h2>
         <div className="flex gap-2">
@@ -131,7 +131,8 @@ export function CallLogDashboard() {
 
       {/* Recent Calls Table */}
       {recentCalls.length > 0 ? (
-        <Table>
+        <div className="overflow-x-auto -mx-4 sm:-mx-0">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow>
               <TableHead>Date/Time</TableHead>
@@ -205,6 +206,7 @@ export function CallLogDashboard() {
             ))}
           </TableBody>
         </Table>
+        </div>
       ) : (
         <div className="text-center py-8 text-muted-foreground">
           <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />

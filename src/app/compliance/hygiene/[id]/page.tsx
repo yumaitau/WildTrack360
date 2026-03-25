@@ -63,36 +63,34 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
   ];
 
   return (
-    <div className="container mx-auto px-6 py-8 space-y-8">
+    <div className="container mx-auto px-4 sm:px-6 py-8 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex gap-2">
-            <Link href="/">
-              <Button variant="outline" size="icon">
-                <Home className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/compliance/hygiene">
-              <Button variant="outline" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold">Hygiene Log</h1>
-            <p className="text-muted-foreground">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Link href="/">
+            <Button variant="outline" size="icon" className="shrink-0">
+              <Home className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Link href="/compliance/hygiene">
+            <Button variant="outline" size="icon" className="shrink-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold">Hygiene Log</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               {carer?.name} • {new Date(log.date).toLocaleDateString("en-AU", { year: "numeric", month: "short", day: "numeric" })}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
           <Link href={`/compliance/hygiene/${id}/edit`}>
-            <Button>Edit Log</Button>
+            <Button size="sm" className="sm:h-9 sm:px-4">Edit Log</Button>
           </Link>
         </div>
       </div>

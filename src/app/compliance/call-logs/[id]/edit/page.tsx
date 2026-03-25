@@ -181,30 +181,28 @@ export default function EditCallLogPage() {
 
   if (initialLoading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4 sm:p-6">
         <div className="text-center text-muted-foreground py-12">Loading call log...</div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={`/compliance/call-logs/${id}`}>
-            <Button variant="outline" size="icon" aria-label="Back to call log">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link href="/">
-            <Button variant="outline" size="icon" aria-label="Home">
-              <Home className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">Edit Call</h1>
-            <p className="text-muted-foreground">Update call log details</p>
-          </div>
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href={`/compliance/call-logs/${id}`}>
+          <Button variant="outline" size="icon" className="shrink-0" aria-label="Back to call log">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <Link href="/">
+          <Button variant="outline" size="icon" className="shrink-0" aria-label="Home">
+            <Home className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold">Edit Call</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Update call log details</p>
         </div>
       </div>
 

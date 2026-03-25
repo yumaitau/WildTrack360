@@ -15,17 +15,18 @@ export default function LogoutSuccessPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex flex-col">
       <header className="bg-card/80 backdrop-blur-sm shadow-md">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-3">
-              <PawPrint className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold font-headline text-primary">
+          <div className="flex items-center justify-between h-16 sm:h-20">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <PawPrint className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              <h1 className="text-xl sm:text-3xl font-bold font-headline text-primary">
                 WildTrack360
               </h1>
             </div>
             <Link href="/landing">
-              <Button variant="outline">
+              <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
                 <Home className="h-4 w-4 mr-2" />
-                Back to Home
+                <span className="hidden sm:inline">Back to Home</span>
+                <span className="sm:hidden">Home</span>
               </Button>
             </Link>
           </div>
