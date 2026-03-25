@@ -146,7 +146,7 @@ function SpeciesNamePicker({
               return (
                 <label
                   key={name}
-                  className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 text-sm"
+                  className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 rounded-sm"
                 >
                   <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'}`}>
                     {isSelected && <Check className="h-3 w-3" />}
@@ -273,24 +273,31 @@ function AssignmentOverview({
   coordinators: CoordinatorOption[];
   memberNamesByOrgMemberId: Record<string, string>;
 }) {
-  // Build a map: coordinator name → list of group names
+  // Build a map: coordinator orgMemberId → { orgMemberId, name, groups[] }
   const assignmentMap = useMemo(() => {
-    const map = new Map<string, { name: string; groups: string[] }>();
+    const coordinatorIds = new Set(coordinators.map((c) => c.orgMemberId));
+    const map = new Map<string, { orgMemberId: string; name: string; groups: string[] }>();
 
     // First, add all coordinators (even unassigned ones)
     for (const c of coordinators) {
-      map.set(c.orgMemberId, { name: c.name, groups: [] });
+      map.set(c.orgMemberId, { orgMemberId: c.orgMemberId, name: c.name, groups: [] });
     }
 
-    // Then, populate their assigned groups
+    // Then, populate their assigned groups (only for active coordinator roles)
     for (const group of groups) {
       for (const assignment of group.coordinators) {
+        const isActiveCoordinator =
+          coordinatorIds.has(assignment.orgMemberId) ||
+          assignment.orgMember?.role === 'COORDINATOR' ||
+          assignment.orgMember?.role === 'COORDINATOR_ALL';
+        if (!isActiveCoordinator) continue;
+
         const existing = map.get(assignment.orgMemberId);
         if (existing) {
           existing.groups.push(group.name);
         } else {
           const name = memberNamesByOrgMemberId[assignment.orgMemberId] || 'Unknown';
-          map.set(assignment.orgMemberId, { name, groups: [group.name] });
+          map.set(assignment.orgMemberId, { orgMemberId: assignment.orgMemberId, name, groups: [group.name] });
         }
       }
     }
@@ -298,7 +305,18 @@ function AssignmentOverview({
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [groups, coordinators, memberNamesByOrgMemberId]);
 
-  const unassignedGroups = groups.filter((g) => g.coordinators.length === 0);
+  const unassignedGroups = useMemo(() => {
+    const coordinatorIds = new Set(coordinators.map((c) => c.orgMemberId));
+    return groups.filter((g) => {
+      const activeAssignments = g.coordinators.filter(
+        (c) =>
+          coordinatorIds.has(c.orgMemberId) ||
+          c.orgMember?.role === 'COORDINATOR' ||
+          c.orgMember?.role === 'COORDINATOR_ALL'
+      );
+      return activeAssignments.length === 0;
+    });
+  }, [groups, coordinators]);
 
   if (groups.length === 0) return null;
 
@@ -320,7 +338,7 @@ function AssignmentOverview({
             <div className="space-y-2">
               {assignmentMap.map((entry) => (
                 <div
-                  key={entry.name}
+                  key={entry.orgMemberId}
                   className="flex items-start gap-3 py-2 border-b last:border-b-0"
                 >
                   <Badge variant="secondary" className="text-xs shrink-0 mt-0.5">
@@ -504,7 +522,7 @@ export function SpeciesGroupManagement() {
 
       // Assign selected coordinators
       if (wizardCoordinatorIds.length > 0) {
-        await Promise.all(
+        const assignmentResponses = await Promise.all(
           wizardCoordinatorIds.map((orgMemberId) =>
             fetch('/api/rbac/coordinator-assignments', {
               method: 'POST',
@@ -513,9 +531,18 @@ export function SpeciesGroupManagement() {
             })
           )
         );
-      }
 
-      toast.success('Species group created and coordinators assigned');
+        const failedAssignments = assignmentResponses.filter((r) => !r.ok);
+        if (failedAssignments.length > 0) {
+          toast.error(
+            `Species group created but ${failedAssignments.length} coordinator assignment(s) failed`
+          );
+        } else {
+          toast.success('Species group created and coordinators assigned');
+        }
+      } else {
+        toast.success('Species group created');
+      }
       setIsCreateOpen(false);
       resetForm();
       fetchData();
@@ -766,7 +793,7 @@ export function SpeciesGroupManagement() {
                     return (
                       <label
                         key={c.orgMemberId}
-                        className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 text-sm"
+                        className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 rounded-sm"
                       >
                         <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'}`}>
                           {isSelected && <Check className="h-3 w-3" />}

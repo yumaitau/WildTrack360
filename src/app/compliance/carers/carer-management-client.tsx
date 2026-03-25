@@ -331,7 +331,12 @@ export default function CarerManagementClient({ carers }: CarerManagementClientP
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div>{carer.licenseExpiry ? new Date(carer.licenseExpiry).toLocaleDateString() : 'No license recorded'}</div>
+                        <div>{(() => {
+                          if (!carer.licenseExpiry) return 'No license recorded';
+                          const d = new Date(carer.licenseExpiry);
+                          if (isNaN(d.getTime())) return 'No license recorded';
+                          return new Intl.DateTimeFormat(undefined, { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' }).format(d);
+                        })()}</div>
                         {expiryStatus !== 'valid' && expiryStatus !== 'no-license' && daysUntil !== null && (
                           <div className="text-sm text-muted-foreground">
                             {expiryStatus === 'expired' 
@@ -434,7 +439,12 @@ export default function CarerManagementClient({ carers }: CarerManagementClientP
                     <div>
                       <span className="font-medium">{carer.fullName || carer.name}</span>
                       <span className="text-muted-foreground ml-2">
-                        expires {carer.licenseExpiry ? new Date(carer.licenseExpiry).toLocaleDateString() : '?'} ({getDaysUntilExpiry(carer.licenseExpiry)} days)
+                        expires {(() => {
+                          if (!carer.licenseExpiry) return '?';
+                          const d = new Date(carer.licenseExpiry);
+                          if (isNaN(d.getTime())) return '?';
+                          return new Intl.DateTimeFormat(undefined, { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' }).format(d);
+                        })()} ({getDaysUntilExpiry(carer.licenseExpiry)} days)
                       </span>
                     </div>
                     <Button variant="outline" size="sm">

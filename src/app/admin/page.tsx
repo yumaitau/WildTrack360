@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -92,14 +92,20 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!organization?.id) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+
     const loadData = async () => {
       try {
-        const orgId = organization?.id || 'default-org';
+        const orgId = organization.id;
         const [speciesData, assetsData, roleData] = await Promise.all([
           apiJson<any[]>(`/api/species?orgId=${orgId}`),
           apiJson<Asset[]>(`/api/assets?orgId=${orgId}`),
           apiJson<any>('/api/rbac/my-role'),
         ]);
+        if (cancelled) return;
         const role = roleData.role || 'CARER';
         if (role === 'CARER' || role === 'CARER_ALL') {
           router.replace('/');
@@ -109,17 +115,38 @@ export default function AdminPage() {
         setAssets(assetsData);
         setUserRole(role);
       } catch (error) {
+        if (cancelled) return;
         console.error('Error loading admin data:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadData();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organization?.id]);
+  }, [organization?.id, user?.id]);
 
   const isAdmin = userRole === 'ADMIN';
+
+  const allowedTabs = useMemo(() => {
+    const tabs = ['home', 'assets'];
+    if (isAdmin) {
+      tabs.push('people', 'species-groups', 'species', 'audit-log', 'data-export');
+    }
+    return tabs;
+  }, [isAdmin]);
+
+  // Clamp activeTab to an allowed value when role/org changes
+  useEffect(() => {
+    if (activeTab && !allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0] || 'home');
+    }
+  }, [activeTab, allowedTabs]);
 
   if (loading) {
     return (
