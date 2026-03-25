@@ -331,7 +331,7 @@ export default function CarerManagementClient({ carers }: CarerManagementClientP
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div>{carer.licenseExpiry || 'No license recorded'}</div>
+                        <div>{carer.licenseExpiry ? new Date(carer.licenseExpiry).toLocaleDateString() : 'No license recorded'}</div>
                         {expiryStatus !== 'valid' && expiryStatus !== 'no-license' && daysUntil !== null && (
                           <div className="text-sm text-muted-foreground">
                             {expiryStatus === 'expired' 
@@ -434,7 +434,7 @@ export default function CarerManagementClient({ carers }: CarerManagementClientP
                     <div>
                       <span className="font-medium">{carer.fullName || carer.name}</span>
                       <span className="text-muted-foreground ml-2">
-                        expires {carer.licenseExpiry} ({getDaysUntilExpiry(carer.licenseExpiry)} days)
+                        expires {carer.licenseExpiry ? new Date(carer.licenseExpiry).toLocaleDateString() : '?'} ({getDaysUntilExpiry(carer.licenseExpiry)} days)
                       </span>
                     </div>
                     <Button variant="outline" size="sm">

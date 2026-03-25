@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useOrganization } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,9 +43,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PlusCircle, Trash2, Edit2, Leaf, Users, Info, X, Plus, Check } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2, Leaf, Users, Info, X, Plus, Check, ChevronRight, ChevronLeft, ArrowRight, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SpeciesGroupWithCoordinators, OrgMemberWithAssignments } from '@/lib/types';
+
+// ---------------------------------------------------------------------------
+// SpeciesNamePicker (unchanged)
+// ---------------------------------------------------------------------------
 
 function SpeciesNamePicker({
   selected,
@@ -57,6 +61,7 @@ function SpeciesNamePicker({
   availableSpecies: string[];
 }) {
   const [customInput, setCustomInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const selectedSet = new Set(selected.map((s) => s.toLowerCase()));
 
   const handleToggle = (name: string) => {
@@ -78,50 +83,89 @@ function SpeciesNamePicker({
     setCustomInput('');
   };
 
+  const filteredSpecies = useMemo(() => {
+    if (!searchQuery.trim()) return availableSpecies;
+    const q = searchQuery.toLowerCase();
+    return availableSpecies.filter((name) => name.toLowerCase().includes(q));
+  }, [availableSpecies, searchQuery]);
+
+  // Custom species that aren't in the org list
+  const customSelected = selected.filter(
+    (s) => !availableSpecies.some((a) => a.toLowerCase() === s.toLowerCase())
+  );
+
   return (
     <div className="space-y-3">
-      {availableSpecies.length > 0 && (
-        <div className="border rounded-md max-h-[200px] overflow-y-auto">
-          {availableSpecies.map((name) => {
-            const isSelected = selectedSet.has(name.toLowerCase());
-            return (
-              <label
-                key={name}
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 text-sm"
-              >
-                <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'}`}>
-                  {isSelected && <Check className="h-3 w-3" />}
-                </div>
-                <span className={isSelected ? 'font-medium' : 'text-muted-foreground'}>{name}</span>
-                <input
-                  type="checkbox"
-                  className="sr-only"
-                  checked={isSelected}
-                  onChange={() => handleToggle(name)}
-                />
-              </label>
-            );
-          })}
-        </div>
-      )}
-      {/* Show any selected names not in the org species list */}
-      {selected.filter((s) => !availableSpecies.some((a) => a.toLowerCase() === s.toLowerCase())).length > 0 && (
+      {/* Selected species badges */}
+      {selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {selected
-            .filter((s) => !availableSpecies.some((a) => a.toLowerCase() === s.toLowerCase()))
-            .map((name) => (
+          {selected.map((name) => {
+            const isCustom = !availableSpecies.some((a) => a.toLowerCase() === name.toLowerCase());
+            return (
               <button
                 key={name}
                 type="button"
                 onClick={() => handleToggle(name)}
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors bg-amber-50 text-amber-700 border border-amber-300 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 cursor-pointer"
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors cursor-pointer ${
+                  isCustom
+                    ? 'bg-amber-50 text-amber-700 border border-amber-300 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30'
+                    : 'bg-primary/10 text-primary border border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30'
+                }`}
               >
-                <X className="h-3 w-3" />
                 {name}
+                <X className="h-3 w-3" />
               </button>
-            ))}
+            );
+          })}
         </div>
       )}
+
+      {/* Search box */}
+      {availableSpecies.length > 0 && (
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder={`Search ${availableSpecies.length} species...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 text-sm pl-8"
+          />
+        </div>
+      )}
+
+      {/* Species list */}
+      {availableSpecies.length > 0 && (
+        <div className="border rounded-md max-h-[200px] overflow-y-auto">
+          {filteredSpecies.length === 0 ? (
+            <div className="px-3 py-3 text-sm text-muted-foreground text-center">
+              No species match &ldquo;{searchQuery}&rdquo;
+            </div>
+          ) : (
+            filteredSpecies.map((name) => {
+              const isSelected = selectedSet.has(name.toLowerCase());
+              return (
+                <label
+                  key={name}
+                  className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 text-sm"
+                >
+                  <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'}`}>
+                    {isSelected && <Check className="h-3 w-3" />}
+                  </div>
+                  <span className={isSelected ? 'font-medium' : 'text-muted-foreground'}>{name}</span>
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={isSelected}
+                    onChange={() => handleToggle(name)}
+                  />
+                </label>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Add custom species */}
       <div className="flex gap-2">
         <Input
           placeholder="Add unlisted species..."
@@ -147,20 +191,185 @@ function SpeciesNamePicker({
           Add
         </Button>
       </div>
-      {selected.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {selected.length} species selected
-        </p>
-      )}
+      <p className="text-xs text-muted-foreground">
+        {selected.length} species selected
+        {searchQuery && ` \u00B7 showing ${filteredSpecies.length} of ${availableSpecies.length}`}
+      </p>
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface CoordinatorOption {
   orgMemberId: string;
   userId: string;
   name: string;
 }
+
+type WizardStep = 'details' | 'species' | 'coordinators' | 'review';
+const WIZARD_STEPS: { key: WizardStep; label: string }[] = [
+  { key: 'details', label: 'Group Details' },
+  { key: 'species', label: 'Select Species' },
+  { key: 'coordinators', label: 'Assign People' },
+  { key: 'review', label: 'Review & Save' },
+];
+
+// ---------------------------------------------------------------------------
+// Step Indicator
+// ---------------------------------------------------------------------------
+
+function StepIndicator({ currentStep, steps }: { currentStep: WizardStep; steps: typeof WIZARD_STEPS }) {
+  const currentIdx = steps.findIndex((s) => s.key === currentStep);
+  return (
+    <div className="flex items-center gap-1 mb-6">
+      {steps.map((step, idx) => {
+        const isActive = idx === currentIdx;
+        const isComplete = idx < currentIdx;
+        return (
+          <div key={step.key} className="flex items-center gap-1 flex-1">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div
+                className={`flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold shrink-0 transition-colors ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : isComplete
+                    ? 'bg-green-600 text-white'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {isComplete ? <Check className="h-3.5 w-3.5" /> : idx + 1}
+              </div>
+              <span
+                className={`text-xs truncate hidden sm:inline ${
+                  isActive ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {idx < steps.length - 1 && (
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Assignment Overview
+// ---------------------------------------------------------------------------
+
+function AssignmentOverview({
+  groups,
+  coordinators,
+  memberNamesByOrgMemberId,
+}: {
+  groups: SpeciesGroupWithCoordinators[];
+  coordinators: CoordinatorOption[];
+  memberNamesByOrgMemberId: Record<string, string>;
+}) {
+  // Build a map: coordinator name → list of group names
+  const assignmentMap = useMemo(() => {
+    const map = new Map<string, { name: string; groups: string[] }>();
+
+    // First, add all coordinators (even unassigned ones)
+    for (const c of coordinators) {
+      map.set(c.orgMemberId, { name: c.name, groups: [] });
+    }
+
+    // Then, populate their assigned groups
+    for (const group of groups) {
+      for (const assignment of group.coordinators) {
+        const existing = map.get(assignment.orgMemberId);
+        if (existing) {
+          existing.groups.push(group.name);
+        } else {
+          const name = memberNamesByOrgMemberId[assignment.orgMemberId] || 'Unknown';
+          map.set(assignment.orgMemberId, { name, groups: [group.name] });
+        }
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [groups, coordinators, memberNamesByOrgMemberId]);
+
+  const unassignedGroups = groups.filter((g) => g.coordinators.length === 0);
+
+  if (groups.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          Assignment Overview
+        </CardTitle>
+        <CardDescription>
+          At-a-glance view of who manages which species groups.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Coordinator → Groups mapping */}
+          {assignmentMap.length > 0 && (
+            <div className="space-y-2">
+              {assignmentMap.map((entry) => (
+                <div
+                  key={entry.name}
+                  className="flex items-start gap-3 py-2 border-b last:border-b-0"
+                >
+                  <Badge variant="secondary" className="text-xs shrink-0 mt-0.5">
+                    <Users className="h-3 w-3 mr-1" />
+                    {entry.name}
+                  </Badge>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {entry.groups.length > 0 ? (
+                      <>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                        {entry.groups.map((g) => (
+                          <Badge key={g} variant="outline" className="text-xs">
+                            <Leaf className="h-3 w-3 mr-1" />
+                            {g}
+                          </Badge>
+                        ))}
+                      </>
+                    ) : (
+                      <span className="text-xs text-amber-600 italic">
+                        No species groups assigned
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Warning for unassigned groups */}
+          {unassignedGroups.length > 0 && (
+            <Alert variant="destructive" className="border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-600">
+              <Info className="h-4 w-4" />
+              <AlertTitle className="text-sm">Unassigned Groups</AlertTitle>
+              <AlertDescription className="text-xs">
+                The following groups have no coordinator assigned:{' '}
+                {unassignedGroups.map((g) => g.name).join(', ')}.
+                Use the wizard or edit the group to assign someone.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
 
 export function SpeciesGroupManagement() {
   const { organization } = useOrganization();
@@ -171,6 +380,10 @@ export function SpeciesGroupManagement() {
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<SpeciesGroupWithCoordinators | null>(null);
+
+  // Wizard state
+  const [wizardStep, setWizardStep] = useState<WizardStep>('details');
+  const [wizardCoordinatorIds, setWizardCoordinatorIds] = useState<string[]>([]);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -199,12 +412,10 @@ export function SpeciesGroupManagement() {
         setOrgSpecies(speciesData.map((s) => s.name).sort());
       }
 
-      // Build coordinator options from RBAC roles + Clerk identity
       if (rolesRes.ok) {
         const orgMembers: OrgMemberWithAssignments[] = await rolesRes.json();
         const clerkMembers = membersRes.data as any[];
 
-        // Build a name lookup for ALL org members (for display purposes)
         const nameMap: Record<string, string> = {};
         for (const m of orgMembers) {
           const clerk = clerkMembers.find(
@@ -242,6 +453,7 @@ export function SpeciesGroupManagement() {
   useEffect(() => {
     if (!organization) return;
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization?.id]);
 
   const resetForm = () => {
@@ -250,6 +462,8 @@ export function SpeciesGroupManagement() {
     setFormDescription('');
     setFormSpeciesNames([]);
     setEditingGroup(null);
+    setWizardStep('details');
+    setWizardCoordinatorIds([]);
   };
 
   const generateSlug = (name: string) => {
@@ -259,14 +473,14 @@ export function SpeciesGroupManagement() {
       .replace(/^-|-$/g, '');
   };
 
-  const handleCreate = async () => {
+  // Create + assign coordinators in one flow
+  const handleWizardCreate = async () => {
     if (!formName || formSpeciesNames.length === 0) {
       toast.error('Name and species names are required');
       return;
     }
 
     const slug = formSlug || generateSlug(formName);
-    const speciesNames = formSpeciesNames;
 
     setSaving(true);
     try {
@@ -277,7 +491,7 @@ export function SpeciesGroupManagement() {
           slug,
           name: formName,
           description: formDescription || undefined,
-          speciesNames,
+          speciesNames: formSpeciesNames,
         }),
       });
 
@@ -286,7 +500,22 @@ export function SpeciesGroupManagement() {
         throw new Error(err.error || 'Failed to create species group');
       }
 
-      toast.success('Species group created');
+      const created = await res.json();
+
+      // Assign selected coordinators
+      if (wizardCoordinatorIds.length > 0) {
+        await Promise.all(
+          wizardCoordinatorIds.map((orgMemberId) =>
+            fetch('/api/rbac/coordinator-assignments', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orgMemberId, speciesGroupId: created.id }),
+            })
+          )
+        );
+      }
+
+      toast.success('Species group created and coordinators assigned');
       setIsCreateOpen(false);
       resetForm();
       fetchData();
@@ -305,8 +534,6 @@ export function SpeciesGroupManagement() {
       return;
     }
 
-    const speciesNames = formSpeciesNames;
-
     setSaving(true);
     try {
       const res = await fetch(`/api/rbac/species-groups/${editingGroup.id}`, {
@@ -316,7 +543,7 @@ export function SpeciesGroupManagement() {
           name: formName,
           slug: formSlug || generateSlug(formName),
           description: formDescription || undefined,
-          speciesNames,
+          speciesNames: formSpeciesNames,
         }),
       });
 
@@ -421,7 +648,221 @@ export function SpeciesGroupManagement() {
     );
   }
 
-  const formContent = (
+  // ---------------------------------------------------------------------------
+  // Wizard step validation
+  // ---------------------------------------------------------------------------
+
+  const canAdvanceFrom = (step: WizardStep): boolean => {
+    switch (step) {
+      case 'details':
+        return formName.trim().length > 0;
+      case 'species':
+        return formSpeciesNames.length > 0;
+      case 'coordinators':
+        return true; // optional
+      case 'review':
+        return true;
+    }
+  };
+
+  const nextStep = () => {
+    const idx = WIZARD_STEPS.findIndex((s) => s.key === wizardStep);
+    if (idx < WIZARD_STEPS.length - 1) setWizardStep(WIZARD_STEPS[idx + 1].key);
+  };
+
+  const prevStep = () => {
+    const idx = WIZARD_STEPS.findIndex((s) => s.key === wizardStep);
+    if (idx > 0) setWizardStep(WIZARD_STEPS[idx - 1].key);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Wizard step content
+  // ---------------------------------------------------------------------------
+
+  const renderWizardStep = () => {
+    switch (wizardStep) {
+      case 'details':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Give your species group a name and optional description. The slug is auto-generated from the name.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="wizard-name">Group Name <span className="text-destructive">*</span></Label>
+              <Input
+                id="wizard-name"
+                placeholder="e.g. Macropods"
+                value={formName}
+                onChange={(e) => {
+                  setFormName(e.target.value);
+                  setFormSlug(generateSlug(e.target.value));
+                }}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="wizard-slug">Slug</Label>
+              <Input
+                id="wizard-slug"
+                placeholder="e.g. macropods"
+                value={formSlug}
+                onChange={(e) => setFormSlug(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Machine-readable identifier. Auto-generated from name.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="wizard-description">Description</Label>
+              <Input
+                id="wizard-description"
+                placeholder="Optional description"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+              />
+            </div>
+          </div>
+        );
+
+      case 'species':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Select the species that belong to this group. These determine which animal records coordinators assigned to this group can see and manage.
+            </p>
+            <div className="space-y-2">
+              <Label>Species Names <span className="text-destructive">*</span></Label>
+              <SpeciesNamePicker
+                selected={formSpeciesNames}
+                onChange={setFormSpeciesNames}
+                availableSpecies={orgSpecies}
+              />
+              <p className="text-xs text-muted-foreground">
+                Click species to add or remove them. Use the input to add species not yet in your org list.
+              </p>
+            </div>
+          </div>
+        );
+
+      case 'coordinators':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Assign coordinators who will manage animals in this species group. This step is optional — you can assign coordinators later.
+            </p>
+            {coordinators.length === 0 ? (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  No coordinators found in your organisation. You can assign the Coordinator role to members in the People tab, then come back to assign them here.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="space-y-2">
+                <Label>Available Coordinators</Label>
+                <div className="border rounded-md max-h-[250px] overflow-y-auto">
+                  {coordinators.map((c) => {
+                    const isSelected = wizardCoordinatorIds.includes(c.orgMemberId);
+                    return (
+                      <label
+                        key={c.orgMemberId}
+                        className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 text-sm"
+                      >
+                        <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'}`}>
+                          {isSelected && <Check className="h-3 w-3" />}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className={isSelected ? 'font-medium' : ''}>{c.name}</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={isSelected}
+                          onChange={() => {
+                            setWizardCoordinatorIds((prev) =>
+                              isSelected
+                                ? prev.filter((id) => id !== c.orgMemberId)
+                                : [...prev, c.orgMemberId]
+                            );
+                          }}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {wizardCoordinatorIds.length} coordinator{wizardCoordinatorIds.length !== 1 ? 's' : ''} selected
+                </p>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'review':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Review the details below before creating the species group.
+            </p>
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Group Name</p>
+                <p className="text-sm font-semibold">{formName}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Slug</p>
+                <p className="text-sm font-mono">{formSlug || generateSlug(formName)}</p>
+              </div>
+              {formDescription && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</p>
+                  <p className="text-sm">{formDescription}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Species ({formSpeciesNames.length})</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {formSpeciesNames.map((name) => (
+                    <Badge key={name} variant="outline" className="text-xs">
+                      {name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Coordinators ({wizardCoordinatorIds.length})
+                </p>
+                {wizardCoordinatorIds.length > 0 ? (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {wizardCoordinatorIds.map((id) => {
+                      const c = coordinators.find((co) => co.orgMemberId === id);
+                      return (
+                        <Badge key={id} variant="secondary" className="text-xs">
+                          <Users className="h-3 w-3 mr-1" />
+                          {c?.name || 'Unknown'}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic mt-1">
+                    None — you can assign coordinators later
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Edit form content (kept similar to original for edit modal)
+  // ---------------------------------------------------------------------------
+
+  const editFormContent = (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="group-name">Group Name</Label>
@@ -431,9 +872,6 @@ export function SpeciesGroupManagement() {
           value={formName}
           onChange={(e) => {
             setFormName(e.target.value);
-            if (!editingGroup) {
-              setFormSlug(generateSlug(e.target.value));
-            }
           }}
         />
       </div>
@@ -446,7 +884,7 @@ export function SpeciesGroupManagement() {
           onChange={(e) => setFormSlug(e.target.value)}
         />
         <p className="text-xs text-muted-foreground">
-          Machine-readable identifier. Auto-generated from name.
+          Machine-readable identifier.
         </p>
       </div>
       <div className="space-y-2">
@@ -547,11 +985,19 @@ export function SpeciesGroupManagement() {
         <AlertDescription className="text-green-800">
           Species groups define which animals a Coordinator can see and manage.
           Each group contains a list of species names that are matched against animal records.
-          Assign one or more coordinators to each group.
+          Use the wizard below to create a group and assign coordinators in one step.
         </AlertDescription>
       </Alert>
 
+      {/* Assignment Overview */}
+      <AssignmentOverview
+        groups={groups}
+        coordinators={coordinators}
+        memberNamesByOrgMemberId={memberNamesByOrgMemberId}
+      />
+
       <div className="flex justify-end">
+        {/* Create Wizard Dialog */}
         <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button>
@@ -559,23 +1005,44 @@ export function SpeciesGroupManagement() {
               Create Species Group
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[85vh] flex flex-col">
+          <DialogContent className="max-h-[85vh] flex flex-col sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Create Species Group</DialogTitle>
               <DialogDescription>
-                Define a new species group for your organisation.
+                Follow the steps to create a species group and assign coordinators.
               </DialogDescription>
             </DialogHeader>
-            <div className="overflow-y-auto flex-1 pr-1">
-              {formContent}
+            <div className="overflow-y-auto flex-1 px-1">
+              <StepIndicator currentStep={wizardStep} steps={WIZARD_STEPS} />
+              {renderWizardStep()}
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreate} disabled={saving}>
-                {saving ? 'Creating...' : 'Create'}
-              </Button>
+            <DialogFooter className="flex-row justify-between sm:justify-between gap-2 pt-4 border-t">
+              <div>
+                {wizardStep !== 'details' && (
+                  <Button variant="outline" onClick={prevStep}>
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Back
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
+                  Cancel
+                </Button>
+                {wizardStep === 'review' ? (
+                  <Button onClick={handleWizardCreate} disabled={saving}>
+                    {saving ? 'Creating...' : 'Create Group'}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={nextStep}
+                    disabled={!canAdvanceFrom(wizardStep)}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                )}
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -587,11 +1054,11 @@ export function SpeciesGroupManagement() {
           <DialogHeader>
             <DialogTitle>Edit Species Group</DialogTitle>
             <DialogDescription>
-              Update the species group details.
+              Update the species group details and coordinator assignments.
             </DialogDescription>
           </DialogHeader>
-          <div className="overflow-y-auto flex-1 pr-1">
-            {formContent}
+          <div className="overflow-y-auto flex-1 px-1">
+            {editFormContent}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setEditingGroup(null); resetForm(); }}>
@@ -621,7 +1088,7 @@ export function SpeciesGroupManagement() {
             </div>
           ) : groups.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No species groups defined yet. Create one to get started.
+              No species groups defined yet. Click &ldquo;Create Species Group&rdquo; to get started.
             </div>
           ) : (
             <Table>
@@ -636,7 +1103,6 @@ export function SpeciesGroupManagement() {
               </TableHeader>
               <TableBody>
                 {groups.map((group) => {
-                  // Only show actual coordinators (not carers) in the Coordinators column
                   const coordinatorAssignments = group.coordinators.filter(
                     (c) => c.orgMember.role === 'COORDINATOR' || c.orgMember.role === 'COORDINATOR_ALL'
                   );

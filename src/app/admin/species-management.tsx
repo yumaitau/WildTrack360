@@ -111,7 +111,8 @@ export function SpeciesManagement({ initialSpecies }: SpeciesManagementProps) {
         description: 'Failed to refresh species list.'
       });
     }
-  }, [organization, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id]);
 
   useEffect(() => {
     refreshSpecies();
