@@ -46,15 +46,27 @@ export async function PATCH(
   try {
     const body = await request.json();
     
+    const existing = await prisma.incidentReport.findFirst({
+      where: { id, clerkOrganizationId: orgId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
+    }
+
+    const INCIDENT_SAFE_FIELDS = [
+      'date', 'type', 'description', 'severity', 'resolved', 'resolution',
+      'personInvolved', 'reportedTo', 'actionTaken', 'location', 'animalId', 'notes',
+    ] as const;
+    const safeData: Record<string, unknown> = {};
+    for (const key of INCIDENT_SAFE_FIELDS) {
+      if (key in body) {
+        safeData[key] = body[key];
+      }
+    }
+
     const incident = await prisma.incidentReport.update({
-      where: {
-        id,
-      },
-      data: {
-        ...body,
-        clerkUserId: userId,
-        clerkOrganizationId: orgId,
-      },
+      where: { id },
+      data: safeData,
     });
 
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'IncidentReport', entityId: id, metadata: { fields: Object.keys(body) } });
@@ -76,10 +88,15 @@ export async function DELETE(
   }
 
   try {
+    const existing = await prisma.incidentReport.findFirst({
+      where: { id, clerkOrganizationId: orgId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
+    }
+
     await prisma.incidentReport.delete({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     logAudit({ userId, orgId, action: 'DELETE', entity: 'IncidentReport', entityId: id });

@@ -49,15 +49,28 @@ export async function PATCH(
   try {
     const body = await request.json();
     
+    const existing = await prisma.hygieneLog.findFirst({
+      where: { id, clerkOrganizationId: orgId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Hygiene log not found' }, { status: 404 });
+    }
+
+    const HYGIENE_SAFE_FIELDS = [
+      'date', 'type', 'description', 'completed', 'enclosureCleaned', 'ppeUsed',
+      'handwashAvailable', 'feedingBowlsDisinfected', 'quarantineSignsPresent',
+      'photos', 'notes',
+    ] as const;
+    const safeData: Record<string, unknown> = {};
+    for (const key of HYGIENE_SAFE_FIELDS) {
+      if (key in body) {
+        safeData[key] = body[key];
+      }
+    }
+
     const hygieneLog = await prisma.hygieneLog.update({
-      where: {
-        id,
-      },
-      data: {
-        ...body,
-        clerkUserId: userId,
-        clerkOrganizationId: orgId,
-      },
+      where: { id },
+      data: safeData,
     });
 
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'HygieneLog', entityId: id, metadata: { fields: Object.keys(body) } });
@@ -79,10 +92,15 @@ export async function DELETE(
   }
 
   try {
+    const existing = await prisma.hygieneLog.findFirst({
+      where: { id, clerkOrganizationId: orgId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Hygiene log not found' }, { status: 404 });
+    }
+
     await prisma.hygieneLog.delete({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     logAudit({ userId, orgId, action: 'DELETE', entity: 'HygieneLog', entityId: id });

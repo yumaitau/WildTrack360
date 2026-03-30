@@ -51,9 +51,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: s3Key }, { status: 201 })
   } catch (error: any) {
     console.error('Image upload error:', error)
-    const message = error?.Code === 'AccessDenied'
-      ? 'Storage access denied. Please check S3/Wasabi credentials and bucket configuration.'
-      : 'Upload failed. Please try again.'
+    const message = 'Upload failed. Please try again.'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

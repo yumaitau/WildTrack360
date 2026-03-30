@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   const { userId, orgId: activeOrgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await request.json()
-  const requestedOrgId = body.clerkOrganizationId || activeOrgId || undefined
+  const requestedOrgId = activeOrgId
   if (!requestedOrgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
   if (!body.animalId) return NextResponse.json({ error: 'animalId is required' }, { status: 400 })
   try {

@@ -248,22 +248,29 @@ export async function getAssets(organizationId: string): Promise<Asset[]> {
 	});
 }
 
+const ASSET_SAFE_FIELDS = [
+	'name', 'type', 'description', 'status', 'location',
+	'assignedTo', 'purchaseDate', 'lastMaintenance', 'notes',
+] as const;
+
+function pickAssetFields(data: Record<string, unknown>): Record<string, unknown> {
+	const result: Record<string, unknown> = {};
+	for (const key of ASSET_SAFE_FIELDS) {
+		if (key in data) {
+			result[key] = data[key];
+		}
+	}
+	return result;
+}
+
 export async function createAsset(assetData: any): Promise<Asset> {
+	const safeFields = pickAssetFields(assetData);
 	return await prisma.asset.create({
-		data: assetData as any,
-	});
-}
-
-export async function updateAsset(id: string, assetData: any): Promise<Asset> {
-	return await prisma.asset.update({
-		where: { id },
-		data: assetData as any,
-	});
-}
-
-export async function deleteAsset(id: string) {
-	return prisma.asset.delete({
-		where: { id },
+		data: {
+			...safeFields,
+			clerkUserId: assetData.clerkUserId,
+			clerkOrganizationId: assetData.clerkOrganizationId,
+		} as any,
 	});
 }
 

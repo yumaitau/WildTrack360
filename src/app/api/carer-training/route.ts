@@ -9,7 +9,8 @@ export async function GET(request: Request) {
   
   const { searchParams } = new URL(request.url);
   const carerId = searchParams.get('carerId');
-  const orgId = searchParams.get('orgId') || activeOrgId || 'default-org';
+  const orgId = activeOrgId;
+  if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
   
   try {
     const whereClause: any = { clerkOrganizationId: orgId };
@@ -44,7 +45,8 @@ export async function POST(request: Request) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   
   const body = await request.json();
-  const orgId = body.clerkOrganizationId || activeOrgId || 'default-org';
+  const orgId = activeOrgId;
+  if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
   
   try {
     const training = await prisma.carerTraining.create({

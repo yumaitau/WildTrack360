@@ -6,8 +6,7 @@ import { logAudit } from '@/lib/audit'
 export async function GET(request: Request) {
 	const { userId, orgId: activeOrgId } = await auth()
 	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	const { searchParams } = new URL(request.url)
-	const orgId = searchParams.get('orgId') || activeOrgId || undefined
+	const orgId = activeOrgId
 	try {
 		if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
 		const assets = await getAssets(orgId)
@@ -21,7 +20,7 @@ export async function POST(request: Request) {
 	const { userId, orgId: activeOrgId } = await auth()
 	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 	const body = await request.json()
-	const orgId = body.clerkOrganizationId || activeOrgId || undefined
+	const orgId = activeOrgId
 	try {
 		if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
 		const created = await createAsset({ ...body, clerkUserId: userId, clerkOrganizationId: orgId })

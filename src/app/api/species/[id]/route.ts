@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const { userId, orgId } = await auth();
-  if (!userId) {
+  if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -17,7 +17,7 @@ export async function GET(
     const species = await prisma.species.findFirst({
       where: {
         id,
-        clerkOrganizationId: orgId || 'default-org',
+        clerkOrganizationId: orgId,
       },
     });
 
@@ -38,7 +38,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const { userId, orgId } = await auth();
-  if (!userId) {
+  if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -49,7 +49,7 @@ export async function PATCH(
     const existingSpecies = await prisma.species.findFirst({
       where: {
         id,
-        clerkOrganizationId: orgId || 'default-org',
+        clerkOrganizationId: orgId,
       },
     });
 
@@ -63,12 +63,12 @@ export async function PATCH(
     const species = await prisma.species.update({
       where: {
         id,
-        clerkOrganizationId: orgId || 'default-org', // Double-check in update
+        clerkOrganizationId: orgId, // Double-check in update
       },
       data: updateData,
     });
 
-    logAudit({ userId, orgId: orgId || 'default-org', action: 'UPDATE', entity: 'Species', entityId: id, metadata: { fields: Object.keys(updateData) } });
+    logAudit({ userId, orgId: orgId, action: 'UPDATE', entity: 'Species', entityId: id, metadata: { fields: Object.keys(updateData) } });
     return NextResponse.json(species);
   } catch (error) {
     console.error('Error updating species:', error);
@@ -82,7 +82,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const { userId, orgId } = await auth();
-  if (!userId) {
+  if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -91,7 +91,7 @@ export async function DELETE(
     const existingSpecies = await prisma.species.findFirst({
       where: {
         id,
-        clerkOrganizationId: orgId || 'default-org',
+        clerkOrganizationId: orgId,
       },
     });
 
@@ -102,11 +102,11 @@ export async function DELETE(
     await prisma.species.delete({
       where: {
         id,
-        clerkOrganizationId: orgId || 'default-org', // Double-check in delete
+        clerkOrganizationId: orgId, // Double-check in delete
       },
     });
 
-    logAudit({ userId, orgId: orgId || 'default-org', action: 'DELETE', entity: 'Species', entityId: id, metadata: { name: existingSpecies.name } });
+    logAudit({ userId, orgId: orgId, action: 'DELETE', entity: 'Species', entityId: id, metadata: { name: existingSpecies.name } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting species:', error);
