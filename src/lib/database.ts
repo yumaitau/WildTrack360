@@ -263,13 +263,13 @@ function pickAssetFields(data: Record<string, unknown>): Record<string, unknown>
 	return result;
 }
 
-export async function createAsset(assetData: any): Promise<Asset> {
+export async function createAsset(assetData: any, auth: { clerkUserId: string; clerkOrganizationId: string }): Promise<Asset> {
 	const safeFields = pickAssetFields(assetData);
 	return await prisma.asset.create({
 		data: {
 			...safeFields,
-			clerkUserId: assetData.clerkUserId,
-			clerkOrganizationId: assetData.clerkOrganizationId,
+			clerkUserId: auth.clerkUserId,
+			clerkOrganizationId: auth.clerkOrganizationId,
 		} as any,
 	});
 }

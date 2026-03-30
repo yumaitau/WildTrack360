@@ -58,23 +58,24 @@ export async function PATCH(
       return NextResponse.json({ error: 'Training not found or access denied' }, { status: 404 });
     }
     
-    // Update only allowed fields, prevent organization change
+    // Update only allowed fields present in body, prevent organization change
+    const data: Record<string, unknown> = {};
+    if ('courseName' in body) data.courseName = body.courseName;
+    if ('provider' in body) data.provider = body.provider || null;
+    if ('date' in body) data.date = body.date ? new Date(body.date) : undefined;
+    if ('expiryDate' in body) data.expiryDate = body.expiryDate ? new Date(body.expiryDate) : null;
+    if ('certificateUrl' in body) data.certificateUrl = body.certificateUrl || null;
+    if ('certificateNumber' in body) data.certificateNumber = body.certificateNumber || null;
+    if ('trainingType' in body) data.trainingType = body.trainingType || null;
+    if ('trainingHours' in body) data.trainingHours = body.trainingHours || null;
+    if ('notes' in body) data.notes = body.notes || null;
+
     const training = await prisma.carerTraining.update({
-      where: { 
+      where: {
         id: params.id,
-        clerkOrganizationId: orgId // Double-check in update
+        clerkOrganizationId: orgId
       },
-      data: {
-        courseName: body.courseName,
-        provider: body.provider || null,
-        date: body.date ? new Date(body.date) : undefined,
-        expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
-        certificateUrl: body.certificateUrl || null,
-        certificateNumber: body.certificateNumber || null,
-        trainingType: body.trainingType || null,
-        trainingHours: body.trainingHours || null,
-        notes: body.notes || null
-      },
+      data,
       include: {
         carer: {
           select: {

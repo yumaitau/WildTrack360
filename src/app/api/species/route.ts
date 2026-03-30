@@ -50,11 +50,10 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-	const { userId, orgId: activeOrgId } = await auth()
-	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	const { oldName, newName, orgId } = await request.json()
+	const { userId, orgId } = await auth()
+	if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+	const { oldName, newName } = await request.json()
 	try {
-		if (!orgId || (activeOrgId && orgId !== activeOrgId)) return NextResponse.json({ error: !orgId ? 'Organization ID is required' : 'Forbidden' }, { status: !orgId ? 400 : 403 })
 		const updated = await prisma.species.updateMany({
 			where: { name: oldName, clerkOrganizationId: orgId },
 			data: { name: newName }
@@ -69,11 +68,10 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-	const { userId, orgId: activeOrgId } = await auth()
-	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	const { name, orgId } = await request.json()
+	const { userId, orgId } = await auth()
+	if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+	const { name } = await request.json()
 	try {
-		if (!orgId || (activeOrgId && orgId !== activeOrgId)) return NextResponse.json({ error: !orgId ? 'Organization ID is required' : 'Forbidden' }, { status: !orgId ? 400 : 403 })
 		const deleted = await prisma.species.deleteMany({
 			where: { name, clerkOrganizationId: orgId }
 		})

@@ -33,6 +33,21 @@ export async function GET(
   }
 }
 
+const INCIDENT_SAFE_FIELDS = [
+  'date', 'type', 'description', 'severity', 'resolved', 'resolution',
+  'personInvolved', 'reportedTo', 'actionTaken', 'location', 'animalId', 'notes',
+] as const;
+
+function pickIncidentFields(data: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of INCIDENT_SAFE_FIELDS) {
+    if (key in data) {
+      result[key] = data[key];
+    }
+  }
+  return result;
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -45,31 +60,18 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    
-    const existing = await prisma.incidentReport.findFirst({
-      where: { id, clerkOrganizationId: orgId },
+    const safeData = pickIncidentFields(body);
+
+    const result = await prisma.incidentReport.updateMany({
+      where: { id, clerkOrganizationId: orgId, clerkUserId: userId },
+      data: safeData,
     });
-    if (!existing) {
+    if (result.count === 0) {
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
     }
 
-    const INCIDENT_SAFE_FIELDS = [
-      'date', 'type', 'description', 'severity', 'resolved', 'resolution',
-      'personInvolved', 'reportedTo', 'actionTaken', 'location', 'animalId', 'notes',
-    ] as const;
-    const safeData: Record<string, unknown> = {};
-    for (const key of INCIDENT_SAFE_FIELDS) {
-      if (key in body) {
-        safeData[key] = body[key];
-      }
-    }
-
-    const incident = await prisma.incidentReport.update({
-      where: { id },
-      data: safeData,
-    });
-
-    logAudit({ userId, orgId, action: 'UPDATE', entity: 'IncidentReport', entityId: id, metadata: { fields: Object.keys(body) } });
+    const incident = await prisma.incidentReport.findUnique({ where: { id } });
+    logAudit({ userId, orgId, action: 'UPDATE', entity: 'IncidentReport', entityId: id, metadata: { fields: Object.keys(safeData) } });
     return NextResponse.json(incident);
   } catch (error) {
     console.error('Error updating incident:', error);
@@ -88,16 +90,12 @@ export async function DELETE(
   }
 
   try {
-    const existing = await prisma.incidentReport.findFirst({
-      where: { id, clerkOrganizationId: orgId },
+    const result = await prisma.incidentReport.deleteMany({
+      where: { id, clerkOrganizationId: orgId, clerkUserId: userId },
     });
-    if (!existing) {
+    if (result.count === 0) {
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
     }
-
-    await prisma.incidentReport.delete({
-      where: { id },
-    });
 
     logAudit({ userId, orgId, action: 'DELETE', entity: 'IncidentReport', entityId: id });
     return NextResponse.json({ success: true });

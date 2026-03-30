@@ -49,6 +49,9 @@ export async function POST(request: Request) {
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
   
   try {
+    const carer = await prisma.carerProfile.findFirst({ where: { id: body.carerId, clerkOrganizationId: orgId } });
+    if (!carer) return NextResponse.json({ error: 'Carer not found in this organization' }, { status: 404 });
+
     const training = await prisma.carerTraining.create({
       data: {
         carerId: body.carerId,

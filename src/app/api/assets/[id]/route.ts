@@ -24,10 +24,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 	if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 	const body = await request.json()
 	try {
-		const existing = await prisma.asset.findFirst({ where: { id, clerkOrganizationId: orgId } })
-		if (!existing) return NextResponse.json({ error: 'Asset not found' }, { status: 404 })
 		const safeFields = pickAssetFields(body)
-		const updated = await prisma.asset.update({ where: { id }, data: safeFields })
+		const result = await prisma.asset.updateMany({
+			where: { id, clerkOrganizationId: orgId },
+			data: safeFields,
+		})
+		if (result.count === 0) return NextResponse.json({ error: 'Asset not found' }, { status: 404 })
+		const updated = await prisma.asset.findUnique({ where: { id } })
 		logAudit({ userId, orgId, action: 'UPDATE', entity: 'Asset', entityId: id, metadata: { fields: Object.keys(safeFields) } })
 		return NextResponse.json(updated)
 	} catch (e) {
@@ -40,9 +43,10 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 	const { userId, orgId } = await auth()
 	if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 	try {
-		const existing = await prisma.asset.findFirst({ where: { id, clerkOrganizationId: orgId } })
-		if (!existing) return NextResponse.json({ error: 'Asset not found' }, { status: 404 })
-		await prisma.asset.delete({ where: { id } })
+		const result = await prisma.asset.deleteMany({
+			where: { id, clerkOrganizationId: orgId },
+		})
+		if (result.count === 0) return NextResponse.json({ error: 'Asset not found' }, { status: 404 })
 		logAudit({ userId, orgId, action: 'DELETE', entity: 'Asset', entityId: id })
 		return NextResponse.json({ ok: true })
 	} catch (e) {

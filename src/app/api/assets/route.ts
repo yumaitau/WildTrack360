@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 	const orgId = activeOrgId
 	try {
 		if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
-		const created = await createAsset({ ...body, clerkUserId: userId, clerkOrganizationId: orgId })
+		const created = await createAsset(body, { clerkUserId: userId, clerkOrganizationId: orgId })
 		logAudit({ userId, orgId, action: 'CREATE', entity: 'Asset', entityId: created.id, metadata: { name: created.name, type: created.type } })
 		return NextResponse.json(created, { status: 201 })
 	} catch (e) {

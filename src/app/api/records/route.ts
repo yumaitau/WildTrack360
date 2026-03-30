@@ -12,6 +12,8 @@ export async function POST(request: Request) {
   if (!requestedOrgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
   if (!body.animalId) return NextResponse.json({ error: 'animalId is required' }, { status: 400 })
   try {
+    const animal = await prisma.animal.findFirst({ where: { id: body.animalId, clerkOrganizationId: requestedOrgId } })
+    if (!animal) return NextResponse.json({ error: 'Animal not found in this organization' }, { status: 404 })
     // Coerce incoming payload to match schema
     const incomingType: string | undefined = body.type
     const type: RecordType = ((): RecordType => {
