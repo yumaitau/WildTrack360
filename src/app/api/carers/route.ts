@@ -5,8 +5,8 @@ import { getEnrichedCarers, getEligibleCarerIdsForSpecies } from '@/lib/carer-he
 export async function GET(request: Request) {
 	const { userId, orgId: activeOrgId } = await auth()
 	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+	const orgId = activeOrgId
 	const { searchParams } = new URL(request.url)
-	const orgId = searchParams.get('orgId') || activeOrgId || undefined
 	const species = searchParams.get('species') || undefined
 	const assignable = searchParams.get('assignable') === 'true'
 	try {

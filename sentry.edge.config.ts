@@ -15,9 +15,9 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
     // Enable logs to be sent to Sentry
     enableLogs: true,
 
-    // Enable sending user PII (Personally Identifiable Information)
+    // Disable sending user PII (Personally Identifiable Information) — IPs, cookies, and user data are not auto-captured
     // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-    sendDefaultPii: true,
+    sendDefaultPii: false,
   });
 } else {
   console.warn("Sentry DSN not found. Please set the NEXT_PUBLIC_SENTRY_DSN environment variable to enable Sentry error tracking for edge features.");

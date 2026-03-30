@@ -24,9 +24,9 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
     // Define how likely Replay events are sampled when an error occurs.
     replaysOnErrorSampleRate: 1.0,
 
-    // Enable sending user PII (Personally Identifiable Information)
+    // Disable sending user PII (Personally Identifiable Information) — IPs, cookies, and user data are not auto-captured
     // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-    sendDefaultPii: true,
+    sendDefaultPii: false,
   });
 } else {
   console.warn(

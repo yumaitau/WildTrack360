@@ -8,13 +8,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const { userId, orgId } = await auth();
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   
   try {
     const training = await prisma.carerTraining.findFirst({
       where: { 
         id: params.id,
-        clerkOrganizationId: orgId || 'default-org'
+        clerkOrganizationId: orgId
       },
       include: {
         carer: {
@@ -41,7 +41,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   const { userId, orgId } = await auth();
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   
   const body = await request.json();
   
@@ -50,7 +50,7 @@ export async function PATCH(
     const existingTraining = await prisma.carerTraining.findFirst({
       where: { 
         id: params.id,
-        clerkOrganizationId: orgId || 'default-org'
+        clerkOrganizationId: orgId
       }
     });
 
@@ -58,23 +58,24 @@ export async function PATCH(
       return NextResponse.json({ error: 'Training not found or access denied' }, { status: 404 });
     }
     
-    // Update only allowed fields, prevent organization change
+    // Update only allowed fields present in body, prevent organization change
+    const data: Record<string, unknown> = {};
+    if ('courseName' in body) data.courseName = body.courseName;
+    if ('provider' in body) data.provider = body.provider || null;
+    if ('date' in body) data.date = body.date ? new Date(body.date) : undefined;
+    if ('expiryDate' in body) data.expiryDate = body.expiryDate ? new Date(body.expiryDate) : null;
+    if ('certificateUrl' in body) data.certificateUrl = body.certificateUrl || null;
+    if ('certificateNumber' in body) data.certificateNumber = body.certificateNumber || null;
+    if ('trainingType' in body) data.trainingType = body.trainingType || null;
+    if ('trainingHours' in body) data.trainingHours = body.trainingHours || null;
+    if ('notes' in body) data.notes = body.notes || null;
+
     const training = await prisma.carerTraining.update({
-      where: { 
+      where: {
         id: params.id,
-        clerkOrganizationId: orgId || 'default-org' // Double-check in update
+        clerkOrganizationId: orgId
       },
-      data: {
-        courseName: body.courseName,
-        provider: body.provider || null,
-        date: body.date ? new Date(body.date) : undefined,
-        expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
-        certificateUrl: body.certificateUrl || null,
-        certificateNumber: body.certificateNumber || null,
-        trainingType: body.trainingType || null,
-        trainingHours: body.trainingHours || null,
-        notes: body.notes || null
-      },
+      data,
       include: {
         carer: {
           select: {
@@ -84,7 +85,7 @@ export async function PATCH(
       }
     });
 
-    logAudit({ userId, orgId: orgId || 'default-org', action: 'UPDATE', entity: 'CarerTraining', entityId: params.id, metadata: { fields: Object.keys(body) } });
+    logAudit({ userId, orgId: orgId, action: 'UPDATE', entity: 'CarerTraining', entityId: params.id, metadata: { fields: Object.keys(body) } });
     return NextResponse.json(training);
   } catch (error) {
     console.error('Error updating carer training:', error);
@@ -97,14 +98,14 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const { userId, orgId } = await auth();
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   
   try {
     // First, verify the training belongs to the user's organization
     const existingTraining = await prisma.carerTraining.findFirst({
       where: { 
         id: params.id,
-        clerkOrganizationId: orgId || 'default-org'
+        clerkOrganizationId: orgId
       }
     });
 
@@ -115,11 +116,11 @@ export async function DELETE(
     await prisma.carerTraining.delete({
       where: {
         id: params.id,
-        clerkOrganizationId: orgId || 'default-org' // Double-check in delete
+        clerkOrganizationId: orgId // Double-check in delete
       }
     });
 
-    logAudit({ userId, orgId: orgId || 'default-org', action: 'DELETE', entity: 'CarerTraining', entityId: params.id });
+    logAudit({ userId, orgId: orgId, action: 'DELETE', entity: 'CarerTraining', entityId: params.id });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting carer training:', error);
