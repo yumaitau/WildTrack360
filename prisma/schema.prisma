@@ -829,10 +829,124 @@ model CallLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Pindrop sessions linked to this call log
+  pindropSessions PindropSession[]
+
   @@index([clerkOrganizationId])
   @@index([status])
   @@index([dateTime])
   @@map("call_logs")
+}
+
+// ─── Pindrop Session ────────────────────────────────────────────────────────
+// A one-time secure link sent via SMS so a caller can share their location,
+// contact details, and photos with the helpdesk operator.
+
+enum PindropStatus {
+  PENDING
+  SUBMITTED
+  EXPIRED
+}
+
+model PindropSession {
+  id          String        @id @default(cuid())
+  accessToken String        @unique
+  status      PindropStatus @default(PENDING)
+
+  // Caller-filled fields (submitted via public form)
+  callerName  String?
+  callerEmail String?
+  callerPhone String?
+  lat         Float?
+  lng         Float?
+  address     String?
+  photoUrls   String[]
+  callerNotes String?
+
+  // Provenance
+  userAgent   String?
+  submittedAt DateTime?
+
+  // Link to Call Log
+  callLogId String?  @map("call_log_id")
+  callLog   CallLog? @relation(fields: [callLogId], references: [id], onDelete: SetNull)
+
+  // Multi-tenancy
+  clerkOrganizationId String
+  clerkUserId         String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clerkOrganizationId])
+  @@index([accessToken])
+  @@map("pindrop_sessions")
+}
+
+// ─── SMS Billing & Usage ────────────────────────────────────────────────────
+
+enum SmsTier {
+  NONE
+  LITE       // 100 / month
+  STANDARD   // 500 / month
+  PRO        // 1500 / month
+}
+
+enum SmsStatus {
+  SENT
+  FAILED
+  BLOCKED
+}
+
+enum Environment {
+  PRODUCTION
+  STAGING
+  DEVELOPMENT
+}
+
+model SmsSubscription {
+  id              String   @id @default(cuid())
+  organisationId  String   @unique @map("organisation_id")
+  tier            SmsTier  @default(NONE)
+  monthlyLimit    Int?     @map("monthly_limit") // override tier default
+  overageEnabled  Boolean  @default(false) @map("overage_enabled")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("sms_subscriptions")
+}
+
+model SmsUsageSummary {
+  id              String      @id @default(cuid())
+  organisationId  String      @map("organisation_id")
+  environment     Environment @default(PRODUCTION)
+  year            Int
+  month           Int         // 1-12
+  messageCount    Int         @default(0) @map("message_count")
+  overageCount    Int         @default(0) @map("overage_count")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([organisationId, environment, year, month])
+  @@index([organisationId])
+  @@map("sms_usage_summaries")
+}
+
+model SmsLog {
+  id              String      @id @default(cuid())
+  organisationId  String      @map("organisation_id")
+  environment     Environment @default(PRODUCTION)
+  recipientPhone  String      @map("recipient_phone")
+  messageBody     String?     @map("message_body")
+  purpose         String      // e.g. "PIN_DROP_LINK"
+  sentById        String?     @map("sent_by_id") // Clerk userId
+  status          SmsStatus
+  snsMessageId    String?     @map("sns_message_id")
+  createdAt       DateTime    @default(now())
+
+  @@index([organisationId])
+  @@index([organisationId, createdAt])
+  @@map("sms_logs")
 }
 
 // Configurable lookup lists — each org maintains their own values.

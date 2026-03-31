@@ -6,6 +6,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from '@/lib/prisma';
 import { redirect, notFound } from "next/navigation";
+import { CallLogPindropSection } from './pindrop-section';
 
 export default async function CallLogDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,7 +15,10 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
 
   const callLog = await prisma.callLog.findFirst({
     where: { id, clerkOrganizationId: orgId },
-    include: { animal: { select: { id: true, name: true, species: true } } },
+    include: {
+      animal: { select: { id: true, name: true, species: true } },
+      pindropSessions: { orderBy: { createdAt: 'desc' }, take: 1 },
+    },
   });
 
   if (!callLog) notFound();
@@ -200,6 +204,13 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
           </CardContent>
         </Card>
       )}
+
+      {/* Pindrop / Location Request */}
+      <CallLogPindropSection
+        callLogId={callLog.id}
+        callerPhone={callLog.callerPhone || ''}
+        existingSession={callLog.pindropSessions[0] || null}
+      />
     </div>
   );
 }
