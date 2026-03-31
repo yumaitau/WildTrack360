@@ -1,4 +1,4 @@
-'server-only';
+import 'server-only';
 
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { prisma } from '@/lib/prisma';
@@ -17,10 +17,14 @@ const TIER_LIMITS: Record<SmsTier, number> = {
 
 const snsClient = new SNSClient({
   region: process.env.AWS_SNS_REGION ?? 'ap-southeast-2',
-  credentials: {
-    accessKeyId: process.env.AWS_SNS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SNS_SECRET_ACCESS_KEY!,
-  },
+  ...(process.env.AWS_SNS_ACCESS_KEY_ID && process.env.AWS_SNS_SECRET_ACCESS_KEY
+    ? {
+        credentials: {
+          accessKeyId: process.env.AWS_SNS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SNS_SECRET_ACCESS_KEY,
+        },
+      }
+    : {}),
 });
 
 const SENDER_ID = process.env.SMS_SENDER_ID ?? 'WildTrack';
@@ -49,12 +53,12 @@ type SendSmsParams = {
 };
 
 // ---------------------------------------------------------------------------
-// Phone normalisation
+// Phone normalisation (AU-only)
 // ---------------------------------------------------------------------------
 
 /**
  * Normalise an Australian phone number to E.164 format (+61...).
- * Handles: "0412345678", "0412 345 678", "04-1234-5678", "+61412345678", "61412345678"
+ * Only handles AU formats — other country numbers should already be in E.164.
  */
 function toE164(phone: string): string {
   const stripped = phone.replace(/[^\d+]/g, '');
@@ -67,7 +71,7 @@ function toE164(phone: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Core: check limit -> send -> log
+// Core: check limit -> send -> log (with atomic usage increment)
 // ---------------------------------------------------------------------------
 
 export async function sendSms(params: SendSmsParams): Promise<SmsSendResult> {
@@ -81,8 +85,8 @@ export async function sendSms(params: SendSmsParams): Promise<SmsSendResult> {
   } = params;
 
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1; // 1-indexed
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth() + 1; // 1-indexed, UTC
 
   // 1. Get org's SMS subscription
   const subscription = await prisma.smsSubscription.findUnique({
@@ -90,16 +94,7 @@ export async function sendSms(params: SendSmsParams): Promise<SmsSendResult> {
   });
 
   if (!subscription || subscription.tier === 'NONE') {
-    await logSms({
-      organisationId,
-      environment,
-      recipientPhone,
-      messageBody,
-      purpose,
-      sentById,
-      status: 'BLOCKED',
-    });
-
+    await logSms({ organisationId, environment, recipientPhone, messageBody, purpose, sentById, status: 'BLOCKED' });
     return {
       success: false,
       blocked: true,
@@ -110,34 +105,68 @@ export async function sendSms(params: SendSmsParams): Promise<SmsSendResult> {
     };
   }
 
-  // 2. Get or create the monthly usage summary
-  const usage = await getOrCreateUsageSummary(organisationId, environment, year, month);
   const limit = subscription.monthlyLimit || TIER_LIMITS[subscription.tier];
-  const isOverage = usage.messageCount >= limit;
 
-  // 3. Check if blocked by limit
-  if (isOverage && !subscription.overageEnabled) {
-    await logSms({
-      organisationId,
-      environment,
-      recipientPhone,
-      messageBody,
-      purpose,
-      sentById,
-      status: 'BLOCKED',
+  // 2. Atomic check-and-increment inside a transaction to prevent races
+  let usageCount: number;
+  let isOverage: boolean;
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const usage = await tx.smsUsageSummary.upsert({
+        where: {
+          organisationId_environment_year_month: { organisationId, environment, year, month },
+        },
+        create: { organisationId, environment, year, month, messageCount: 0, overageCount: 0 },
+        update: {},
+      });
+
+      const overLimit = usage.messageCount >= limit;
+
+      if (overLimit && !subscription.overageEnabled) {
+        return { blocked: true, messageCount: usage.messageCount, isOverage: true };
+      }
+
+      // Increment atomically
+      const updated = await tx.smsUsageSummary.update({
+        where: {
+          organisationId_environment_year_month: { organisationId, environment, year, month },
+        },
+        data: {
+          messageCount: { increment: 1 },
+          ...(overLimit ? { overageCount: { increment: 1 } } : {}),
+        },
+      });
+
+      return { blocked: false, messageCount: updated.messageCount, isOverage: overLimit };
     });
 
+    if (result.blocked) {
+      await logSms({ organisationId, environment, recipientPhone, messageBody, purpose, sentById, status: 'BLOCKED' });
+      return {
+        success: false,
+        blocked: true,
+        reason: `Monthly SMS limit of ${limit} reached. Overage is not enabled for this organisation.`,
+        usageThisMonth: result.messageCount,
+        limit,
+        isOverage: true,
+      };
+    }
+
+    usageCount = result.messageCount;
+    isOverage = result.isOverage;
+  } catch (error) {
+    console.error('[SMS] Usage check failed:', error);
     return {
       success: false,
-      blocked: true,
-      reason: `Monthly SMS limit of ${limit} reached. Overage is not enabled for this organisation.`,
-      usageThisMonth: usage.messageCount,
+      blocked: false,
+      reason: 'SMS service temporarily unavailable. Please try again.',
+      usageThisMonth: 0,
       limit,
-      isOverage: true,
+      isOverage: false,
     };
   }
 
-  // 4. Send via SNS
+  // 3. Send via SNS
   let snsMessageId: string | undefined;
   try {
     const command = new PublishCommand({
@@ -159,60 +188,25 @@ export async function sendSms(params: SendSmsParams): Promise<SmsSendResult> {
     snsMessageId = response.MessageId;
   } catch (error) {
     console.error('[SMS] SNS send failed:', error);
-
-    await logSms({
-      organisationId,
-      environment,
-      recipientPhone,
-      messageBody,
-      purpose,
-      sentById,
-      status: 'FAILED',
-    });
-
+    await logSms({ organisationId, environment, recipientPhone, messageBody, purpose, sentById, status: 'FAILED' });
     return {
       success: false,
       blocked: false,
       reason: 'SMS delivery failed. Please try again.',
-      usageThisMonth: usage.messageCount,
+      usageThisMonth: usageCount,
       limit,
       isOverage,
     };
   }
 
-  // 5. Log the successful send + increment usage counter
-  await Promise.all([
-    logSms({
-      organisationId,
-      environment,
-      recipientPhone,
-      messageBody,
-      purpose,
-      sentById,
-      status: 'SENT',
-      snsMessageId,
-    }),
-    prisma.smsUsageSummary.update({
-      where: {
-        organisationId_environment_year_month: {
-          organisationId,
-          environment,
-          year,
-          month,
-        },
-      },
-      data: {
-        messageCount: { increment: 1 },
-        ...(isOverage ? { overageCount: { increment: 1 } } : {}),
-      },
-    }),
-  ]);
+  // 4. Log the successful send
+  await logSms({ organisationId, environment, recipientPhone, messageBody, purpose, sentById, status: 'SENT', snsMessageId });
 
   return {
     success: true,
     blocked: false,
     snsMessageId,
-    usageThisMonth: usage.messageCount + 1,
+    usageThisMonth: usageCount,
     limit,
     isOverage,
   };
@@ -227,12 +221,16 @@ export async function getOrgSmsUsage(
   environment: Environment = 'PRODUCTION'
 ) {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth() + 1;
 
   const [subscription, usage] = await Promise.all([
     prisma.smsSubscription.findUnique({ where: { organisationId } }),
-    getOrCreateUsageSummary(organisationId, environment, year, month),
+    prisma.smsUsageSummary.upsert({
+      where: { organisationId_environment_year_month: { organisationId, environment, year, month } },
+      create: { organisationId, environment, year, month, messageCount: 0, overageCount: 0 },
+      update: {},
+    }),
   ]);
 
   const tier = subscription?.tier ?? 'NONE';
@@ -266,33 +264,6 @@ export function getUsageWarningLevel(used: number, limit: number): string | null
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function getOrCreateUsageSummary(
-  organisationId: string,
-  environment: Environment,
-  year: number,
-  month: number
-) {
-  return prisma.smsUsageSummary.upsert({
-    where: {
-      organisationId_environment_year_month: {
-        organisationId,
-        environment,
-        year,
-        month,
-      },
-    },
-    create: {
-      organisationId,
-      environment,
-      year,
-      month,
-      messageCount: 0,
-      overageCount: 0,
-    },
-    update: {},
-  });
-}
-
 async function logSms(data: {
   organisationId: string;
   environment: Environment;
@@ -303,16 +274,21 @@ async function logSms(data: {
   status: SmsStatus;
   snsMessageId?: string;
 }) {
-  return prisma.smsLog.create({
-    data: {
-      organisationId: data.organisationId,
-      environment: data.environment,
-      recipientPhone: data.recipientPhone,
-      messageBody: data.messageBody,
-      purpose: data.purpose,
-      sentById: data.sentById,
-      status: data.status,
-      snsMessageId: data.snsMessageId,
-    },
-  });
+  try {
+    await prisma.smsLog.create({
+      data: {
+        organisationId: data.organisationId,
+        environment: data.environment,
+        recipientPhone: data.recipientPhone,
+        messagePreview: data.messageBody?.slice(0, 50) || null,
+        purpose: data.purpose,
+        sentById: data.sentById,
+        status: data.status,
+        snsMessageId: data.snsMessageId,
+      },
+    });
+  } catch (error) {
+    // Log failures should not break SMS flow
+    console.error('[SMS] Failed to write SMS log:', error);
+  }
 }

@@ -31,8 +31,8 @@ CREATE UNIQUE INDEX "pindrop_sessions_accessToken_key" ON "public"."pindrop_sess
 -- CreateIndex
 CREATE INDEX "pindrop_sessions_clerkOrganizationId_idx" ON "public"."pindrop_sessions"("clerkOrganizationId");
 
--- CreateIndex
-CREATE INDEX "pindrop_sessions_accessToken_idx" ON "public"."pindrop_sessions"("accessToken");
+-- CreateIndex (call_log_id FK for join performance)
+CREATE INDEX "pindrop_sessions_call_log_id_idx" ON "public"."pindrop_sessions"("call_log_id");
 
 -- AddForeignKey
 ALTER TABLE "public"."pindrop_sessions" ADD CONSTRAINT "pindrop_sessions_call_log_id_fkey" FOREIGN KEY ("call_log_id") REFERENCES "public"."call_logs"("id") ON DELETE SET NULL ON UPDATE CASCADE;

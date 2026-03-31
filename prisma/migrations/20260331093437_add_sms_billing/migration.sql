@@ -41,7 +41,7 @@ CREATE TABLE "public"."sms_logs" (
     "organisation_id" TEXT NOT NULL,
     "environment" "public"."Environment" NOT NULL DEFAULT 'PRODUCTION',
     "recipient_phone" TEXT NOT NULL,
-    "message_body" TEXT,
+    "message_preview" TEXT,
     "purpose" TEXT NOT NULL,
     "sent_by_id" TEXT,
     "status" "public"."SmsStatus" NOT NULL,
@@ -65,3 +65,6 @@ CREATE INDEX "sms_logs_organisation_id_idx" ON "public"."sms_logs"("organisation
 
 -- CreateIndex
 CREATE INDEX "sms_logs_organisation_id_createdAt_idx" ON "public"."sms_logs"("organisation_id", "createdAt");
+
+-- Month range constraint
+ALTER TABLE "public"."sms_usage_summaries" ADD CONSTRAINT chk_month_range CHECK ("month" BETWEEN 1 AND 12);

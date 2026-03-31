@@ -13,8 +13,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { callerPhone, callLogId } = body;
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+  const { callerPhone, callLogId } = body as { callerPhone?: string; callLogId?: string };
 
   if (!callerPhone) {
     return NextResponse.json({ error: 'Caller phone is required' }, { status: 400 });

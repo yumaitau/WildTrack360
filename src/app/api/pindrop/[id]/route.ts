@@ -21,5 +21,6 @@ export async function GET(
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  return NextResponse.json(session);
+  const { accessToken: _, ...safeSession } = session;
+  return NextResponse.json(safeSession);
 }

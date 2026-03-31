@@ -1,4 +1,4 @@
-'server-only';
+import 'server-only';
 
 import { prisma } from './prisma';
 import crypto from 'crypto';

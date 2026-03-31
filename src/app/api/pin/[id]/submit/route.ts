@@ -26,7 +26,12 @@ export async function POST(
     );
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
   const { callerName, callerEmail, callerPhone, lat, lng, address, photoUrls, callerNotes } = body;
 
   if (typeof lat !== 'number' || typeof lng !== 'number') {

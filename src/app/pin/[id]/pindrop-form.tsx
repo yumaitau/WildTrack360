@@ -53,7 +53,8 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { 'User-Agent': 'WildTrack360/1.0 (wildlife management app)' } }
       );
       const data = await response.json();
       if (data.display_name) {

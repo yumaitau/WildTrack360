@@ -866,6 +866,7 @@ model PindropSession {
   // Provenance
   userAgent   String?
   submittedAt DateTime?
+  expiresAt   DateTime?
 
   // Link to Call Log
   callLogId String?  @map("call_log_id")
@@ -879,7 +880,8 @@ model PindropSession {
   updatedAt DateTime @updatedAt
 
   @@index([clerkOrganizationId])
-  @@index([accessToken])
+  @@index([callLogId])
+  @@index([status])
   @@map("pindrop_sessions")
 }
 
@@ -937,7 +939,7 @@ model SmsLog {
   organisationId  String      @map("organisation_id")
   environment     Environment @default(PRODUCTION)
   recipientPhone  String      @map("recipient_phone")
-  messageBody     String?     @map("message_body")
+  messagePreview  String?     @map("message_preview") // first 50 chars only — no full body for PII safety
   purpose         String      // e.g. "PIN_DROP_LINK"
   sentById        String?     @map("sent_by_id") // Clerk userId
   status          SmsStatus
