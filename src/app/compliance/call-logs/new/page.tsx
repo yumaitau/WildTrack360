@@ -12,12 +12,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format } from "date-fns";
-import { CalendarIcon, Phone, ArrowLeft, Home, Check, ChevronsUpDown } from "lucide-react";
+import { CalendarIcon, Phone, ArrowLeft, Home, Check, ChevronsUpDown, Send, MapPin, Loader2, CheckCircle, Clock, MessageSquare, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useOrganization } from '@clerk/nextjs';
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleMaps } from '@/components/google-maps-provider';
+import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { Badge } from '@/components/ui/badge';
 
 interface LookupItem {
   id: string;
@@ -31,6 +33,31 @@ interface Lookups {
   action: LookupItem[];
   outcome: LookupItem[];
 }
+
+interface PindropSession {
+  id: string;
+  status: 'PENDING' | 'SUBMITTED' | 'EXPIRED';
+  callerName: string | null;
+  callerEmail: string | null;
+  callerPhone: string | null;
+  lat: number | null;
+  lng: number | null;
+  address: string | null;
+  photoUrls: string[];
+  callerNotes: string | null;
+  submittedAt: string | null;
+}
+
+/**
+ * Validate an Australian mobile number.
+ * Accepts: 04xxxxxxxx, +614xxxxxxxx, 614xxxxxxxx (with optional spaces/dashes)
+ */
+function isValidAuMobile(phone: string): boolean {
+  const stripped = phone.replace(/[\s\-()]/g, '');
+  return /^(\+?61|0)4\d{8}$/.test(stripped);
+}
+
+const MAPS_LIBRARIES: ('places')[] = ['places'];
 
 export default function NewCallLogPage() {
   const router = useRouter();
@@ -67,7 +94,27 @@ export default function NewCallLogPage() {
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
   const placesDiv = useRef<HTMLDivElement | null>(null);
 
+  // Pindrop state
+  const [pindropSession, setPindropSession] = useState<PindropSession | null>(null);
+  const [pindropSending, setPindropSending] = useState(false);
+  const [pindropDismissed, setPindropDismissed] = useState(false);
+
+  // Refs to track current form values for safe polling callback access
+  const callerNameRef = useRef(callerName);
+  const callerEmailRef = useRef(callerEmail);
+  const callerPhoneRef = useRef(callerPhone);
+  const locationRef = useRef(location);
+  callerNameRef.current = callerName;
+  callerEmailRef.current = callerEmail;
+  callerPhoneRef.current = callerPhone;
+  locationRef.current = location;
+
   const { isLoaded: mapsLoaded } = useGoogleMaps();
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '';
+  const { isLoaded: mapReady } = useJsApiLoader({
+    googleMapsApiKey: apiKey,
+    libraries: MAPS_LIBRARIES,
+  });
 
   useEffect(() => {
     if (mapsLoaded && !autocompleteService.current) {
@@ -140,6 +187,78 @@ export default function NewCallLogPage() {
     load();
   }, [organization]);
 
+  // Poll pindrop session for updates
+  const fetchPindropSession = useCallback(async (sessionId: string) => {
+    try {
+      const res = await fetch(`/api/pindrop/${sessionId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPindropSession(data);
+        return data;
+      }
+    } catch { /* ignore */ }
+    return null;
+  }, []);
+
+  useEffect(() => {
+    if (!pindropSession || pindropSession.status !== 'PENDING') return;
+    const sessionId = pindropSession.id;
+    let cancelled = false;
+    const timeoutRef = { current: undefined as ReturnType<typeof setTimeout> | undefined };
+
+    async function poll() {
+      if (cancelled) return;
+      const updated = await fetchPindropSession(sessionId);
+      if (cancelled) return;
+      if (updated?.status === 'SUBMITTED') {
+        if (updated.callerName && !callerNameRef.current.trim()) setCallerName(updated.callerName);
+        if (updated.callerEmail && !callerEmailRef.current.trim()) setCallerEmail(updated.callerEmail);
+        if (updated.callerPhone && !callerPhoneRef.current.trim()) setCallerPhone(updated.callerPhone);
+        if (updated.address && !locationRef.current.trim()) setLocation(updated.address);
+        toast({ title: 'Location Received', description: 'The caller has submitted their location and details.' });
+        return; // stop polling
+      }
+      if (updated?.status === 'EXPIRED') return; // stop polling
+      timeoutRef.current = setTimeout(poll, 5000);
+    }
+
+    timeoutRef.current = setTimeout(poll, 5000);
+    return () => {
+      cancelled = true;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [pindropSession?.id, pindropSession?.status, fetchPindropSession, toast]);
+
+  const handleSendPindrop = async () => {
+    if (!isValidAuMobile(callerPhone)) {
+      toast({ title: 'Invalid Phone', description: 'Please enter a valid Australian mobile number (e.g. 0412 345 678).', variant: 'destructive' });
+      return;
+    }
+    setPindropSending(true);
+    try {
+      const res = await fetch('/api/pindrop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callerPhone }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to send SMS');
+      }
+      const data = await res.json();
+      toast({ title: 'SMS Sent', description: 'Location request sent to the caller\'s phone.' });
+      await fetchPindropSession(data.id);
+    } catch (error) {
+      toast({
+        title: 'Failed to Send',
+        description: error instanceof Error ? error.message : 'Could not send SMS.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPindropSending(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAttempted(true);
@@ -159,6 +278,11 @@ export default function NewCallLogPage() {
     setLoading(true);
 
     try {
+      // Build coordinates from pindrop if available
+      const coordinates = pindropSession?.status === 'SUBMITTED' && pindropSession.lat != null && pindropSession.lng != null
+        ? { lat: pindropSession.lat, lng: pindropSession.lng }
+        : null;
+
       const payload = {
         dateTime: dateTime.toISOString(),
         callerName: callerName.trim(),
@@ -166,6 +290,7 @@ export default function NewCallLogPage() {
         callerEmail: callerEmail || null,
         species: species || null,
         location: location || null,
+        coordinates,
         suburb: suburb || null,
         postcode: postcode || null,
         reason: (reason && reason !== 'none') ? reason : null,
@@ -176,6 +301,7 @@ export default function NewCallLogPage() {
         assignedToUserName: assignedToUserName || null,
         animalId: (animalId && animalId !== 'none') ? animalId : null,
         notes: notes || null,
+        pindropSessionId: pindropSession?.id || null,
         clerkOrganizationId: organization.id,
       };
 
@@ -207,6 +333,9 @@ export default function NewCallLogPage() {
 
   const activeLookups = (items: LookupItem[]) => items.filter((i) => i.active);
 
+  const showPindropBanner = isValidAuMobile(callerPhone) && !pindropSession && !pindropDismissed;
+  const showPindropPanel = !!pindropSession;
+
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex items-center gap-3">
@@ -227,6 +356,143 @@ export default function NewCallLogPage() {
           </p>
         </div>
       </div>
+
+      {/* Pindrop SMS Banner — appears when valid AU mobile is entered */}
+      {showPindropBanner && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-900/50 p-2 shrink-0">
+              <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-blue-900 dark:text-blue-200 text-sm">Speed up this call with a Location Request</h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">
+                Send the caller an SMS link so they can share their exact GPS location, contact details, and photos of the animal directly from their phone. Their response will auto-fill this form.
+              </p>
+              <div className="flex items-center gap-3 mt-3">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSendPindrop}
+                  disabled={pindropSending}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {pindropSending ? (
+                    <><Loader2 className="animate-spin h-4 w-4 mr-2" /> Sending...</>
+                  ) : (
+                    <><Send className="h-4 w-4 mr-2" /> Send Location Request SMS</>
+                  )}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setPindropDismissed(true)}
+                  className="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pindrop Status Panel — shows after SMS is sent */}
+      {showPindropPanel && (
+        <Card className={
+          pindropSession.status === 'SUBMITTED'
+            ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
+            : pindropSession.status === 'EXPIRED'
+              ? 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20'
+              : 'border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20'
+        }>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MapPin className="h-4 w-4" />
+                Location Request
+              </CardTitle>
+              {pindropSession.status === 'PENDING' && (
+                <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Waiting for response</Badge>
+              )}
+              {pindropSession.status === 'SUBMITTED' && (
+                <Badge className="gap-1 bg-green-600"><CheckCircle className="h-3 w-3" /> Submitted</Badge>
+              )}
+              {pindropSession.status === 'EXPIRED' && (
+                <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700"><AlertTriangle className="h-3 w-3" /> Expired</Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {pindropSession.status === 'PENDING' && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="animate-spin h-4 w-4" />
+                Waiting for the caller to open the link and submit their details...
+              </div>
+            )}
+
+            {pindropSession.status === 'EXPIRED' && (
+              <div className="space-y-3">
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  The location request expired before the caller responded. You can send a new one.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setPindropSession(null);
+                    setPindropDismissed(false);
+                  }}
+                >
+                  <Send className="h-4 w-4 mr-2" /> Send New Request
+                </Button>
+              </div>
+            )}
+
+            {pindropSession.status === 'SUBMITTED' && (
+              <div className="space-y-3">
+                <p className="text-sm text-green-700 dark:text-green-300 font-medium">
+                  The caller has submitted their details. Form fields have been auto-populated.
+                </p>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {pindropSession.callerName && (
+                    <div><span className="text-muted-foreground">Name:</span> <span className="font-medium">{pindropSession.callerName}</span></div>
+                  )}
+                  {pindropSession.callerEmail && (
+                    <div><span className="text-muted-foreground">Email:</span> <span className="font-medium">{pindropSession.callerEmail}</span></div>
+                  )}
+                  {pindropSession.callerPhone && (
+                    <div><span className="text-muted-foreground">Phone:</span> <span className="font-medium">{pindropSession.callerPhone}</span></div>
+                  )}
+                  {pindropSession.address && (
+                    <div className="col-span-2"><span className="text-muted-foreground">Address:</span> <span className="font-medium">{pindropSession.address}</span></div>
+                  )}
+                </div>
+
+                {pindropSession.lat != null && pindropSession.lng != null && apiKey && mapReady && (
+                  <div className="rounded-lg overflow-hidden border">
+                    <GoogleMap
+                      mapContainerStyle={{ width: '100%', height: '180px' }}
+                      center={{ lat: pindropSession.lat, lng: pindropSession.lng }}
+                      zoom={15}
+                      options={{ disableDefaultUI: true, zoomControl: true, draggable: true }}
+                    >
+                      <Marker position={{ lat: pindropSession.lat, lng: pindropSession.lng }} />
+                    </GoogleMap>
+                  </div>
+                )}
+
+                {pindropSession.callerNotes && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Caller notes:</span>{' '}
+                    <span className="italic">{pindropSession.callerNotes}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="space-y-6">
@@ -293,9 +559,12 @@ export default function NewCallLogPage() {
                   <Input
                     value={callerPhone}
                     onChange={(e) => setCallerPhone(e.target.value)}
-                    placeholder="Contact phone number"
+                    placeholder="e.g. 0412 345 678"
                     type="tel"
                   />
+                  {callerPhone && !isValidAuMobile(callerPhone) && callerPhone.replace(/[\s\-()]/g, '').length >= 4 && (
+                    <p className="text-xs text-muted-foreground">Enter a valid AU mobile (04xx) to enable SMS location request</p>
+                  )}
                 </div>
 
                 {/* Email */}
