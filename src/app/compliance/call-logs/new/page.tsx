@@ -12,7 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format } from "date-fns";
-import { CalendarIcon, Phone, ArrowLeft, Home, Check, ChevronsUpDown, Send, MapPin, Loader2, CheckCircle, Clock, MessageSquare, AlertTriangle } from "lucide-react";
+import { CalendarIcon, Phone, ArrowLeft, Home, Check, ChevronsUpDown, Send, MapPin, Loader2, CheckCircle, Clock, MessageSquare, AlertTriangle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useOrganization } from '@clerk/nextjs';
@@ -94,6 +94,9 @@ export default function NewCallLogPage() {
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
   const placesDiv = useRef<HTMLDivElement | null>(null);
 
+  // SMS plan state
+  const [smsPlan, setSmsPlan] = useState<{ enabled: boolean; tier: string } | null>(null);
+
   // Pindrop state
   const [pindropSession, setPindropSession] = useState<PindropSession | null>(null);
   const [pindropSending, setPindropSending] = useState(false);
@@ -160,11 +163,12 @@ export default function NewCallLogPage() {
     if (!organization) return;
     const load = async () => {
       try {
-        const [animalsRes, lookupsRes, membersRes, speciesRes] = await Promise.all([
+        const [animalsRes, lookupsRes, membersRes, speciesRes, smsRes] = await Promise.all([
           fetch(`/api/animals?orgId=${organization.id}`),
           fetch(`/api/call-log-lookups?orgId=${organization.id}`),
           organization.getMemberships(),
           fetch(`/api/species?orgId=${organization.id}`),
+          fetch('/api/sms-status'),
         ]);
         if (!animalsRes.ok) throw new Error('Failed to load animals');
         if (!lookupsRes.ok) throw new Error('Failed to load lookups');
@@ -180,6 +184,10 @@ export default function NewCallLogPage() {
           name: [m.publicUserData?.firstName, m.publicUserData?.lastName].filter(Boolean).join(' ') || m.publicUserData?.identifier || 'Unknown',
         })) || [];
         setOrgMembers(members);
+        if (smsRes.ok) {
+          const smsData = await smsRes.json();
+          setSmsPlan(smsData);
+        }
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -333,7 +341,9 @@ export default function NewCallLogPage() {
 
   const activeLookups = (items: LookupItem[]) => items.filter((i) => i.active);
 
-  const showPindropBanner = isValidAuMobile(callerPhone) && !pindropSession && !pindropDismissed;
+  const hasValidMobile = isValidAuMobile(callerPhone);
+  const hasSmsplan = smsPlan?.enabled === true;
+  const showPindropBanner = hasValidMobile && !pindropSession && !pindropDismissed && smsPlan !== null;
   const showPindropPanel = !!pindropSession;
 
   return (
@@ -358,7 +368,7 @@ export default function NewCallLogPage() {
       </div>
 
       {/* Pindrop SMS Banner — appears when valid AU mobile is entered */}
-      {showPindropBanner && (
+      {showPindropBanner && hasSmsplan && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-4">
           <div className="flex items-start gap-3">
             <div className="rounded-full bg-blue-100 dark:bg-blue-900/50 p-2 shrink-0">
@@ -391,6 +401,30 @@ export default function NewCallLogPage() {
                   Dismiss
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMS plan required banner — appears when valid AU mobile entered but no SMS plan */}
+      {showPindropBanner && !hasSmsplan && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/30 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-2 shrink-0">
+              <Lock className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-200 text-sm">SMS Location Requests Available</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+                You can send callers an SMS link to instantly capture their GPS location, contact details, and photos — but your organisation needs an SMS plan to use this feature. Contact your administrator to enable one.
+              </p>
+              <button
+                type="button"
+                onClick={() => setPindropDismissed(true)}
+                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-2"
+              >
+                Dismiss
+              </button>
             </div>
           </div>
         </div>
