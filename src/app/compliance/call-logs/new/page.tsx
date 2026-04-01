@@ -202,19 +202,31 @@ export default function NewCallLogPage() {
 
   useEffect(() => {
     if (!pindropSession || pindropSession.status !== 'PENDING') return;
-    const interval = setInterval(async () => {
-      const updated = await fetchPindropSession(pindropSession.id);
+    const sessionId = pindropSession.id;
+    let cancelled = false;
+    const timeoutRef = { current: undefined as ReturnType<typeof setTimeout> | undefined };
+
+    async function poll() {
+      if (cancelled) return;
+      const updated = await fetchPindropSession(sessionId);
+      if (cancelled) return;
       if (updated?.status === 'SUBMITTED') {
-        // Auto-populate only fields the operator hasn't filled in (read from refs for current values)
         if (updated.callerName && !callerNameRef.current.trim()) setCallerName(updated.callerName);
         if (updated.callerEmail && !callerEmailRef.current.trim()) setCallerEmail(updated.callerEmail);
         if (updated.callerPhone && !callerPhoneRef.current.trim()) setCallerPhone(updated.callerPhone);
         if (updated.address && !locationRef.current.trim()) setLocation(updated.address);
         toast({ title: 'Location Received', description: 'The caller has submitted their location and details.' });
-        clearInterval(interval);
+        return; // stop polling
       }
-    }, 5000);
-    return () => clearInterval(interval);
+      if (updated?.status === 'EXPIRED') return; // stop polling
+      timeoutRef.current = setTimeout(poll, 5000);
+    }
+
+    timeoutRef.current = setTimeout(poll, 5000);
+    return () => {
+      cancelled = true;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, [pindropSession?.id, pindropSession?.status, fetchPindropSession, toast]);
 
   const handleSendPindrop = async () => {
@@ -267,7 +279,7 @@ export default function NewCallLogPage() {
 
     try {
       // Build coordinates from pindrop if available
-      const coordinates = pindropSession?.status === 'SUBMITTED' && pindropSession.lat && pindropSession.lng
+      const coordinates = pindropSession?.status === 'SUBMITTED' && pindropSession.lat != null && pindropSession.lng != null
         ? { lat: pindropSession.lat, lng: pindropSession.lng }
         : null;
 
@@ -457,7 +469,7 @@ export default function NewCallLogPage() {
                   )}
                 </div>
 
-                {pindropSession.lat && pindropSession.lng && apiKey && mapReady && (
+                {pindropSession.lat != null && pindropSession.lng != null && apiKey && mapReady && (
                   <div className="rounded-lg overflow-hidden border">
                     <GoogleMap
                       mapContainerStyle={{ width: '100%', height: '180px' }}
