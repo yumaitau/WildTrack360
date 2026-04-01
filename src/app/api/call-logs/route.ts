@@ -104,6 +104,21 @@ export async function POST(request: Request) {
         })
       }
 
+      // Link any pindrop session created during the call
+      if (body.pindropSessionId) {
+        const linked = await tx.pindropSession.updateMany({
+          where: {
+            id: body.pindropSessionId,
+            clerkOrganizationId: orgId,
+            callLogId: null,
+          },
+          data: { callLogId: callLog.id },
+        })
+        if (linked.count === 0) {
+          throw new Error('Pindrop session could not be linked — it may have already been used or does not exist.')
+        }
+      }
+
       return callLog
     })
 
