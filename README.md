@@ -1,6 +1,6 @@
 # WildTrack360 - Wildlife Conservation Management System
 
-WildTrack360 is a comprehensive wildlife conservation management application designed to help Australian wildlife care organisations track animals throughout their entire lifecycle, from initial admission to release or other outcomes. It supports multi-jurisdiction compliance (ACT, NSW, VIC, QLD, WA, SA, TAS, NT) and is built for volunteer-driven organisations coordinating multiple carers.
+WildTrack360 is a comprehensive wildlife conservation management application designed to help Australian wildlife care organisations track animals throughout their entire lifecycle, from initial admission to release or other outcomes. It currently supports ACT and NSW jurisdictions and is built for volunteer-driven organisations coordinating multiple carers.
 
 ## Features
 
@@ -18,7 +18,7 @@ WildTrack360 is a comprehensive wildlife conservation management application des
 - **Reporting & Export**: Dashboard analytics, Recharts visualisations, Excel and PDF export
 - **SMS Notifications**: AWS SNS integration for carer notifications
 - **Error Monitoring**: Sentry integration for production error tracking
-- **Maps**: OpenStreetMap and Google Maps integration for location services
+- **Maps**: Google Maps integration for location services
 - **Mobile Responsive**: Works on desktop, tablet, and mobile with dark/light theme support
 
 ## Architecture
@@ -98,13 +98,6 @@ cp env.example .env.local
 Key variables to configure:
 
 ```env
-# Jurisdiction
-NEXT_PUBLIC_JURISDICTION=NSW  # ACT, NSW, VIC, QLD, WA, SA, TAS, NT
-
-# Organisation
-NEXT_PUBLIC_ORGANIZATION_NAME=My Wildlife Care
-NEXT_PUBLIC_ORGANIZATION_CONTACT=contact@example.com.au
-
 # Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
