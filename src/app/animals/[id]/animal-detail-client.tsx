@@ -92,7 +92,6 @@ export default function AnimalDetailClient({
 }: AnimalDetailClientProps) {
   const [animal, setAnimal] = useState<Animal>(initialAnimal);
   const [records, setRecords] = useState<Record[]>(initialRecords);
-  const [photos, setPhotos] = useState<Photo[]>([]);
   const { organization } = useOrganization();
   const { user } = useUser();
   const [liveUserMap, setLiveUserMap] = useState<{ [clerkUserId: string]: string }>(userMap);

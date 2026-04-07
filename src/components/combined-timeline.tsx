@@ -191,8 +191,8 @@ function mapPostRelease(records: PostReleaseMonitoring[]): TimelineEvent[] {
     icon: <Binoculars className="h-4 w-4" />,
     color: "teal",
     metadata: {
-      Condition: (pr as any).animalCondition || undefined,
-      Location: (pr as any).location || undefined,
+      Condition: pr.animalCondition || undefined,
+      Location: pr.location || undefined,
     },
   }));
 }
@@ -203,12 +203,12 @@ function mapPermanentCare(apps: PermanentCareApplication[]): TimelineEvent[] {
     date: new Date(a.createdAt),
     category: "permanent_care" as TimelineCategory,
     title: `Permanent Care — ${a.status}`,
-    description: (a as any).nonReleasableReasons || undefined,
+    description: a.nonReleasableReasons || undefined,
     icon: <Shield className="h-4 w-4" />,
     color: "indigo",
     metadata: {
       Status: a.status,
-      Category: (a as any).category || undefined,
+      Category: a.category || undefined,
     },
   }));
 }
@@ -260,7 +260,7 @@ function mapReleaseChecklist(rc: ReleaseChecklist | null | undefined): TimelineE
       color: "green",
       metadata: {
         Location: rc.releaseLocation || undefined,
-        "Release type": (rc as any).releaseType || undefined,
+        "Release type": rc.releaseType || undefined,
       },
       link: { href: `/compliance/release-checklist/${rc.id}`, label: "View Checklist" },
     },
