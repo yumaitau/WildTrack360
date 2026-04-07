@@ -13,15 +13,23 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
   const { userId, orgId } = await auth();
   if (!userId || !orgId) redirect('/sign-in');
 
-  const callLog = await prisma.callLog.findFirst({
-    where: { id, clerkOrganizationId: orgId },
-    include: {
-      animal: { select: { id: true, name: true, species: true } },
-      pindropSessions: { orderBy: { createdAt: 'desc' }, take: 1 },
-    },
-  });
+  const [callLog, smsSubscription] = await Promise.all([
+    prisma.callLog.findFirst({
+      where: { id, clerkOrganizationId: orgId },
+      include: {
+        animal: { select: { id: true, name: true, species: true } },
+        pindropSessions: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    }),
+    prisma.smsSubscription.findUnique({
+      where: { organisationId: orgId },
+      select: { tier: true },
+    }),
+  ]);
 
   if (!callLog) notFound();
+
+  const hasSmsPlan = smsSubscription != null && smsSubscription.tier !== 'NONE';
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
@@ -210,6 +218,8 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
         callLogId={callLog.id}
         callerPhone={callLog.callerPhone || ''}
         existingSession={callLog.pindropSessions[0] || null}
+        callStatus={callLog.status}
+        hasSmsPlan={hasSmsPlan}
       />
     </div>
   );
