@@ -17,7 +17,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
   });
   if (!animal) notFound();
 
-  const [records, photos, releaseChecklist, activeReminders, permanentCareApplications, transfers, postReleaseRecords, incidents] = await Promise.all([
+  const [records, photos, releaseChecklist, activeReminders, permanentCareApplications, transfers, postReleaseRecords] = await Promise.all([
     prisma.record.findMany({
       where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { date: "desc" },
@@ -54,10 +54,6 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { date: "desc" },
     }),
-    prisma.incidentReport.findMany({
-      where: { animalId: id, clerkOrganizationId: organizationId },
-      orderBy: { date: "desc" },
-    }),
   ]);
 
   // Resolve Clerk user IDs to display names for the record timeline
@@ -87,6 +83,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
   let canApprovePermanentCare = false;
   let canManageTransfers = false;
   let canManagePostRelease = false;
+  let canViewFullTimeline = false;
   if (organizationId) {
     const role = await getUserRole(userId, organizationId);
     if (hasPermission(role, 'animal:edit_any')) {
@@ -100,7 +97,16 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
     canManageTransfers = hasPermission(role, 'compliance:manage_transfers');
     canManagePostRelease = hasPermission(role, 'compliance:manage_post_release')
       || (hasPermission(role, 'animal:edit_own') && animal.carerId === userId);
+    canViewFullTimeline = role === 'ADMIN' || role === 'COORDINATOR_ALL';
   }
+
+  // Only fetch incidents for users who can view the full timeline
+  const incidents = canViewFullTimeline
+    ? await prisma.incidentReport.findMany({
+        where: { animalId: id, clerkOrganizationId: organizationId },
+        orderBy: { date: "desc" },
+      })
+    : [];
 
   return (
     <AnimalDetailClient
@@ -122,6 +128,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       initialPostReleaseRecords={postReleaseRecords}
       canManagePostRelease={canManagePostRelease}
       initialIncidents={incidents}
+      canViewFullTimeline={canViewFullTimeline}
     />
   );
 }

@@ -66,6 +66,7 @@ interface AnimalDetailClientProps {
   initialPostReleaseRecords?: PostReleaseMonitoring[];
   canManagePostRelease?: boolean;
   initialIncidents?: IncidentReport[];
+  canViewFullTimeline?: boolean;
 }
 
 export default function AnimalDetailClient({
@@ -87,6 +88,7 @@ export default function AnimalDetailClient({
   initialPostReleaseRecords = [],
   canManagePostRelease = false,
   initialIncidents = [],
+  canViewFullTimeline = false,
 }: AnimalDetailClientProps) {
   const [animal, setAnimal] = useState<Animal>(initialAnimal);
   const [records, setRecords] = useState<Record[]>(initialRecords);
@@ -570,12 +572,16 @@ export default function AnimalDetailClient({
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <Tabs defaultValue="records" className="w-full">
+              <Tabs defaultValue="records" className="w-full" onValueChange={(value) => {
+                if (value === 'timeline') router.refresh();
+              }}>
                 <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
                   <TabsTrigger value="records">Care Records</TabsTrigger>
-                  <TabsTrigger value="timeline" className="flex items-center gap-1">
-                    <History className="h-3.5 w-3.5" /> Full Timeline
-                  </TabsTrigger>
+                  {canViewFullTimeline && (
+                    <TabsTrigger value="timeline" className="flex items-center gap-1">
+                      <History className="h-3.5 w-3.5" /> Full Timeline
+                    </TabsTrigger>
+                  )}
                   {jurisdiction === 'NSW' && (
                     <TabsTrigger value="transfers" className="flex items-center gap-1">
                       <ArrowRightLeft className="h-3.5 w-3.5" /> Transfers
@@ -722,19 +728,21 @@ export default function AnimalDetailClient({
               />
                 </TabsContent>
 
-                <TabsContent value="timeline" className="mt-4">
-                  <CombinedTimeline
-                    records={records}
-                    photos={photos}
-                    transfers={initialTransfers}
-                    postReleaseRecords={initialPostReleaseRecords}
-                    permanentCareApplications={initialPermanentCareApplications}
-                    incidents={initialIncidents}
-                    reminders={reminders}
-                    releaseChecklist={releaseChecklist}
-                    userMap={liveUserMap}
-                  />
-                </TabsContent>
+                {canViewFullTimeline && (
+                  <TabsContent value="timeline" className="mt-4">
+                    <CombinedTimeline
+                      records={records}
+                      photos={initialPhotos}
+                      transfers={initialTransfers}
+                      postReleaseRecords={initialPostReleaseRecords}
+                      permanentCareApplications={initialPermanentCareApplications}
+                      incidents={initialIncidents}
+                      reminders={reminders}
+                      releaseChecklist={releaseChecklist}
+                      userMap={liveUserMap}
+                    />
+                  </TabsContent>
+                )}
 
                 {jurisdiction === 'NSW' && (
                   <TabsContent value="transfers" className="mt-4">
