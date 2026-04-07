@@ -429,11 +429,11 @@ export default function CombinedTimeline({
                       )}
 
                       {event.link && (
-                        <Link href={event.link.href}>
-                          <Button variant="outline" size="sm" className="mt-2">
+                        <Button variant="outline" size="sm" className="mt-2" asChild>
+                          <Link href={event.link.href}>
                             {event.link.label}
-                          </Button>
-                        </Link>
+                          </Link>
+                        </Button>
                       )}
                     </div>
                   </div>
