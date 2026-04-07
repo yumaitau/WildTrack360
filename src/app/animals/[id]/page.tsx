@@ -83,6 +83,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
   let canApprovePermanentCare = false;
   let canManageTransfers = false;
   let canManagePostRelease = false;
+  let canViewFullTimeline = false;
   if (organizationId) {
     const role = await getUserRole(userId, organizationId);
     if (hasPermission(role, 'animal:edit_any')) {
@@ -96,7 +97,16 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
     canManageTransfers = hasPermission(role, 'compliance:manage_transfers');
     canManagePostRelease = hasPermission(role, 'compliance:manage_post_release')
       || (hasPermission(role, 'animal:edit_own') && animal.carerId === userId);
+    canViewFullTimeline = role === 'ADMIN' || role === 'COORDINATOR_ALL';
   }
+
+  // Only fetch incidents for users who can view the full timeline
+  const incidents = canViewFullTimeline
+    ? await prisma.incidentReport.findMany({
+        where: { animalId: id, clerkOrganizationId: organizationId },
+        orderBy: { date: "desc" },
+      })
+    : [];
 
   return (
     <AnimalDetailClient
@@ -117,6 +127,8 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       canManageTransfers={canManageTransfers}
       initialPostReleaseRecords={postReleaseRecords}
       canManagePostRelease={canManagePostRelease}
+      initialIncidents={incidents}
+      canViewFullTimeline={canViewFullTimeline}
     />
   );
 }

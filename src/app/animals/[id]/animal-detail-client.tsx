@@ -10,8 +10,9 @@ import PhotoGallery from "@/components/photo-gallery";
 import { PermanentCareTab } from "@/components/permanent-care-tab";
 import { TransfersTab } from "@/components/transfers-tab";
 import { PostReleaseTab } from "@/components/post-release-tab";
+import CombinedTimeline from "@/components/combined-timeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck, ArrowRightLeft, Shield, Binoculars } from "lucide-react";
+import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck, ArrowRightLeft, Shield, Binoculars, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -32,7 +33,7 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { AddRecordForm } from "@/components/add-record-form";
 import LocationMap from "@/components/location-map";
-import { type Animal, type Photo, type Record, type PermanentCareApplication, type AnimalTransfer, type PostReleaseMonitoring } from "@/lib/types";
+import { type Animal, type Photo, type Record, type PermanentCareApplication, type AnimalTransfer, type PostReleaseMonitoring, type IncidentReport } from "@/lib/types";
 import React, { useState, useMemo, useEffect } from "react";
 import { getCurrentJurisdiction } from "@/lib/config";
 import { AnimalStatus, RecordType } from "@prisma/client";
@@ -64,6 +65,8 @@ interface AnimalDetailClientProps {
   canManageTransfers?: boolean;
   initialPostReleaseRecords?: PostReleaseMonitoring[];
   canManagePostRelease?: boolean;
+  initialIncidents?: IncidentReport[];
+  canViewFullTimeline?: boolean;
 }
 
 export default function AnimalDetailClient({
@@ -84,10 +87,11 @@ export default function AnimalDetailClient({
   canManageTransfers = false,
   initialPostReleaseRecords = [],
   canManagePostRelease = false,
+  initialIncidents = [],
+  canViewFullTimeline = false,
 }: AnimalDetailClientProps) {
   const [animal, setAnimal] = useState<Animal>(initialAnimal);
   const [records, setRecords] = useState<Record[]>(initialRecords);
-  const [photos, setPhotos] = useState<Photo[]>([]);
   const { organization } = useOrganization();
   const { user } = useUser();
   const [liveUserMap, setLiveUserMap] = useState<{ [clerkUserId: string]: string }>(userMap);
@@ -567,9 +571,16 @@ export default function AnimalDetailClient({
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <Tabs defaultValue="records" className="w-full">
+              <Tabs defaultValue="records" className="w-full" onValueChange={(value) => {
+                if (value === 'timeline') router.refresh();
+              }}>
                 <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
                   <TabsTrigger value="records">Care Records</TabsTrigger>
+                  {canViewFullTimeline && (
+                    <TabsTrigger value="timeline" className="flex items-center gap-1">
+                      <History className="h-3.5 w-3.5" /> Full Timeline
+                    </TabsTrigger>
+                  )}
                   {jurisdiction === 'NSW' && (
                     <TabsTrigger value="transfers" className="flex items-center gap-1">
                       <ArrowRightLeft className="h-3.5 w-3.5" /> Transfers
@@ -715,6 +726,22 @@ export default function AnimalDetailClient({
                 jurisdiction={jurisdiction}
               />
                 </TabsContent>
+
+                {canViewFullTimeline && (
+                  <TabsContent value="timeline" className="mt-4">
+                    <CombinedTimeline
+                      records={records}
+                      photos={initialPhotos}
+                      transfers={initialTransfers}
+                      postReleaseRecords={initialPostReleaseRecords}
+                      permanentCareApplications={initialPermanentCareApplications}
+                      incidents={initialIncidents}
+                      reminders={reminders}
+                      releaseChecklist={releaseChecklist}
+                      userMap={liveUserMap}
+                    />
+                  </TabsContent>
+                )}
 
                 {jurisdiction === 'NSW' && (
                   <TabsContent value="transfers" className="mt-4">
