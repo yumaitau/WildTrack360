@@ -15,6 +15,7 @@ WildTrack360 is a comprehensive wildlife conservation management application des
 - **Carer Management**: Profiles, licensing, training records with expiry tracking, and workload dashboards
 - **Asset Management**: Equipment tracking with status lifecycle
 - **Audit Logging**: Immutable trail of all system actions
+- **Growth Calculator**: Birth date estimation, growth charts with predicted vs actual weight curves, and weight-for-age tracking. Reference data for macropods, possums, and flying foxes from published scientific sources
 - **Reporting & Export**: Dashboard analytics, Recharts visualisations, Excel and PDF export
 - **SMS Notifications**: AWS SNS integration for carer notifications
 - **Error Monitoring**: Sentry integration for production error tracking
@@ -210,6 +211,10 @@ WildTrack360 uses a comprehensive database schema with the following key models:
 - **PindropSession**: Secure one-time SMS links for location/photo sharing
 - **CallLogReason, Referrer, Action, Outcome**: Organisation-configurable lookups
 
+**Growth:**
+- **SpeciesGrowthReference**: Expected weight and body measurements by age, per species and sex. Sourced from published scientific data
+- **GrowthMeasurement**: Per-animal dated measurements (weight, head/ear/arm/leg/foot/tail/body/wing lengths)
+
 **Admin:**
 - **Asset**: Equipment tracking with status lifecycle
 - **AuditLog**: Immutable action trail
@@ -362,6 +367,7 @@ Tests cover the following areas:
 - **Mass assignment protection** -- field allowlisting for animal create/update
 - **Cross-tenant animal deletion** -- org-scoped deletion
 - **Clerk fallback** -- `isOrgAdmin` respects RBAC demotion, only falls back when no OrgMember exists
+- **Growth calculator** -- interpolation, WFA calculation, birth date estimation, field relevance by species type
 
 ## Authentication & Security
 
