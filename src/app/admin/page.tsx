@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PawPrint, Package, Users, Leaf, ScrollText, FileSpreadsheet, ChevronDown, LayoutDashboard, ShieldCheck, ArrowRight } from 'lucide-react';
+import { ArrowLeft, PawPrint, Package, Users, Leaf, ScrollText, FileSpreadsheet, ChevronDown, LayoutDashboard, ShieldCheck, ArrowRight, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -20,6 +20,7 @@ import { PeopleManagement } from './people-management';
 import { SpeciesGroupManagement } from './species-group-management';
 import { AuditLogViewer } from './audit-log-viewer';
 import { DataExport } from './data-export';
+import { GrowthReferenceManagement } from './growth-reference-management';
 import { useUser, useOrganization } from '@clerk/nextjs';
 
 async function apiJson<T>(url: string): Promise<T> {
@@ -134,7 +135,7 @@ export default function AdminPage() {
   const isAdmin = userRole === 'ADMIN';
 
   const allowedTabs = useMemo(() => {
-    const tabs = ['home', 'assets'];
+    const tabs = ['home', 'growth-references', 'assets'];
     if (isAdmin) {
       tabs.push('people', 'species-groups', 'species', 'audit-log', 'data-export');
     }
@@ -226,6 +227,10 @@ export default function AdminPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            <TabsTrigger value="growth-references">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Growth Data
+            </TabsTrigger>
             <TabsTrigger value="assets">
               <Package className="mr-2 h-4 w-4" />
               Assets
@@ -346,6 +351,20 @@ export default function AdminPage() {
               <DataExport />
             </TabsContent>
           )}
+          <TabsContent value="growth-references">
+            <Card>
+              <CardHeader>
+                <CardTitle>Growth Reference Data</CardTitle>
+                <CardDescription>
+                  Species growth reference data used by the Birth Date Estimator and Growth Chart.
+                  Covers macropods, possums, and flying foxes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <GrowthReferenceManagement />
+              </CardContent>
+            </Card>
+          </TabsContent>
            <TabsContent value="assets">
             <Card>
               <CardHeader>
