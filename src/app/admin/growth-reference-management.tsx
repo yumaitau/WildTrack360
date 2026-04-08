@@ -185,6 +185,29 @@ export function GrowthReferenceManagement() {
       {isLoading && (
         <p className="text-sm text-muted-foreground">Loading...</p>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Data Sources &amp; References</CardTitle>
+        </CardHeader>
+        <CardContent className="text-xs text-muted-foreground space-y-2">
+          <p><span className="font-medium">Macropods (kangaroos, wallabies, wallaroos):</span></p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li>Poole, W.E., Carpenter, S.M. &amp; Wood, J.T. (1982). &quot;Growth of grey kangaroos and the reliability of age determination from body measurements. I. The Eastern Grey Kangaroo, <em>Macropus giganteus</em>.&quot; <em>Australian Wildlife Research</em>, 9(1), 33-49.</li>
+            <li>ARAZPA (Australasian Regional Association of Zoological Parks and Aquaria). &quot;Birth Date Determination in Marsupials&quot; — growth rate tables for wallabies and wallaroos.</li>
+          </ul>
+          <p><span className="font-medium">Possums:</span></p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li>Kerle, J.A. (1984). &quot;Growth and development of <em>Trichosurus vulpecula</em> (Marsupialia: Phalangeridae).&quot; In A.P. Smith &amp; I.D. Hume (Eds.), <em>Possums and Gliders</em>, Australian Mammal Society.</li>
+            <li>How, R.A. (1983). &quot;Growth and development of the common ringtail possum, <em>Pseudocheirus peregrinus</em>.&quot; In A.P. Smith &amp; I.D. Hume (Eds.), <em>Possums and Gliders</em>, Australian Mammal Society.</li>
+          </ul>
+          <p><span className="font-medium">Flying foxes:</span></p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li>Divljan, A. (2006). &quot;Population ecology of the grey-headed flying fox, <em>Pteropus poliocephalus</em>.&quot; PhD thesis, University of Sydney.</li>
+            <li>Hall, L.S. &amp; Richards, G.C. (2000). <em>Flying Foxes: Fruit and Blossom Bats of Australia</em>. UNSW Press, Sydney.</li>
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   );
 }

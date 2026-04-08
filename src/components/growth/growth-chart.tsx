@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Info } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -16,9 +17,13 @@ import { type GrowthReferencePoint, calculatePredictedWeight } from "@/lib/growt
 import type { GrowthMeasurement } from "@prisma/client";
 import { differenceInDays } from "date-fns";
 
+interface GrowthReferenceWithMeta extends GrowthReferencePoint {
+  reference?: string | null;
+}
+
 interface GrowthChartProps {
   measurements: GrowthMeasurement[];
-  referenceData: GrowthReferencePoint[];
+  referenceData: GrowthReferenceWithMeta[];
   dateOfBirth: Date | null;
 }
 
@@ -33,6 +38,15 @@ export function GrowthChart({
   referenceData,
   dateOfBirth,
 }: GrowthChartProps) {
+  const referenceSource = useMemo(() => {
+    const sources = new Set(
+      referenceData
+        .map((r) => (r as GrowthReferenceWithMeta).reference)
+        .filter(Boolean)
+    );
+    return sources.size > 0 ? Array.from(sources).join('; ') : null;
+  }, [referenceData]);
+
   const chartData = useMemo(() => {
     if (!dateOfBirth) return [];
 
@@ -164,6 +178,12 @@ export function GrowthChart({
             />
           </LineChart>
         </ResponsiveContainer>
+        {referenceSource && (
+          <div className="flex items-start gap-1.5 mt-3 text-xs text-muted-foreground">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>Predicted growth curve source: {referenceSource}</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

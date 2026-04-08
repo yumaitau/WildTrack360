@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 import { speciesSeedData } from './species-seed-data';
-import { growthReferenceData } from './growth-reference-seed-data';
 
 const prisma = new PrismaClient();
 
@@ -184,56 +183,11 @@ async function main() {
     }),
   ]);
 
-  // Seed growth reference data (global, not org-scoped)
-  console.log(`  📈 Seeding ${growthReferenceData.length} growth reference data points...`);
-  let growthRefCount = 0;
-  for (const row of growthReferenceData) {
-    await prisma.speciesGrowthReference.upsert({
-      where: {
-        speciesName_sex_ageDays: {
-          speciesName: row.speciesName,
-          sex: row.sex,
-          ageDays: row.ageDays,
-        },
-      },
-      update: {
-        weightGrams: row.weightGrams,
-        headLengthMm: row.headLengthMm,
-        earLengthMm: row.earLengthMm,
-        armLengthMm: row.armLengthMm,
-        legLengthMm: row.legLengthMm,
-        footLengthMm: row.footLengthMm,
-        tailLengthMm: row.tailLengthMm,
-        bodyLengthMm: row.bodyLengthMm,
-        wingLengthMm: row.wingLengthMm,
-        reference: row.reference,
-      },
-      create: {
-        speciesName: row.speciesName,
-        sex: row.sex,
-        ageDays: row.ageDays,
-        weightGrams: row.weightGrams,
-        headLengthMm: row.headLengthMm,
-        earLengthMm: row.earLengthMm,
-        armLengthMm: row.armLengthMm,
-        legLengthMm: row.legLengthMm,
-        footLengthMm: row.footLengthMm,
-        tailLengthMm: row.tailLengthMm,
-        bodyLengthMm: row.bodyLengthMm,
-        wingLengthMm: row.wingLengthMm,
-        reference: row.reference,
-      },
-    });
-    growthRefCount++;
-  }
-  console.log(`  ✅ Seeded ${growthRefCount} growth reference data points`);
-
   console.log('✅ Database seeded successfully!');
   console.log(`📊 Summary:`);
   console.log(`   - ${species.length} species (native Australian wildlife)`);
   console.log(`   - ${carers.length} carers`);
   console.log(`   - ${animals.length} sample animals`);
-  console.log(`   - ${growthRefCount} growth reference data points`);
 }
 
 main()
