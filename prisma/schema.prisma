@@ -82,6 +82,7 @@ model Animal {
   reminders                AnimalReminder[]
   callLogs                 CallLog[]
   postReleaseMonitoring    PostReleaseMonitoring[]
+  growthMeasurements       GrowthMeasurement[]
 
   @@map("animals")
 }
@@ -949,6 +950,58 @@ model SmsLog {
   @@index([organisationId])
   @@index([organisationId, createdAt])
   @@map("sms_logs")
+}
+
+// ─── Growth Calculator Models ───────────────────────────────────────────────
+
+// System-level reference data for expected growth by species + sex + age.
+// Not org-scoped — published scientific data is shared across all organisations.
+model SpeciesGrowthReference {
+  id           String @id @default(cuid())
+  speciesName  String @map("species_name")
+  sex          String // "Male", "Female", "Unknown"
+  ageDays      Int    @map("age_days")
+  weightGrams  Float? @map("weight_grams")
+  headLengthMm Float? @map("head_length_mm")
+  earLengthMm  Float? @map("ear_length_mm")
+  armLengthMm  Float? @map("arm_length_mm")
+  legLengthMm  Float? @map("leg_length_mm")
+  footLengthMm Float? @map("foot_length_mm")
+  tailLengthMm Float? @map("tail_length_mm")
+  bodyLengthMm Float? @map("body_length_mm")
+  wingLengthMm Float? @map("wing_length_mm")
+  reference    String? // citation / data source
+
+  @@unique([speciesName, sex, ageDays])
+  @@index([speciesName, sex])
+  @@map("species_growth_references")
+}
+
+// Per-animal growth measurements recorded by carers (org-scoped).
+model GrowthMeasurement {
+  id           String   @id @default(cuid())
+  animalId     String   @map("animal_id")
+  animal       Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  date         DateTime
+  weightGrams  Float?   @map("weight_grams")
+  headLengthMm Float?   @map("head_length_mm")
+  earLengthMm  Float?   @map("ear_length_mm")
+  armLengthMm  Float?   @map("arm_length_mm")
+  legLengthMm  Float?   @map("leg_length_mm")
+  footLengthMm Float?   @map("foot_length_mm")
+  tailLengthMm Float?   @map("tail_length_mm")
+  bodyLengthMm Float?   @map("body_length_mm")
+  wingLengthMm Float?   @map("wing_length_mm")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  clerkUserId         String
+  clerkOrganizationId String
+
+  @@index([animalId])
+  @@index([clerkOrganizationId])
+  @@map("growth_measurements")
 }
 
 // Configurable lookup lists — each org maintains their own values.

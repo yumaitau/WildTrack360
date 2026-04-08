@@ -11,8 +11,9 @@ import { PermanentCareTab } from "@/components/permanent-care-tab";
 import { TransfersTab } from "@/components/transfers-tab";
 import { PostReleaseTab } from "@/components/post-release-tab";
 import CombinedTimeline from "@/components/combined-timeline";
+import { GrowthTab } from "@/components/growth/growth-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck, ArrowRightLeft, Shield, Binoculars, History } from "lucide-react";
+import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck, ArrowRightLeft, Shield, Binoculars, History, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -34,6 +35,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { AddRecordForm } from "@/components/add-record-form";
 import LocationMap from "@/components/location-map";
 import { type Animal, type Photo, type Record, type PermanentCareApplication, type AnimalTransfer, type PostReleaseMonitoring, type IncidentReport } from "@/lib/types";
+import type { GrowthMeasurement } from "@prisma/client";
 import React, { useState, useMemo, useEffect } from "react";
 import { getCurrentJurisdiction } from "@/lib/config";
 import { AnimalStatus, RecordType } from "@prisma/client";
@@ -67,6 +69,7 @@ interface AnimalDetailClientProps {
   canManagePostRelease?: boolean;
   initialIncidents?: IncidentReport[];
   canViewFullTimeline?: boolean;
+  initialGrowthMeasurements?: GrowthMeasurement[];
 }
 
 export default function AnimalDetailClient({
@@ -89,6 +92,7 @@ export default function AnimalDetailClient({
   canManagePostRelease = false,
   initialIncidents = [],
   canViewFullTimeline = false,
+  initialGrowthMeasurements = [],
 }: AnimalDetailClientProps) {
   const [animal, setAnimal] = useState<Animal>(initialAnimal);
   const [records, setRecords] = useState<Record[]>(initialRecords);
@@ -576,6 +580,9 @@ export default function AnimalDetailClient({
               }}>
                 <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
                   <TabsTrigger value="records">Care Records</TabsTrigger>
+                  <TabsTrigger value="growth" className="flex items-center gap-1">
+                    <TrendingUp className="h-3.5 w-3.5" /> Growth
+                  </TabsTrigger>
                   {canViewFullTimeline && (
                     <TabsTrigger value="timeline" className="flex items-center gap-1">
                       <History className="h-3.5 w-3.5" /> Full Timeline
@@ -788,6 +795,14 @@ export default function AnimalDetailClient({
                     />
                   </TabsContent>
                 )}
+
+                <TabsContent value="growth" className="mt-4">
+                  <GrowthTab
+                    animal={animal}
+                    initialMeasurements={initialGrowthMeasurements}
+                    onAnimalUpdate={(updated) => setAnimal(updated)}
+                  />
+                </TabsContent>
               </Tabs>
             </div>
             <div className="space-y-8">

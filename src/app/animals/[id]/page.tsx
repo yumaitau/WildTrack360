@@ -17,7 +17,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
   });
   if (!animal) notFound();
 
-  const [records, photos, releaseChecklist, activeReminders, permanentCareApplications, transfers, postReleaseRecords] = await Promise.all([
+  const [records, photos, releaseChecklist, activeReminders, permanentCareApplications, transfers, postReleaseRecords, growthMeasurements] = await Promise.all([
     prisma.record.findMany({
       where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { date: "desc" },
@@ -53,6 +53,10 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
     prisma.postReleaseMonitoring.findMany({
       where: { animalId: id, clerkOrganizationId: organizationId },
       orderBy: { date: "desc" },
+    }),
+    prisma.growthMeasurement.findMany({
+      where: { animalId: id, clerkOrganizationId: organizationId },
+      orderBy: { date: "asc" },
     }),
   ]);
 
@@ -129,6 +133,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
       canManagePostRelease={canManagePostRelease}
       initialIncidents={incidents}
       canViewFullTimeline={canViewFullTimeline}
+      initialGrowthMeasurements={growthMeasurements}
     />
   );
 }
