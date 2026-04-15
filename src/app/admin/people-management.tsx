@@ -51,6 +51,7 @@ import {
 import { toast } from 'sonner';
 import { SpeciesGroupBadges } from './species-group-badges';
 import type { OrgMemberWithAssignments, SpeciesGroupWithCoordinators, EnrichedCarer } from '@/lib/types';
+import { AddressAutocomplete, type AddressDetails } from '@/components/address-autocomplete';
 
 const MAX_USERS = 20;
 
@@ -132,6 +133,7 @@ export function PeopleManagement() {
   const [editSuburb, setEditSuburb] = useState('');
   const [editState, setEditState] = useState('NSW');
   const [editPostcode, setEditPostcode] = useState('');
+  const [editAddressSearch, setEditAddressSearch] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────────────
@@ -380,6 +382,8 @@ export function PeopleManagement() {
     setEditSuburb(carer.suburb || '');
     setEditState(carer.state || 'NSW');
     setEditPostcode(carer.postcode || '');
+    const addrParts = [carer.streetAddress, carer.suburb, carer.state, carer.postcode].filter(Boolean);
+    setEditAddressSearch(addrParts.length > 0 ? addrParts.join(', ') : '');
     setIsEditDialogOpen(true);
   };
 
@@ -831,6 +835,21 @@ export function PeopleManagement() {
 
             <div className="space-y-4">
               <h4 className="text-sm font-medium">Address Details (Required for NSW Reporting)</h4>
+              <div className="space-y-2">
+                <Label>Address Lookup</Label>
+                <AddressAutocomplete
+                  value={editAddressSearch}
+                  onChange={setEditAddressSearch}
+                  onSelect={(details: AddressDetails) => {
+                    setEditStreetAddress(details.streetAddress);
+                    setEditSuburb(details.suburb);
+                    setEditState(details.state);
+                    setEditPostcode(details.postcode);
+                    setEditAddressSearch(details.formattedAddress);
+                  }}
+                  placeholder="Start typing an address..."
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-street">Street Address</Label>
                 <Input id="edit-street" placeholder="e.g., 123 Main Street" value={editStreetAddress} onChange={(e) => setEditStreetAddress(e.target.value)} />

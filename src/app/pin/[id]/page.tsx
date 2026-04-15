@@ -28,6 +28,7 @@ export default async function PinPage({ params, searchParams }: PinPageProps) {
     <PindropForm
       sessionId={session.id}
       token={token}
+      initialPhone={session.callerPhone || ''}
     />
   );
 }
