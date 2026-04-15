@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Calendar, AlertTriangle, CheckCircle, Download, Mail, ArrowLeft, Home } from "lucide-react";
+import { Users, Calendar, AlertTriangle, CheckCircle, Download, Mail, ArrowLeft, Home, MapPin } from "lucide-react";
 import Link from "next/link";
 import jsPDF from 'jspdf';
 
@@ -242,6 +242,12 @@ export default function CarerManagementClient({ carers }: CarerManagementClientP
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link href="/compliance/carers/map">
+            <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
+              <MapPin className="h-4 w-4 mr-2" />
+              Map View
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" className="sm:h-9 sm:px-4" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />
             Export Report

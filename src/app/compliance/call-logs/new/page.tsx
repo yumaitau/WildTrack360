@@ -12,7 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format } from "date-fns";
-import { CalendarIcon, Phone, ArrowLeft, Home, Check, ChevronsUpDown, Send, MapPin, Loader2, CheckCircle, Clock, MessageSquare, AlertTriangle, Lock } from "lucide-react";
+import { CalendarIcon, Phone, ArrowLeft, Home, Check, ChevronsUpDown, Send, MapPin, Loader2, CheckCircle, Clock, MessageSquare, AlertTriangle, Lock, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useOrganization } from '@clerk/nextjs';
@@ -20,6 +20,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useGoogleMaps } from '@/components/google-maps-provider';
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import CarerMap from '@/components/carer-map';
 
 interface LookupItem {
   id: string;
@@ -96,6 +103,9 @@ export default function NewCallLogPage() {
 
   // SMS plan state
   const [smsPlan, setSmsPlan] = useState<{ enabled: boolean; tier: string } | null>(null);
+
+  // Carer map dialog
+  const [carerMapOpen, setCarerMapOpen] = useState(false);
 
   // Pindrop state
   const [pindropSession, setPindropSession] = useState<PindropSession | null>(null);
@@ -749,26 +759,38 @@ export default function NewCallLogPage() {
                 {/* Assigned To */}
                 <div className="space-y-2">
                   <Label>Assign To</Label>
-                  <Select
-                    value={assignedToUserId}
-                    onValueChange={(val) => {
-                      setAssignedToUserId(val);
-                      const member = orgMembers.find((m: any) => m.userId === val);
-                      setAssignedToUserName(member?.name || '');
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Assign to a carer/coordinator" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— Unassigned —</SelectItem>
-                      {orgMembers.map((member: any) => (
-                        <SelectItem key={member.userId} value={member.userId}>
-                          {member.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={assignedToUserId}
+                      onValueChange={(val) => {
+                        setAssignedToUserId(val);
+                        const member = orgMembers.find((m: any) => m.userId === val);
+                        setAssignedToUserName(member?.name || '');
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Assign to a carer/coordinator" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Unassigned —</SelectItem>
+                        {orgMembers.map((member: any) => (
+                          <SelectItem key={member.userId} value={member.userId}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0"
+                      title="Locate carer on map"
+                      onClick={() => setCarerMapOpen(true)}
+                    >
+                      <Map className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -897,6 +919,35 @@ export default function NewCallLogPage() {
           </Card>
         </div>
       </form>
+
+      {/* Carer Map Dialog */}
+      <Dialog open={carerMapOpen} onOpenChange={setCarerMapOpen}>
+        <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="p-4 pb-2 shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Map className="h-5 w-5" />
+              Locate Carer
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Click a marker then press Assign to assign the carer to this call
+            </p>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-4 pt-0">
+            <CarerMap
+              initialSpeciesFilter={species || undefined}
+              onSelectCarer={(carer) => {
+                setAssignedToUserId(carer.id);
+                setAssignedToUserName(carer.name);
+                setCarerMapOpen(false);
+                toast({
+                  title: 'Carer Assigned',
+                  description: `${carer.name} has been assigned to this call.`,
+                });
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
