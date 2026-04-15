@@ -7,6 +7,7 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from '@/lib/prisma';
 import { redirect, notFound } from "next/navigation";
 import { CallLogPindropSection } from './pindrop-section';
+import { CloseCallButton } from './close-call-button';
 
 export default async function CallLogDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -65,6 +66,9 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
               Edit
             </Button>
           </Link>
+          {callLog.status === 'OPEN' && (
+            <CloseCallButton callLogId={callLog.id} />
+          )}
         </div>
       </div>
 
