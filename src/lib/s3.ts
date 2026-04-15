@@ -70,10 +70,10 @@ export async function deleteObjectFromS3(key: string): Promise<void> {
 
 /**
  * Extract the orgId from an S3 key.
- * All keys follow the pattern: orgs/{orgId}/...
+ * Keys follow either: orgs/{orgId}/... or pindrop/{orgId}/...
  */
 export function extractOrgIdFromKey(key: string): string | null {
-  const match = key.match(/^orgs\/([^/]+)\//)
+  const match = key.match(/^(?:orgs|pindrop)\/([^/]+)\//)
   return match ? match[1] : null
 }
 

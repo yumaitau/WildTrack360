@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Calendar, ArrowLeft, Home, MapPin, User, Pencil } from "lucide-react";
+import { Phone, Calendar, ArrowLeft, Home, MapPin, User, Pencil, Map } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from '@/lib/prisma';
@@ -64,6 +64,12 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
             <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
               <Pencil className="h-4 w-4 mr-2" />
               Edit
+            </Button>
+          </Link>
+          <Link href={`/compliance/carers/map${callLog.species ? `?species=${encodeURIComponent(callLog.species)}` : ''}`}>
+            <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
+              <Map className="h-4 w-4 mr-2" />
+              Find Nearest Carer
             </Button>
           </Link>
           {callLog.status === 'OPEN' && (

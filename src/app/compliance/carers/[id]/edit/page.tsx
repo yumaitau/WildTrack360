@@ -12,12 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Save, X, Plus, Home } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Save, X, Plus, Home, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useOrganization } from "@clerk/nextjs";
 import { useToast } from "@/hooks/use-toast";
 import { use } from 'react';
+import { AddressAutocomplete, type AddressDetails } from "@/components/address-autocomplete";
 
 interface EditCarerPageProps {
   params: Promise<{ id: string }>;
@@ -44,6 +45,13 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
   const [active, setActive] = useState(true);
   const [newSpecialty, setNewSpecialty] = useState("");
 
+  // Address fields
+  const [addressSearch, setAddressSearch] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+  const [suburb, setSuburb] = useState("");
+  const [state, setState] = useState("");
+  const [postcode, setPostcode] = useState("");
+
   useEffect(() => {
     const loadCarer = async () => {
       try {
@@ -63,6 +71,15 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
         setSpecialties(data.specialties || []);
         setNotes(data.notes || "");
         setActive(data.active !== false);
+
+        // Address fields
+        setStreetAddress(data.streetAddress || "");
+        setSuburb(data.suburb || "");
+        setState(data.state || "");
+        setPostcode(data.postcode || "");
+        // Pre-fill the search field with the formatted address
+        const addressParts = [data.streetAddress, data.suburb, data.state, data.postcode].filter(Boolean);
+        if (addressParts.length > 0) setAddressSearch(addressParts.join(", "));
       } catch (error) {
         console.error("Error loading carer:", error);
         toast({
@@ -103,6 +120,10 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
           specialties,
           notes: notes || null,
           active,
+          streetAddress: streetAddress || null,
+          suburb: suburb || null,
+          state: state || null,
+          postcode: postcode || null,
         }),
       });
 
@@ -242,6 +263,74 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
                     />
                   </PopoverContent>
                 </Popover>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Address */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Address
+            </CardTitle>
+            <CardDescription>
+              Search for an address to auto-fill, or edit fields manually
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label>Address Lookup</Label>
+              <AddressAutocomplete
+                value={addressSearch}
+                onChange={setAddressSearch}
+                onSelect={(details: AddressDetails) => {
+                  setStreetAddress(details.streetAddress);
+                  setSuburb(details.suburb);
+                  setState(details.state);
+                  setPostcode(details.postcode);
+                  setAddressSearch(details.formattedAddress);
+                }}
+                placeholder="Start typing an address..."
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="streetAddress">Street Address</Label>
+                <Input
+                  id="streetAddress"
+                  value={streetAddress}
+                  onChange={(e) => setStreetAddress(e.target.value)}
+                  placeholder="e.g. 42 Wallaby Way"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="suburb">Suburb</Label>
+                <Input
+                  id="suburb"
+                  value={suburb}
+                  onChange={(e) => setSuburb(e.target.value)}
+                  placeholder="e.g. Sydney"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="state">State</Label>
+                <Input
+                  id="state"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  placeholder="e.g. NSW"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="postcode">Postcode</Label>
+                <Input
+                  id="postcode"
+                  value={postcode}
+                  onChange={(e) => setPostcode(e.target.value)}
+                  placeholder="e.g. 2000"
+                />
               </div>
             </div>
           </CardContent>

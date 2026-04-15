@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Download, ArrowLeft, Award, Shield, Home, Calendar } from "lucide-react";
+import { User, Download, ArrowLeft, Award, Shield, Home, Calendar, MapPin } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -337,6 +337,12 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
                 <label className="text-sm font-medium text-muted-foreground">Email</label>
                 <p className="text-sm">{carerEmail}</p>
               </div>
+              {profile?.phone && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                  <p className="text-sm">{profile.phone}</p>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Licence Number</label>
                 <p className="font-mono text-sm">{profile?.licenseNumber || '—'}</p>
@@ -345,6 +351,19 @@ export default async function CarerDetailPage({ params }: CarerDetailPageProps) 
                 <label className="text-sm font-medium text-muted-foreground">Jurisdiction</label>
                 <p className="text-sm">{profile?.jurisdiction || '—'}</p>
               </div>
+              {(profile?.streetAddress || profile?.suburb || profile?.postcode) && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    Address
+                  </label>
+                  <p className="text-sm">
+                    {[profile.streetAddress, profile.suburb, profile.state, profile.postcode]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
