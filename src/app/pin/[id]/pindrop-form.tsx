@@ -7,6 +7,7 @@ import { MapPin, Crosshair, Upload, X, Loader2, Map, Satellite } from 'lucide-re
 interface PindropFormProps {
   sessionId: string;
   token: string;
+  initialPhone?: string;
 }
 
 const AU_CENTER = { lat: -33.8688, lng: 151.2093 };
@@ -26,12 +27,12 @@ interface UploadedPhoto {
   name: string;
 }
 
-export function PindropForm({ sessionId, token }: PindropFormProps) {
+export function PindropForm({ sessionId, token, initialPhone = '' }: PindropFormProps) {
   const [markerPosition, setMarkerPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [address, setAddress] = useState('');
   const [callerName, setCallerName] = useState('');
   const [callerEmail, setCallerEmail] = useState('');
-  const [callerPhone, setCallerPhone] = useState('');
+  const [callerPhone, setCallerPhone] = useState(initialPhone);
   const [callerNotes, setCallerNotes] = useState('');
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [uploading, setUploading] = useState(false);

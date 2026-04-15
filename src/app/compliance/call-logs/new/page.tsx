@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import CarerMap from '@/components/carer-map';
+import { getPhotoUrl } from '@/lib/photo-url';
 
 interface LookupItem {
   id: string;
@@ -530,6 +531,28 @@ export default function NewCallLogPage() {
                   <div className="text-sm">
                     <span className="text-muted-foreground">Caller notes:</span>{' '}
                     <span className="italic">{pindropSession.callerNotes}</span>
+                  </div>
+                )}
+
+                {pindropSession.photoUrls && pindropSession.photoUrls.length > 0 && (
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Photos ({pindropSession.photoUrls.length})
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {pindropSession.photoUrls.map((key, i) => {
+                        const src = getPhotoUrl(key);
+                        return src ? (
+                          <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="block">
+                            <img
+                              src={src}
+                              alt={`Caller photo ${i + 1}`}
+                              className="w-full h-24 object-cover rounded-md border"
+                            />
+                          </a>
+                        ) : null;
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

@@ -37,6 +37,7 @@ export async function POST(request: Request) {
   const session = await prisma.pindropSession.create({
     data: {
       accessToken: nanoid(32),
+      callerPhone,
       callLogId: callLogId || null,
       clerkOrganizationId: orgId,
       clerkUserId: userId,
