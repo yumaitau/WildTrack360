@@ -208,11 +208,11 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
     return (
       <div className="text-center py-16">
         <div className="text-5xl mb-4">&#9989;</div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Thank You!</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
+        <h1 className="text-2xl font-headline font-bold text-foreground mb-2">Thank You!</h1>
+        <p className="text-muted-foreground mb-4">
           Your location and details have been submitted successfully. Our team will review the information and follow up as needed.
         </p>
-        <p className="text-sm text-gray-500">You can safely close this page.</p>
+        <p className="text-sm text-muted-foreground">You can safely close this page.</p>
       </div>
     );
   }
@@ -220,23 +220,23 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-2xl font-headline font-bold text-foreground">
           Share Your Details
         </h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Please fill in your details and drop a pin where the animal was spotted.
         </p>
       </div>
 
       {/* Contact Details */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Your Details</h2>
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Your Details</h2>
         <div>
-          <label htmlFor="pin-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+          <label htmlFor="pin-name" className="block text-sm font-medium text-foreground mb-1">Name</label>
           <input
             id="pin-name"
             type="text"
-            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             placeholder="Your full name"
             value={callerName}
             onChange={(e) => setCallerName(e.target.value)}
@@ -244,22 +244,22 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="pin-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <label htmlFor="pin-email" className="block text-sm font-medium text-foreground mb-1">Email</label>
             <input
               id="pin-email"
               type="email"
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               placeholder="you@example.com"
               value={callerEmail}
               onChange={(e) => setCallerEmail(e.target.value)}
             />
           </div>
           <div>
-            <label htmlFor="pin-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+            <label htmlFor="pin-phone" className="block text-sm font-medium text-foreground mb-1">Phone</label>
             <input
               id="pin-phone"
               type="tel"
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               placeholder="0412 345 678"
               value={callerPhone}
               onChange={(e) => setCallerPhone(e.target.value)}
@@ -271,14 +271,14 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
       {/* Map */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-1">
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide flex items-center gap-1">
             <MapPin className="h-4 w-4" /> Location *
           </h2>
           <button
             type="button"
             onClick={useCurrentLocation}
             disabled={geolocating}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
           >
             <Crosshair className="h-3.5 w-3.5" />
             {geolocating ? 'Getting...' : 'My Location'}
@@ -315,7 +315,7 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
               <button
                 type="button"
                 onClick={() => setMapType(mapType === 'roadmap' ? 'satellite' : 'roadmap')}
-                className="inline-flex items-center gap-1 rounded-md bg-white dark:bg-gray-800 shadow px-2 py-1 text-xs font-medium"
+                className="inline-flex items-center gap-1 rounded-md bg-background shadow px-2 py-1 text-xs font-medium text-foreground"
               >
                 {mapType === 'roadmap' ? (
                   <><Satellite className="h-3.5 w-3.5" /> Satellite</>
@@ -326,21 +326,21 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
             </div>
           </div>
         ) : apiKey && !isLoaded ? (
-          <div className="w-full h-[300px] rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-            <Loader2 className="animate-spin h-8 w-8 text-gray-400" />
+          <div className="w-full h-[300px] rounded-lg bg-muted flex items-center justify-center">
+            <Loader2 className="animate-spin h-8 w-8 text-muted-foreground" />
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-4 space-y-3">
-            <p className="text-sm text-gray-500">Use &quot;My Location&quot; above, or enter coordinates manually:</p>
+          <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
+            <p className="text-sm text-muted-foreground">Use &quot;My Location&quot; above, or enter coordinates manually:</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="lat" className="block text-xs text-gray-500 mb-1">Latitude</label>
+                <label htmlFor="lat" className="block text-xs text-muted-foreground mb-1">Latitude</label>
                 <input
                   id="lat"
                   type="number"
                   step="any"
                   placeholder="-33.8688"
-                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
                   value={markerPosition?.lat ?? ''}
                   onChange={(e) => {
                     const lat = parseFloat(e.target.value);
@@ -353,13 +353,13 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
                 />
               </div>
               <div>
-                <label htmlFor="lng" className="block text-xs text-gray-500 mb-1">Longitude</label>
+                <label htmlFor="lng" className="block text-xs text-muted-foreground mb-1">Longitude</label>
                 <input
                   id="lng"
                   type="number"
                   step="any"
                   placeholder="151.2093"
-                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
                   value={markerPosition?.lng ?? ''}
                   onChange={(e) => {
                     const lng = parseFloat(e.target.value);
@@ -376,16 +376,16 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
         )}
 
         {address && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{address}</p>
+          <p className="text-xs text-muted-foreground truncate">{address}</p>
         )}
         {!markerPosition && mapAvailable && (
-          <p className="text-xs text-gray-500">Tap the map or use &quot;My Location&quot; to place a pin.</p>
+          <p className="text-xs text-muted-foreground">Tap the map or use &quot;My Location&quot; to place a pin.</p>
         )}
       </div>
 
       {/* Photo Upload */}
       <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-1">
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide flex items-center gap-1">
           <Upload className="h-4 w-4" /> Photos (optional, max {MAX_PHOTOS})
         </h2>
 
@@ -393,13 +393,13 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
           <div className="grid grid-cols-3 gap-2">
             {photos.map((photo, index) => (
               <div key={index} className="relative group">
-                <div className="w-full h-24 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
-                  <span className="text-xs text-gray-400 truncate px-1">{photo.name}</span>
+                <div className="w-full h-24 rounded-md bg-muted flex items-center justify-center overflow-hidden">
+                  <span className="text-xs text-muted-foreground truncate px-1">{photo.name}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => removePhoto(index)}
-                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -423,7 +423,7 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="inline-flex items-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               {uploading ? (
                 <><Loader2 className="animate-spin h-4 w-4" /> Uploading...</>
@@ -437,12 +437,12 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
 
       {/* Notes */}
       <div className="space-y-1">
-        <label htmlFor="pin-notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label htmlFor="pin-notes" className="block text-sm font-medium text-foreground">
           Additional Notes (optional)
         </label>
         <textarea
           id="pin-notes"
-          className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
           placeholder="Any details about the animal's condition, behaviour, or exact location..."
           value={callerNotes}
           onChange={(e) => setCallerNotes(e.target.value)}
@@ -452,7 +452,7 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
 
       {/* Error */}
       {error && (
-        <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-400">
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -462,7 +462,7 @@ export function PindropForm({ sessionId, token }: PindropFormProps) {
         type="button"
         onClick={handleSubmit}
         disabled={submitting || !markerPosition}
-        className="w-full rounded-md bg-green-600 hover:bg-green-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white font-semibold py-3 text-sm transition-colors"
+        className="w-full rounded-md bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground font-semibold py-3 text-sm transition-colors"
       >
         {submitting ? (
           <span className="inline-flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /> Submitting...</span>

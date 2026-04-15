@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Send, Loader2, CheckCircle, Clock, ExternalLink } from 'lucide-react';
+import { MapPin, Send, Loader2, CheckCircle, Clock, ExternalLink, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { getPhotoUrl } from '@/lib/photo-url';
 
 interface PindropSession {
   id: string;
@@ -241,6 +242,29 @@ export function PindropPanel({ callLogId, callerPhone, onDataReceived }: Pindrop
               </div>
             )}
 
+            {session.photoUrls.length > 0 && (
+              <div>
+                <div className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  Photos ({session.photoUrls.length})
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {session.photoUrls.map((key, i) => {
+                    const src = getPhotoUrl(key);
+                    return src ? (
+                      <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="block">
+                        <img
+                          src={src}
+                          alt={`Caller photo ${i + 1}`}
+                          className="w-full h-24 object-cover rounded-md border"
+                        />
+                      </a>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+            )}
+
             {session.callerNotes && (
               <div className="text-sm">
                 <span className="text-muted-foreground">Caller notes:</span>{' '}
@@ -331,6 +355,29 @@ export function PindropResultCard({ session }: { session: PindropSession }) {
         {session.lat && session.lng && (!apiKey || !isLoaded) && (
           <div className="rounded-md bg-muted p-3 text-sm">
             Coordinates: {session.lat.toFixed(6)}, {session.lng.toFixed(6)}
+          </div>
+        )}
+
+        {session.photoUrls.length > 0 && (
+          <div>
+            <div className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+              <ImageIcon className="h-3.5 w-3.5" />
+              Photos ({session.photoUrls.length})
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {session.photoUrls.map((key, i) => {
+                const src = getPhotoUrl(key);
+                return src ? (
+                  <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="block">
+                    <img
+                      src={src}
+                      alt={`Caller photo ${i + 1}`}
+                      className="w-full h-24 object-cover rounded-md border"
+                    />
+                  </a>
+                ) : null;
+              })}
+            </div>
           </div>
         )}
 
