@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server'
 import { createAnimal } from '@/lib/database'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { getUserRole, getAuthorisedSpecies, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
+import { commitAnimalId } from '@/lib/animalId/generate'
 
 export async function GET(request: Request) {
 	const { userId, orgId: activeOrgId } = await auth()
@@ -80,10 +82,36 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 		}
 
+		const autoGenerate = body._autoGenerateOrgAnimalId === true
+		delete body._autoGenerateOrgAnimalId
+
+		if (autoGenerate) {
+			// Use a transaction to atomically claim a sequence number and create the animal
+			const created = await prisma.$transaction(async (tx) => {
+				const generatedId = await commitAnimalId(
+					tx,
+					requestedOrgId,
+					body.dateFound || new Date().toISOString(),
+					body.species
+				)
+				body.orgAnimalId = generatedId
+				return createAnimal({ ...body, clerkUserId: userId, clerkOrganizationId: requestedOrgId }, tx)
+			})
+			logAudit({ userId, orgId: requestedOrgId, action: 'CREATE', entity: 'Animal', entityId: created.id, metadata: { name: created.name, species: created.species, orgAnimalId: created.orgAnimalId } })
+			return NextResponse.json(created, { status: 201 })
+		}
+
 		const created = await createAnimal({ ...body, clerkUserId: userId, clerkOrganizationId: requestedOrgId })
-		logAudit({ userId, orgId: requestedOrgId, action: 'CREATE', entity: 'Animal', entityId: created.id, metadata: { name: created.name, species: created.species } })
+		logAudit({ userId, orgId: requestedOrgId, action: 'CREATE', entity: 'Animal', entityId: created.id, metadata: { name: created.name, species: created.species, orgAnimalId: created.orgAnimalId } })
 		return NextResponse.json(created, { status: 201 })
 	} catch (err) {
+		// Catch unique constraint violation on orgAnimalId
+		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+			return NextResponse.json(
+				{ error: `Animal ID "${body.orgAnimalId}" is already in use by another animal in this organisation.` },
+				{ status: 422 }
+			)
+		}
 		const message = err instanceof Error ? err.message : ''
 		if (message === 'Forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 		if (message === 'Organization ID is required') return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })

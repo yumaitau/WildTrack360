@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { updateAnimal, deleteAnimal } from '@/lib/database'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { canAccessAnimal, getUserRole, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
 
@@ -54,11 +55,35 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     // Remove internal flags before saving
     delete body._overrideValidation
+    delete body._autoGenerateOrgAnimalId
+
+    // Validate orgAnimalId uniqueness within org if it changed
+    if (body.orgAnimalId && body.orgAnimalId !== animal.orgAnimalId) {
+      const existing = await prisma.animal.findFirst({
+        where: {
+          clerkOrganizationId: orgId,
+          orgAnimalId: body.orgAnimalId,
+          id: { not: id },
+        },
+      })
+      if (existing) {
+        return NextResponse.json(
+          { error: `Animal ID "${body.orgAnimalId}" is already in use by another animal in this organisation.` },
+          { status: 422 }
+        )
+      }
+    }
 
     const updated = await updateAnimal(id, body)
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'Animal', entityId: id, metadata: { fields: Object.keys(body) } })
     return NextResponse.json(updated)
   } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      return NextResponse.json(
+        { error: `Animal ID "${body.orgAnimalId}" is already in use by another animal in this organisation.` },
+        { status: 422 }
+      )
+    }
     return NextResponse.json({ error: 'Failed to update animal' }, { status: 500 })
   }
 }

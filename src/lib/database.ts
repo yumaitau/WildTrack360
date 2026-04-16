@@ -43,9 +43,10 @@ function pickAnimalFields(data: Record<string, unknown>): Record<string, unknown
 	return result;
 }
 
-export async function createAnimal(animalData: any): Promise<Animal> {
+export async function createAnimal(animalData: any, client?: any): Promise<Animal> {
+	const db = client ?? prisma;
 	const safeFields = pickAnimalFields(animalData);
-	return await prisma.animal.create({
+	return await db.animal.create({
 		data: {
 			...safeFields,
 			// These must come from server-side auth, never from the request body

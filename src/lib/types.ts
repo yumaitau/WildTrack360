@@ -33,6 +33,7 @@ export interface EnrichedCarer {
   rehabilitatesBirdOfPrey: boolean;
   memberSince: Date | null;
   trainingLevel: string | null;
+  memberId: string | null;
   hasProfile: boolean;
   trainings?: CarerTraining[];
 }

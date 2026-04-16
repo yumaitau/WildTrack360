@@ -134,6 +134,7 @@ export function PeopleManagement() {
   const [editState, setEditState] = useState('NSW');
   const [editPostcode, setEditPostcode] = useState('');
   const [editAddressSearch, setEditAddressSearch] = useState('');
+  const [editMemberId, setEditMemberId] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────────────
@@ -382,6 +383,7 @@ export function PeopleManagement() {
     setEditSuburb(carer.suburb || '');
     setEditState(carer.state || 'NSW');
     setEditPostcode(carer.postcode || '');
+    setEditMemberId(carer.memberId || '');
     const addrParts = [carer.streetAddress, carer.suburb, carer.state, carer.postcode].filter(Boolean);
     setEditAddressSearch(addrParts.length > 0 ? addrParts.join(', ') : '');
     setIsEditDialogOpen(true);
@@ -406,6 +408,7 @@ export function PeopleManagement() {
           suburb: editSuburb || null,
           state: editState || null,
           postcode: editPostcode || null,
+          memberId: editMemberId || null,
         }),
       });
 
@@ -828,9 +831,16 @@ export function PeopleManagement() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-jurisdiction">Jurisdiction</Label>
-              <Input id="edit-jurisdiction" placeholder="Jurisdiction (optional)" value={editJurisdiction} onChange={(e) => setEditJurisdiction(e.target.value)} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-jurisdiction">Jurisdiction</Label>
+                <Input id="edit-jurisdiction" placeholder="Jurisdiction (optional)" value={editJurisdiction} onChange={(e) => setEditJurisdiction(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-member-id">Member ID</Label>
+                <Input id="edit-member-id" placeholder="e.g., M-0042" value={editMemberId} onChange={(e) => setEditMemberId(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Organisation&apos;s internal identifier. Used on regulatory reports.</p>
+              </div>
             </div>
 
             <div className="space-y-4">
