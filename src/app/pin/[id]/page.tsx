@@ -29,6 +29,7 @@ export default async function PinPage({ params, searchParams }: PinPageProps) {
       sessionId={session.id}
       token={token}
       initialPhone={session.callerPhone || ''}
+      initialName={session.callerName || ''}
     />
   );
 }

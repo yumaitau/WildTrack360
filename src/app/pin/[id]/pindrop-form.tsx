@@ -8,6 +8,7 @@ interface PindropFormProps {
   sessionId: string;
   token: string;
   initialPhone?: string;
+  initialName?: string;
 }
 
 const AU_CENTER = { lat: -33.8688, lng: 151.2093 };
@@ -27,10 +28,10 @@ interface UploadedPhoto {
   name: string;
 }
 
-export function PindropForm({ sessionId, token, initialPhone = '' }: PindropFormProps) {
+export function PindropForm({ sessionId, token, initialPhone = '', initialName = '' }: PindropFormProps) {
   const [markerPosition, setMarkerPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [address, setAddress] = useState('');
-  const [callerName, setCallerName] = useState('');
+  const [callerName, setCallerName] = useState(initialName);
   const [callerEmail, setCallerEmail] = useState('');
   const [callerPhone, setCallerPhone] = useState(initialPhone);
   const [callerNotes, setCallerNotes] = useState('');
