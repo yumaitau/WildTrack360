@@ -293,7 +293,7 @@ export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerM
               {selectedReport.species || 'Unknown species'}
             </h3>
             <div className="text-sm text-gray-600 mb-1">
-              Reported by {selectedReport.callerName}
+              Reported by {selectedReport.callerName?.trim() || 'Unknown caller'}
             </div>
             {selectedReport.location && (
               <div className="text-sm text-gray-500 mb-1 truncate">
@@ -309,24 +309,22 @@ export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerM
         </InfoWindow>
       )}
 
-      {/* Distance lines from each carer to each report */}
-      {filteredCarers.flatMap(carer =>
-        reports.map(report => (
-          <Polyline
-            key={`line-${carer.id}-${report.id}`}
-            path={[
-              { lat: carer.lat, lng: carer.lng },
-              { lat: report.lat, lng: report.lng },
-            ]}
-            options={{
-              strokeColor: '#6b7280',
-              strokeOpacity: 0.4,
-              strokeWeight: 1,
-              geodesic: true,
-            }}
-          />
-        ))
-      )}
+      {/* Distance lines from each carer to the selected report */}
+      {selectedReport && filteredCarers.map(carer => (
+        <Polyline
+          key={`line-${carer.id}-${selectedReport.id}`}
+          path={[
+            { lat: carer.lat, lng: carer.lng },
+            { lat: selectedReport.lat, lng: selectedReport.lng },
+          ]}
+          options={{
+            strokeColor: '#6b7280',
+            strokeOpacity: 0.5,
+            strokeWeight: 2,
+            geodesic: true,
+          }}
+        />
+      ))}
     </GoogleMap>
   )
 
@@ -428,7 +426,7 @@ export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerM
                   <span className="text-sm">Animal report</span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur px-3 py-1.5 rounded-md shadow-sm">
-                  <span className="text-sm">Lines = carer-to-report distance</span>
+                  <span className="text-sm">Click report to show distances</span>
                 </div>
               </div>
             </div>

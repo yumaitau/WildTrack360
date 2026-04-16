@@ -47,9 +47,14 @@ export async function DELETE(
 
   // Delete uploaded photos from S3
   if (session.photoUrls.length > 0) {
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       session.photoUrls.map((key) => deleteObjectFromS3(key))
     );
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error(`[PindropCleanup] Failed to delete S3 object ${session.photoUrls[i]}:`, result.reason);
+      }
+    });
   }
 
   // Delete the session from the database
