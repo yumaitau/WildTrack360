@@ -3,7 +3,8 @@
  * No 'server-only' guard so it can be imported in vitest.
  */
 export async function allocateNextSequenceValue(
-  tx: { animalIdSequence: { upsert: Function } },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tx: { animalIdSequence: { upsert: (...args: any[]) => Promise<{ nextValue: number }> } },
   clerkOrganisationId: string,
   year: number
 ): Promise<number> {
