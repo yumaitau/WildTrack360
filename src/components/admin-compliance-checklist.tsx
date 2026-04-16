@@ -44,12 +44,14 @@ interface ChecklistCategory {
 
 interface AdminComplianceChecklistProps {
   carers: any[];
+  animals: any[];
   organization: any;
   jurisdiction: string;
 }
 
 export function AdminComplianceChecklist({
   carers,
+  animals,
   organization,
   jurisdiction,
 }: AdminComplianceChecklistProps) {
@@ -79,6 +81,10 @@ export function AdminComplianceChecklist({
       (c) => c.hasProfile && !c.licenseNumber
     );
     const carersWithoutEmail = allCarers.filter((c) => !c.email);
+
+    const carersWithoutMemberId = allCarers.filter(
+      (c) => c.hasProfile && !c.memberId
+    );
 
     const profileItems: ChecklistItem[] = [
       {
@@ -132,6 +138,20 @@ export function AdminComplianceChecklist({
                 .map((c: any) => c.name)
                 .join(", ")}${carersWithoutLicense.length > 3 ? ` and ${carersWithoutLicense.length - 3} more` : ""}`,
         actionLabel: "Update Licences",
+        actionHref: "/admin",
+      },
+      {
+        id: "profiles-member-id",
+        label: "All members have a Member ID",
+        passed: carersWithoutMemberId.length === 0 && allCarers.length > 0,
+        detail:
+          carersWithoutMemberId.length === 0
+            ? "All carer profiles have member IDs recorded"
+            : `${carersWithoutMemberId.length} member${carersWithoutMemberId.length !== 1 ? "s" : ""} missing Member ID: ${carersWithoutMemberId
+                .slice(0, 3)
+                .map((c: any) => c.name)
+                .join(", ")}${carersWithoutMemberId.length > 3 ? ` and ${carersWithoutMemberId.length - 3} more` : ""}`,
+        actionLabel: "Manage People",
         actionHref: "/admin",
       },
     ];
@@ -205,6 +225,10 @@ export function AdminComplianceChecklist({
       },
     ];
 
+    // --- Animal ID completeness ---
+    const allAnimals = animals || [];
+    const animalsWithoutId = allAnimals.filter((a: any) => !a.orgAnimalId);
+
     // --- Category 3: Organisation Profile ---
     const hasOrgName = !!organization?.name;
     const hasContactEmail = !!orgMetadata.contactEmail;
@@ -259,6 +283,20 @@ export function AdminComplianceChecklist({
         actionLabel: "Organisation Settings",
         actionHref: "/admin",
       },
+      {
+        id: "animals-have-ids",
+        label: "All animals have an Animal ID",
+        passed: animalsWithoutId.length === 0 && allAnimals.length > 0,
+        detail:
+          animalsWithoutId.length === 0
+            ? `All ${allAnimals.length} animals have IDs assigned`
+            : `${animalsWithoutId.length} animal${animalsWithoutId.length !== 1 ? "s" : ""} missing Animal ID: ${animalsWithoutId
+                .slice(0, 3)
+                .map((a: any) => a.name)
+                .join(", ")}${animalsWithoutId.length > 3 ? ` and ${animalsWithoutId.length - 3} more` : ""}`,
+        actionLabel: "Manage Animals",
+        actionHref: "/animals",
+      },
     ];
 
     return [
@@ -285,7 +323,7 @@ export function AdminComplianceChecklist({
         items: orgItems,
       },
     ] satisfies ChecklistCategory[];
-  }, [carers, organization, jurisdiction]);
+  }, [carers, animals, organization, jurisdiction]);
 
   const totalItems = categories.reduce((sum, cat) => sum + cat.items.length, 0);
   const passedItems = categories.reduce(

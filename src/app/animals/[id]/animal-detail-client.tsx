@@ -319,7 +319,10 @@ export default function AnimalDetailClient({
                     {animal.name}
                   </h1>
                   <p className="text-xl text-muted-foreground mt-1">{animal.species}</p>
-                  
+                  {animal.orgAnimalId && (
+                    <p className="text-sm font-mono text-muted-foreground mt-1">ID: {animal.orgAnimalId}</p>
+                  )}
+
                   <div className="flex flex-wrap gap-4 mt-6 text-foreground">
                     <div className="flex items-center gap-2">
                       <User className="h-5 w-5 text-accent"/>

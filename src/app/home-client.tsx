@@ -154,6 +154,9 @@ function CarerView({
               {animals.map((animal) => (
                 <div key={animal.id} className="bg-background rounded-lg p-4 border">
                   <h3 className="font-semibold text-lg">{animal.name}</h3>
+                  {animal.orgAnimalId && (
+                    <p className="text-xs font-mono text-muted-foreground">{animal.orgAnimalId}</p>
+                  )}
                   <p className="text-sm text-muted-foreground">{animal.species}</p>
                   <p className="text-sm text-muted-foreground">
                     Status: {animal.status}
@@ -211,6 +214,7 @@ function AdminCoordinatorView({
       {userRole === 'ADMIN' && (
         <AdminComplianceChecklist
           carers={carersList}
+          animals={animals}
           organization={organization}
           jurisdiction={jurisdiction}
         />
@@ -298,6 +302,9 @@ function AdminCoordinatorView({
             {animals.map((animal) => (
               <div key={animal.id} className="bg-background rounded-lg p-4 border">
                 <h3 className="font-semibold text-lg">{animal.name}</h3>
+                {animal.orgAnimalId && (
+                  <p className="text-xs font-mono text-muted-foreground">{animal.orgAnimalId}</p>
+                )}
                 <p className="text-sm text-muted-foreground">{animal.species}</p>
                 <p className="text-sm text-muted-foreground">
                   Status: {animal.status}
@@ -394,6 +401,30 @@ function AdminCoordinatorView({
                 </Link>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Animals Without Animal IDs Banner */}
+      {userRole === 'ADMIN' && animals.filter(a => !a.orgAnimalId).length > 0 && (
+        <Card className="border-blue-200 bg-blue-50 mb-8">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-blue-600" />
+              <div>
+                <p className="font-medium text-blue-800">
+                  {animals.filter(a => !a.orgAnimalId).length} animal{animals.filter(a => !a.orgAnimalId).length !== 1 ? 's' : ''} missing an Animal ID
+                </p>
+                <p className="text-sm text-blue-600">
+                  Edit each animal to assign an ID, or configure auto-generation in Admin &gt; Organisation Settings.
+                </p>
+              </div>
+            </div>
+            <Link href="/animals">
+              <Button variant="outline" size="sm">
+                Manage Animals
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       )}

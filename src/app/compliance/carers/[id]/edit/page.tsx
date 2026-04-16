@@ -44,6 +44,7 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
   const [notes, setNotes] = useState("");
   const [active, setActive] = useState(true);
   const [newSpecialty, setNewSpecialty] = useState("");
+  const [memberId, setMemberId] = useState("");
 
   // Address fields
   const [addressSearch, setAddressSearch] = useState("");
@@ -71,6 +72,7 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
         setSpecialties(data.specialties || []);
         setNotes(data.notes || "");
         setActive(data.active !== false);
+        setMemberId(data.memberId || "");
 
         // Address fields
         setStreetAddress(data.streetAddress || "");
@@ -124,6 +126,7 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
           suburb: suburb || null,
           state: state || null,
           postcode: postcode || null,
+          memberId: memberId || null,
         }),
       });
 
@@ -215,6 +218,18 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
                     <SelectItem value="NT">NT</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="memberId">Member ID</Label>
+                <Input
+                  id="memberId"
+                  value={memberId}
+                  onChange={(e) => setMemberId(e.target.value)}
+                  placeholder="e.g., M-0042"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Your organisation&apos;s internal identifier for this person. Used on regulatory reports.
+                </p>
               </div>
             </div>
           </CardContent>

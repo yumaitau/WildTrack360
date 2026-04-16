@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { getUserRole, getAuthorisedSpecies, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
+import { commitAnimalId } from '@/lib/animalId/generate'
 
 export async function GET(request: Request) {
 	const { userId, orgId: activeOrgId } = await auth()
@@ -80,8 +81,43 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 		}
 
+		const autoGenerate = body._autoGenerateOrgAnimalId === true
+		delete body._autoGenerateOrgAnimalId
+
+		if (autoGenerate) {
+			// Use a transaction to atomically claim a sequence number and create the animal
+			const created = await prisma.$transaction(async (tx) => {
+				const generatedId = await commitAnimalId(
+					tx,
+					requestedOrgId,
+					body.dateFound || new Date().toISOString(),
+					body.species
+				)
+				body.orgAnimalId = generatedId
+				return createAnimal({ ...body, clerkUserId: userId, clerkOrganizationId: requestedOrgId })
+			})
+			logAudit({ userId, orgId: requestedOrgId, action: 'CREATE', entity: 'Animal', entityId: created.id, metadata: { name: created.name, species: created.species, orgAnimalId: created.orgAnimalId } })
+			return NextResponse.json(created, { status: 201 })
+		}
+
+		// Manual orgAnimalId — validate uniqueness within org if provided
+		if (body.orgAnimalId) {
+			const existing = await prisma.animal.findFirst({
+				where: {
+					clerkOrganizationId: requestedOrgId,
+					orgAnimalId: body.orgAnimalId,
+				},
+			})
+			if (existing) {
+				return NextResponse.json(
+					{ error: `Animal ID "${body.orgAnimalId}" is already in use by another animal in this organisation.` },
+					{ status: 422 }
+				)
+			}
+		}
+
 		const created = await createAnimal({ ...body, clerkUserId: userId, clerkOrganizationId: requestedOrgId })
-		logAudit({ userId, orgId: requestedOrgId, action: 'CREATE', entity: 'Animal', entityId: created.id, metadata: { name: created.name, species: created.species } })
+		logAudit({ userId, orgId: requestedOrgId, action: 'CREATE', entity: 'Animal', entityId: created.id, metadata: { name: created.name, species: created.species, orgAnimalId: created.orgAnimalId } })
 		return NextResponse.json(created, { status: 201 })
 	} catch (err) {
 		const message = err instanceof Error ? err.message : ''

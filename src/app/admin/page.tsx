@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PawPrint, Package, Users, Leaf, ScrollText, FileSpreadsheet, ChevronDown, LayoutDashboard, ShieldCheck, ArrowRight, TrendingUp } from 'lucide-react';
+import { ArrowLeft, PawPrint, Package, Users, Leaf, ScrollText, FileSpreadsheet, ChevronDown, LayoutDashboard, ShieldCheck, ArrowRight, TrendingUp, Settings } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -21,6 +21,7 @@ import { SpeciesGroupManagement } from './species-group-management';
 import { AuditLogViewer } from './audit-log-viewer';
 import { DataExport } from './data-export';
 import { GrowthReferenceManagement } from './growth-reference-management';
+import { OrganisationSettings } from './organisation-settings';
 import { useUser, useOrganization } from '@clerk/nextjs';
 
 async function apiJson<T>(url: string): Promise<T> {
@@ -80,6 +81,13 @@ const QUICK_ACTIONS: QuickAction[] = [
     tab: 'data-export',
     adminOnly: true,
   },
+  {
+    label: 'Organisation Settings',
+    description: 'Configure animal ID format, organisation short code, and other org-level settings.',
+    icon: <Settings className="h-6 w-6" />,
+    tab: 'org-settings',
+    adminOnly: true,
+  },
 ];
 
 export default function AdminPage() {
@@ -137,7 +145,7 @@ export default function AdminPage() {
   const allowedTabs = useMemo(() => {
     const tabs = ['home', 'growth-references', 'assets'];
     if (isAdmin) {
-      tabs.push('people', 'species-groups', 'species', 'audit-log', 'data-export');
+      tabs.push('people', 'species-groups', 'species', 'audit-log', 'data-export', 'org-settings');
     }
     return tabs;
   }, [isAdmin]);
@@ -240,7 +248,7 @@ export default function AdminPage() {
                 <DropdownMenuTrigger asChild>
                   <button
                     className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                      activeTab === 'audit-log' || activeTab === 'data-export'
+                      activeTab === 'audit-log' || activeTab === 'data-export' || activeTab === 'org-settings'
                         ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground'
                     }`}
@@ -258,6 +266,10 @@ export default function AdminPage() {
                   <DropdownMenuItem onClick={() => setActiveTab('data-export')}>
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     Data Export
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setActiveTab('org-settings')}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Organisation Settings
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -349,6 +361,11 @@ export default function AdminPage() {
           {isAdmin && (
             <TabsContent value="data-export">
               <DataExport />
+            </TabsContent>
+          )}
+          {isAdmin && (
+            <TabsContent value="org-settings">
+              <OrganisationSettings />
             </TabsContent>
           )}
           <TabsContent value="growth-references">

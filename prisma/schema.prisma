@@ -179,6 +179,9 @@ model CarerProfile {
   // Training Relations
   trainings CarerTraining[]
 
+  // Organisation member ID (free text, org-specific identifier)
+  memberId String? @map("member_id")
+
   // Hygiene Logs
   hygieneLogs HygieneLog[]
 
@@ -950,6 +953,29 @@ model SmsLog {
   @@index([organisationId])
   @@index([organisationId, createdAt])
   @@map("sms_logs")
+}
+
+// ─── Organisation Settings ─────────────────────────────────────────────────
+
+model OrganisationSettings {
+  id                   String   @id @default(cuid())
+  clerkOrganisationId  String   @unique @map("clerk_organisation_id")
+  orgShortCode         String   @default("ORG") @map("org_short_code")
+  animalIdTemplate     String   @default("{ORG_SHORT}-{YYYY}-{seq:4}") @map("animal_id_template")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("organisation_settings")
+}
+
+model AnimalIdSequence {
+  id                   String @id @default(cuid())
+  clerkOrganisationId  String @map("clerk_organisation_id")
+  year                 Int
+  nextValue            Int    @default(1) @map("next_value")
+
+  @@unique([clerkOrganisationId, year])
+  @@map("animal_id_sequences")
 }
 
 // ─── Growth Calculator Models ───────────────────────────────────────────────

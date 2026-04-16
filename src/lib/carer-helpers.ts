@@ -69,6 +69,7 @@ export async function getEnrichedCarers(orgId: string): Promise<EnrichedCarer[]>
         rehabilitatesBirdOfPrey: profile?.rehabilitatesBirdOfPrey ?? false,
         memberSince: profile?.memberSince ?? null,
         trainingLevel: profile?.trainingLevel ?? null,
+        memberId: profile?.memberId ?? null,
         // Meta
         hasProfile: !!profile,
         trainings: profile?.trainings ?? [],
@@ -116,6 +117,7 @@ export async function getEnrichedCarer(userId: string, orgId: string): Promise<E
     rehabilitatesBirdOfPrey: profile?.rehabilitatesBirdOfPrey ?? false,
     memberSince: profile?.memberSince ?? null,
     trainingLevel: profile?.trainingLevel ?? null,
+    memberId: profile?.memberId ?? null,
     hasProfile: !!profile,
     trainings: profile?.trainings ?? [],
   };
