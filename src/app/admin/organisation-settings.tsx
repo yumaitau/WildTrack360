@@ -17,7 +17,10 @@ export function OrganisationSettings() {
 
   useEffect(() => {
     fetch("/api/admin/org-settings")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
       .then((data) => {
         setOrgShortCode(data.orgShortCode ?? "ORG");
         setAnimalIdTemplate(data.animalIdTemplate ?? "{ORG_SHORT}-{YYYY}-{seq:4}");
@@ -26,7 +29,8 @@ export function OrganisationSettings() {
         toast.error("Failed to load organisation settings");
       })
       .finally(() => setLoading(false));
-  }, [toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const preview = useMemo(
     () =>

@@ -84,6 +84,7 @@ model Animal {
   postReleaseMonitoring    PostReleaseMonitoring[]
   growthMeasurements       GrowthMeasurement[]
 
+  @@unique([clerkOrganizationId, orgAnimalId])
   @@map("animals")
 }
 
@@ -185,6 +186,7 @@ model CarerProfile {
   // Hygiene Logs
   hygieneLogs HygieneLog[]
 
+  @@unique([clerkOrganizationId, memberId])
   @@map("carers")
 }
 

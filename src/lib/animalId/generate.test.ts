@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
+import { allocateNextSequenceValue } from "./sequence";
 
 // Use a direct Prisma client for integration tests (no server-only guard)
 const prisma = new PrismaClient();
@@ -7,24 +8,9 @@ const prisma = new PrismaClient();
 const TEST_ORG_ID = `test-org-animalid-${Date.now()}`;
 const TEST_YEAR = 2099;
 
-// We can't import the server-only generate.ts directly in vitest,
-// so we inline the core logic for the integration test.
 async function commitAnimalIdDirect(orgId: string, year: number): Promise<number> {
   return prisma.$transaction(async (tx) => {
-    const seqRow = await tx.animalIdSequence.upsert({
-      where: {
-        clerkOrganisationId_year: { clerkOrganisationId: orgId, year },
-      },
-      create: {
-        clerkOrganisationId: orgId,
-        year,
-        nextValue: 2,
-      },
-      update: {
-        nextValue: { increment: 1 },
-      },
-    });
-    return seqRow.nextValue - 1;
+    return allocateNextSequenceValue(tx, orgId, year);
   });
 }
 

@@ -28,3 +28,9 @@ CREATE UNIQUE INDEX "organisation_settings_clerk_organisation_id_key" ON "public
 
 -- CreateIndex
 CREATE UNIQUE INDEX "animal_id_sequences_clerk_organisation_id_year_key" ON "public"."animal_id_sequences"("clerk_organisation_id", "year");
+
+-- CreateIndex: org-scoped uniqueness for Animal IDs
+CREATE UNIQUE INDEX "animals_clerkOrganizationId_org_animal_id_key" ON "public"."animals"("clerkOrganizationId", "org_animal_id");
+
+-- CreateIndex: org-scoped uniqueness for Member IDs
+CREATE UNIQUE INDEX "carers_clerkOrganizationId_member_id_key" ON "public"."carers"("clerkOrganizationId", "member_id");

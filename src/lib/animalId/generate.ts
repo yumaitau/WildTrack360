@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { renderAnimalIdTemplate, type TemplateContext } from "./template";
+import { allocateNextSequenceValue } from "./sequence";
 import type { Prisma, PrismaClient } from "@prisma/client";
 
 type TransactionClient = Omit<
@@ -17,6 +18,9 @@ async function getOrgSettings(orgId: string) {
 
 function yearFromDate(date: Date | string): number {
   const d = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(d.getTime())) {
+    throw new Error(`Invalid date passed to yearFromDate: ${String(date)}`);
+  }
   return d.getFullYear();
 }
 
@@ -65,23 +69,7 @@ export async function commitAnimalId(
   const orgShortCode = settings?.orgShortCode ?? "ORG";
   const year = yearFromDate(intakeDate);
 
-  // Upsert + atomic increment. The unique constraint on (orgId, year)
-  // guarantees only one row exists per combination.
-  const seqRow = await tx.animalIdSequence.upsert({
-    where: { clerkOrganisationId_year: { clerkOrganisationId: orgId, year } },
-    create: {
-      clerkOrganisationId: orgId,
-      year,
-      nextValue: 2, // We're claiming value 1, so next is 2
-    },
-    update: {
-      nextValue: { increment: 1 },
-    },
-  });
-
-  // The claimed value is (nextValue - 1) after the increment,
-  // or 1 when we just created the row (nextValue is already 2).
-  const claimedValue = seqRow.nextValue - 1;
+  const claimedValue = await allocateNextSequenceValue(tx, orgId, year);
 
   const ctx: TemplateContext = {
     orgShortCode,

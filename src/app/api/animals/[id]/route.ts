@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { updateAnimal, deleteAnimal } from '@/lib/database'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { canAccessAnimal, getUserRole, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
 
@@ -77,6 +78,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'Animal', entityId: id, metadata: { fields: Object.keys(body) } })
     return NextResponse.json(updated)
   } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      return NextResponse.json(
+        { error: `Animal ID "${body.orgAnimalId}" is already in use by another animal in this organisation.` },
+        { status: 422 }
+      )
+    }
     return NextResponse.json({ error: 'Failed to update animal' }, { status: 500 })
   }
 }
