@@ -36,6 +36,19 @@ export default function SignInPage() {
       hash.includes('redirect_url') || hash.includes('after_sign_in_url');
 
     if (hasClerkQueryParams || hasClerkHashParams) {
+      // If redirect_url points back to /sign-in, strip the bad params to prevent a loop.
+      // Clerk reads these from the URL directly, so we must clean the URL before rendering <SignIn />.
+      const redirectUrl = searchParams.get('redirect_url');
+      const isSelfRedirect = redirectUrl && new URL(redirectUrl, window.location.origin).pathname.startsWith('/sign-in');
+
+      if (isSelfRedirect) {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('redirect_url');
+        cleanUrl.searchParams.delete('after_sign_in_url');
+        cleanUrl.searchParams.delete('after_sign_up_url');
+        window.history.replaceState({}, '', cleanUrl.toString());
+      }
+
       setShowFullSignIn(true);
     }
   }, [searchParams, router]);
@@ -44,7 +57,7 @@ export default function SignInPage() {
   if (showFullSignIn) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-background to-muted/20">
-        <SignIn />
+        <SignIn fallbackRedirectUrl="/" />
       </div>
     );
   }
