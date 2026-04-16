@@ -26,6 +26,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import CarerMap from '@/components/carer-map';
 import { getPhotoUrl } from '@/lib/photo-url';
 
@@ -84,6 +94,7 @@ export default function NewCallLogPage() {
   const [callerEmail, setCallerEmail] = useState('');
   const [species, setSpecies] = useState('');
   const [location, setLocation] = useState('');
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [suburb, setSuburb] = useState('');
   const [postcode, setPostcode] = useState('');
   const [reason, setReason] = useState('');
@@ -112,6 +123,11 @@ export default function NewCallLogPage() {
   const [pindropSession, setPindropSession] = useState<PindropSession | null>(null);
   const [pindropSending, setPindropSending] = useState(false);
   const [pindropDismissed, setPindropDismissed] = useState(false);
+  const [callSaved, setCallSaved] = useState(false);
+
+  // Navigation warning state
+  const [navWarningOpen, setNavWarningOpen] = useState(false);
+  const [pendingNavHref, setPendingNavHref] = useState<string | null>(null);
 
   // Refs to track current form values for safe polling callback access
   const callerNameRef = useRef(callerName);
@@ -122,6 +138,77 @@ export default function NewCallLogPage() {
   callerEmailRef.current = callerEmail;
   callerPhoneRef.current = callerPhone;
   locationRef.current = location;
+
+  const hasFormContent = !!(
+    callerName.trim() || callerPhone.trim() || callerEmail.trim() ||
+    species || location.trim() || notes.trim() || pindropSession
+  );
+  const hasUnsavedWork = hasFormContent && !callSaved;
+  const hasUnsavedPindrop = !!pindropSession && !callSaved;
+
+  // Use a ref so event handlers always see the latest value
+  const hasUnsavedWorkRef = useRef(hasUnsavedWork);
+  hasUnsavedWorkRef.current = hasUnsavedWork;
+
+  // Warn before browser/tab close or browser back button
+  useEffect(() => {
+    if (!hasUnsavedWork) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+
+    // Catch browser back/forward — push a dummy history entry and intercept popstate
+    const handlePopState = () => {
+      if (hasUnsavedWorkRef.current) {
+        // Push state back so the user stays on the page
+        window.history.pushState(null, '', window.location.href);
+        setPendingNavHref(null);
+        setNavWarningOpen(true);
+      }
+    };
+
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [hasUnsavedWork]);
+
+  // Delete abandoned pindrop session and its S3 photos
+  const abandonPindrop = useCallback(async (sessionId: string) => {
+    try {
+      await fetch(`/api/pindrop/${sessionId}`, { method: 'DELETE' });
+    } catch {
+      // Best-effort cleanup
+    }
+  }, []);
+
+  // Handle guarded navigation (Back, Home, Cancel buttons)
+  const handleGuardedNav = useCallback((href: string) => {
+    if (hasUnsavedWork) {
+      setPendingNavHref(href);
+      setNavWarningOpen(true);
+    } else {
+      router.push(href);
+    }
+  }, [hasUnsavedWork, router]);
+
+  const confirmAbandon = useCallback(async () => {
+    setNavWarningOpen(false);
+    setCallSaved(true); // Prevent re-triggering guards
+    if (pindropSession) {
+      await abandonPindrop(pindropSession.id);
+    }
+    if (pendingNavHref) {
+      router.push(pendingNavHref);
+    } else {
+      // Browser back button case — go back in history
+      window.history.back();
+    }
+  }, [pindropSession, pendingNavHref, abandonPindrop, router]);
 
   const { isLoaded: mapsLoaded } = useGoogleMaps();
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '';
@@ -164,6 +251,12 @@ export default function NewCallLogPage() {
         const postcodeComp = components.find(c => c.types.includes('postal_code'));
         if (suburbComp) setSuburb(suburbComp.long_name);
         if (postcodeComp) setPostcode(postcodeComp.long_name);
+        if (place.geometry?.location) {
+          setLocationCoords({
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
+          });
+        }
         setAddressOpen(false);
         setAddressSuggestions([]);
       }
@@ -258,7 +351,7 @@ export default function NewCallLogPage() {
       const res = await fetch('/api/pindrop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callerPhone }),
+        body: JSON.stringify({ callerPhone, callerName: callerName.trim() || undefined }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -297,10 +390,11 @@ export default function NewCallLogPage() {
     setLoading(true);
 
     try {
-      // Build coordinates from pindrop if available
-      const coordinates = pindropSession?.status === 'SUBMITTED' && pindropSession.lat != null && pindropSession.lng != null
-        ? { lat: pindropSession.lat, lng: pindropSession.lng }
-        : null;
+      // Build coordinates from pindrop if available, otherwise from address autocomplete
+      const coordinates =
+        pindropSession?.status === 'SUBMITTED' && pindropSession.lat != null && pindropSession.lng != null
+          ? { lat: pindropSession.lat, lng: pindropSession.lng }
+          : locationCoords;
 
       const payload = {
         dateTime: dateTime.toISOString(),
@@ -333,6 +427,7 @@ export default function NewCallLogPage() {
       const data = await response.json();
 
       if (response.ok) {
+        setCallSaved(true);
         toast({ title: "Success", description: "Call log created successfully" });
         router.push('/compliance/call-logs');
       } else {
@@ -360,16 +455,12 @@ export default function NewCallLogPage() {
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/compliance/call-logs">
-          <Button variant="outline" size="icon" className="shrink-0" aria-label="Back to call logs">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <Link href="/">
-          <Button variant="outline" size="icon" className="shrink-0" aria-label="Home">
-            <Home className="h-4 w-4" />
-          </Button>
-        </Link>
+        <Button variant="outline" size="icon" className="shrink-0" aria-label="Back to call logs" onClick={() => handleGuardedNav('/compliance/call-logs')}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="icon" className="shrink-0" aria-label="Home" onClick={() => handleGuardedNav('/')}>
+          <Home className="h-4 w-4" />
+        </Button>
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold">New Call</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
@@ -931,9 +1022,7 @@ export default function NewCallLogPage() {
               </div>
 
               <div className="flex justify-end gap-4">
-                <Link href="/compliance/call-logs">
-                  <Button type="button" variant="outline">Cancel</Button>
-                </Link>
+                <Button type="button" variant="outline" onClick={() => handleGuardedNav('/compliance/call-logs')}>Cancel</Button>
                 <Button type="submit" disabled={loading}>
                   {loading ? 'Creating...' : 'Log Call'}
                 </Button>
@@ -971,6 +1060,29 @@ export default function NewCallLogPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Navigation warning when abandoning unsaved call */}
+      <AlertDialog open={navWarningOpen} onOpenChange={setNavWarningOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Call Details</AlertDialogTitle>
+            <AlertDialogDescription>
+              {hasUnsavedPindrop
+                ? 'You have an active location request SMS for this call. If you leave now, the call details will be lost and any photos uploaded by the caller will be deleted.'
+                : 'You have unsaved call details. If you leave now, all entered information will be lost.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay on Page</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmAbandon}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Leave &amp; Discard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

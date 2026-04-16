@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
-  const { callerPhone, callLogId } = body as { callerPhone?: string; callLogId?: string };
+  const { callerPhone, callerName, callLogId } = body as { callerPhone?: string; callerName?: string; callLogId?: string };
 
   if (!callerPhone) {
     return NextResponse.json({ error: 'Caller phone is required' }, { status: 400 });
@@ -38,6 +38,7 @@ export async function POST(request: Request) {
     data: {
       accessToken: nanoid(32),
       callerPhone,
+      callerName: callerName || null,
       callLogId: callLogId || null,
       clerkOrganizationId: orgId,
       clerkUserId: userId,

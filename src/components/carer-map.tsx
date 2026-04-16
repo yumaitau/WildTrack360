@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react'
-import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api'
+import { GoogleMap, Marker, InfoWindow, Polyline } from '@react-google-maps/api'
 import { useGoogleMaps } from '@/components/google-maps-provider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import Link from 'next/link'
 import type { CarerMapEntry } from '@/app/api/carers/map/route'
+import type { ReportMapEntry } from '@/app/api/reports/map/route'
 
 interface CarerMapProps {
   initialSpeciesFilter?: string
@@ -34,9 +35,11 @@ const DEFAULT_ZOOM = 10
 export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerMapProps) {
   const { isLoaded } = useGoogleMaps()
   const [carers, setCarers] = useState<CarerMapEntry[]>([])
+  const [reports, setReports] = useState<ReportMapEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedCarer, setSelectedCarer] = useState<CarerMapEntry | null>(null)
+  const [selectedReport, setSelectedReport] = useState<ReportMapEntry | null>(null)
   const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap')
   const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -45,19 +48,26 @@ export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerM
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
-    async function fetchCarers() {
+    async function fetchMapData() {
       try {
-        const res = await fetch('/api/carers/map')
-        if (!res.ok) throw new Error('Failed to fetch carer locations')
-        const data: CarerMapEntry[] = await res.json()
-        setCarers(data)
+        const [carersRes, reportsRes] = await Promise.all([
+          fetch('/api/carers/map'),
+          fetch('/api/reports/map'),
+        ])
+        if (!carersRes.ok) throw new Error('Failed to fetch carer locations')
+        const carersData: CarerMapEntry[] = await carersRes.json()
+        setCarers(carersData)
+        if (reportsRes.ok) {
+          const reportsData: ReportMapEntry[] = await reportsRes.json()
+          setReports(reportsData)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load map data')
       } finally {
         setLoading(false)
       }
     }
-    fetchCarers()
+    fetchMapData()
   }, [])
 
   // Derive unique specialties for filter dropdown
@@ -254,6 +264,67 @@ export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerM
           </div>
         </InfoWindow>
       )}
+
+      {/* Animal report markers */}
+      {reports.map(report => (
+        <Marker
+          key={`report-${report.id}`}
+          position={{ lat: report.lat, lng: report.lng }}
+          title={report.species || 'Animal report'}
+          onClick={() => setSelectedReport(report)}
+          icon={{
+            path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+            scale: 6,
+            fillColor: '#dc2626',
+            fillOpacity: 1,
+            strokeColor: 'white',
+            strokeWeight: 2,
+          }}
+        />
+      ))}
+
+      {selectedReport && (
+        <InfoWindow
+          position={{ lat: selectedReport.lat, lng: selectedReport.lng }}
+          onCloseClick={() => setSelectedReport(null)}
+        >
+          <div className="min-w-[180px] max-w-[260px] p-1">
+            <h3 className="font-semibold text-base mb-1">
+              {selectedReport.species || 'Unknown species'}
+            </h3>
+            <div className="text-sm text-gray-600 mb-1">
+              Reported by {selectedReport.callerName?.trim() || 'Unknown caller'}
+            </div>
+            {selectedReport.location && (
+              <div className="text-sm text-gray-500 mb-1 truncate">
+                {selectedReport.location}
+              </div>
+            )}
+            <div className="text-xs text-gray-400">
+              {new Date(selectedReport.dateTime).toLocaleDateString('en-AU', {
+                day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+              })}
+            </div>
+          </div>
+        </InfoWindow>
+      )}
+
+      {/* Distance lines from each carer to the selected report */}
+      {selectedReport && filteredCarers.map(carer => (
+        <Polyline
+          key={`line-${carer.id}-${selectedReport.id}`}
+          path={[
+            { lat: carer.lat, lng: carer.lng },
+            { lat: selectedReport.lat, lng: selectedReport.lng },
+          ]}
+          options={{
+            strokeColor: '#6b7280',
+            strokeOpacity: 0.5,
+            strokeWeight: 2,
+            geodesic: true,
+          }}
+        />
+      ))}
     </GoogleMap>
   )
 
@@ -298,7 +369,8 @@ export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerM
 
             <div className="flex items-center justify-between mt-3">
               <p className="text-sm text-muted-foreground">
-                Showing {filteredCarers.length} of {carers.length} carer{carers.length !== 1 ? 's' : ''} on map
+                Showing {filteredCarers.length} of {carers.length} carer{carers.length !== 1 ? 's' : ''}
+                {reports.length > 0 && ` and ${reports.length} animal report${reports.length !== 1 ? 's' : ''}`} on map
               </p>
               {activeFilterCount > 0 && (
                 <Button
@@ -350,7 +422,11 @@ export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerM
                   <span className="text-sm">Carer location</span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur px-3 py-1.5 rounded-md shadow-sm">
-                  <span className="text-sm">Number = animals in care</span>
+                  <div className="w-3 h-3 bg-red-600" style={{ clipPath: 'polygon(50% 100%, 0% 0%, 100% 0%)' }}></div>
+                  <span className="text-sm">Animal report</span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur px-3 py-1.5 rounded-md shadow-sm">
+                  <span className="text-sm">Click report to show distances</span>
                 </div>
               </div>
             </div>
