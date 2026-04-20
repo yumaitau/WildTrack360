@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, ShieldCheck, ShieldAlert, User, RefreshCw, LogOut, Building, AlertTriangle, Clock, Menu, X } from 'lucide-react';
+import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, ShieldCheck, ShieldAlert, User, RefreshCw, LogOut, Building, AlertTriangle, Clock, Menu, X, Calculator } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Animal } from '@prisma/client';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -651,6 +651,12 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                   </div>
                 </div>
               </div>
+              <Link href="/tools">
+                <Button variant="ghost" size="sm">
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Tools
+                </Button>
+              </Link>
               {userRole !== 'CARER' && userRole !== 'CARER_ALL' && (
                 <Link href="/admin">
                   <Button size="sm">
@@ -702,6 +708,12 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                 </div>
               </div>
               <div className="flex flex-col gap-2">
+                <Link href="/tools" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" size="sm" className="w-full">
+                    <Calculator className="h-4 w-4 mr-2" />
+                    Tools
+                  </Button>
+                </Link>
                 {userRole !== 'CARER' && userRole !== 'CARER_ALL' && (
                   <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
                     <Button size="sm" className="w-full">
