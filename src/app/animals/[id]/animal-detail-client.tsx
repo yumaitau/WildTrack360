@@ -326,7 +326,7 @@ export default function AnimalDetailClient({
                   <div className="flex flex-wrap gap-4 mt-6 text-foreground">
                     <div className="flex items-center gap-2">
                       <User className="h-5 w-5 text-accent"/>
-                      <span className="font-semibold">Carer:</span> {carerOptions.find(c => c.value === animal.carerId)?.label ?? '—'}
+                      <span className="font-semibold" title="Current carer — appears as the Rehabilitator name on NSW annual reports">Carer:</span> {carerOptions.find(c => c.value === animal.carerId)?.label ?? '—'}
                       <Button
                         variant="outline"
                         size="sm"
@@ -481,10 +481,16 @@ export default function AnimalDetailClient({
                             <span>{animal.fate}</span>
                           </div>
                         )}
-                        {animal.markBandMicrochip && (
+                        {animal.tagBandColourNumber && (
                           <div className="flex items-start gap-2">
-                            <span className="font-medium text-muted-foreground">Mark/Band/Microchip:</span>
-                            <span>{animal.markBandMicrochip}</span>
+                            <span className="font-medium text-muted-foreground">Tag/Band:</span>
+                            <span>{animal.tagBandColourNumber}</span>
+                          </div>
+                        )}
+                        {animal.microchipNumber && (
+                          <div className="flex items-start gap-2">
+                            <span className="font-medium text-muted-foreground">Microchip:</span>
+                            <span>{animal.microchipNumber}</span>
                           </div>
                         )}
                         {animal.lifeStage && (

@@ -77,6 +77,8 @@ interface MemberRecord {
   rehabilitatingKoala: boolean;
   rehabilitatingFlyingFox: boolean;
   rehabilitatingBirdOfPrey: boolean;
+  rehabilitatingVenomousSnake: boolean;
+  rehabilitatingMarineReptile: boolean;
 }
 
 export class NSWReportGenerator {
@@ -265,9 +267,9 @@ export class NSWReportGenerator {
         'Executive Position (If yes, please specify position)',
         'Species Coordinator / Mentor (If yes, please specify for which species)',
         'Is the member rehabilitating any of the species listed below?',
-        '', '', ''
+        '', '', '', ''
       ],
-      ['', '', '', '', '', '', '', '', '', '', '', 'Koala', 'Flying-Fox', 'Bird of Prey', '']
+      ['', '', '', '', '', '', '', '', '', '', '', 'Koala', 'Flying-Fox', 'Bird of Prey', 'Venomous Snake', 'Marine Reptiles']
     ];
 
     const dataRows = this.data.carers.map((carer: any) => {
@@ -285,7 +287,9 @@ export class NSWReportGenerator {
         speciesCoordinator: carer.speciesCoordinatorFor || carer.specialties?.join(', ') || '',
         rehabilitatingKoala: carer.rehabilitatesKoala || carer.specialties?.includes('Koala') || false,
         rehabilitatingFlyingFox: carer.rehabilitatesFlyingFox || carer.specialties?.includes('Flying-Fox') || false,
-        rehabilitatingBirdOfPrey: carer.rehabilitatesBirdOfPrey || carer.specialties?.includes('Bird of Prey') || false
+        rehabilitatingBirdOfPrey: carer.rehabilitatesBirdOfPrey || carer.specialties?.includes('Bird of Prey') || false,
+        rehabilitatingVenomousSnake: carer.rehabilitatesVenomousSnake || carer.specialties?.includes('Venomous Snake') || false,
+        rehabilitatingMarineReptile: carer.rehabilitatesMarineReptile || carer.specialties?.includes('Marine Reptiles') || false
       };
 
       return [
@@ -303,13 +307,14 @@ export class NSWReportGenerator {
         memberRecord.rehabilitatingKoala ? 'Yes' : 'No',
         memberRecord.rehabilitatingFlyingFox ? 'Yes' : 'No',
         memberRecord.rehabilitatingBirdOfPrey ? 'Yes' : 'No',
-        ''
+        memberRecord.rehabilitatingVenomousSnake ? 'Yes' : 'No',
+        memberRecord.rehabilitatingMarineReptile ? 'Yes' : 'No'
       ];
     });
 
     const ws = wb.addWorksheet('Register of Members');
     this.addRowsToSheet(ws, [...headers, ...dataRows]);
-    this.setColumnWidths(ws, [12, 15, 15, 25, 20, 8, 10, 25, 15, 25, 30, 10, 12, 14, 5]);
+    this.setColumnWidths(ws, [12, 15, 15, 25, 20, 8, 10, 25, 15, 25, 30, 10, 12, 14, 14, 14]);
   }
 
   private addPrivacyNotice(wb: ExcelJS.Workbook) {
@@ -340,7 +345,11 @@ export class NSWReportGenerator {
 
   async getReportBuffer(): Promise<ArrayBuffer> {
     const wb = this.generateReport();
-    const nodeBuffer = await wb.xlsx.writeBuffer();
-    return nodeBuffer as ArrayBuffer;
+    const out = await wb.xlsx.writeBuffer();
+    // ExcelJS returns a Node Buffer at runtime; slice the underlying
+    // ArrayBuffer so the advertised return type isn't a cast lie.
+    if (out instanceof ArrayBuffer) return out;
+    const view = out as unknown as Uint8Array;
+    return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
   }
 }
