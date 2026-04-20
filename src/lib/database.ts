@@ -28,7 +28,7 @@ const ANIMAL_SAFE_FIELDS = [
 	'rescuePostcode', 'releaseLocation', 'releaseCoordinates', 'releaseNotes',
 	'releaseAddress', 'releaseSuburb', 'releasePostcode',
 	'encounterType', 'initialWeightGrams', 'weightUnit', 'animalCondition',
-	'pouchCondition', 'fate', 'markBandMicrochip', 'lifeStage',
+	'pouchCondition', 'fate', 'tagBandColourNumber', 'microchipNumber', 'lifeStage',
 	'dateAdmitted', 'orgAnimalId', 'outcomeReason',
 	'carerId',
 ] as const;

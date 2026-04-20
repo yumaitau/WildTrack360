@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { NSWReportGenerator, NSWReportData, TransferRecord, PermanentCareRecord, PreservedSpecimenRecord } from '@/lib/nsw-report-generator';
-import { NSW_FATE_OPTIONS } from '@/lib/compliance-rules';
+import { NSWDetailedReportGenerator, NSWDetailedReportData } from '@/lib/nsw-detailed-report-generator';
 import { useOrganization, useUser } from '@clerk/nextjs';
 
 interface NSWReportClientProps {
@@ -154,6 +154,61 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
     return true;
   };
 
+  const generateDetailedReport = async () => {
+    setErrors({});
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      const rehabilitatorsByCarerId: Record<string, string> = {};
+      for (const c of initialCarers) {
+        rehabilitatorsByCarerId[c.id] = c.name;
+      }
+
+      const reportData: NSWDetailedReportData = {
+        reportingPeriod: { startDate, endDate },
+        organization: {
+          name: orgName,
+          licenseNumber,
+          contactName,
+        },
+        animals: filteredAnimals,
+        rehabilitatorsByCarerId,
+      };
+
+      const generator = new NSWDetailedReportGenerator(reportData);
+      const buffer = await generator.getReportBuffer();
+
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `NSW_Wildlife_Detailed_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Detailed Report Generated',
+        description: `Datasheet contains ${filteredAnimals.length} encounter rows.`,
+      });
+    } catch (error) {
+      console.error('Error generating detailed report:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to generate detailed report. Please try again.';
+      toast({
+        title: 'Error Generating Detailed Report',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generateReport = async () => {
     // Clear previous errors
     setErrors({});
@@ -170,7 +225,9 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
       const transfers: TransferRecord[] = transferredAnimals.map((animal: any) => ({
         animalId: animal.id,
         species: animal.species,
-        markBandMicrochip: animal.markBandMicrochip || '',
+        markBandMicrochip: [animal.tagBandColourNumber, animal.microchipNumber]
+          .filter(Boolean)
+          .join(' / '),
         dateOfTransfer: animal.outcomeDate || new Date(),
         reasonForTransfer: animal.notes || 'Care transfer',
         recipientName: '', // Would need transfer tracking table
@@ -185,7 +242,9 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
       const permanentCare: PermanentCareRecord[] = permanentCareAnimals.map(animal => ({
         animalId: animal.id,
         species: animal.species,
-        markBandMicrochip: '', // Would need to be added to Animal model
+        markBandMicrochip: [animal.tagBandColourNumber, animal.microchipNumber]
+          .filter(Boolean)
+          .join(' / '),
         facilityName: '', // Would need to be tracked
         licenseNumber: '', // Would need to be tracked
         address: '', // Would need to be tracked
@@ -500,8 +559,17 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
         </CardContent>
       </Card>
 
-      {/* Generate Button */}
-      <div className="flex justify-end gap-4">
+      {/* Generate Buttons */}
+      <div className="flex flex-col sm:flex-row justify-end gap-3">
+        <Button
+          size="lg"
+          variant="outline"
+          onClick={generateDetailedReport}
+          disabled={loading}
+        >
+          <FileSpreadsheet className="mr-2 h-5 w-5" />
+          {loading ? 'Generating...' : 'Generate NSW Detailed Report'}
+        </Button>
         <Button
           size="lg"
           onClick={generateReport}
@@ -518,8 +586,14 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
           <CardTitle className="text-blue-900">Report Information</CardTitle>
         </CardHeader>
         <CardContent className="text-blue-800 space-y-2">
-          <p>This report generator creates the NSW Wildlife Rehabilitation Combined Report in the official format required by the Department of Planning and Environment.</p>
-          <p>The report includes:</p>
+          <p>NSW DCCEEW requires two workbooks submitted together each financial year. This page generates both.</p>
+          <p className="mt-2"><strong>Detailed Report</strong> — one row per animal encounter on the Datasheet tab, plus reference tabs:</p>
+          <ul className="list-disc list-inside ml-4 space-y-1">
+            <li>Datasheet (encounter records)</li>
+            <li>Species list, Encounter type, Animal condition, Fate (reference picklists)</li>
+            <li>Reference data (Sex, Life stage, Pouch condition, Weight unit)</li>
+          </ul>
+          <p className="mt-2"><strong>Combined Report</strong> — organisation-level registers:</p>
           <ul className="list-disc list-inside ml-4 space-y-1">
             <li>Transferred Animal Register</li>
             <li>Permanent Care Register</li>
@@ -528,8 +602,8 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
             <li>Nil Return declaration (if applicable)</li>
           </ul>
           <p className="mt-4">
-            <strong>Note:</strong> Some fields may be empty if the corresponding data has not been entered in the system. 
-            Please ensure all transfer details, permanent care approvals, and member information are up to date before generating the report.
+            <strong>Note:</strong> Some fields may be empty if the corresponding data has not been entered in the system.
+            Reconcile species, suburb/postcode, encounter type, animal condition and fate picklists against the latest NSW template (drop-downs live in the official XLSX).
           </p>
         </CardContent>
       </Card>

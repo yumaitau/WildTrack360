@@ -19,6 +19,7 @@ import { useOrganization } from "@clerk/nextjs";
 import { useToast } from "@/hooks/use-toast";
 import { use } from 'react';
 import { AddressAutocomplete, type AddressDetails } from "@/components/address-autocomplete";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface EditCarerPageProps {
   params: Promise<{ id: string }>;
@@ -53,6 +54,13 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
   const [state, setState] = useState("");
   const [postcode, setPostcode] = useState("");
 
+  // NSW Species Endorsements (Member Register columns L-P)
+  const [rehabilitatesKoala, setRehabilitatesKoala] = useState(false);
+  const [rehabilitatesFlyingFox, setRehabilitatesFlyingFox] = useState(false);
+  const [rehabilitatesBirdOfPrey, setRehabilitatesBirdOfPrey] = useState(false);
+  const [rehabilitatesVenomousSnake, setRehabilitatesVenomousSnake] = useState(false);
+  const [rehabilitatesMarineReptile, setRehabilitatesMarineReptile] = useState(false);
+
   useEffect(() => {
     const loadCarer = async () => {
       try {
@@ -79,6 +87,13 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
         setSuburb(data.suburb || "");
         setState(data.state || "");
         setPostcode(data.postcode || "");
+
+        // NSW Species Endorsements
+        setRehabilitatesKoala(!!data.rehabilitatesKoala);
+        setRehabilitatesFlyingFox(!!data.rehabilitatesFlyingFox);
+        setRehabilitatesBirdOfPrey(!!data.rehabilitatesBirdOfPrey);
+        setRehabilitatesVenomousSnake(!!data.rehabilitatesVenomousSnake);
+        setRehabilitatesMarineReptile(!!data.rehabilitatesMarineReptile);
         // Pre-fill the search field with the formatted address
         const addressParts = [data.streetAddress, data.suburb, data.state, data.postcode].filter(Boolean);
         if (addressParts.length > 0) setAddressSearch(addressParts.join(", "));
@@ -127,6 +142,11 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
           state: state || null,
           postcode: postcode || null,
           memberId: memberId || null,
+          rehabilitatesKoala,
+          rehabilitatesFlyingFox,
+          rehabilitatesBirdOfPrey,
+          rehabilitatesVenomousSnake,
+          rehabilitatesMarineReptile,
         }),
       });
 
@@ -403,6 +423,34 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
             </div>
           </CardContent>
         </Card>
+
+        {/* NSW Species Endorsements */}
+        {jurisdiction === "NSW" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>NSW Species Endorsements</CardTitle>
+              <CardDescription>
+                Required for the NSW DCCEEW Register of Members — tick each species this member is authorised to rehabilitate under the organisation&apos;s licence.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { label: "Koala", value: rehabilitatesKoala, setValue: setRehabilitatesKoala },
+                  { label: "Flying-Fox", value: rehabilitatesFlyingFox, setValue: setRehabilitatesFlyingFox },
+                  { label: "Bird of Prey", value: rehabilitatesBirdOfPrey, setValue: setRehabilitatesBirdOfPrey },
+                  { label: "Venomous Snake", value: rehabilitatesVenomousSnake, setValue: setRehabilitatesVenomousSnake },
+                  { label: "Marine Reptiles", value: rehabilitatesMarineReptile, setValue: setRehabilitatesMarineReptile },
+                ].map(({ label, value, setValue }) => (
+                  <label key={label} className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={value} onCheckedChange={(c) => setValue(c === true)} />
+                    <span className="text-sm">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Notes */}
         <Card>

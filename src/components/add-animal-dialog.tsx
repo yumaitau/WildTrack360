@@ -81,11 +81,41 @@ type CreateAnimalData = {
   animalCondition?: string | null;
   pouchCondition?: string | null;
   fate?: string | null;
+  tagBandColourNumber?: string | null;
+  microchipNumber?: string | null;
 };
 import { LocationPicker } from "@/components/location-picker"
 import { getPhotoUrl } from "@/lib/photo-url"
 import { getCurrentJurisdiction } from '@/lib/config'
-import { NSW_ENCOUNTER_TYPES, NSW_FATE_OPTIONS, NSW_POUCH_CONDITIONS, NSW_ANIMAL_CONDITIONS } from '@/lib/compliance-rules'
+import {
+  NSW_SEX,
+  NSW_POUCH_CONDITION,
+  NSW_ANIMAL_CONDITION,
+  NSW_ENCOUNTER_TYPE,
+  NSW_FATE,
+} from '@/lib/nsw-picklists'
+import { SPECIES_NOT_LISTED, composeNotesForSpecies } from '@/lib/nsw-species'
+import { validateNswLocation } from '@/lib/nsw-suburbs'
+
+// When editing an animal whose stored value is not in the current NSW
+// picklist (e.g. legacy en-dash values), render it as a disabled option so
+// the dropdown reflects the saved state and prompts the user to reselect.
+function legacyFallbackOption(currentValue: string | null | undefined, values: readonly string[]): string | null {
+  const v = (currentValue ?? '').trim();
+  if (!v) return null;
+  return values.includes(v) ? null : v;
+}
+
+// When an animal is edited and its species is the NSW sentinel, try to recover
+// the full species name that was encoded into notes so the form can pre-fill.
+const FULL_SPECIES_NAME_PREFIX = 'Full species name: ';
+function extractFullSpeciesName(notes: string | null | undefined): string {
+  if (!notes) return '';
+  const firstLine = notes.split('\n')[0] ?? '';
+  return firstLine.startsWith(FULL_SPECIES_NAME_PREFIX)
+    ? firstLine.slice(FULL_SPECIES_NAME_PREFIX.length).trim()
+    : '';
+}
 
 const addAnimalSchema = z.object({
   orgAnimalId: z.string().optional().transform(v => v?.trim() || undefined),
@@ -112,6 +142,20 @@ const addAnimalSchema = z.object({
   animalCondition: z.string().optional(),
   pouchCondition: z.string().optional(),
   fate: z.string().optional(),
+  tagBandColourNumber: z.string().optional(),
+  microchipNumber: z.string().optional(),
+  speciesNotListedFullName: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.species === SPECIES_NOT_LISTED) {
+    const name = (data.speciesNotListedFullName ?? '').trim();
+    if (name.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['speciesNotListedFullName'],
+        message: 'Full species name is required when "Species not listed" is selected',
+      });
+    }
+  }
 })
 
 type AddAnimalFormValues = z.infer<typeof addAnimalSchema>
@@ -191,7 +235,12 @@ export function AddAnimalDialog({
       initialWeightGrams: animalToEdit.initialWeightGrams || undefined,
       animalCondition: animalToEdit.animalCondition || undefined,
       pouchCondition: animalToEdit.pouchCondition || undefined,
-      fate: animalToEdit.fate || undefined
+      fate: animalToEdit.fate || undefined,
+      tagBandColourNumber: animalToEdit.tagBandColourNumber || '',
+      microchipNumber: animalToEdit.microchipNumber || '',
+      speciesNotListedFullName: animalToEdit.species === SPECIES_NOT_LISTED
+        ? extractFullSpeciesName(animalToEdit.notes)
+        : ''
     } : {
       orgAnimalId: "",
       name: "",
@@ -213,7 +262,10 @@ export function AddAnimalDialog({
       initialWeightGrams: undefined,
       animalCondition: undefined,
       pouchCondition: undefined,
-      fate: undefined
+      fate: undefined,
+      tagBandColourNumber: "",
+      microchipNumber: "",
+      speciesNotListedFullName: ''
     }
   })
 
@@ -268,7 +320,12 @@ export function AddAnimalDialog({
             initialWeightGrams: animalToEdit.initialWeightGrams || undefined,
             animalCondition: animalToEdit.animalCondition || undefined,
             pouchCondition: animalToEdit.pouchCondition || undefined,
-            fate: animalToEdit.fate || undefined
+            fate: animalToEdit.fate || undefined,
+            tagBandColourNumber: animalToEdit.tagBandColourNumber || '',
+            microchipNumber: animalToEdit.microchipNumber || '',
+            speciesNotListedFullName: animalToEdit.species === SPECIES_NOT_LISTED
+              ? extractFullSpeciesName(animalToEdit.notes)
+              : ''
         });
         const coords = animalToEdit.rescueCoordinates as { lat?: number; lng?: number } | null;
         setLocationData({
@@ -301,7 +358,10 @@ export function AddAnimalDialog({
             initialWeightGrams: undefined,
             animalCondition: undefined,
             pouchCondition: undefined,
-            fate: undefined
+            fate: undefined,
+            tagBandColourNumber: "",
+            microchipNumber: "",
+            speciesNotListedFullName: ''
         });
         setLocationData({
           lat: -35.2809,
@@ -422,7 +482,11 @@ export function AddAnimalDialog({
       outcomeDate: isReleased ? new Date() : null,
       outcome: isReleased ? 'Successfully released' : null,
       photo: photoKey,
-      notes: null,
+      notes: composeNotesForSpecies({
+        species: data.species,
+        fullSpeciesName: data.speciesNotListedFullName,
+        userNotes: null,
+      }),
       rescueLocation: data.rescueLocation || locationData.address || null,
       rescueCoordinates: data.rescueCoordinates || (locationData ? { lat: locationData.lat, lng: locationData.lng } : null),
       // Detailed address fields - these are now auto-populated from map selection
@@ -436,6 +500,8 @@ export function AddAnimalDialog({
       animalCondition: data.animalCondition || null,
       pouchCondition: data.pouchCondition || null,
       fate: data.fate || null,
+      tagBandColourNumber: data.tagBandColourNumber?.trim() || null,
+      microchipNumber: data.microchipNumber?.trim() || null,
       // Release location fields when status is RELEASED - use same location data
       ...(isReleased && {
         releaseLocation: locationData.address || null,
@@ -610,13 +676,37 @@ export function AddAnimalDialog({
                       ) : (
                         <SelectItem value="Other">Other</SelectItem>
                       )}
+                      <SelectItem value={SPECIES_NOT_LISTED}>{SPECIES_NOT_LISTED}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
+            {form.watch('species') === SPECIES_NOT_LISTED && (
+              <FormField
+                control={form.control}
+                name="speciesNotListedFullName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full species name *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., Petaurus notatus (Krefft's glider)"
+                        {...field}
+                        value={field.value || ''}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      NSW DCCEEW requires the full species name in the Notes column when a species is not on the official list.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             {/* Sex Field */}
             <FormField
               control={form.control}
@@ -631,9 +721,9 @@ export function AddAnimalDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                      <SelectItem value="Unknown">Unknown</SelectItem>
+                      {NSW_SEX.map((v) => (
+                        <SelectItem key={v} value={v}>{v}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -836,33 +926,33 @@ export function AddAnimalDialog({
                 <FormField
                   control={form.control}
                   name="encounterType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Encounter Type (Required for NSW)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select encounter type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {Object.entries(NSW_ENCOUNTER_TYPES).map(([category, types]) => (
-                            <div key={category}>
-                              <div className="px-2 py-1 text-sm font-semibold text-muted-foreground">
-                                {category}
-                              </div>
-                              {types.map(type => (
-                                <SelectItem key={type} value={type}>
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </div>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const values = NSW_ENCOUNTER_TYPE.map((i) => i.value);
+                    const legacy = legacyFallbackOption(field.value, values);
+                    return (
+                      <FormItem>
+                        <FormLabel>Encounter Type (Required for NSW)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select encounter type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {legacy && (
+                              <SelectItem value={legacy}>{legacy} (legacy — please reselect)</SelectItem>
+                            )}
+                            {NSW_ENCOUNTER_TYPE.map((item) => (
+                              <SelectItem key={item.value} value={item.value}>
+                                {item.value}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 
                 <FormField
@@ -891,80 +981,136 @@ export function AddAnimalDialog({
                 <FormField
                   control={form.control}
                   name="animalCondition"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Animal Condition</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select condition" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {NSW_ANIMAL_CONDITIONS.map(condition => (
-                            <SelectItem key={condition} value={condition}>
-                              {condition}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const values = NSW_ANIMAL_CONDITION.map((i) => i.value);
+                    const legacy = legacyFallbackOption(field.value, values);
+                    return (
+                      <FormItem>
+                        <FormLabel>Animal Condition</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select condition" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {legacy && (
+                              <SelectItem value={legacy}>{legacy} (legacy — please reselect)</SelectItem>
+                            )}
+                            {NSW_ANIMAL_CONDITION.map((item) => (
+                              <SelectItem key={item.value} value={item.value}>
+                                {item.value}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 
                 <FormField
                   control={form.control}
                   name="pouchCondition"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Pouch Condition (Marsupials only)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select pouch condition" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {NSW_POUCH_CONDITIONS.map(condition => (
-                            <SelectItem key={condition} value={condition}>
-                              {condition}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const legacy = legacyFallbackOption(field.value, NSW_POUCH_CONDITION);
+                    return (
+                      <FormItem>
+                        <FormLabel>Pouch Condition (Marsupials only)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select pouch condition" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {legacy && (
+                              <SelectItem value={legacy}>{legacy} (legacy — please reselect)</SelectItem>
+                            )}
+                            {NSW_POUCH_CONDITION.map((v) => (
+                              <SelectItem key={v} value={v}>{v}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 
                 <FormField
                   control={form.control}
                   name="fate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fate/Outcome (NSW)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select fate/outcome" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {NSW_FATE_OPTIONS.map(fate => (
-                            <SelectItem key={fate} value={fate}>
-                              {fate}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const values = NSW_FATE.map((i) => i.value);
+                    const legacy = legacyFallbackOption(field.value, values);
+                    return (
+                      <FormItem>
+                        <FormLabel>Fate/Outcome (NSW)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select fate/outcome" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {legacy && (
+                              <SelectItem value={legacy}>{legacy} (legacy — please reselect)</SelectItem>
+                            )}
+                            {NSW_FATE.map((item) => (
+                              <SelectItem key={item.value} value={item.value}>
+                                {item.value}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
+
               </>
             )}
-            
+
+            {/* Identification markers — universally useful, not NSW-specific */}
+            <FormField
+              control={form.control}
+              name="tagBandColourNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tag / Band colour and number</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., Blue-A12"
+                      {...field}
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="microchipNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Microchip number</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., 982000123456789"
+                      {...field}
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Rescue Address Details */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium">Rescue Location Details</h4>
@@ -1009,8 +1155,23 @@ export function AddAnimalDialog({
                   )}
                 />
               </div>
+              {isNSW && (() => {
+                const suburb = form.watch('rescueSuburb');
+                const postcode = form.watch('rescuePostcode');
+                if (!suburb && !postcode) return null;
+                const result = validateNswLocation({ suburb, postcode, state: 'NSW' });
+                if (result.valid) return null;
+                return (
+                  <Alert variant="default" className="border-amber-200 bg-amber-50">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-800 text-sm">
+                      {result.warning}
+                    </AlertDescription>
+                  </Alert>
+                );
+              })()}
             </div>
-            
+
             <LocationPicker
               onLocationChange={setLocationData}
               initialLocation={isEditMode ? (() => {

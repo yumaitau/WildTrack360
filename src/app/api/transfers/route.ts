@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getUserRole, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
 import { validateTransferRecord } from '@/lib/compliance-guardrails'
+import { animalUpdateForTransfer, newAnimalStatusForTransfer, type TransferType } from '@/lib/transfer-effects'
 
 export async function GET(request: Request) {
   const { userId, orgId } = await auth()
@@ -82,17 +83,15 @@ export async function POST(request: Request) {
     }
   }
 
-  const transferType = body.transferType || 'INTERNAL_CARER'
-
-  // Determine the new animal status based on transfer type
-  // Internal carer transfers preserve the animal's current status (just changing carer, not disposition)
-  const statusForType: Record<string, string> = {
-    INTER_ORGANISATION: 'TRANSFERRED',
-    VET_TRANSFER: 'TRANSFERRED',
-    PERMANENT_CARE_PLACEMENT: 'PERMANENT_CARE',
-    RELEASE_TRANSFER: 'TRANSFERRED',
-  }
-  const newStatus = transferType === 'INTERNAL_CARER' ? animal.status : (statusForType[transferType] || 'TRANSFERRED')
+  const transferType = (body.transferType || 'INTERNAL_CARER') as TransferType
+  const newStatus = newAnimalStatusForTransfer(transferType, animal.status)
+  const animalPatch = animalUpdateForTransfer({
+    transferType,
+    newStatus,
+    toCarerId: body.toCarerId,
+    transferDate: parsedTransferDate,
+    reasonForTransfer: body.reasonForTransfer,
+  })
 
   try {
     // Create transfer and update animal status in a single transaction
@@ -127,10 +126,7 @@ export async function POST(request: Request) {
       }),
       prisma.animal.update({
         where: { id: body.animalId },
-        data: {
-          status: newStatus as any,
-          ...(transferType !== 'INTERNAL_CARER' ? { outcomeDate: parsedTransferDate, outcomeReason: body.reasonForTransfer } : {}),
-        },
+        data: animalPatch as any,
       }),
     ])
 
