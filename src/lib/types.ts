@@ -31,6 +31,8 @@ export interface EnrichedCarer {
   rehabilitatesKoala: boolean;
   rehabilitatesFlyingFox: boolean;
   rehabilitatesBirdOfPrey: boolean;
+  rehabilitatesVenomousSnake: boolean;
+  rehabilitatesMarineReptile: boolean;
   memberSince: Date | null;
   trainingLevel: string | null;
   memberId: string | null;

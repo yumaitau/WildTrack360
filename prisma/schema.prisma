@@ -52,7 +52,10 @@ model Animal {
   animalCondition    String? @map("animal_condition")
   pouchCondition     String? @map("pouch_condition")
   fate               String?
-  markBandMicrochip  String? @map("mark_band_microchip")
+  // NSW Datasheet splits "mark/band/microchip" into two columns:
+  // Tag/Band colour and number, and Microchip number.
+  tagBandColourNumber String? @map("tag_band_colour_number")
+  microchipNumber     String? @map("microchip_number")
   lifeStage          String? @map("life_stage")
 
   // NSW compliance workflow fields
@@ -162,9 +165,11 @@ model CarerProfile {
   postcode                String?
   executivePosition       String?   @map("executive_position")
   speciesCoordinatorFor   String?   @map("species_coordinator_for")
-  rehabilitatesKoala      Boolean   @default(false) @map("rehabilitates_koala")
-  rehabilitatesFlyingFox  Boolean   @default(false) @map("rehabilitates_flying_fox")
-  rehabilitatesBirdOfPrey Boolean   @default(false) @map("rehabilitates_bird_of_prey")
+  rehabilitatesKoala         Boolean @default(false) @map("rehabilitates_koala")
+  rehabilitatesFlyingFox     Boolean @default(false) @map("rehabilitates_flying_fox")
+  rehabilitatesBirdOfPrey    Boolean @default(false) @map("rehabilitates_bird_of_prey")
+  rehabilitatesVenomousSnake Boolean @default(false) @map("rehabilitates_venomous_snake")
+  rehabilitatesMarineReptile Boolean @default(false) @map("rehabilitates_marine_reptile")
   memberSince             DateTime? @map("member_since")
   trainingLevel           String?   @map("training_level")
 
