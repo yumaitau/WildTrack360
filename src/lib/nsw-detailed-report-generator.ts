@@ -274,7 +274,17 @@ export class NSWDetailedReportGenerator {
 
   async getReportBuffer(): Promise<ArrayBuffer> {
     const wb = this.generateReport();
-    const nodeBuffer = await wb.xlsx.writeBuffer();
-    return nodeBuffer as ArrayBuffer;
+    const out = await wb.xlsx.writeBuffer();
+    return toArrayBuffer(out);
   }
+}
+
+// ExcelJS returns a Node `Buffer` at runtime, but callers consume the result
+// as an ArrayBuffer (to wrap in a Blob). Buffer extends Uint8Array, so we
+// slice out the underlying ArrayBuffer — a real ArrayBuffer, not a typed
+// alias — so the advertised return type is honest.
+function toArrayBuffer(input: ExcelJS.Buffer | Buffer | ArrayBuffer): ArrayBuffer {
+  if (input instanceof ArrayBuffer) return input;
+  const view = input as unknown as Uint8Array;
+  return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
 }

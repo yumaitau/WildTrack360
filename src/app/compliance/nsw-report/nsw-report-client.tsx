@@ -9,7 +9,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format, startOfYear, endOfYear } from 'date-fns';
+import { format } from 'date-fns';
+
+// NSW annual reports run on the Australian financial year (1 July → 30 June).
+// If today is on/after 1 July, the current reporting period starts that July
+// and ends the next 30 June; otherwise we're still finalising last FY.
+function currentNswFinancialYear(now: Date = new Date()): { start: Date; end: Date } {
+  const currentYear = now.getFullYear();
+  const afterJulyStart = now.getMonth() > 5 || (now.getMonth() === 6 && now.getDate() >= 1);
+  const startYear = afterJulyStart ? currentYear : currentYear - 1;
+  return {
+    start: new Date(startYear, 6, 1), // 1 July
+    end: new Date(startYear + 1, 5, 30, 23, 59, 59, 999), // 30 June 23:59:59
+  };
+}
 import { CalendarIcon, Download, FileSpreadsheet, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -30,9 +43,10 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
   
-  // Report parameters - pre-populate from Clerk organization
-  const [startDate, setStartDate] = useState<Date>(startOfYear(new Date())); // January 1st of current year
-  const [endDate, setEndDate] = useState<Date>(endOfYear(new Date())); // December 31st of current year
+  // Report parameters — default to the current NSW financial year window
+  // (1 July → 30 June) since that's what DCCEEW submissions are filed against.
+  const [startDate, setStartDate] = useState<Date>(() => currentNswFinancialYear().start);
+  const [endDate, setEndDate] = useState<Date>(() => currentNswFinancialYear().end);
   const [orgName, setOrgName] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
   const [contactName, setContactName] = useState('');
@@ -132,10 +146,11 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
       newErrors.dateRange = "End date must be after start date";
     }
     
-    // Allow end dates up to end of current year (for annual reports)
-    const endOfCurrentYear = endOfYear(new Date());
-    if (endDate && endDate > endOfCurrentYear) {
-      newErrors.endDate = "End date cannot be beyond the current year";
+    // End date must land within or before the current NSW financial year end
+    // (30 June); anything later is data that hasn't happened yet.
+    const { end: currentFyEnd } = currentNswFinancialYear();
+    if (endDate && endDate > currentFyEnd) {
+      newErrors.endDate = "End date cannot be beyond the current NSW financial year (30 June).";
     }
 
     setErrors(newErrors);

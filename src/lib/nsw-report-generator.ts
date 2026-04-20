@@ -345,7 +345,11 @@ export class NSWReportGenerator {
 
   async getReportBuffer(): Promise<ArrayBuffer> {
     const wb = this.generateReport();
-    const nodeBuffer = await wb.xlsx.writeBuffer();
-    return nodeBuffer as ArrayBuffer;
+    const out = await wb.xlsx.writeBuffer();
+    // ExcelJS returns a Node Buffer at runtime; slice the underlying
+    // ArrayBuffer so the advertised return type isn't a cast lie.
+    if (out instanceof ArrayBuffer) return out;
+    const view = out as unknown as Uint8Array;
+    return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
   }
 }

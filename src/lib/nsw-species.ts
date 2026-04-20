@@ -20,9 +20,12 @@ export function composeNotesForSpecies(input: {
   }
   const fullName = (input.fullSpeciesName ?? '').trim();
   if (fullName.length === 0) {
-    // The caller is responsible for validating presence — this helper still
-    // returns the user notes so we don't silently drop them.
-    return userNotes.length > 0 ? userNotes : null;
+    // Fail closed: a SPECIES_NOT_LISTED record with no full scientific name
+    // is non-compliant with NSW reporting (the full name is what makes the
+    // sentinel legible). Returning null signals the invalid state so the
+    // caller can reject the record or reselect — callers must validate
+    // presence before composing notes.
+    return null;
   }
   const prefix = `Full species name: ${fullName}`;
   return userNotes.length > 0 ? `${prefix}\n${userNotes}` : prefix;

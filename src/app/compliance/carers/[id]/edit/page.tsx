@@ -126,6 +126,19 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
     setLoading(true);
 
     try {
+      // NSW species endorsements are only editable when the org is in NSW
+      // jurisdiction — include them in the PATCH only in that case so
+      // switching an org off NSW doesn't preserve stale `true` values.
+      const nswEndorsements = jurisdiction === "NSW"
+        ? {
+            rehabilitatesKoala,
+            rehabilitatesFlyingFox,
+            rehabilitatesBirdOfPrey,
+            rehabilitatesVenomousSnake,
+            rehabilitatesMarineReptile,
+          }
+        : {};
+
       const response = await fetch(`/api/carers/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -142,11 +155,7 @@ export default function EditCarerPage({ params }: EditCarerPageProps) {
           state: state || null,
           postcode: postcode || null,
           memberId: memberId || null,
-          rehabilitatesKoala,
-          rehabilitatesFlyingFox,
-          rehabilitatesBirdOfPrey,
-          rehabilitatesVenomousSnake,
-          rehabilitatesMarineReptile,
+          ...nswEndorsements,
         }),
       });
 

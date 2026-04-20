@@ -57,15 +57,17 @@ describe('composeNotesForSpecies', () => {
     ).toBe('Full species name: Petaurus notatus\nFound by the highway');
   });
 
-  it('returns user notes only when sentinel is chosen but full name is blank', () => {
-    // Presence is validated separately — helper should not drop user notes.
+  it('fails closed (returns null) when sentinel is chosen but full name is blank', () => {
+    // Even if the user supplied narrative notes, a SPECIES_NOT_LISTED record
+    // without the mandated full scientific name is non-compliant; the helper
+    // refuses to compose it so callers can reject or force reselect.
     expect(
       composeNotesForSpecies({
         species: SPECIES_NOT_LISTED,
         fullSpeciesName: '   ',
         userNotes: 'Context from carer',
       }),
-    ).toBe('Context from carer');
+    ).toBeNull();
   });
 
   it('returns null when sentinel is chosen and neither field has content', () => {

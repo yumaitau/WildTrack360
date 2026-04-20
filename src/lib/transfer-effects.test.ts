@@ -23,7 +23,7 @@ describe('newAnimalStatusForTransfer', () => {
 
 describe('animalUpdateForTransfer', () => {
   const baseInput = {
-    newStatus: 'IN_CARE',
+    newStatus: 'IN_CARE' as const,
     transferDate: new Date('2026-04-20T00:00:00Z'),
     reasonForTransfer: 'Carer rotation',
   };
@@ -40,14 +40,14 @@ describe('animalUpdateForTransfer', () => {
     });
   });
 
-  it('omits carerId when internal transfer lacks a toCarerId', () => {
-    const patch = animalUpdateForTransfer({
-      ...baseInput,
-      transferType: 'INTERNAL_CARER',
-      toCarerId: null,
-    });
-    expect(patch).toEqual({ status: 'IN_CARE' });
-    expect('carerId' in patch).toBe(false);
+  it('throws when internal transfer lacks a toCarerId', () => {
+    expect(() =>
+      animalUpdateForTransfer({
+        ...baseInput,
+        transferType: 'INTERNAL_CARER',
+        toCarerId: null,
+      }),
+    ).toThrow(/toCarerId is required/);
   });
 
   it('stamps outcome date and reason on non-internal transfers', () => {

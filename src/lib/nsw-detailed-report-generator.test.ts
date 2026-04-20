@@ -17,7 +17,9 @@ function makeAnimal(overrides: Partial<Animal> = {}): Animal {
     age: null,
     dateOfBirth: null,
     status: 'IN_CARE',
-    dateFound: new Date('2025-08-15T00:00:00Z'),
+    // Local-date constructors keep dd/MM/yyyy formatting stable across
+    // CI timezones (UTC-midnight strings flip days in western zones).
+    dateFound: new Date(2025, 7, 15),
     dateReleased: null,
     outcomeDate: null,
     outcome: null,
@@ -58,8 +60,8 @@ function makeAnimal(overrides: Partial<Animal> = {}): Animal {
 function baseData(animals: Animal[]): NSWDetailedReportData {
   return {
     reportingPeriod: {
-      startDate: new Date('2025-07-01T00:00:00Z'),
-      endDate: new Date('2026-06-30T23:59:59Z'),
+      startDate: new Date(2025, 6, 1),
+      endDate: new Date(2026, 5, 30, 23, 59, 59),
     },
     organization: {
       name: 'Wildlife Rescue NSW',
@@ -124,7 +126,7 @@ describe('NSWDetailedReportGenerator', () => {
   it('formats release date and coordinates when fate is Released', async () => {
     const animal = makeAnimal({
       fate: 'Released',
-      outcomeDate: new Date('2025-10-02T00:00:00Z'),
+      outcomeDate: new Date(2025, 9, 2),
       releaseAddress: 'Bush Reserve',
       releaseSuburb: 'Hornsby',
       releasePostcode: '2077',
@@ -152,9 +154,9 @@ describe('NSWDetailedReportGenerator', () => {
   });
 
   it('filters animals whose dateFound is outside the reporting period', async () => {
-    const inWindow = makeAnimal({ id: 'a-in', orgAnimalId: 'IN', dateFound: new Date('2025-09-01T00:00:00Z') });
-    const before = makeAnimal({ id: 'a-before', orgAnimalId: 'BEFORE', dateFound: new Date('2024-06-01T00:00:00Z') });
-    const after = makeAnimal({ id: 'a-after', orgAnimalId: 'AFTER', dateFound: new Date('2027-01-01T00:00:00Z') });
+    const inWindow = makeAnimal({ id: 'a-in', orgAnimalId: 'IN', dateFound: new Date(2025, 8, 1) });
+    const before = makeAnimal({ id: 'a-before', orgAnimalId: 'BEFORE', dateFound: new Date(2024, 5, 1) });
+    const after = makeAnimal({ id: 'a-after', orgAnimalId: 'AFTER', dateFound: new Date(2027, 0, 1) });
     const gen = new NSWDetailedReportGenerator(baseData([inWindow, before, after]));
     const wb = gen.generateReport();
     const ws = wb.getWorksheet('Datasheet')!;

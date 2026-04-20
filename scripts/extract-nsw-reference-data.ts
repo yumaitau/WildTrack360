@@ -353,6 +353,30 @@ export function findNswSpeciesByCommonName(
 
 // ─── Orchestration ──────────────────────────────────────────────────────────
 
+// Minimum expected row counts. These are sanity floors — a broken XLSX or
+// renamed sheet will trip one of these before we overwrite the generated
+// files with garbage. If NSW legitimately trims a list below the floor,
+// update the floor deliberately.
+const MIN_COUNTS = {
+  suburbs: 3000, // NSW has ~4,500; well above 3,000 even with churn
+  sex: 3,
+  lifeStage: 3,
+  pouch: 4,
+  animalCondition: 20,
+  encounterType: 20,
+  fate: 15,
+  species: 1000,
+};
+
+function assertCount(label: string, actual: number, min: number): void {
+  if (actual < min) {
+    throw new Error(
+      `Sanity check failed: ${label} has ${actual} rows, expected at least ${min}. ` +
+        `Refusing to overwrite generated files from a likely-broken source XLSX.`,
+    );
+  }
+}
+
 async function main() {
   console.log(`Reading ${SOURCE_XLSX}`);
   const wb = new ExcelJS.Workbook();
@@ -385,6 +409,17 @@ async function main() {
 
   const species = await extractSpecies(wb);
   console.log(`Species: ${species.length}`);
+
+  // Fail fast before any writeFile touches disk — a silent overwrite with
+  // empty/partial data would break the generator at runtime.
+  assertCount('suburbs', suburbs.length, MIN_COUNTS.suburbs);
+  assertCount('sex', sex.length, MIN_COUNTS.sex);
+  assertCount('life stage', lifeStage.length, MIN_COUNTS.lifeStage);
+  assertCount('pouch condition', pouch.length, MIN_COUNTS.pouch);
+  assertCount('animal condition', animalCondition.length, MIN_COUNTS.animalCondition);
+  assertCount('encounter type', encounterType.length, MIN_COUNTS.encounterType);
+  assertCount('fate', fate.length, MIN_COUNTS.fate);
+  assertCount('species', species.length, MIN_COUNTS.species);
 
   await fs.writeFile(path.join(TARGET_DIR, 'nsw-suburbs.ts'), formatSuburbs(suburbs));
   console.log('Wrote src/lib/nsw-suburbs.ts');
