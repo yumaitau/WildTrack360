@@ -46,26 +46,26 @@ export default function ToolsPage() {
         {tools.map((tool) => {
           const Icon = tool.icon;
           return (
-            <Link key={tool.href} href={tool.href} className="group">
-              <Card className="h-full transition-shadow group-hover:shadow-md">
-                <CardHeader>
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-md bg-primary/10 p-2">
-                      <Icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{tool.title}</CardTitle>
-                    </div>
+            <Card key={tool.href} className="h-full">
+              <CardHeader>
+                <div className="flex items-start gap-3">
+                  <div className="rounded-md bg-primary/10 p-2">
+                    <Icon className="h-5 w-5 text-primary" />
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <CardDescription>{tool.description}</CardDescription>
-                  <Button variant="outline" size="sm" className="gap-1">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">{tool.title}</CardTitle>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <CardDescription>{tool.description}</CardDescription>
+                <Button asChild variant="outline" size="sm" className="gap-1">
+                  <Link href={tool.href}>
                     Open <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
-                </CardContent>
-              </Card>
-            </Link>
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
           );
         })}
       </div>

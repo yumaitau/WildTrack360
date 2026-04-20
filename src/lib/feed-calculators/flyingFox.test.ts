@@ -65,13 +65,24 @@ describe("calculateFlyingFoxFeed", () => {
     expect(result.stage.label).toContain("Pre-weaning");
   });
 
-  it("returns neonate stage for age below the youngest bucket", () => {
-    const result = calculateFlyingFoxFeed({
-      species: "grey-headed",
-      formula: "wombaroo-flying-fox",
-      ageDays: -1,
-    });
-    expect(result.stage.label).toContain("Neonate");
+  it("rejects negative ageDays", () => {
+    expect(() =>
+      calculateFlyingFoxFeed({
+        species: "grey-headed",
+        formula: "wombaroo-flying-fox",
+        ageDays: -1,
+      })
+    ).toThrow(/ageDays/);
+  });
+
+  it("rejects non-finite measurements", () => {
+    expect(() =>
+      calculateFlyingFoxFeed({
+        species: "grey-headed",
+        formula: "wombaroo-flying-fox",
+        forearmMm: Infinity,
+      })
+    ).toThrow(/forearmMm/);
   });
 
   it("returns weaning stage for age above the oldest bucket", () => {

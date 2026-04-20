@@ -99,4 +99,31 @@ describe("calculateMacropodFeed", () => {
       calculateMacropodFeed({ species: "eastern-grey-kangaroo" })
     ).toThrow();
   });
+
+  it("rejects non-positive weight", () => {
+    expect(() =>
+      calculateMacropodFeed({
+        species: "eastern-grey-kangaroo",
+        weightGrams: 0,
+      })
+    ).toThrow(/weightGrams/);
+  });
+
+  it("rejects negative age", () => {
+    expect(() =>
+      calculateMacropodFeed({
+        species: "eastern-grey-kangaroo",
+        ageDays: -5,
+      })
+    ).toThrow(/ageDays/);
+  });
+
+  it("rejects non-finite inputs", () => {
+    expect(() =>
+      calculateMacropodFeed({
+        species: "eastern-grey-kangaroo",
+        weightGrams: Infinity,
+      })
+    ).toThrow(/weightGrams/);
+  });
 });

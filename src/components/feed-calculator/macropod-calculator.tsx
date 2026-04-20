@@ -37,14 +37,22 @@ export function MacropodCalculator() {
   const result = useMemo(() => {
     const ageNum = ageDays === "" ? undefined : Number(ageDays);
     const weightNum = weightGrams === "" ? undefined : Number(weightGrams);
-    const hasAge = ageNum != null && !isNaN(ageNum);
-    const hasWeight = weightNum != null && !isNaN(weightNum);
-    if (!hasAge && !hasWeight) return null;
+    const validAge =
+      ageNum !== undefined &&
+      Number.isFinite(ageNum) &&
+      ageNum >= 0 &&
+      ageNum <= 720;
+    const validWeight =
+      weightNum !== undefined &&
+      Number.isFinite(weightNum) &&
+      weightNum > 0 &&
+      weightNum <= 50000;
+    if (!validAge && !validWeight) return null;
     try {
       return calculateMacropodFeed({
         species,
-        ageDays: hasAge ? ageNum : undefined,
-        weightGrams: hasWeight ? weightNum : undefined,
+        ageDays: validAge ? ageNum : undefined,
+        weightGrams: validWeight ? weightNum : undefined,
       });
     } catch {
       return null;

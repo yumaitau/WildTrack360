@@ -199,6 +199,18 @@ export function calculateFlyingFoxFeed(
   const stages = stagesFor(species);
 
   const warnings: string[] = [];
+
+  if (input.ageDays != null) {
+    if (!Number.isFinite(input.ageDays) || input.ageDays < 0) {
+      throw new Error("ageDays must be a finite number >= 0");
+    }
+  }
+  if (input.forearmMm != null) {
+    if (!Number.isFinite(input.forearmMm) || input.forearmMm <= 0) {
+      throw new Error("forearmMm must be a finite number > 0");
+    }
+  }
+
   let stage: FlyingFoxStage;
 
   if (input.ageDays != null && input.forearmMm != null) {

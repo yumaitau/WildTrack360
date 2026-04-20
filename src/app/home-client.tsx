@@ -651,12 +651,12 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                   </div>
                 </div>
               </div>
-              <Link href="/tools">
-                <Button variant="ghost" size="sm">
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/tools">
                   <Calculator className="h-4 w-4 mr-2" />
                   Tools
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               {userRole !== 'CARER' && userRole !== 'CARER_ALL' && (
                 <Link href="/admin">
                   <Button size="sm">
@@ -708,12 +708,12 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
                 </div>
               </div>
               <div className="flex flex-col gap-2">
-                <Link href="/tools" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" size="sm" className="w-full">
+                <Button asChild variant="outline" size="sm" className="w-full">
+                  <Link href="/tools" onClick={() => setMobileMenuOpen(false)}>
                     <Calculator className="h-4 w-4 mr-2" />
                     Tools
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
                 {userRole !== 'CARER' && userRole !== 'CARER_ALL' && (
                   <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
                     <Button size="sm" className="w-full">

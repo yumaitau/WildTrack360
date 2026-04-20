@@ -48,14 +48,20 @@ const SPECIES_THRESHOLDS: Record<MacropodSpecies, SpeciesStageThresholds> = {
   },
 };
 
+// Upper bound (inclusive, in days) during which a joey is still treated as
+// receiving Wombaroo Impact colostrum substitute rather than the <0.4
+// milk replacer.
+const IMPACT_AGE_CUTOFF = 2;
+
 // Approximate age-to-weight midpoints for a given stage. Used only when
-// the user supplies age without weight.
+// the user supplies age without weight. The 0.4 range starts the day
+// after the Impact cutoff so that stageByAge and STAGE_AGE_RANGES agree.
 const STAGE_AGE_RANGES: Record<
   Exclude<WombarooStage, "impact">,
   { ageDaysMin: number; ageDaysMax: number; weightFraction: [number, number] }
 > = {
   "0.4": {
-    ageDaysMin: 0,
+    ageDaysMin: IMPACT_AGE_CUTOFF + 1,
     ageDaysMax: 120,
     weightFraction: [0.002, 0.04],
   },
@@ -106,7 +112,7 @@ function stageByWeight(
 }
 
 function stageByAge(ageDays: number): WombarooStage {
-  if (ageDays <= 2) return "impact";
+  if (ageDays <= IMPACT_AGE_CUTOFF) return "impact";
   if (ageDays <= STAGE_AGE_RANGES["0.4"].ageDaysMax) return "0.4";
   if (ageDays <= STAGE_AGE_RANGES["0.6"].ageDaysMax) return "0.6";
   if (ageDays <= STAGE_AGE_RANGES["0.8"].ageDaysMax) return "0.8";
@@ -238,6 +244,17 @@ export function calculateMacropodFeed(
   if (ageDays == null && weightGrams == null) {
     throw new Error("Provide at least ageDays or weightGrams");
   }
+  if (weightGrams != null) {
+    if (!Number.isFinite(weightGrams) || weightGrams <= 0) {
+      throw new Error("weightGrams must be a finite number > 0");
+    }
+  }
+  if (ageDays != null) {
+    if (!Number.isFinite(ageDays) || ageDays < 0) {
+      throw new Error("ageDays must be a finite number >= 0");
+    }
+  }
+
   const thresholds = SPECIES_THRESHOLDS[species];
   const warnings: string[] = [];
 
@@ -255,14 +272,13 @@ export function calculateMacropodFeed(
         );
       }
     }
-  } else if (ageDays != null) {
-    stage = stageByAge(ageDays);
-    effectiveWeight = estimateWeightForAge(species, ageDays);
+  } else {
+    // ageDays is guaranteed non-null by the guard above; TS narrows it here.
+    stage = stageByAge(ageDays!);
+    effectiveWeight = estimateWeightForAge(species, ageDays!);
     warnings.push(
       "Weight not provided — estimated from age. Weigh the joey for accurate feed volumes."
     );
-  } else {
-    throw new Error("unreachable");
   }
 
   const dailyIntakePercent = dailyIntakePercentFor(stage);

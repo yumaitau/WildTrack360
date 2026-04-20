@@ -44,16 +44,25 @@ export function FlyingFoxCalculator() {
   const result = useMemo(() => {
     const ageNum = ageDays === "" ? undefined : Number(ageDays);
     const forearmNum = forearmMm === "" ? undefined : Number(forearmMm);
-    const hasAge = mode === "age" && ageNum != null && !isNaN(ageNum);
-    const hasForearm =
-      mode === "forearm" && forearmNum != null && !isNaN(forearmNum);
-    if (!hasAge && !hasForearm) return null;
+    const validAge =
+      mode === "age" &&
+      ageNum !== undefined &&
+      Number.isFinite(ageNum) &&
+      ageNum >= 0 &&
+      ageNum <= 365;
+    const validForearm =
+      mode === "forearm" &&
+      forearmNum !== undefined &&
+      Number.isFinite(forearmNum) &&
+      forearmNum > 0 &&
+      forearmNum <= 250;
+    if (!validAge && !validForearm) return null;
     try {
       return calculateFlyingFoxFeed({
         species,
         formula,
-        ageDays: hasAge ? ageNum : undefined,
-        forearmMm: hasForearm ? forearmNum : undefined,
+        ageDays: validAge ? ageNum : undefined,
+        forearmMm: validForearm ? forearmNum : undefined,
       });
     } catch {
       return null;
