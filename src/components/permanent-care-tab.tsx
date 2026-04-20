@@ -528,6 +528,7 @@ export function PermanentCareTab({
                         src={vetReportLocalPreviewUrl}
                         title="Vet report preview"
                         className="w-full h-[300px]"
+                        sandbox=""
                       />
                     </div>
                   )}
