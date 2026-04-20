@@ -12,12 +12,16 @@ export default async function NSWReportPage() {
   }
 
   // Fetch initial data for the report
-  const [animals, carers] = await Promise.all([
+  const [animals, carers, orgSettings] = await Promise.all([
     prisma.animal.findMany({
       where: { clerkOrganizationId: orgId },
       orderBy: { dateFound: 'desc' }
     }),
     getEnrichedCarers(orgId),
+    prisma.organisationSettings.findUnique({
+      where: { clerkOrganisationId: orgId },
+      select: { contactEmail: true, contactPhone: true, licenseNumber: true },
+    }),
   ]);
 
   return (
@@ -25,6 +29,11 @@ export default async function NSWReportPage() {
       initialAnimals={animals}
       initialCarers={carers}
       organizationId={orgId}
+      orgDefaults={{
+        contactEmail: orgSettings?.contactEmail ?? null,
+        contactPhone: orgSettings?.contactPhone ?? null,
+        licenseNumber: orgSettings?.licenseNumber ?? null,
+      }}
     />
   );
 }

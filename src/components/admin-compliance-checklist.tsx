@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -66,11 +66,35 @@ export function AdminComplianceChecklist({
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set()
   );
+  const [orgContact, setOrgContact] = useState<{
+    contactEmail: string | null;
+    contactPhone: string | null;
+    licenseNumber: string | null;
+  }>({ contactEmail: null, contactPhone: null, licenseNumber: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/org-settings")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setOrgContact({
+          contactEmail: data.contactEmail ?? null,
+          contactPhone: data.contactPhone ?? null,
+          licenseNumber: data.licenseNumber ?? null,
+        });
+      })
+      .catch(() => {
+        // Non-fatal: checklist just keeps showing the three items as unmet.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const categories = useMemo(() => {
     const now = new Date();
     const allCarers = carers || [];
-    const orgMetadata = organization?.publicMetadata || {};
 
     // --- Category 1: Carer / User Profiles ---
     const carersWithoutProfile = allCarers.filter((c) => !c.hasProfile);
@@ -231,9 +255,9 @@ export function AdminComplianceChecklist({
 
     // --- Category 3: Organisation Profile ---
     const hasOrgName = !!organization?.name;
-    const hasContactEmail = !!orgMetadata.contactEmail;
-    const hasContactPhone = !!orgMetadata.contactPhone;
-    const hasOrgLicense = !!orgMetadata.licenseNumber;
+    const hasContactEmail = !!orgContact.contactEmail;
+    const hasContactPhone = !!orgContact.contactPhone;
+    const hasOrgLicense = !!orgContact.licenseNumber;
     const hasJurisdiction = !!jurisdiction;
 
     const orgItems: ChecklistItem[] = [
@@ -261,7 +285,7 @@ export function AdminComplianceChecklist({
           ? "Contact email is on file"
           : "No organisation contact email configured. Update in organisation settings.",
         actionLabel: "Organisation Settings",
-        actionHref: "/admin",
+        actionHref: "/admin?tab=org-settings",
       },
       {
         id: "org-phone",
@@ -271,7 +295,7 @@ export function AdminComplianceChecklist({
           ? "Contact phone number is on file"
           : "No organisation contact phone configured. Update in organisation settings.",
         actionLabel: "Organisation Settings",
-        actionHref: "/admin",
+        actionHref: "/admin?tab=org-settings",
       },
       {
         id: "org-license",
@@ -281,7 +305,7 @@ export function AdminComplianceChecklist({
           ? "Organisation licence number is on file"
           : "No licence number configured. This is required for compliance reports.",
         actionLabel: "Organisation Settings",
-        actionHref: "/admin",
+        actionHref: "/admin?tab=org-settings",
       },
       {
         id: "animals-have-ids",
@@ -323,7 +347,7 @@ export function AdminComplianceChecklist({
         items: orgItems,
       },
     ] satisfies ChecklistCategory[];
-  }, [carers, animals, organization, jurisdiction]);
+  }, [carers, animals, organization, jurisdiction, orgContact]);
 
   const totalItems = categories.reduce((sum, cat) => sum + cat.items.length, 0);
   const passedItems = categories.reduce(

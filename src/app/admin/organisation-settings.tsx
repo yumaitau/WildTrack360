@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Save, Loader2, Settings } from "lucide-react";
+import { Save, Loader2, Settings, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { renderAnimalIdTemplate } from "@/lib/animalId/template";
 
@@ -14,6 +14,9 @@ export function OrganisationSettings() {
   const [saving, setSaving] = useState(false);
   const [orgShortCode, setOrgShortCode] = useState("ORG");
   const [animalIdTemplate, setAnimalIdTemplate] = useState("{ORG_SHORT}-{YYYY}-{seq:4}");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/org-settings")
@@ -24,6 +27,9 @@ export function OrganisationSettings() {
       .then((data) => {
         setOrgShortCode(data.orgShortCode ?? "ORG");
         setAnimalIdTemplate(data.animalIdTemplate ?? "{ORG_SHORT}-{YYYY}-{seq:4}");
+        setContactEmail(data.contactEmail ?? "");
+        setContactPhone(data.contactPhone ?? "");
+        setLicenseNumber(data.licenseNumber ?? "");
       })
       .catch(() => {
         toast.error("Failed to load organisation settings");
@@ -49,7 +55,13 @@ export function OrganisationSettings() {
       const res = await fetch("/api/admin/org-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orgShortCode, animalIdTemplate }),
+        body: JSON.stringify({
+          orgShortCode,
+          animalIdTemplate,
+          contactEmail,
+          contactPhone,
+          licenseNumber,
+        }),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Failed to save");
       toast.success("Organisation settings updated.");
@@ -72,6 +84,72 @@ export function OrganisationSettings() {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Organisation Contact & Licence
+          </CardTitle>
+          <CardDescription>
+            Contact details and licence number used for compliance reports and
+            the readiness checklist on your home page.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="contactEmail">Contact email</Label>
+            <Input
+              id="contactEmail"
+              type="email"
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              placeholder="admin@example.org"
+              maxLength={254}
+            />
+            <p className="text-xs text-muted-foreground">
+              Primary email for regulator correspondence about this
+              organisation.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="contactPhone">Contact phone</Label>
+            <Input
+              id="contactPhone"
+              type="tel"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              placeholder="e.g., 02 1234 5678"
+              maxLength={30}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="licenseNumber">Licence number</Label>
+            <Input
+              id="licenseNumber"
+              value={licenseNumber}
+              onChange={(e) => setLicenseNumber(e.target.value)}
+              placeholder="e.g., MWL000123"
+              maxLength={50}
+            />
+            <p className="text-xs text-muted-foreground">
+              Rehabilitation licence / authority number issued by your state
+              regulator. Required for NSW DCCEEW and other compliance reports.
+            </p>
+          </div>
+
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save Settings
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
