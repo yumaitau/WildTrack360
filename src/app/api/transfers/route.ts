@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getUserRole, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
@@ -95,19 +96,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: validation.reason }, { status: 422 })
   }
 
+  // Normalize toCarerId once so validation and downstream writes see the
+  // same value — otherwise a padded input like "  xyz123  " could pass
+  // validation (after trim) then land in Animal.carerId / AnimalTransfer
+  // with trailing whitespace, silently breaking future lookups.
+  const toCarerIdTrimmed =
+    typeof body.toCarerId === 'string' && body.toCarerId.trim().length > 0
+      ? body.toCarerId.trim()
+      : null
+
   // Internal carer transfers must name the new carer, and that carer must
   // belong to this org — otherwise Animal.carerId ends up pointing at a
   // stranger and the NSW "Rehabilitator name" column becomes nonsense.
   if (transferType === 'INTERNAL_CARER') {
-    const toCarerId = typeof body.toCarerId === 'string' ? body.toCarerId.trim() : ''
-    if (!toCarerId) {
+    if (!toCarerIdTrimmed) {
       return NextResponse.json(
         { error: 'toCarerId is required for INTERNAL_CARER transfers.' },
         { status: 422 },
       )
     }
     const toCarer = await prisma.carerProfile.findFirst({
-      where: { id: toCarerId, clerkOrganizationId: orgId },
+      where: { id: toCarerIdTrimmed, clerkOrganizationId: orgId },
       select: { id: true },
     })
     if (!toCarer) {
@@ -129,10 +138,10 @@ export async function POST(request: Request) {
   }
 
   const newStatus = newAnimalStatusForTransfer(transferType, animal.status)
-  const animalPatch = animalUpdateForTransfer({
+  const animalPatch: Prisma.AnimalUpdateInput = animalUpdateForTransfer({
     transferType,
     newStatus,
-    toCarerId: body.toCarerId,
+    toCarerId: toCarerIdTrimmed,
     transferDate: parsedTransferDate,
     reasonForTransfer: body.reasonForTransfer,
   })
@@ -147,7 +156,7 @@ export async function POST(request: Request) {
           transferType,
           reasonForTransfer: body.reasonForTransfer,
           fromCarerId: body.fromCarerId || null,
-          toCarerId: body.toCarerId || null,
+          toCarerId: toCarerIdTrimmed,
           receivingEntity: body.receivingEntity,
           receivingEntityType: body.receivingEntityType || null,
           receivingLicense: body.receivingLicense || null,
@@ -170,7 +179,7 @@ export async function POST(request: Request) {
       }),
       prisma.animal.update({
         where: { id: body.animalId },
-        data: animalPatch as any,
+        data: animalPatch,
       }),
     ])
 

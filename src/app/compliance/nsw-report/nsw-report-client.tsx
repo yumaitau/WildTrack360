@@ -10,19 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-
-// NSW annual reports run on the Australian financial year (1 July → 30 June).
-// If today is on/after 1 July, the current reporting period starts that July
-// and ends the next 30 June; otherwise we're still finalising last FY.
-function currentNswFinancialYear(now: Date = new Date()): { start: Date; end: Date } {
-  const currentYear = now.getFullYear();
-  const afterJulyStart = now.getMonth() > 5 || (now.getMonth() === 6 && now.getDate() >= 1);
-  const startYear = afterJulyStart ? currentYear : currentYear - 1;
-  return {
-    start: new Date(startYear, 6, 1), // 1 July
-    end: new Date(startYear + 1, 5, 30, 23, 59, 59, 999), // 30 June 23:59:59
-  };
-}
 import { CalendarIcon, Download, FileSpreadsheet, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +17,18 @@ import Link from 'next/link';
 import { NSWReportGenerator, NSWReportData, TransferRecord, PermanentCareRecord, PreservedSpecimenRecord } from '@/lib/nsw-report-generator';
 import { NSWDetailedReportGenerator, NSWDetailedReportData } from '@/lib/nsw-detailed-report-generator';
 import { useOrganization, useUser } from '@clerk/nextjs';
+
+// NSW annual reports run on the Australian financial year (1 July → 30 June).
+// Months are 0-indexed, so July is month 6. If today is in July or later the
+// current reporting period starts that July and ends the next 30 June;
+// otherwise we're still inside last FY, finalising it before 30 September.
+function currentNswFinancialYear(now: Date = new Date()): { start: Date; end: Date } {
+  const startYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return {
+    start: new Date(startYear, 6, 1), // 1 July
+    end: new Date(startYear + 1, 5, 30, 23, 59, 59, 999), // 30 June 23:59:59
+  };
+}
 
 interface NSWReportClientProps {
   initialAnimals: Animal[];

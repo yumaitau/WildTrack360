@@ -272,7 +272,7 @@ export class NSWReportGenerator {
       ['', '', '', '', '', '', '', '', '', '', '', 'Koala', 'Flying-Fox', 'Bird of Prey', 'Venomous Snake', 'Marine Reptiles']
     ];
 
-    const dataRows = this.data.carers.map((carer: any) => {
+    const dataRows = this.data.carers.map((carer) => {
       const memberRecord: MemberRecord = {
         memberId: carer.id,
         firstName: carer.name.split(' ')[0] || carer.name,

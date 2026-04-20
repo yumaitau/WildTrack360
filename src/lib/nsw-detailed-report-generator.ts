@@ -32,9 +32,11 @@ export interface NSWDetailedReportData {
   // Map of CarerProfile.id (Clerk user ID) → display name, used to resolve
   // the Rehabilitator name column. Missing entries fall back to blank.
   rehabilitatorsByCarerId: Record<string, string>;
-  // Optional: canonical NSW species list (from the current XLSX template).
-  // If omitted, the Species list tab is populated with the distinct species
-  // present in `animals` so the user has a starting reference.
+  // Optional: a curated list of common names to emit on the Species list
+  // tab (e.g. to scope it to species actually rescued in the period). When
+  // present, the tab is rendered as a single "Common name" column. When
+  // omitted, the full authoritative NSW species list is emitted with
+  // scientific name and species code columns.
   speciesList?: string[];
 }
 
@@ -189,22 +191,28 @@ export class NSWDetailedReportGenerator {
     const ws = wb.addWorksheet('Species list');
     ws.addRow(['Species list — NSW DCCEEW Detailed Report reference']);
     ws.addRow([]);
-    ws.addRow(['Common name', 'Scientific name', 'Species code']);
 
-    // Callers can pass a curated speciesList to scope the tab (e.g. to only
-    // species actually rescued); otherwise emit the full NSW list.
+    // Two emission modes:
+    //   - Curated list (string[]): single "Common name" column, one cell
+    //     per row — there's no scientific name or code to advertise.
+    //   - Default (no curated list): full NSW picklist with common +
+    //     scientific names and species code.
     const fromTemplate = this.data.speciesList;
     if (fromTemplate && fromTemplate.length > 0) {
+      ws.addRow(['Common name']);
       for (const name of fromTemplate) {
         ws.addRow([name]);
       }
+      ws.addRow([SPECIES_NOT_LISTED]);
+      ws.columns = [{ width: 40 }];
     } else {
+      ws.addRow(['Common name', 'Scientific name', 'Species code']);
       for (const s of NSW_SPECIES) {
         ws.addRow([s.commonName, s.scientificName, s.speciesCode]);
       }
+      ws.addRow([SPECIES_NOT_LISTED, '', '']);
+      ws.columns = [{ width: 40 }, { width: 40 }, { width: 16 }];
     }
-    ws.addRow([SPECIES_NOT_LISTED]);
-    ws.columns = [{ width: 40 }, { width: 40 }, { width: 16 }];
   }
 
   private addEncounterTypeTab(wb: ExcelJS.Workbook) {
