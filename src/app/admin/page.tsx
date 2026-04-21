@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -90,7 +90,38 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
 ];
 
+function AdminPageLoading() {
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="bg-card shadow-sm">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-primary">Admin Panel</h1>
+          <Button asChild variant="ghost">
+            <Link href="/" className="flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+          </Button>
+        </div>
+      </header>
+      <main className="container mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading admin data...</div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export default function AdminPage() {
+  return (
+    <Suspense fallback={<AdminPageLoading />}>
+      <AdminPageContent />
+    </Suspense>
+  );
+}
+
+function AdminPageContent() {
   const [species, setSpecies] = useState<string[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);

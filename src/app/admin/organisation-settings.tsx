@@ -49,19 +49,13 @@ export function OrganisationSettings() {
     [animalIdTemplate, orgShortCode]
   );
 
-  const handleSave = async () => {
+  const patchSettings = async (payload: Record<string, string>) => {
     setSaving(true);
     try {
       const res = await fetch("/api/admin/org-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orgShortCode,
-          animalIdTemplate,
-          contactEmail,
-          contactPhone,
-          licenseNumber,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Failed to save");
       toast.success("Organisation settings updated.");
@@ -71,6 +65,12 @@ export function OrganisationSettings() {
       setSaving(false);
     }
   };
+
+  const saveContactCard = () =>
+    patchSettings({ contactEmail, contactPhone, licenseNumber });
+
+  const saveAnimalIdCard = () =>
+    patchSettings({ orgShortCode, animalIdTemplate });
 
   if (loading) {
     return (
@@ -139,7 +139,7 @@ export function OrganisationSettings() {
             </p>
           </div>
 
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={saveContactCard} disabled={saving}>
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -207,7 +207,7 @@ export function OrganisationSettings() {
             </p>
           </div>
 
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={saveAnimalIdCard} disabled={saving}>
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

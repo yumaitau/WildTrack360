@@ -66,11 +66,12 @@ export async function PATCH(request: Request) {
   // Optional contact fields: allow "" (or null) to clear, validate format when present.
   const normalisedEmail = normaliseOptional(contactEmail, "contactEmail");
   if (normalisedEmail instanceof Response) return normalisedEmail;
-  if (normalisedEmail.value && !EMAIL_PATTERN.test(normalisedEmail.value)) {
-    return NextResponse.json({ error: "Invalid contact email" }, { status: 400 });
-  }
+  // Length cap must run before the regex to bound worst-case regex runtime (ReDoS defence).
   if (normalisedEmail.value && normalisedEmail.value.length > 254) {
     return NextResponse.json({ error: "Contact email is too long" }, { status: 400 });
+  }
+  if (normalisedEmail.value && !EMAIL_PATTERN.test(normalisedEmail.value)) {
+    return NextResponse.json({ error: "Invalid contact email" }, { status: 400 });
   }
 
   const normalisedPhone = normaliseOptional(contactPhone, "contactPhone");
