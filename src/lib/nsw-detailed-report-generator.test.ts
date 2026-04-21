@@ -1,11 +1,46 @@
 import { describe, it, expect } from 'vitest';
-import type { Animal } from '@prisma/client';
+import type { Animal, CallLog } from '@prisma/client';
 import {
   NSWDetailedReportGenerator,
   NSWDetailedReportData,
   DATASHEET_HEADERS,
+  isReportableForNsw,
+  nswExclusionReason,
+  isAdviceOnlyCallLog,
+  NSW_FATE_ADVICE_PROVIDED,
 } from './nsw-detailed-report-generator';
-import { NSW_FATE, NSW_ANIMAL_CONDITION, NSW_ENCOUNTER_TYPE } from './nsw-picklists';
+import { NSW_FATE, NSW_ANIMAL_CONDITION, NSW_ENCOUNTER_TYPE } from './nsw-reference-data';
+import { SPECIES_NOT_LISTED } from './nsw-species';
+
+function makeCallLog(overrides: Partial<CallLog> = {}): CallLog {
+  const base: CallLog = {
+    id: 'call-1',
+    dateTime: new Date(2025, 7, 20),
+    status: 'RESOLVED' as any,
+    callerName: 'Member of Public',
+    callerPhone: '0400000000',
+    callerEmail: null,
+    species: 'Tawny Frogmouth',
+    location: '14 Example St',
+    coordinates: { lat: -33.9, lng: 151.2 } as any,
+    suburb: 'Camperdown',
+    postcode: '2050',
+    notes: 'Bird stunned after window collision; callback arranged.',
+    reason: null,
+    referrer: null,
+    action: 'Advice provided',
+    outcome: null,
+    takenByUserId: 'user-1',
+    takenByUserName: 'Jane Carer',
+    assignedToUserId: null,
+    assignedToUserName: null,
+    animalId: null,
+    clerkOrganizationId: 'org-1',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  return { ...base, ...overrides };
+}
 
 function makeAnimal(overrides: Partial<Animal> = {}): Animal {
   const base: Animal = {
@@ -53,7 +88,9 @@ function makeAnimal(overrides: Partial<Animal> = {}): Animal {
     clerkUserId: 'user-1',
     clerkOrganizationId: 'org-1',
     carerId: 'carer-1',
-  };
+    sourceOrgAnimalId: null,
+    interOrgTransferReceived: false,
+  } as Animal;
   return { ...base, ...overrides };
 }
 
@@ -246,6 +283,170 @@ describe('NSWDetailedReportGenerator', () => {
     const wb = gen.generateReport();
     const row = wb.getWorksheet('Datasheet')!.getRow(6).values as (string | number)[];
     expect(row[8]).toBe('CAMPERDOWN - 2050');
+  });
+
+  describe('NSW reportability filter', () => {
+    it('reports native species on the NSW list', () => {
+      const animal = makeAnimal({ species: 'Eastern Grey Kangaroo' });
+      expect(isReportableForNsw(animal)).toBe(true);
+      expect(nswExclusionReason(animal)).toBeNull();
+    });
+
+    it('excludes species not on the NSW list (e.g. domestic pet breeds)', () => {
+      const animal = makeAnimal({ species: 'Domestic Rabbit' });
+      expect(isReportableForNsw(animal)).toBe(false);
+      expect(nswExclusionReason(animal)).toBe('species-not-in-nsw-list');
+    });
+
+    it('reports SPECIES_NOT_LISTED sentinel (full name supplied in notes)', () => {
+      const animal = makeAnimal({ species: SPECIES_NOT_LISTED });
+      expect(isReportableForNsw(animal)).toBe(true);
+    });
+
+    it('excludes Domestic Pet encounters regardless of species', () => {
+      const animal = makeAnimal({
+        species: 'Eastern Grey Kangaroo',
+        encounterType: 'Domestic Pet - Surrendered',
+      });
+      expect(isReportableForNsw(animal)).toBe(false);
+      expect(nswExclusionReason(animal)).toBe('domestic-pet-encounter');
+    });
+
+    it('excludes penguins per NSW annual report policy', () => {
+      const animal = makeAnimal({ species: 'Little Penguin' });
+      expect(isReportableForNsw(animal)).toBe(false);
+      expect(nswExclusionReason(animal)).toBe('species-excluded-by-annual-report');
+    });
+
+    it('excludes sea snakes per NSW annual report policy', () => {
+      const animal = makeAnimal({ species: 'Unidentified Seasnake' });
+      expect(isReportableForNsw(animal)).toBe(false);
+      expect(nswExclusionReason(animal)).toBe('species-excluded-by-annual-report');
+    });
+
+    it('skips excluded animals when emitting the Datasheet', async () => {
+      const kangaroo = makeAnimal({ id: 'k', orgAnimalId: 'KROO', species: 'Eastern Grey Kangaroo' });
+      const rabbit = makeAnimal({ id: 'r', orgAnimalId: 'RABBIT', species: 'Domestic Rabbit' });
+      const penguin = makeAnimal({ id: 'p', orgAnimalId: 'PENG', species: 'Little Penguin' });
+      const gen = new NSWDetailedReportGenerator(baseData([kangaroo, rabbit, penguin]));
+      const wb = gen.generateReport();
+      const ws = wb.getWorksheet('Datasheet')!;
+      // Only kangaroo lands on the Datasheet (row 6), next row is empty.
+      expect(ws.getRow(6).getCell(2).value).toBe('KROO');
+      expect(ws.getRow(7).getCell(2).value).toBeFalsy();
+    });
+  });
+
+  describe('Inter-org transfer ID propagation', () => {
+    it('emits the originating org\'s Animal ID when inter-org transfer is flagged', async () => {
+      const animal = makeAnimal({
+        orgAnimalId: 'RECEIVER-0042',
+        sourceOrgAnimalId: 'WIRES-2025-0001',
+        interOrgTransferReceived: true,
+      });
+      const gen = new NSWDetailedReportGenerator(baseData([animal]));
+      const wb = gen.generateReport();
+      const row = wb.getWorksheet('Datasheet')!.getRow(6).values as (string | number)[];
+      expect(row[2]).toBe('WIRES-2025-0001');
+    });
+
+    it('falls back to this org\'s orgAnimalId when inter-org flag is on but source ID missing', async () => {
+      const animal = makeAnimal({
+        orgAnimalId: 'RECEIVER-0042',
+        sourceOrgAnimalId: null,
+        interOrgTransferReceived: true,
+      });
+      const gen = new NSWDetailedReportGenerator(baseData([animal]));
+      const wb = gen.generateReport();
+      const row = wb.getWorksheet('Datasheet')!.getRow(6).values as (string | number)[];
+      expect(row[2]).toBe('RECEIVER-0042');
+    });
+
+    it('ignores the source ID when the animal was not received inter-org', async () => {
+      const animal = makeAnimal({
+        orgAnimalId: 'LOCAL-0001',
+        sourceOrgAnimalId: 'STALE-DATA',
+        interOrgTransferReceived: false,
+      });
+      const gen = new NSWDetailedReportGenerator(baseData([animal]));
+      const wb = gen.generateReport();
+      const row = wb.getWorksheet('Datasheet')!.getRow(6).values as (string | number)[];
+      expect(row[2]).toBe('LOCAL-0001');
+    });
+  });
+
+  describe('Advice-only call log emission', () => {
+    it('isAdviceOnlyCallLog matches action="Advice provided" with no linked animal', () => {
+      expect(isAdviceOnlyCallLog(makeCallLog())).toBe(true);
+    });
+
+    it('isAdviceOnlyCallLog is case-insensitive and trims whitespace', () => {
+      expect(isAdviceOnlyCallLog(makeCallLog({ action: '  advice provided  ' }))).toBe(true);
+      expect(isAdviceOnlyCallLog(makeCallLog({ action: 'ADVICE PROVIDED' }))).toBe(true);
+    });
+
+    it('isAdviceOnlyCallLog rejects calls linked to an Animal (already reported)', () => {
+      expect(isAdviceOnlyCallLog(makeCallLog({ animalId: 'animal-1' }))).toBe(false);
+    });
+
+    it('isAdviceOnlyCallLog rejects non-advice actions', () => {
+      expect(isAdviceOnlyCallLog(makeCallLog({ action: 'Dispatched rescuer' }))).toBe(false);
+      expect(isAdviceOnlyCallLog(makeCallLog({ action: null }))).toBe(false);
+    });
+
+    it('appends an advice-call row after animal rows with fate="Advice provided"', async () => {
+      const animal = makeAnimal({ orgAnimalId: 'ANI-1' });
+      const call = makeCallLog();
+      const data: NSWDetailedReportData = {
+        ...baseData([animal]),
+        adviceCallLogs: [call],
+      };
+      const gen = new NSWDetailedReportGenerator(data);
+      const wb = gen.generateReport();
+      const ws = wb.getWorksheet('Datasheet')!;
+      // Row 6 = animal, Row 7 = advice call
+      expect(ws.getRow(6).getCell(2).value).toBe('ANI-1');
+      const row = ws.getRow(7).values as (string | number | undefined)[];
+      expect(row[1]).toBe('Tawny Frogmouth');
+      expect(row[2]).toBe(call.id);
+      expect(row[3]).toBe('20/08/2025');
+      expect(row[4]).toBe(''); // no encounter type on advice calls
+      expect(row[5]).toBe(-33.9);
+      expect(row[6]).toBe(151.2);
+      expect(row[7]).toBe('14 Example St');
+      expect(row[8]).toBe('CAMPERDOWN - 2050');
+      expect(row[14]).toBe('Jane Carer');
+      expect(row[15]).toBe(NSW_FATE_ADVICE_PROVIDED);
+      expect(row[16]).toBe('20/08/2025');
+      expect(row[23]).toBe('Bird stunned after window collision; callback arranged.');
+    });
+
+    it('skips advice calls already linked to an Animal (to avoid double-counting)', async () => {
+      const linked = makeCallLog({ id: 'call-linked', animalId: 'animal-1' });
+      const data: NSWDetailedReportData = {
+        ...baseData([]),
+        adviceCallLogs: [linked],
+      };
+      const gen = new NSWDetailedReportGenerator(data);
+      const wb = gen.generateReport();
+      const ws = wb.getWorksheet('Datasheet')!;
+      expect(ws.getRow(6).getCell(2).value).toBeFalsy();
+    });
+
+    it('filters advice calls outside the reporting window', async () => {
+      const before = makeCallLog({ id: 'call-before', dateTime: new Date(2024, 5, 1) });
+      const inside = makeCallLog({ id: 'call-in', dateTime: new Date(2025, 9, 1) });
+      const after = makeCallLog({ id: 'call-after', dateTime: new Date(2027, 0, 1) });
+      const data: NSWDetailedReportData = {
+        ...baseData([]),
+        adviceCallLogs: [before, inside, after],
+      };
+      const gen = new NSWDetailedReportGenerator(data);
+      const wb = gen.generateReport();
+      const ws = wb.getWorksheet('Datasheet')!;
+      expect(ws.getRow(6).getCell(2).value).toBe('call-in');
+      expect(ws.getRow(7).getCell(2).value).toBeFalsy();
+    });
   });
 
   it('includes all 7 required tabs', async () => {

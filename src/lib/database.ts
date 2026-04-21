@@ -30,6 +30,7 @@ const ANIMAL_SAFE_FIELDS = [
 	'encounterType', 'initialWeightGrams', 'weightUnit', 'animalCondition',
 	'pouchCondition', 'fate', 'tagBandColourNumber', 'microchipNumber', 'lifeStage',
 	'dateAdmitted', 'orgAnimalId', 'outcomeReason',
+	'sourceOrgAnimalId', 'interOrgTransferReceived',
 	'carerId',
 ] as const;
 

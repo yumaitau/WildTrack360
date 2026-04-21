@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +77,11 @@ export function TransfersTab({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // Sync count to parent via effect to avoid setState-during-render
+  useEffect(() => {
+    onCountChange?.(transfers.length);
+  }, [transfers.length, onCountChange]);
+
   const [form, setForm] = useState({
     transferDate: new Date().toISOString().split("T")[0],
     transferType: "INTERNAL_CARER",
@@ -132,11 +137,7 @@ export function TransfersTab({
         throw new Error(err.error || "Failed to create transfer");
       }
       const data = await res.json();
-      setTransfers((prev) => {
-        const updated = [data.transfer, ...prev];
-        onCountChange?.(updated.length);
-        return updated;
-      });
+      setTransfers((prev) => [data.transfer, ...prev]);
       setIsCreateOpen(false);
       resetForm();
 
@@ -158,11 +159,7 @@ export function TransfersTab({
     try {
       const res = await fetch(`/api/transfers/${transferId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete transfer");
-      setTransfers((prev) => {
-        const updated = prev.filter((t) => t.id !== transferId);
-        onCountChange?.(updated.length);
-        return updated;
-      });
+      setTransfers((prev) => prev.filter((t) => t.id !== transferId));
       toast({ title: "Deleted", description: "Transfer record deleted." });
     } catch (e) {
       toast({ variant: "destructive", title: "Error", description: e instanceof Error ? e.message : "Failed to delete" });

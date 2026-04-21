@@ -4,7 +4,7 @@ import {
   canonicaliseNswLocation,
   validateNswLocation,
   NSW_SUBURB_POSTCODES,
-} from './nsw-suburbs';
+} from './nsw-suburbs-fy2526';
 
 describe('NSW_SUBURB_POSTCODES', () => {
   it('contains the full NSW picklist (4k+ entries sourced from the Detailed Report)', () => {

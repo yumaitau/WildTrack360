@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SPECIES_NOT_LISTED, composeNotesForSpecies } from './nsw-species';
+import { SPECIES_NOT_LISTED, composeNotesForSpecies, isAggregateRiskIntake } from './nsw-species';
 
 describe('SPECIES_NOT_LISTED', () => {
   it('matches the NSW-mandated sentinel string exactly', () => {
@@ -78,5 +78,53 @@ describe('composeNotesForSpecies', () => {
         userNotes: '',
       }),
     ).toBeNull();
+  });
+});
+
+describe('isAggregateRiskIntake', () => {
+  it('flags bird chicks (Young) — common as clutches', () => {
+    expect(
+      isAggregateRiskIntake({ species: 'Australian Wood Duck', lifeStage: 'Young' }),
+    ).toBe(true);
+  });
+
+  it('flags reptile hatchlings (Egg) — turtle & snake clutches', () => {
+    expect(
+      isAggregateRiskIntake({ species: 'Eastern Snake-necked Turtle', lifeStage: 'Egg' }),
+    ).toBe(true);
+  });
+
+  it('does not flag adult birds', () => {
+    expect(
+      isAggregateRiskIntake({ species: 'Australian Wood Duck', lifeStage: 'Adult' }),
+    ).toBe(false);
+  });
+
+  it('flags Pouch Young regardless of species class', () => {
+    expect(
+      isAggregateRiskIntake({ species: 'Eastern Grey Kangaroo', pouchCondition: 'Pouch Young' }),
+    ).toBe(true);
+  });
+
+  it('flags Pinkie Attached (possum/macropod pinkies)', () => {
+    expect(
+      isAggregateRiskIntake({ species: 'Common Ringtail Possum', pouchCondition: 'Pinkie Attached' }),
+    ).toBe(true);
+  });
+
+  it('does not flag young mammals without a pouch signal', () => {
+    expect(
+      isAggregateRiskIntake({ species: 'Eastern Grey Kangaroo', lifeStage: 'Young' }),
+    ).toBe(false);
+  });
+
+  it('does not flag species that are not on the NSW list', () => {
+    expect(
+      isAggregateRiskIntake({ species: 'Domestic Rabbit', lifeStage: 'Young' }),
+    ).toBe(false);
+  });
+
+  it('returns false for blank input', () => {
+    expect(isAggregateRiskIntake({ species: null })).toBe(false);
   });
 });

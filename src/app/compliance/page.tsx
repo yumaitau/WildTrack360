@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, Home, FileSpreadsheet } from "lucide-react";
+import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, Home, FileSpreadsheet, FlaskConical } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from '@/lib/prisma';
@@ -110,6 +110,9 @@ export default async function CompliancePage() {
 
   // Add NSW-specific report module if in NSW jurisdiction
   if (jurisdiction === 'NSW') {
+    const preservedSpecimenCount = await prisma.preservedSpecimen.count({
+      where: { clerkOrganizationId: orgId },
+    });
     complianceModules.push({
       title: "NSW Annual Report",
       description: "Generate NSW Wildlife Rehabilitation Combined Report",
@@ -118,6 +121,15 @@ export default async function CompliancePage() {
       status: "compliant",
       count: 0,
       color: "text-blue-600"
+    });
+    complianceModules.push({
+      title: "Preserved Specimen Register",
+      description: "Browse specimens and print register-reference labels",
+      icon: FlaskConical,
+      href: "/compliance/preserved-specimens",
+      status: "compliant",
+      count: preservedSpecimenCount,
+      color: "text-amber-700"
     });
   }
 

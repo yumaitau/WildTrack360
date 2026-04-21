@@ -3,7 +3,7 @@ import {
   NSW_SPECIES,
   isKnownNswSpecies,
   findNswSpeciesByCommonName,
-} from './nsw-species-list';
+} from './nsw-species-list-fy2526';
 
 describe('NSW_SPECIES', () => {
   it('contains the full species list from the Detailed Report (~1,668 entries)', () => {

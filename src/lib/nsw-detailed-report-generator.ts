@@ -1,22 +1,130 @@
 import { Animal } from '@prisma/client';
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
-import {
-  NSW_SEX,
-  NSW_LIFE_STAGE,
-  NSW_POUCH_CONDITION,
-  NSW_ANIMAL_CONDITION,
-  NSW_ENCOUNTER_TYPE,
-  NSW_FATE,
-} from './nsw-picklists';
-import { NSW_SPECIES } from './nsw-species-list';
 import { SPECIES_NOT_LISTED } from './nsw-species';
-import { canonicaliseNswLocation } from './nsw-suburbs';
+import {
+  DEFAULT_NSW_REPORTING_YEAR,
+  NswReportingYear,
+  getNswReferenceData,
+} from './nsw-reference-data';
 
 // Prefix applied to a suburb/postcode cell when the pair is not in the NSW
 // reference list — signals to the submitter that the value must be
 // reconciled against the official NSW template drop-down before emailing.
 export const UNVALIDATED_SUBURB_MARKER = '? ';
+
+// Families NSW explicitly excludes from the Detailed Report's rescue
+// statistics despite appearing in the BioNet species list. Penguins and sea
+// snakes are listed in the annual report's "excluded from statistics"
+// appendix, so we strip them at emission time even if a carer has logged them.
+const NSW_ANNUAL_REPORT_EXCLUDED_FAMILIES: ReadonlySet<string> = new Set([
+  'Spheniscidae', // Penguins
+  'Hydrophiidae', // Sea snakes
+]);
+
+// NSW groups every "Domestic Pet - ..." encounter under a common prefix in
+// the Encounter type picklist; rather than pin each suffix we match the
+// prefix so new variants added by NSW are excluded automatically.
+const DOMESTIC_PET_ENCOUNTER_PREFIX = 'domestic pet';
+
+// Reportability check depends on the year-specific species list, which is
+// expensive to re-derive on every call. Cache the derived Sets per year so
+// callers can ask about arbitrary historical years without a perf hit.
+interface ReportabilitySets {
+  reportableNames: ReadonlySet<string>;
+  annualReportExcludedNames: ReadonlySet<string>;
+}
+
+const reportabilitySetsCache = new Map<NswReportingYear, ReportabilitySets>();
+
+function getReportabilitySets(year: NswReportingYear): ReportabilitySets {
+  const cached = reportabilitySetsCache.get(year);
+  if (cached) return cached;
+  const { species } = getNswReferenceData(year);
+  const reportableNames = new Set<string>(
+    species.NSW_SPECIES.map((s) => s.commonName.toLowerCase()),
+  );
+  const annualReportExcludedNames = new Set<string>(
+    species.NSW_SPECIES
+      .filter((s) => NSW_ANNUAL_REPORT_EXCLUDED_FAMILIES.has(s.familyScientific))
+      .map((s) => s.commonName.toLowerCase()),
+  );
+  const sets: ReportabilitySets = { reportableNames, annualReportExcludedNames };
+  reportabilitySetsCache.set(year, sets);
+  return sets;
+}
+
+export type NswExclusionReason =
+  | 'domestic-pet-encounter'
+  | 'species-not-in-nsw-list'
+  | 'species-excluded-by-annual-report';
+
+/**
+ * Returns the NSW-reporting exclusion reason for an Animal, or null if the
+ * record is reportable. Reasons cascade in the order NSW DCCEEW applies them:
+ * domestic pets first (encounter type signal), then species-list membership,
+ * then the annual report's published exclusion list.
+ *
+ * `year` selects which published picklist the species check runs against —
+ * historical reports should pass the year they were filed under.
+ */
+export function nswExclusionReason(
+  animal: {
+    species: string | null;
+    encounterType: string | null;
+  },
+  year: NswReportingYear = DEFAULT_NSW_REPORTING_YEAR,
+): NswExclusionReason | null {
+  const encounter = (animal.encounterType ?? '').trim().toLowerCase();
+  if (encounter.startsWith(DOMESTIC_PET_ENCOUNTER_PREFIX)) {
+    return 'domestic-pet-encounter';
+  }
+
+  const species = (animal.species ?? '').trim();
+  // SPECIES_NOT_LISTED is the sentinel carers pick when a valid native
+  // species isn't on the BioNet list — the full scientific name is supplied
+  // via Notes, so these remain reportable.
+  if (species !== SPECIES_NOT_LISTED) {
+    const sets = getReportabilitySets(year);
+    const key = species.toLowerCase();
+    if (!sets.reportableNames.has(key)) {
+      return 'species-not-in-nsw-list';
+    }
+    if (sets.annualReportExcludedNames.has(key)) {
+      return 'species-excluded-by-annual-report';
+    }
+  }
+
+  return null;
+}
+
+export const isReportableForNsw = (
+  animal: { species: string | null; encounterType: string | null },
+  year: NswReportingYear = DEFAULT_NSW_REPORTING_YEAR,
+): boolean => nswExclusionReason(animal, year) === null;
+
+export const NSW_EXCLUSION_REASON_LABELS: Record<NswExclusionReason, string> = {
+  'domestic-pet-encounter': 'Domestic pet',
+  'species-not-in-nsw-list': 'Species not on NSW list',
+  'species-excluded-by-annual-report': 'Excluded species (penguins, sea snakes)',
+};
+
+// Narrow shape of a CallLog row needed to emit an advice-only Datasheet row.
+// Caller PII (name, phone, email) is intentionally excluded so the server
+// does not ship it to the client-side report generator.
+export interface NswReportCallLogDto {
+  id: string;
+  dateTime: Date;
+  action: string | null;
+  animalId: string | null;
+  species: string | null;
+  coordinates: unknown;
+  location: string | null;
+  suburb: string | null;
+  postcode: string | null;
+  takenByUserName: string | null;
+  notes: string | null;
+}
 
 export interface NSWDetailedReportData {
   reportingPeriod: {
@@ -29,6 +137,13 @@ export interface NSWDetailedReportData {
     contactName: string;
   };
   animals: Animal[];
+  // Call logs flagged with action = "Advice provided" that did not result in
+  // an Animal record (animalId is null). NSW requires every advice-only
+  // encounter to appear on the Datasheet with fate = "Advice provided", so
+  // the generator unions these rows onto the animal-derived rows. Calls with
+  // a linked Animal are already represented via the animal row, so they're
+  // skipped to avoid double-counting.
+  adviceCallLogs?: NswReportCallLogDto[];
   // Map of CarerProfile.id (Clerk user ID) → display name, used to resolve
   // the Rehabilitator name column. Missing entries fall back to blank.
   rehabilitatorsByCarerId: Record<string, string>;
@@ -38,6 +153,31 @@ export interface NSWDetailedReportData {
   // omitted, the full authoritative NSW species list is emitted with
   // scientific name and species code columns.
   speciesList?: string[];
+  // NSW reporting year whose picklists and species list this report should
+  // be generated against. Defaults to DEFAULT_NSW_REPORTING_YEAR (the
+  // current FY). Historical reports must pin the year they were filed under
+  // so column names and picklist values match what DCCEEW published then.
+  reportingYear?: NswReportingYear;
+}
+
+// NSW Fate value emitted for advice-only phone calls. Matches the canonical
+// NSW_FATE picklist entry exactly so DCCEEW ingest doesn't reject the row.
+export const NSW_FATE_ADVICE_PROVIDED = 'Advice provided';
+
+/**
+ * True when a CallLog should be emitted as an "Advice provided" Datasheet row:
+ *   - action (free text, references CallLogAction lookup) matches the NSW
+ *     Fate picklist entry case-insensitively
+ *   - the call did not produce an Animal record (otherwise the animal row
+ *     already represents the encounter)
+ */
+export function isAdviceOnlyCallLog(callLog: {
+  action: string | null;
+  animalId: string | null;
+}): boolean {
+  if (callLog.animalId) return false;
+  const action = (callLog.action ?? '').trim().toLowerCase();
+  return action === NSW_FATE_ADVICE_PROVIDED.toLowerCase();
 }
 
 interface Coord {
@@ -53,14 +193,18 @@ function parseCoord(raw: unknown): Coord {
   return { lat, lng };
 }
 
-function suburbAndPostcode(suburb?: string | null, postcode?: string | null): string {
+function suburbAndPostcode(
+  canonicalise: (s: string | null | undefined, p: string | null | undefined) => string | null,
+  suburb?: string | null,
+  postcode?: string | null,
+): string {
   const s = (suburb ?? '').trim();
   const p = (postcode ?? '').trim();
   if (!s && !p) return '';
   // When the pair is in the NSW picklist, emit NSW's canonical
   // "SUBURB - POSTCODE" (uppercase, hyphen) so the export matches the
   // Reference Data column I convention verbatim.
-  const canonical = canonicaliseNswLocation(s, p);
+  const canonical = canonicalise(s, p);
   if (canonical) return canonical;
   // Otherwise, prefix the original value so the submitter knows this cell
   // needs picklist reconciliation before submission.
@@ -108,9 +252,13 @@ export const DATASHEET_HEADERS = [
 
 export class NSWDetailedReportGenerator {
   private data: NSWDetailedReportData;
+  private reportingYear: NswReportingYear;
+  private referenceData: ReturnType<typeof getNswReferenceData>;
 
   constructor(data: NSWDetailedReportData) {
     this.data = data;
+    this.reportingYear = data.reportingYear ?? DEFAULT_NSW_REPORTING_YEAR;
+    this.referenceData = getNswReferenceData(this.reportingYear);
   }
 
   generateReport(): ExcelJS.Workbook {
@@ -127,22 +275,64 @@ export class NSWDetailedReportGenerator {
     return wb;
   }
 
+  private buildAdviceCallLogRow(callLog: NswReportCallLogDto): (string | number)[] {
+    const coord = parseCoord(callLog.coordinates);
+    const canonicalise = this.referenceData.suburbs.canonicaliseNswLocation;
+    // Advice-only rows don't have most Datasheet fields — NSW only needs
+    // enough to identify an encounter happened. We fill Common name, ID,
+    // date, location, and Fate; other columns stay blank per NSW guidance.
+    return [
+      callLog.species ?? '',
+      callLog.id,
+      formatDate(callLog.dateTime),
+      '', // Encounter type: not applicable to advice-only calls
+      coord.lat ?? '',
+      coord.lng ?? '',
+      callLog.location ?? '',
+      suburbAndPostcode(canonicalise, callLog.suburb, callLog.postcode),
+      '', // Animal condition
+      '', // Sex
+      '', // Life stage
+      '', // Initial weight
+      '', // Pouch condition
+      callLog.takenByUserName ?? '',
+      NSW_FATE_ADVICE_PROVIDED,
+      formatDate(callLog.dateTime),
+      '', // Release lat
+      '', // Release lng
+      '', // Release address
+      '', // Release suburb/postcode
+      '', // Tag/Band
+      '', // Microchip
+      callLog.notes ?? '',
+    ];
+  }
+
   private buildDatasheetRow(animal: Animal): (string | number)[] {
     const rescueCoord = parseCoord(animal.rescueCoordinates);
     const releaseCoord = parseCoord(animal.releaseCoordinates);
     const rehabilitator = animal.carerId
       ? this.data.rehabilitatorsByCarerId[animal.carerId] ?? ''
       : '';
+    const canonicalise = this.referenceData.suburbs.canonicaliseNswLocation;
+
+    // NSW de-dup rule: when an animal was received from another NSW group,
+    // emit the originating group's orgAnimalId so the two reports share one
+    // ID. Fall back to this org's orgAnimalId then the internal cuid if the
+    // source ID is missing (user forgot to capture it at intake).
+    const idForDatasheet = animal.interOrgTransferReceived && animal.sourceOrgAnimalId
+      ? animal.sourceOrgAnimalId
+      : animal.orgAnimalId ?? animal.id;
 
     return [
       animal.species ?? '',
-      animal.orgAnimalId ?? animal.id,
+      idForDatasheet,
       formatDate(animal.dateFound),
       animal.encounterType ?? '',
       rescueCoord.lat ?? '',
       rescueCoord.lng ?? '',
       animal.rescueAddress ?? '',
-      suburbAndPostcode(animal.rescueSuburb, animal.rescuePostcode),
+      suburbAndPostcode(canonicalise, animal.rescueSuburb, animal.rescuePostcode),
       animal.animalCondition ?? '',
       animal.sex ?? '',
       animal.lifeStage ?? '',
@@ -154,7 +344,7 @@ export class NSWDetailedReportGenerator {
       releaseCoord.lat ?? '',
       releaseCoord.lng ?? '',
       animal.releaseAddress ?? '',
-      suburbAndPostcode(animal.releaseSuburb, animal.releasePostcode),
+      suburbAndPostcode(canonicalise, animal.releaseSuburb, animal.releasePostcode),
       animal.tagBandColourNumber ?? '',
       animal.microchipNumber ?? '',
       animal.notes ?? '',
@@ -169,6 +359,18 @@ export class NSWDetailedReportGenerator {
       const d = new Date(a.dateFound);
       return d >= startDate && d <= endDate;
     });
+    const reportable = inWindow.filter((a) => isReportableForNsw(a, this.reportingYear));
+
+    // Advice-only call logs travel on the Datasheet alongside animal rows.
+    // No reportability (species-list) check is applied: NSW accepts advice
+    // calls regardless of species, and the caller's species guess may be
+    // vague ("bird", "possum"). Calls already linked to an animalId are
+    // skipped via isAdviceOnlyCallLog to avoid double-counting.
+    const adviceCalls = (this.data.adviceCallLogs ?? []).filter((c) => {
+      if (!isAdviceOnlyCallLog(c)) return false;
+      const d = new Date(c.dateTime);
+      return d >= startDate && d <= endDate;
+    });
 
     ws.addRow([
       `Detailed Report: ${format(startDate, 'do MMMM yyyy')} to ${format(endDate, 'do MMMM yyyy')}`,
@@ -180,8 +382,11 @@ export class NSWDetailedReportGenerator {
     ]);
     ws.addRow([...DATASHEET_HEADERS]);
 
-    for (const animal of inWindow) {
+    for (const animal of reportable) {
       ws.addRow(this.buildDatasheetRow(animal));
+    }
+    for (const call of adviceCalls) {
+      ws.addRow(this.buildAdviceCallLogRow(call));
     }
 
     ws.columns = DATASHEET_HEADERS.map(() => ({ width: 22 }));
@@ -207,7 +412,7 @@ export class NSWDetailedReportGenerator {
       ws.columns = [{ width: 40 }];
     } else {
       ws.addRow(['Common name', 'Scientific name', 'Species code']);
-      for (const s of NSW_SPECIES) {
+      for (const s of this.referenceData.species.NSW_SPECIES) {
         ws.addRow([s.commonName, s.scientificName, s.speciesCode]);
       }
       ws.addRow([SPECIES_NOT_LISTED, '', '']);
@@ -218,7 +423,7 @@ export class NSWDetailedReportGenerator {
   private addEncounterTypeTab(wb: ExcelJS.Workbook) {
     const ws = wb.addWorksheet('Encounter type');
     ws.addRow(['Encounter type', 'Definition', 'Example']);
-    for (const item of NSW_ENCOUNTER_TYPE) {
+    for (const item of this.referenceData.picklists.NSW_ENCOUNTER_TYPE) {
       ws.addRow([item.value, item.definition ?? '', item.example ?? '']);
     }
     ws.columns = [{ width: 36 }, { width: 60 }, { width: 60 }];
@@ -227,7 +432,7 @@ export class NSWDetailedReportGenerator {
   private addAnimalConditionTab(wb: ExcelJS.Workbook) {
     const ws = wb.addWorksheet('Animal condition');
     ws.addRow(['Animal condition', 'Definition', 'Example']);
-    for (const item of NSW_ANIMAL_CONDITION) {
+    for (const item of this.referenceData.picklists.NSW_ANIMAL_CONDITION) {
       ws.addRow([item.value, item.definition ?? '', item.example ?? '']);
     }
     ws.columns = [{ width: 32 }, { width: 60 }, { width: 60 }];
@@ -236,7 +441,7 @@ export class NSWDetailedReportGenerator {
   private addFateTab(wb: ExcelJS.Workbook) {
     const ws = wb.addWorksheet('Fate');
     ws.addRow(['Fate', 'Definition', 'Example']);
-    for (const item of NSW_FATE) {
+    for (const item of this.referenceData.picklists.NSW_FATE) {
       ws.addRow([item.value, item.definition ?? '', item.example ?? '']);
     }
     ws.columns = [{ width: 48 }, { width: 60 }, { width: 60 }];
@@ -245,6 +450,7 @@ export class NSWDetailedReportGenerator {
   private addReferenceDataTab(wb: ExcelJS.Workbook) {
     const ws = wb.addWorksheet('Reference data');
     ws.addRow(['Sex', 'Life stage', 'Pouch condition', 'Weight unit']);
+    const { NSW_SEX, NSW_LIFE_STAGE, NSW_POUCH_CONDITION } = this.referenceData.picklists;
     const rows = Math.max(
       NSW_SEX.length,
       NSW_LIFE_STAGE.length,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +61,11 @@ export function PermanentCareTab({
 }: PermanentCareTabProps) {
   const isTransferred = animalStatus === "TRANSFERRED";
   const [applications, setApplications] = useState<PermanentCareApplication[]>(initialApplications);
+
+  // Sync count to parent via effect to avoid setState-during-render
+  useEffect(() => {
+    onCountChange?.(applications.length);
+  }, [applications.length, onCountChange]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isApproveOpen, setIsApproveOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
@@ -129,11 +134,7 @@ export function PermanentCareTab({
         throw new Error(err.error || "Failed to create application");
       }
       const created = await res.json();
-      setApplications((prev) => {
-        const updated = [created, ...prev];
-        onCountChange?.(updated.length);
-        return updated;
-      });
+      setApplications((prev) => [created, ...prev]);
       setIsCreateOpen(false);
       resetCreateForm();
       toast({ title: "Application Created", description: `Permanent care application for ${animalName} has been ${created.status === 'SUBMITTED' ? 'submitted' : 'saved as draft'}.` });
