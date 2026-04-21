@@ -34,9 +34,14 @@ interface NSWReportClientProps {
   initialAnimals: Animal[];
   initialCarers: EnrichedCarer[];
   organizationId: string;
+  orgDefaults?: {
+    contactEmail: string | null;
+    contactPhone: string | null;
+    licenseNumber: string | null;
+  };
 }
 
-export default function NSWReportClient({ initialAnimals, initialCarers, organizationId }: NSWReportClientProps) {
+export default function NSWReportClient({ initialAnimals, initialCarers, organizationId, orgDefaults }: NSWReportClientProps) {
   const { toast } = useToast();
   const { organization } = useOrganization();
   const { user } = useUser();
@@ -47,44 +52,35 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
   const [startDate, setStartDate] = useState<Date>(() => currentNswFinancialYear().start);
   const [endDate, setEndDate] = useState<Date>(() => currentNswFinancialYear().end);
   const [orgName, setOrgName] = useState('');
-  const [licenseNumber, setLicenseNumber] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState(orgDefaults?.licenseNumber ?? '');
   const [contactName, setContactName] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState(orgDefaults?.contactEmail ?? '');
+  const [contactPhone, setContactPhone] = useState(orgDefaults?.contactPhone ?? '');
 
-  // Pre-populate organization data when component mounts
+  // Pre-populate org name once Clerk loads, and fall back to user's own contact
+  // details only when the organisation has no contact on file.
   useEffect(() => {
     if (organization) {
-      // Set organization name
       setOrgName(organization.name || '');
-      
-      // Try to get license number from public metadata if available
-      const publicMetadata = organization.publicMetadata as any;
-      if (publicMetadata?.licenseNumber) {
-        setLicenseNumber(publicMetadata.licenseNumber);
-      }
-      
-      // Pre-populate contact info from user if available
-      if (user) {
-        const fullName = user.fullName || 
-                        `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
-                        user.username || '';
-        setContactName(fullName);
-        
-        // Set primary email
+    }
+    if (user) {
+      const fullName = user.fullName ||
+                      `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+                      user.username || '';
+      setContactName((prev) => prev || fullName);
+      if (!orgDefaults?.contactEmail) {
         const primaryEmail = user.primaryEmailAddress?.emailAddress || '';
-        setContactEmail(primaryEmail);
-        
-        // Try to get phone from user metadata if available
-        const userMetadata = user.publicMetadata as any;
-        if (userMetadata?.phoneNumber) {
-          setContactPhone(userMetadata.phoneNumber);
-        } else if (user.primaryPhoneNumber?.phoneNumber) {
-          setContactPhone(user.primaryPhoneNumber.phoneNumber);
-        }
+        if (primaryEmail) setContactEmail((prev) => prev || primaryEmail);
+      }
+      if (!orgDefaults?.contactPhone) {
+        const userMetadata = user.publicMetadata as { phoneNumber?: string } | undefined;
+        const fallbackPhone = userMetadata?.phoneNumber
+          ?? user.primaryPhoneNumber?.phoneNumber
+          ?? '';
+        if (fallbackPhone) setContactPhone((prev) => prev || fallbackPhone);
       }
     }
-  }, [organization, user]);
+  }, [organization, user, orgDefaults?.contactEmail, orgDefaults?.contactPhone]);
 
   // Calculate report statistics
   const filteredAnimals = initialAnimals.filter(animal => {

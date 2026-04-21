@@ -969,6 +969,9 @@ model OrganisationSettings {
   clerkOrganisationId  String   @unique @map("clerk_organisation_id")
   orgShortCode         String   @default("ORG") @map("org_short_code")
   animalIdTemplate     String   @default("{ORG_SHORT}-{YYYY}-{seq:4}") @map("animal_id_template")
+  contactEmail         String?  @map("contact_email")
+  contactPhone         String?  @map("contact_phone")
+  licenseNumber        String?  @map("license_number")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
