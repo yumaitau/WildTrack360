@@ -1,30 +1,55 @@
 // One-off generator. Reads the NSW DCCEEW Detailed Report XLSX and writes
-// the authoritative picklist and species data into src/lib/.
+// the authoritative picklist and species data into src/lib/, namespaced by
+// reporting financial year.
 //
-// Generates:
-//   src/lib/nsw-suburbs.ts       — 4,566 suburb/postcode pairs
-//   src/lib/nsw-picklists.ts     — sex, life stage, pouch condition,
-//                                  animal condition, encounter type, fate
-//   src/lib/nsw-species-list.ts  — ~1,668 species (class/order/family/code)
+// Generates (for year 2025-26):
+//   src/lib/nsw-suburbs-fy2526.ts       — ~4,566 suburb/postcode pairs
+//   src/lib/nsw-picklists-fy2526.ts     — sex, life stage, pouch condition,
+//                                          animal condition, encounter type, fate
+//   src/lib/nsw-species-list-fy2526.ts  — ~1,668 species (class/order/family/code)
 //
-// Run with: npx tsx scripts/extract-nsw-reference-data.ts
+// Run with:
+//   npx tsx scripts/extract-nsw-reference-data.ts --year 2025-26
 //
-// When NSW publishes a new financial-year template, drop the new file into
-// vendor/ (keeping the same filename or updating SOURCE_XLSX below) and
-// re-run this script.
+// Year is YYYY-YY (e.g. 2025-26 for FY25-26). The year flag drives both the
+// input filename (vendor/wildlife-rehabilitation-detailed-report-<year>.xlsx)
+// and the output filename suffix (-fy2526.ts). Old year files are kept so
+// historical reports regenerate correctly — never delete them.
+//
+// After generating a new year, register it in src/lib/nsw-reference-data.ts.
 
 import ExcelJS from 'exceljs';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-const SOURCE_XLSX = path.join(
-  __dirname,
-  '..',
-  'vendor',
-  'wildlife-rehabilitation-detailed-report-2025-26.xlsx',
-);
+function parseYearArg(argv: string[]): string {
+  const flagIndex = argv.findIndex((a) => a === '--year' || a === '-y');
+  if (flagIndex === -1) {
+    throw new Error(
+      'Missing required --year flag. Example: --year 2025-26',
+    );
+  }
+  const value = argv[flagIndex + 1];
+  if (!value || !/^\d{4}-\d{2}$/.test(value)) {
+    throw new Error(
+      `Invalid --year value "${value}". Expected YYYY-YY (e.g. 2025-26).`,
+    );
+  }
+  return value;
+}
+
+function fySuffix(year: string): string {
+  // 2025-26 → fy2526
+  const [start, end] = year.split('-');
+  return `fy${start.slice(2)}${end}`;
+}
+
+const REPORTING_YEAR = parseYearArg(process.argv.slice(2));
+const FY_SUFFIX = fySuffix(REPORTING_YEAR);
+
+const SOURCE_FILENAME = `wildlife-rehabilitation-detailed-report-${REPORTING_YEAR}.xlsx`;
+const SOURCE_XLSX = path.join(__dirname, '..', 'vendor', SOURCE_FILENAME);
 const TARGET_DIR = path.join(__dirname, '..', 'src', 'lib');
-const SOURCE_FILENAME = 'wildlife-rehabilitation-detailed-report-2025-26.xlsx';
 
 // ─── Extraction helpers ─────────────────────────────────────────────────────
 
@@ -421,17 +446,26 @@ async function main() {
   assertCount('fate', fate.length, MIN_COUNTS.fate);
   assertCount('species', species.length, MIN_COUNTS.species);
 
-  await fs.writeFile(path.join(TARGET_DIR, 'nsw-suburbs.ts'), formatSuburbs(suburbs));
-  console.log('Wrote src/lib/nsw-suburbs.ts');
+  const suburbsPath = path.join(TARGET_DIR, `nsw-suburbs-${FY_SUFFIX}.ts`);
+  const picklistsPath = path.join(TARGET_DIR, `nsw-picklists-${FY_SUFFIX}.ts`);
+  const speciesPath = path.join(TARGET_DIR, `nsw-species-list-${FY_SUFFIX}.ts`);
+
+  await fs.writeFile(suburbsPath, formatSuburbs(suburbs));
+  console.log(`Wrote ${path.relative(path.join(__dirname, '..'), suburbsPath)}`);
 
   await fs.writeFile(
-    path.join(TARGET_DIR, 'nsw-picklists.ts'),
+    picklistsPath,
     formatPicklists({ sex, lifeStage, pouch, animalCondition, encounterType, fate }),
   );
-  console.log('Wrote src/lib/nsw-picklists.ts');
+  console.log(`Wrote ${path.relative(path.join(__dirname, '..'), picklistsPath)}`);
 
-  await fs.writeFile(path.join(TARGET_DIR, 'nsw-species-list.ts'), formatSpecies(species));
-  console.log('Wrote src/lib/nsw-species-list.ts');
+  await fs.writeFile(speciesPath, formatSpecies(species));
+  console.log(`Wrote ${path.relative(path.join(__dirname, '..'), speciesPath)}`);
+
+  console.log(
+    `\nReminder: register "${REPORTING_YEAR}" in src/lib/nsw-reference-data.ts so ` +
+      `the Detailed Report generator can select it via \`reportingYear\`.`,
+  );
 }
 
 main().catch((err) => {

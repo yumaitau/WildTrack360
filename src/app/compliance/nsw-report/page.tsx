@@ -11,13 +11,23 @@ export default async function NSWReportPage() {
     redirect('/sign-in');
   }
 
-  // Fetch initial data for the report
-  const [animals, carers, orgSettings] = await Promise.all([
+  // Fetch initial data for the report. Advice-only call logs (action =
+  // "Advice provided" with no linked animal) are unioned into the Datasheet
+  // so NSW sees every encounter, not just physical rescues.
+  const [animals, carers, adviceCallLogs, orgSettings] = await Promise.all([
     prisma.animal.findMany({
       where: { clerkOrganizationId: orgId },
       orderBy: { dateFound: 'desc' }
     }),
     getEnrichedCarers(orgId),
+    prisma.callLog.findMany({
+      where: {
+        clerkOrganizationId: orgId,
+        animalId: null,
+        action: { equals: 'Advice provided', mode: 'insensitive' },
+      },
+      orderBy: { dateTime: 'desc' },
+    }),
     prisma.organisationSettings.findUnique({
       where: { clerkOrganisationId: orgId },
       select: { contactEmail: true, contactPhone: true, licenseNumber: true },
@@ -28,6 +38,7 @@ export default async function NSWReportPage() {
     <NSWReportClient
       initialAnimals={animals}
       initialCarers={carers}
+      initialAdviceCallLogs={adviceCallLogs}
       organizationId={orgId}
       orgDefaults={{
         contactEmail: orgSettings?.contactEmail ?? null,

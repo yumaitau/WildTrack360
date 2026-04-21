@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Animal } from '@prisma/client';
+import { Animal, CallLog } from '@prisma/client';
 import type { EnrichedCarer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,13 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { NSWReportGenerator, NSWReportData, TransferRecord, PermanentCareRecord, PreservedSpecimenRecord } from '@/lib/nsw-report-generator';
-import { NSWDetailedReportGenerator, NSWDetailedReportData } from '@/lib/nsw-detailed-report-generator';
+import {
+  NSWDetailedReportGenerator,
+  NSWDetailedReportData,
+  isReportableForNsw,
+  nswExclusionReason,
+  NSW_EXCLUSION_REASON_LABELS,
+} from '@/lib/nsw-detailed-report-generator';
 import { useOrganization, useUser } from '@clerk/nextjs';
 
 // NSW annual reports run on the Australian financial year (1 July → 30 June).
@@ -33,6 +39,7 @@ function currentNswFinancialYear(now: Date = new Date()): { start: Date; end: Da
 interface NSWReportClientProps {
   initialAnimals: Animal[];
   initialCarers: EnrichedCarer[];
+  initialAdviceCallLogs?: CallLog[];
   organizationId: string;
   orgDefaults?: {
     contactEmail: string | null;
@@ -41,7 +48,13 @@ interface NSWReportClientProps {
   };
 }
 
-export default function NSWReportClient({ initialAnimals, initialCarers, organizationId, orgDefaults }: NSWReportClientProps) {
+export default function NSWReportClient({
+  initialAnimals,
+  initialCarers,
+  initialAdviceCallLogs = [],
+  organizationId,
+  orgDefaults,
+}: NSWReportClientProps) {
   const { toast } = useToast();
   const { organization } = useOrganization();
   const { user } = useUser();
@@ -88,8 +101,27 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
     return dateFound >= startDate && dateFound <= endDate;
   });
 
-  const transferredAnimals = filteredAnimals.filter(animal => 
-    animal.status === 'TRANSFERRED' || 
+  // NSW-reportability partition — the Datasheet will only include reportable
+  // animals, but we surface the excluded set here so the carer can see what
+  // was dropped (domestic pets, non-NSW-listed species, penguins/sea snakes)
+  // before they send the report off to DCCEEW.
+  const reportableAnimals = filteredAnimals.filter((a) => isReportableForNsw(a));
+  const excludedAnimals = filteredAnimals.filter((a) => !isReportableForNsw(a));
+  const exclusionCounts = excludedAnimals.reduce<Record<string, number>>((acc, a) => {
+    const reason = nswExclusionReason(a);
+    if (reason) acc[reason] = (acc[reason] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  // Advice-only call logs (no animal linkage, action = "Advice provided")
+  // are emitted as additional Datasheet rows with fate = "Advice provided".
+  const adviceCallLogsInWindow = initialAdviceCallLogs.filter((c) => {
+    const d = new Date(c.dateTime);
+    return d >= startDate && d <= endDate;
+  });
+
+  const transferredAnimals = filteredAnimals.filter(animal =>
+    animal.status === 'TRANSFERRED' ||
     animal.fate === 'Transferred to other wildlife rehabilitation organisation'
   );
 
@@ -183,6 +215,7 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
           contactName,
         },
         animals: filteredAnimals,
+        adviceCallLogs: initialAdviceCallLogs,
         rehabilitatorsByCarerId,
       };
 
@@ -201,9 +234,17 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
+      const totalRows = reportableAnimals.length + adviceCallLogsInWindow.length;
+      const parts: string[] = [`Datasheet contains ${totalRows} encounter rows`];
+      if (adviceCallLogsInWindow.length > 0) {
+        parts.push(`(${reportableAnimals.length} rescues + ${adviceCallLogsInWindow.length} advice calls)`);
+      }
+      if (excludedAnimals.length > 0) {
+        parts.push(`— ${excludedAnimals.length} excluded as non-reportable`);
+      }
       toast({
         title: 'Detailed Report Generated',
-        description: `Datasheet contains ${filteredAnimals.length} encounter rows.`,
+        description: parts.join(' ') + '.',
       });
     } catch (error) {
       console.error('Error generating detailed report:', error);
@@ -532,10 +573,18 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Total Animals</p>
               <p className="text-2xl font-bold">{filteredAnimals.length}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">NSW-reportable</p>
+              <p className="text-2xl font-bold">{reportableAnimals.length}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Advice calls</p>
+              <p className="text-2xl font-bold">{adviceCallLogsInWindow.length}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Transferred</p>
@@ -545,11 +594,27 @@ export default function NSWReportClient({ initialAnimals, initialCarers, organiz
               <p className="text-sm text-muted-foreground">Permanent Care</p>
               <p className="text-2xl font-bold">{permanentCareAnimals.length}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Active Carers</p>
-              <p className="text-2xl font-bold">{initialCarers.filter(c => c.active).length}</p>
-            </div>
           </div>
+
+          {excludedAnimals.length > 0 && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-700 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-amber-900">
+                    {excludedAnimals.length} animal{excludedAnimals.length === 1 ? '' : 's'} excluded from Datasheet
+                  </p>
+                  <ul className="text-xs text-amber-800 list-disc list-inside">
+                    {Object.entries(exclusionCounts).map(([reason, count]) => (
+                      <li key={reason}>
+                        {NSW_EXCLUSION_REASON_LABELS[reason as keyof typeof NSW_EXCLUSION_REASON_LABELS]}: {count}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 space-y-2">
             <div className="flex items-center gap-2 text-sm">

@@ -12,7 +12,7 @@ import {
   isKnownNswAnimalCondition,
   isKnownNswEncounterType,
   isKnownNswFate,
-} from './nsw-picklists';
+} from './nsw-picklists-fy2526';
 
 describe('NSW picklist counts match the Detailed Report source', () => {
   it('Sex has the four NSW-mandated values', () => {

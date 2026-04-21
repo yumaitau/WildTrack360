@@ -1,7 +1,43 @@
+import { findNswSpeciesByCommonName } from './nsw-reference-data';
+
 // NSW DCCEEW requires the species picker to use their BioNet-derived Species
 // list. When a species is not on that list, carers must select this sentinel
 // and supply the full species name in the Notes column of the Datasheet.
 export const SPECIES_NOT_LISTED = 'Species not listed' as const;
+
+/**
+ * Returns true when the in-progress intake fits a pattern that NSW commonly
+ * sees as aggregate/group rescues — bird clutches, reptile hatchlings, or
+ * dependent pouch young. NSW requires one Datasheet row per individual, so
+ * carers are nudged to create N records rather than a single aggregate row.
+ *
+ * Triggers (any):
+ *   - Bird or Reptile species with lifeStage = "Young" or "Egg"
+ *     (nestlings, ducklings, hatchlings — frequently arrive as clutches)
+ *   - Pouch condition = Pinkie Attached | Pouch Young | Back Young
+ *     (marsupial mothers occasionally admit with twin joeys / back young)
+ */
+export function isAggregateRiskIntake(input: {
+  species: string | null | undefined;
+  lifeStage?: string | null;
+  pouchCondition?: string | null;
+}): boolean {
+  const life = (input.lifeStage ?? '').trim().toLowerCase();
+  const pouch = (input.pouchCondition ?? '').trim().toLowerCase();
+
+  if (pouch === 'pinkie attached' || pouch === 'pouch young' || pouch === 'back young') {
+    return true;
+  }
+
+  if (life === 'young' || life === 'egg') {
+    const record = findNswSpeciesByCommonName(input.species);
+    if (record && (record.class === 'Birds' || record.class === 'Reptiles')) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 // Compose the Notes column for an animal at intake time.
 //

@@ -63,6 +63,15 @@ model Animal {
   orgAnimalId   String?   @map("org_animal_id")
   outcomeReason String?   @map("outcome_reason")
 
+  // Inter-org transfer provenance (NSW): when a carer receives an animal
+  // from another NSW rehab group, sourceOrgAnimalId carries the ORIGINATING
+  // group's ID. NSW's annual-report de-dup rule uses this shared ID so the
+  // same animal isn't counted twice across organisations. The Detailed
+  // Report emits sourceOrgAnimalId in place of this org's orgAnimalId when
+  // interOrgTransferReceived is set.
+  sourceOrgAnimalId        String?  @map("source_org_animal_id")
+  interOrgTransferReceived Boolean  @default(false) @map("inter_org_transfer_received")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
