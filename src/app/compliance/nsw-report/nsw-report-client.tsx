@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Animal, CallLog } from '@prisma/client';
+import { Animal } from '@prisma/client';
 import type { EnrichedCarer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import { NSWReportGenerator, NSWReportData, TransferRecord, PermanentCareRecord,
 import {
   NSWDetailedReportGenerator,
   NSWDetailedReportData,
+  NswReportCallLogDto,
   isReportableForNsw,
   nswExclusionReason,
   NSW_EXCLUSION_REASON_LABELS,
@@ -39,7 +40,7 @@ function currentNswFinancialYear(now: Date = new Date()): { start: Date; end: Da
 interface NSWReportClientProps {
   initialAnimals: Animal[];
   initialCarers: EnrichedCarer[];
-  initialAdviceCallLogs?: CallLog[];
+  initialAdviceCallLogs?: NswReportCallLogDto[];
   organizationId: string;
   orgDefaults?: {
     contactEmail: string | null;

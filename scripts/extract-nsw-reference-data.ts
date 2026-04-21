@@ -35,6 +35,16 @@ function parseYearArg(argv: string[]): string {
       `Invalid --year value "${value}". Expected YYYY-YY (e.g. 2025-26).`,
     );
   }
+  // Regex allows impossible pairs like "2025-99"; require the second half to
+  // be the next year mod 100 so we never generate filenames for a financial
+  // year that doesn't exist.
+  const [startStr, endStr] = value.split('-');
+  const expectedEnd = String((parseInt(startStr, 10) + 1) % 100).padStart(2, '0');
+  if (endStr !== expectedEnd) {
+    throw new Error(
+      `Invalid --year value "${value}". Expected YYYY-YY (e.g. 2025-26).`,
+    );
+  }
   return value;
 }
 

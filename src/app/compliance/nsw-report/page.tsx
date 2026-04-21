@@ -20,6 +20,10 @@ export default async function NSWReportPage() {
       orderBy: { dateFound: 'desc' }
     }),
     getEnrichedCarers(orgId),
+    // Select only the fields the NSW Detailed Report needs. Caller PII
+    // (name, phone, email) never leaves the server — the client-side report
+    // generator only emits encounter metadata, so shipping it would be a
+    // needless exposure.
     prisma.callLog.findMany({
       where: {
         clerkOrganizationId: orgId,
@@ -27,6 +31,19 @@ export default async function NSWReportPage() {
         action: { equals: 'Advice provided', mode: 'insensitive' },
       },
       orderBy: { dateTime: 'desc' },
+      select: {
+        id: true,
+        dateTime: true,
+        action: true,
+        animalId: true,
+        species: true,
+        location: true,
+        coordinates: true,
+        suburb: true,
+        postcode: true,
+        takenByUserName: true,
+        notes: true,
+      },
     }),
     prisma.organisationSettings.findUnique({
       where: { clerkOrganisationId: orgId },

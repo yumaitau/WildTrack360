@@ -19,12 +19,12 @@ export default async function PreservedSpecimensPage() {
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <Link href="/compliance">
-          <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/compliance">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Compliance
-          </Button>
-        </Link>
+          </Link>
+        </Button>
         <h1 className="text-2xl sm:text-3xl font-bold">Preserved Specimen Register</h1>
       </div>
 

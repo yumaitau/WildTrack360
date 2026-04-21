@@ -1,4 +1,4 @@
-import { Animal, CallLog } from '@prisma/client';
+import { Animal } from '@prisma/client';
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 import { SPECIES_NOT_LISTED } from './nsw-species';
@@ -109,6 +109,23 @@ export const NSW_EXCLUSION_REASON_LABELS: Record<NswExclusionReason, string> = {
   'species-excluded-by-annual-report': 'Excluded species (penguins, sea snakes)',
 };
 
+// Narrow shape of a CallLog row needed to emit an advice-only Datasheet row.
+// Caller PII (name, phone, email) is intentionally excluded so the server
+// does not ship it to the client-side report generator.
+export interface NswReportCallLogDto {
+  id: string;
+  dateTime: Date;
+  action: string | null;
+  animalId: string | null;
+  species: string | null;
+  coordinates: unknown;
+  location: string | null;
+  suburb: string | null;
+  postcode: string | null;
+  takenByUserName: string | null;
+  notes: string | null;
+}
+
 export interface NSWDetailedReportData {
   reportingPeriod: {
     startDate: Date;
@@ -126,7 +143,7 @@ export interface NSWDetailedReportData {
   // the generator unions these rows onto the animal-derived rows. Calls with
   // a linked Animal are already represented via the animal row, so they're
   // skipped to avoid double-counting.
-  adviceCallLogs?: CallLog[];
+  adviceCallLogs?: NswReportCallLogDto[];
   // Map of CarerProfile.id (Clerk user ID) → display name, used to resolve
   // the Rehabilitator name column. Missing entries fall back to blank.
   rehabilitatorsByCarerId: Record<string, string>;
@@ -258,7 +275,7 @@ export class NSWDetailedReportGenerator {
     return wb;
   }
 
-  private buildAdviceCallLogRow(callLog: CallLog): (string | number)[] {
+  private buildAdviceCallLogRow(callLog: NswReportCallLogDto): (string | number)[] {
     const coord = parseCoord(callLog.coordinates);
     const canonicalise = this.referenceData.suburbs.canonicaliseNswLocation;
     // Advice-only rows don't have most Datasheet fields — NSW only needs

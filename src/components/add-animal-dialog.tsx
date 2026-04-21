@@ -555,9 +555,15 @@ export function AddAnimalDialog({
     // an existing record).
     const totalToCreate = !isEditMode && isMultiIntake ? Math.max(2, Math.min(50, intakeCount)) : 1;
 
+    // Multi-intake is not atomic — the server creates each record in its own
+    // transaction so a mid-loop failure leaves already-created records
+    // persisted. Track createdCount so the error toast can tell the carer
+    // exactly how many records survived and how many still need saving.
+    let createdCount = 0
     try {
       if (totalToCreate === 1) {
         await onAnimalAdd(payload)
+        createdCount = 1
       } else {
         for (let i = 0; i < totalToCreate; i++) {
           await onAnimalAdd({
@@ -565,6 +571,7 @@ export function AddAnimalDialog({
             orgAnimalId: null,
             _autoGenerateOrgAnimalId: true,
           })
+          createdCount++
         }
       }
     } catch (e) {
@@ -578,6 +585,10 @@ export function AddAnimalDialog({
         description = 'To mark this animal as permanent care, first go to the Permanent Care tab and submit an approved application.'
       }
 
+      if (totalToCreate > 1 && createdCount > 0) {
+        description = `Created ${createdCount} of ${totalToCreate} records before failure — remaining ${totalToCreate - createdCount} not saved. ${description}`
+      }
+
       toast({
         variant: 'destructive',
         title: 'Status change blocked',
@@ -585,6 +596,14 @@ export function AddAnimalDialog({
         duration: 8000,
       })
       setIsLoading(false)
+      if (totalToCreate > 1 && createdCount > 0) {
+        // Some records persisted — close the dialog and reset multi-intake
+        // so the carer can see what was saved before deciding whether to
+        // re-enter the remaining records.
+        setIsOpen(false)
+        setIsMultiIntake(false)
+        setIntakeCount(2)
+      }
       return false
     }
 
