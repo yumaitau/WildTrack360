@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Calendar, AlertTriangle, CheckCircle, Download, Mail, ArrowLeft, Home, MapPin } from "lucide-react";
+import { Users, Calendar, AlertTriangle, CheckCircle, Download, Mail, ArrowLeft, Home, MapPin, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import jsPDF from 'jspdf';
 
@@ -252,6 +252,12 @@ export default function CarerManagementClient({ carers }: CarerManagementClientP
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>
+          <Link href="/compliance/carers/contact-report">
+            <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Contact Report
+            </Button>
+          </Link>
           <Link href="/compliance/carers/training">
             <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
               <Calendar className="h-4 w-4 mr-2" />

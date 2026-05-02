@@ -7,13 +7,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bird, PawPrint, ArrowRight } from "lucide-react";
+import { Bird, PawPrint, ArrowRight, Utensils } from "lucide-react";
 
 export const metadata = {
   title: "Tools — WildTrack360",
 };
 
 const tools = [
+  {
+    href: "/tools/feed-roster",
+    title: "Feed Roster",
+    description:
+      "Review today's feeding schedule, identify overdue feeds, and log feeding records from one field-friendly dashboard.",
+    icon: Utensils,
+  },
   {
     href: "/tools/feed-calculator/flying-fox",
     title: "Flying Fox Feed Calculator",

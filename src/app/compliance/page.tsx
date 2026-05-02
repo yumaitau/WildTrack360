@@ -70,6 +70,15 @@ export default async function CompliancePage() {
       })
     },
     {
+      title: "Carer Contact Report",
+      description: "Print and export carer contact details",
+      icon: Users,
+      href: "/compliance/carers/contact-report",
+      status: "compliant",
+      count: activeCarers,
+      color: "text-sky-700"
+    },
+    {
       title: "Release Checklist",
       description: "Standardised pre-release assessment",
       icon: CheckCircle,
