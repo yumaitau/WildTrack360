@@ -13,7 +13,7 @@ import { PostReleaseTab } from "@/components/post-release-tab";
 import CombinedTimeline from "@/components/combined-timeline";
 import { GrowthTab } from "@/components/growth/growth-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck, ArrowRightLeft, Shield, Binoculars, History, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowLeft, User, CalendarDays, MapPin, Rocket, Trash2, UserPlus, ClipboardCheck, ArrowRightLeft, Shield, Binoculars, History, TrendingUp, Printer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -554,6 +554,12 @@ export default function AnimalDetailClient({
                   </div>
                 </div>
                  <div className="mt-6 flex flex-wrap gap-2">
+                  <Link href={`/animals/${animal.id}/print`}>
+                    <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
+                      <Printer className="mr-1 sm:mr-2 h-4 w-4" />
+                      Print Report
+                    </Button>
+                  </Link>
                   <Button variant="outline" size="sm" className="sm:h-9 sm:px-4" onClick={() => setIsEditOpen(true)}>Edit Animal</Button>
                   {(animal.status === AnimalStatus.IN_CARE || animal.status === AnimalStatus.READY_FOR_RELEASE) && (
                     <Button

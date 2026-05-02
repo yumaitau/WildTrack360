@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { RecordType } from '@prisma/client'
 import { logAudit } from '@/lib/audit'
+import { canAccessAnimal } from '@/lib/rbac'
 
 export async function POST(request: Request) {
   const { userId, orgId: activeOrgId } = await auth()
@@ -14,6 +15,8 @@ export async function POST(request: Request) {
   try {
     const animal = await prisma.animal.findFirst({ where: { id: body.animalId, clerkOrganizationId: requestedOrgId } })
     if (!animal) return NextResponse.json({ error: 'Animal not found in this organization' }, { status: 404 })
+    const allowed = await canAccessAnimal(userId, requestedOrgId, animal)
+    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     // Coerce incoming payload to match schema
     const incomingType: string | undefined = body.type
     const type: RecordType = ((): RecordType => {
@@ -56,5 +59,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create record' }, { status: 500 })
   }
 }
-
 
