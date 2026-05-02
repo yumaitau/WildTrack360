@@ -39,7 +39,7 @@ function toRows(carers: EnrichedCarer[]) {
 
 function csvEscape(value: unknown) {
   const text = String(value ?? "");
-  const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  const safeText = text.replace(/^([\t\r\n]*)([=+\-@])/, "$1'$2");
   return /[",\r\n]/.test(safeText) ? `"${safeText.replace(/"/g, '""')}"` : safeText;
 }
 
@@ -89,6 +89,7 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": `attachment; filename="carer-contact-report-${filenameDate}.csv"`,
+        "Cache-Control": "private, no-store",
       },
     });
   }
@@ -123,6 +124,7 @@ export async function GET(request: Request) {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="carer-contact-report-${filenameDate}.xlsx"`,
+      "Cache-Control": "private, no-store",
     },
   });
 }
