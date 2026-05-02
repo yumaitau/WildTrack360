@@ -33,7 +33,7 @@ function hoursBetween(start: Date, end: Date) {
 export default async function FeedRosterPage() {
   const { userId, orgId } = await auth();
   if (!userId) redirect("/sign-in");
-  if (!orgId) throw new Error("Organization ID is required");
+  if (!orgId) redirect("/landing");
 
   const role = await getUserRole(userId, orgId);
   const baseWhere = {
@@ -108,12 +108,12 @@ export default async function FeedRosterPage() {
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex items-center gap-3">
         <Link href="/tools">
-          <Button variant="outline" size="icon" className="shrink-0">
+          <Button variant="outline" size="icon" className="shrink-0" aria-label="Back to tools">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <Link href="/">
-          <Button variant="outline" size="icon" className="shrink-0">
+          <Button variant="outline" size="icon" className="shrink-0" aria-label="Home">
             <Home className="h-4 w-4" />
           </Button>
         </Link>

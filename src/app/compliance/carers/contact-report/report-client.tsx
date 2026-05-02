@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { type ActiveFilter, getLicenceStatus, type LicenceFilter } from "@/lib/carer-report-utils";
 
 export interface ContactReportCarer {
   id: string;
@@ -27,9 +28,6 @@ export interface ContactReportCarer {
   hasProfile: boolean;
 }
 
-type ActiveFilter = "active" | "inactive" | "all";
-type LicenceFilter = "all" | "valid" | "expired" | "expiring-soon" | "missing";
-
 function formatDate(value: string | null) {
   if (!value) return "-";
   const date = new Date(value);
@@ -39,18 +37,6 @@ function formatDate(value: string | null) {
 
 function formatAddress(carer: ContactReportCarer) {
   return [carer.streetAddress, carer.suburb, carer.state, carer.postcode].filter(Boolean).join(", ") || "-";
-}
-
-function getLicenceStatus(expiry: string | null): LicenceFilter {
-  if (!expiry) return "missing";
-  const expiryDate = new Date(expiry);
-  if (Number.isNaN(expiryDate.getTime())) return "missing";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Math.ceil((expiryDate.getTime() - today.getTime()) / 86_400_000);
-  if (days < 0) return "expired";
-  if (days <= 30) return "expiring-soon";
-  return "valid";
 }
 
 function licenceStatusLabel(status: LicenceFilter) {

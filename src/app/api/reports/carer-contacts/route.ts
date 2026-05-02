@@ -2,24 +2,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import ExcelJS from "exceljs";
 import { getEnrichedCarers } from "@/lib/carer-helpers";
+import { type ActiveFilter, getLicenceStatus, type LicenceFilter } from "@/lib/carer-report-utils";
 import { getUserRole, hasPermission } from "@/lib/rbac";
 import type { EnrichedCarer } from "@/lib/types";
 
-type ActiveFilter = "active" | "inactive" | "all";
-type LicenceFilter = "all" | "valid" | "expired" | "expiring-soon" | "missing";
-
 function formatDate(value: Date | null | undefined) {
   return value ? value.toISOString().slice(0, 10) : "";
-}
-
-function getLicenceStatus(expiry: Date | null | undefined): LicenceFilter {
-  if (!expiry) return "missing";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Math.ceil((expiry.getTime() - today.getTime()) / 86_400_000);
-  if (days < 0) return "expired";
-  if (days <= 30) return "expiring-soon";
-  return "valid";
 }
 
 function filterCarers(carers: EnrichedCarer[], active: ActiveFilter, specialty: string | null, licence: LicenceFilter) {
@@ -51,7 +39,8 @@ function toRows(carers: EnrichedCarer[]) {
 
 function csvEscape(value: unknown) {
   const text = String(value ?? "");
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  return /[",\r\n]/.test(safeText) ? `"${safeText.replace(/"/g, '""')}"` : safeText;
 }
 
 export async function GET(request: Request) {
@@ -77,7 +66,7 @@ export async function GET(request: Request) {
   if (format === "csv") {
     const headers = ["Name", "Phone", "Email", "Address", "Licence Number", "Licence Expiry", "Licence Status", "Specialties", "Member Since", "Status"];
     const csv = [
-      headers.join(","),
+      headers.map(csvEscape).join(","),
       ...rows.map((row) =>
         [
           row.name,
@@ -94,7 +83,7 @@ export async function GET(request: Request) {
           .map(csvEscape)
           .join(",")
       ),
-    ].join("\n");
+    ].join("\r\n");
 
     return new NextResponse(csv, {
       headers: {

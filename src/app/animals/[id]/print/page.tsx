@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { ArrowLeft, Home } from "lucide-react";
@@ -11,9 +12,22 @@ import { prisma } from "@/lib/prisma";
 import { canAccessAnimal } from "@/lib/rbac";
 import { PrintButton } from "./print-button";
 
-export const metadata = {
-  title: "Animal Detail Report - WildTrack360",
-};
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const { userId, orgId } = await auth();
+  if (!userId || !orgId) return { title: "Animal Detail Report - WildTrack360" };
+
+  const animal = await prisma.animal.findFirst({
+    where: { id, clerkOrganizationId: orgId },
+    select: { name: true, species: true, carerId: true },
+  });
+  if (!animal) return { title: "Animal Detail Report - WildTrack360" };
+
+  const allowed = await canAccessAnimal(userId, orgId, animal);
+  if (!allowed) return { title: "Animal Detail Report - WildTrack360" };
+
+  return { title: `Animal Detail Report - ${animal.name} - WildTrack360` };
+}
 
 function formatDate(value: Date | null | undefined) {
   if (!value) return "-";

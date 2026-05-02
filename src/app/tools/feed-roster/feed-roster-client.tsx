@@ -57,6 +57,17 @@ function localDateTimeValue() {
   return date.toISOString().slice(0, 16);
 }
 
+async function readErrorMessage(response: Response) {
+  const body = await response.text();
+  if (!body) return response.statusText || "No response body returned";
+  try {
+    const parsed = JSON.parse(body) as { error?: string; message?: string };
+    return parsed.error || parsed.message || body;
+  } catch {
+    return body;
+  }
+}
+
 function statusBadge(item: FeedRosterItem) {
   if (!item.lastFeedingAt) return <Badge variant="destructive">No feed recorded</Badge>;
   if (item.isOverdue) return <Badge variant="destructive">Overdue by {formatHours(item.hoursOverdue)}</Badge>;
@@ -107,7 +118,13 @@ export default function FeedRosterClient({ initialItems }: { initialItems: FeedR
           notes: notes.trim() || description || "Feeding recorded",
         }),
       });
-      if (!response.ok) throw new Error("Failed to save feeding record");
+      if (!response.ok) {
+        const message = await readErrorMessage(response);
+        if (response.status === 403) {
+          throw new Error(`Forbidden: ${message}`);
+        }
+        throw new Error(`Failed to save feeding record (${response.status}): ${message}`);
+      }
       toast({ title: "Feeding recorded", description: `${selectedItem.name} has a new feeding entry.` });
       setSelectedItem(null);
       router.refresh();
@@ -163,7 +180,7 @@ export default function FeedRosterClient({ initialItems }: { initialItems: FeedR
                 <SelectItem value="due">Next feed due</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon" onClick={() => router.refresh()}>
+            <Button variant="outline" size="icon" onClick={() => router.refresh()} aria-label="Refresh roster">
               <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
@@ -222,6 +239,9 @@ export default function FeedRosterClient({ initialItems }: { initialItems: FeedR
                         {item.name}
                       </Link>
                       <div className="text-sm text-muted-foreground">{item.species}</div>
+                      {(item.age || item.ageClass) && (
+                        <div className="text-sm text-muted-foreground">{[item.age, item.ageClass].filter(Boolean).join(", ")}</div>
+                      )}
                     </div>
                     {statusBadge(item)}
                   </div>

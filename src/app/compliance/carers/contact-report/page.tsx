@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getEnrichedCarers } from "@/lib/carer-helpers";
 import { getUserRole, hasPermission } from "@/lib/rbac";
+import type { EnrichedCarer } from "@/lib/types";
 import CarerContactReportClient, { type ContactReportCarer } from "./report-client";
 
 export const metadata = {
@@ -15,10 +16,17 @@ export default async function CarerContactReportPage() {
 
   const role = await getUserRole(userId, orgId);
   if (!hasPermission(role, "user:manage") && !hasPermission(role, "carer:view_workload")) {
-    throw new Error("Forbidden");
+    redirect("/unauthorized");
   }
 
-  const carers = await getEnrichedCarers(orgId);
+  let carers: EnrichedCarer[];
+  try {
+    carers = await getEnrichedCarers(orgId);
+  } catch (error) {
+    console.error("Error loading carer contact report:", error);
+    throw new Error("Unable to load carer contact report. Please try again later.");
+  }
+
   const reportCarers: ContactReportCarer[] = carers.map((carer) => ({
     id: carer.id,
     name: carer.name,
