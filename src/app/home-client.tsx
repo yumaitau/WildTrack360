@@ -26,7 +26,7 @@ type CreateAnimalData = {
   carerId: string | null;
 };
 import { AnimalTable } from '@/components/animal-table';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { AddAnimalDialog } from '@/components/add-animal-dialog';
 import DashboardStats from '@/components/dashboard-stats';
 import SpeciesDistributionChart from '@/components/species-distribution-chart';
@@ -549,20 +549,19 @@ export default function HomeClient({ initialAnimals, species, carers, initialFee
     fetchAnimals();
   }, [organization]);
 
-  // Load feed roster items from API for current organization
-  useEffect(() => {
-    const fetchRoster = async () => {
-      if (!organization) return;
-      try {
-        const orgId = organization.id;
-        const items = await apiJson<FeedRosterItem[]>(`/api/feed-roster?orgId=${orgId}`);
-        setFeedRosterItems(items || []);
-      } catch (error) {
-        console.error('Error loading feed roster:', error);
-      }
-    };
-    fetchRoster();
+  const refreshRoster = useCallback(async () => {
+    if (!organization) return;
+    try {
+      const items = await apiJson<FeedRosterItem[]>(`/api/feed-roster?orgId=${organization.id}`);
+      setFeedRosterItems(items || []);
+    } catch (error) {
+      console.error('Error loading feed roster:', error);
+    }
   }, [organization]);
+
+  useEffect(() => {
+    refreshRoster();
+  }, [refreshRoster]);
 
   useEffect(() => {
     const hourSydney = Number(
@@ -590,6 +589,7 @@ export default function HomeClient({ initialAnimals, species, carers, initialFee
       });
       setAnimals(prev => [created, ...prev]);
       setIsAddDialogOpen(false);
+      refreshRoster();
     } catch (error) {
       console.error('Error adding animal:', error);
       toast({
@@ -610,16 +610,15 @@ export default function HomeClient({ initialAnimals, species, carers, initialFee
     setIsLoading(true);
     try {
       const orgId = organization.id;
-      const [newAnimals, newSpecies, newCarers, newRoster] = await Promise.all([
+      const [newAnimals, newSpecies, newCarers] = await Promise.all([
         apiJson<Animal[]>(`/api/animals?orgId=${orgId}`),
         apiJson<any[]>(`/api/species?orgId=${orgId}`),
         apiJson<any[]>(`/api/carers?orgId=${orgId}`),
-        apiJson<FeedRosterItem[]>(`/api/feed-roster?orgId=${orgId}`),
+        refreshRoster(),
       ]);
       setAnimals(newAnimals);
       setSpeciesList(newSpecies);
       setCarersList(newCarers);
-      setFeedRosterItems(newRoster || []);
 
       // Re-check incomplete profile on refresh
       if (userRole !== 'ADMIN' && userRole !== 'COORDINATOR_ALL' && userRole !== 'CARER_ALL' && user) {

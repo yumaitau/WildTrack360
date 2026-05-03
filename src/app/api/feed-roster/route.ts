@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getEnrichedCarers } from "@/lib/carer-helpers";
 import { fetchFeedRosterItems } from "@/lib/feed-roster";
-import { getUserRole } from "@/lib/rbac";
+import { getOrgMember, getUserRole } from "@/lib/rbac";
 
 export async function GET(request: Request) {
   const { userId, orgId: activeOrgId } = await auth();
@@ -16,6 +16,8 @@ export async function GET(request: Request) {
   }
 
   try {
+    const member = await getOrgMember(userId, requestedOrgId);
+    if (!member) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const role = await getUserRole(userId, requestedOrgId);
     const carers = await getEnrichedCarers(requestedOrgId);
     const carerMap = new Map(carers.map((c) => [c.id, c.name]));

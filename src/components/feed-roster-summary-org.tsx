@@ -100,7 +100,7 @@ export function FeedRosterSummaryOrg({ items }: { items: FeedRosterItem[] }) {
           </CardTitle>
           <CardDescription>
             {overdue.length > 0
-              ? `${overdue.length} of ${items.length} feeds across the organisation are overdue or unrecorded.`
+              ? `${overdue.length} of ${items.length} animals across the organisation are overdue or unrecorded.`
               : `All ${items.length} in-care animals are on schedule.`}
           </CardDescription>
         </div>
@@ -194,7 +194,7 @@ export function FeedRosterSummaryOrg({ items }: { items: FeedRosterItem[] }) {
           <div className="text-center">
             <Link href="/tools/feed-roster">
               <Button variant="link" size="sm">
-                View all {overdue.length} overdue feeds
+                View all {overdue.length} overdue animals
               </Button>
             </Link>
           </div>
