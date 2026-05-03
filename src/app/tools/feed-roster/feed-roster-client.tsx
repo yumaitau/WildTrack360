@@ -14,23 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import type { FeedRosterItem } from "@/lib/feed-roster";
 
-export interface FeedRosterItem {
-  id: string;
-  name: string;
-  species: string;
-  age: string | null;
-  ageClass: string | null;
-  status: string;
-  carerName: string;
-  lastFeedingAt: string | null;
-  lastFeedingNotes: string | null;
-  nextDueAt: string;
-  recommendedIntervalHours: number;
-  hoursSinceLastFeed: number | null;
-  hoursOverdue: number;
-  isOverdue: boolean;
-}
+export type { FeedRosterItem };
 
 type SortMode = "overdue" | "due";
 

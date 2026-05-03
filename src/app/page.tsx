@@ -7,6 +7,7 @@ import { createOrUpdateClerkUser, createOrUpdateClerkOrganization } from "@/lib/
 import { getEnrichedCarers } from "@/lib/carer-helpers";
 import { prisma } from "@/lib/prisma";
 import { getUserRole, getAuthorisedSpecies, getOrgMember } from "@/lib/rbac";
+import { fetchFeedRosterItems } from "@/lib/feed-roster";
 import { extractSubdomain } from "@/lib/subdomain";
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
@@ -107,6 +108,9 @@ export default async function Home() {
       getEnrichedCarers(organizationId),
     ]);
 
+    const carerMap = new Map(carers.map((c) => [c.id, c.name]));
+    const feedRosterItems = await fetchFeedRosterItems(role, userId, organizationId, carerMap);
+
     const showOnboarding = role === 'ADMIN' && species.length === 0;
 
     return (
@@ -130,6 +134,7 @@ export default async function Home() {
           initialAnimals={animals}
           species={species}
           carers={carers}
+          initialFeedRosterItems={feedRosterItems}
         />
       </>
     );
@@ -140,6 +145,7 @@ export default async function Home() {
         initialAnimals={[]}
         species={[]}
         carers={[]}
+        initialFeedRosterItems={[]}
       />
     );
   }

@@ -36,6 +36,9 @@ import ReleasesVsAdmissionsChart from '@/components/releases-vs-admissions-chart
 import { TrainingExpiryAlerts } from '@/components/training-expiry-alerts';
 import { AdminComplianceChecklist } from '@/components/admin-compliance-checklist';
 import { CallLogDashboard } from '@/components/call-log-dashboard';
+import { FeedRosterSummaryCarer } from '@/components/feed-roster-summary-carer';
+import { FeedRosterSummaryOrg } from '@/components/feed-roster-summary-org';
+import type { FeedRosterItem } from '@/lib/feed-roster';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -51,6 +54,7 @@ interface HomeClientProps {
   initialAnimals: Animal[];
   species: any[];
   carers: any[];
+  initialFeedRosterItems: FeedRosterItem[];
 }
 
 function CarerView({
@@ -62,6 +66,7 @@ function CarerView({
   onEdit,
   carersList,
   userRole,
+  feedRosterItems,
 }: {
   animals: Animal[];
   viewMode: 'grid' | 'list';
@@ -71,6 +76,7 @@ function CarerView({
   onEdit: (animal: Animal) => void;
   carersList: any[];
   userRole: string;
+  feedRosterItems: FeedRosterItem[];
 }) {
   const isOrgWide = userRole === 'CARER_ALL';
   const recentlyAdmitted = useMemo(() => {
@@ -81,6 +87,9 @@ function CarerView({
 
   return (
     <>
+      {/* Feed Roster Summary */}
+      <FeedRosterSummaryCarer items={feedRosterItems} isOrgWide={isOrgWide} />
+
       {/* Carer Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
         <Card>
@@ -195,6 +204,7 @@ function AdminCoordinatorView({
   carersList,
   organization,
   jurisdiction,
+  feedRosterItems,
 }: {
   animals: Animal[];
   userRole: string;
@@ -207,6 +217,7 @@ function AdminCoordinatorView({
   carersList: any[];
   organization: any;
   jurisdiction: string;
+  feedRosterItems: FeedRosterItem[];
 }) {
   return (
     <>
@@ -265,6 +276,9 @@ function AdminCoordinatorView({
 
       {/* Call Log */}
       <CallLogDashboard />
+
+      {/* Feed Roster Overview */}
+      <FeedRosterSummaryOrg items={feedRosterItems} />
 
       {/* Dashboard Stats */}
       <div className="grid grid-cols-1 gap-6 mb-8">
@@ -461,7 +475,7 @@ function AdminCoordinatorView({
   );
 }
 
-export default function HomeClient({ initialAnimals, species, carers }: HomeClientProps) {
+export default function HomeClient({ initialAnimals, species, carers, initialFeedRosterItems }: HomeClientProps) {
   const { user, isLoaded: userLoaded } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { signOut } = useClerk();
@@ -471,6 +485,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
   const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
   const [speciesList, setSpeciesList] = useState(species || []);
   const [carersList, setCarersList] = useState(carers || []);
+  const [feedRosterItems, setFeedRosterItems] = useState<FeedRosterItem[]>(initialFeedRosterItems || []);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [animalToEdit, setAnimalToEdit] = useState<Animal | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -534,6 +549,21 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
     fetchAnimals();
   }, [organization]);
 
+  // Load feed roster items from API for current organization
+  useEffect(() => {
+    const fetchRoster = async () => {
+      if (!organization) return;
+      try {
+        const orgId = organization.id;
+        const items = await apiJson<FeedRosterItem[]>(`/api/feed-roster?orgId=${orgId}`);
+        setFeedRosterItems(items || []);
+      } catch (error) {
+        console.error('Error loading feed roster:', error);
+      }
+    };
+    fetchRoster();
+  }, [organization]);
+
   useEffect(() => {
     const hourSydney = Number(
       new Date().toLocaleString('en-AU', {
@@ -580,14 +610,16 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
     setIsLoading(true);
     try {
       const orgId = organization.id;
-      const [newAnimals, newSpecies, newCarers] = await Promise.all([
+      const [newAnimals, newSpecies, newCarers, newRoster] = await Promise.all([
         apiJson<Animal[]>(`/api/animals?orgId=${orgId}`),
         apiJson<any[]>(`/api/species?orgId=${orgId}`),
         apiJson<any[]>(`/api/carers?orgId=${orgId}`),
+        apiJson<FeedRosterItem[]>(`/api/feed-roster?orgId=${orgId}`),
       ]);
       setAnimals(newAnimals);
       setSpeciesList(newSpecies);
       setCarersList(newCarers);
+      setFeedRosterItems(newRoster || []);
 
       // Re-check incomplete profile on refresh
       if (userRole !== 'ADMIN' && userRole !== 'COORDINATOR_ALL' && userRole !== 'CARER_ALL' && user) {
@@ -781,6 +813,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
             onEdit={handleEditAnimal}
             carersList={carersList}
             userRole={userRole}
+            feedRosterItems={feedRosterItems}
           />
         ) : (
           <AdminCoordinatorView
@@ -795,6 +828,7 @@ export default function HomeClient({ initialAnimals, species, carers }: HomeClie
             carersList={carersList}
             organization={organization}
             jurisdiction={orgJurisdiction}
+            feedRosterItems={feedRosterItems}
           />
         )}
       </main>
