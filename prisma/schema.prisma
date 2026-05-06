@@ -770,6 +770,34 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model AdminNotificationLog {
+  id              String   @id @default(cuid())
+  orgId           String   @map("org_id")
+  userId          String   @map("user_id")
+  kind            String
+  dedupeKey       String   @map("dedupe_key")
+  sentAt          DateTime @default(now()) @map("sent_at")
+  resendMessageId String?  @map("resend_message_id")
+
+  @@unique([orgId, userId, kind, dedupeKey])
+  @@index([orgId, kind, sentAt])
+  @@map("admin_notification_logs")
+}
+
+model AdminNotificationDismissal {
+  id           String   @id @default(cuid())
+  orgId        String   @map("org_id")
+  userId       String   @map("user_id")
+  kind         String
+  reminderKey  String   @map("reminder_key")
+  year         Int
+  dismissedAt  DateTime @default(now()) @map("dismissed_at")
+
+  @@unique([orgId, userId, kind, reminderKey, year])
+  @@index([orgId, kind, year])
+  @@map("admin_notification_dismissals")
+}
+
 enum AuditAction {
   CREATE
   UPDATE
