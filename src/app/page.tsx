@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserRole, getAuthorisedSpecies, getOrgMember } from "@/lib/rbac";
 import { fetchFeedRosterItems } from "@/lib/feed-roster";
 import { extractSubdomain } from "@/lib/subdomain";
+import { getNSWReminderBannerForUser } from "@/lib/nsw-reminders";
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
 
@@ -107,6 +108,11 @@ export default async function Home() {
       getSpecies(organizationId),
       getEnrichedCarers(organizationId),
     ]);
+    const nswReminderBanner = await getNSWReminderBannerForUser({
+      userId,
+      orgId: organizationId,
+      role,
+    }).catch(() => null);
 
     const carerMap = new Map(carers.map((c) => [c.id, c.name]));
     const feedRosterItems = await fetchFeedRosterItems(role, userId, organizationId, carerMap);
@@ -135,6 +141,7 @@ export default async function Home() {
           species={species}
           carers={carers}
           initialFeedRosterItems={feedRosterItems}
+          nswReminderBanner={nswReminderBanner}
         />
       </>
     );
@@ -146,6 +153,7 @@ export default async function Home() {
         species={[]}
         carers={[]}
         initialFeedRosterItems={[]}
+        nswReminderBanner={null}
       />
     );
   }

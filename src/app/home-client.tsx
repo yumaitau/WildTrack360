@@ -38,7 +38,9 @@ import { AdminComplianceChecklist } from '@/components/admin-compliance-checklis
 import { CallLogDashboard } from '@/components/call-log-dashboard';
 import { FeedRosterSummaryCarer } from '@/components/feed-roster-summary-carer';
 import { FeedRosterSummaryOrg } from '@/components/feed-roster-summary-org';
+import { NSWReportingReminderBanner } from '@/components/nsw-reporting-reminder-banner';
 import type { FeedRosterItem } from '@/lib/feed-roster';
+import type { NSWReminderBannerData } from '@/lib/nsw-reminder-types';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -55,6 +57,7 @@ interface HomeClientProps {
   species: any[];
   carers: any[];
   initialFeedRosterItems: FeedRosterItem[];
+  nswReminderBanner: NSWReminderBannerData | null;
 }
 
 function CarerView({
@@ -475,7 +478,13 @@ function AdminCoordinatorView({
   );
 }
 
-export default function HomeClient({ initialAnimals, species, carers, initialFeedRosterItems }: HomeClientProps) {
+export default function HomeClient({
+  initialAnimals,
+  species,
+  carers,
+  initialFeedRosterItems,
+  nswReminderBanner,
+}: HomeClientProps) {
   const { user, isLoaded: userLoaded } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { signOut } = useClerk();
@@ -792,6 +801,8 @@ export default function HomeClient({ initialAnimals, species, carers, initialFee
 
       {/* Main Content */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <NSWReportingReminderBanner reminder={nswReminderBanner} />
+
         {/* Incomplete Profile Banner */}
         {hasIncompleteProfile && (
           <div className="flex items-center gap-3 p-4 mb-6 rounded-lg border border-amber-300 bg-amber-50 text-amber-800">
