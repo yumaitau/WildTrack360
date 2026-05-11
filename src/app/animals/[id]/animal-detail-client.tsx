@@ -290,7 +290,7 @@ export default function AnimalDetailClient({
       <AnimalReminderAlert reminders={reminders} animalName={animal.name} />
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         <div className="mb-6">
-          <Link href="/">
+          <Link href="/animals">
             <Button variant="ghost" className="flex items-center gap-2 text-primary">
               <ArrowLeft className="h-4 w-4" />
               Back to All Animals
