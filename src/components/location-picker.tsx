@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { MapPin, Crosshair } from 'lucide-react';
+import { MapPin, Crosshair, MousePointerClick, CheckCircle2 } from 'lucide-react';
 import SimpleMap from './simple-map';
 import { useUserLocation } from '@/hooks/use-user-location';
 
@@ -29,6 +29,7 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
   const [lng, setLng] = useState<number>(initialLocation?.lng || userLocation.lng);
   const [address, setAddress] = useState<string>(initialLocation?.address || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [locationSelected, setLocationSelected] = useState<boolean>(!!initialLocation);
   const hasAutoLocated = useRef(false);
 
   // When geolocation resolves and no initial location was provided, update the map center
@@ -51,7 +52,8 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
   const handleLocationChange = (newLat: number, newLng: number) => {
     setLat(newLat);
     setLng(newLng);
-    
+    setLocationSelected(true);
+
     // Simple reverse geocoding using OpenStreetMap Nominatim
     reverseGeocode(newLat, newLng);
   };
@@ -119,23 +121,25 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
   const handleCoordinateChange = () => {
     const newLat = parseFloat(lat.toString());
     const newLng = parseFloat(lng.toString());
-    
+
     if (!isNaN(newLat) && !isNaN(newLng)) {
+      setLocationSelected(true);
       reverseGeocode(newLat, newLng);
     }
   };
 
   const useCurrentLocation = () => {
     setIsLoading(true);
-    
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const newLat = position.coords.latitude;
           const newLng = position.coords.longitude;
-          
+
           setLat(newLat);
           setLng(newLng);
+          setLocationSelected(true);
           reverseGeocode(newLat, newLng);
           setIsLoading(false);
         },
@@ -152,6 +156,7 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
   const centerOnCanberra = () => {
     setLat(CANBERRA_CENTER.lat);
     setLng(CANBERRA_CENTER.lng);
+    setLocationSelected(true);
     reverseGeocode(CANBERRA_CENTER.lat, CANBERRA_CENTER.lng);
   };
 
@@ -182,12 +187,40 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
         </div>
       </div>
 
-      <Card>
+      {locationSelected ? (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-100"
+        >
+          <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          <div>
+            <p className="font-medium">Rescue location set</p>
+            <p className="text-xs">Click anywhere on the map to move the pin, or drag the marker to fine-tune.</p>
+          </div>
+        </div>
+      ) : (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-md border-2 border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+        >
+          <MousePointerClick className="mt-0.5 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+          <div>
+            <p className="font-semibold">Click on the map below to mark the rescue location</p>
+            <p className="text-xs">
+              The map is centred on your current location, but no rescue pin has been placed yet.
+              Tap or click the exact spot on the map where the animal was found.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <Card className={locationSelected ? '' : 'ring-2 ring-amber-400 ring-offset-2'}>
         <CardContent className="p-0">
           <SimpleMap
             center={mapCenter}
             onLocationChange={handleLocationChange}
-            initialMarker={initialLocation ? { lat: initialLocation.lat, lng: initialLocation.lng } : undefined}
+            initialMarker={locationSelected ? { lat, lng } : undefined}
+            showClickHint={!locationSelected}
           />
         </CardContent>
       </Card>
@@ -230,8 +263,8 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Click on the map to drop a pin, or enter coordinates manually.
-        The map centres on your current location, or Canberra ACT if location access is unavailable.
+        Drop a pin by clicking the map, drag it to adjust, or enter coordinates manually.
+        The map initially centres on your current location, or Canberra ACT if location access is unavailable.
       </p>
     </div>
   );
