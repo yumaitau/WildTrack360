@@ -219,7 +219,7 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
           <SimpleMap
             center={mapCenter}
             onLocationChange={handleLocationChange}
-            initialMarker={initialLocation ? { lat: initialLocation.lat, lng: initialLocation.lng } : undefined}
+            initialMarker={locationSelected ? { lat, lng } : undefined}
             showClickHint={!locationSelected}
           />
         </CardContent>
