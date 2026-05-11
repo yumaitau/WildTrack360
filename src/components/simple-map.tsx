@@ -4,12 +4,13 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleMap, Marker } from '@react-google-maps/api';
 import { useGoogleMaps } from '@/components/google-maps-provider';
 import { Button } from '@/components/ui/button';
-import { Map, Satellite, Expand, Minimize2 } from 'lucide-react';
+import { Map, Satellite, Expand, Minimize2, MousePointerClick } from 'lucide-react';
 
 interface SimpleMapProps {
   center: { lat: number; lng: number };
   onLocationChange: (lat: number, lng: number) => void;
   initialMarker?: { lat: number; lng: number };
+  showClickHint?: boolean;
 }
 
 const mapContainerStyle = {
@@ -33,7 +34,7 @@ const options = {
   fullscreenControl: false,
 };
 
-const SimpleMap: React.FC<SimpleMapProps> = ({ center, onLocationChange, initialMarker }) => {
+const SimpleMap: React.FC<SimpleMapProps> = ({ center, onLocationChange, initialMarker, showClickHint = false }) => {
   const [markerPosition, setMarkerPosition] = useState<{ lat: number; lng: number } | null>(
     initialMarker || null
   );
@@ -111,7 +112,15 @@ const SimpleMap: React.FC<SimpleMapProps> = ({ center, onLocationChange, initial
           />
         )}
       </GoogleMap>
-      <div className="absolute top-2 right-2 z-10 flex gap-1">
+      {showClickHint && !markerPosition && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <div className="flex items-center gap-2 rounded-full bg-amber-500/95 px-4 py-2 text-sm font-semibold text-white shadow-lg animate-pulse">
+            <MousePointerClick className="h-4 w-4" aria-hidden="true" />
+            Click anywhere on the map to drop a pin
+          </div>
+        </div>
+      )}
+      <div className="absolute top-2 right-2 z-20 flex gap-1">
         <Button
           onClick={() => setIsExpanded(!isExpanded)}
           size="sm"
