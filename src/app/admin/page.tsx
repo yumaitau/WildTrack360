@@ -1,10 +1,24 @@
-"use client";
+'use client';
 
 import { Suspense, useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PawPrint, Package, Users, Leaf, ScrollText, FileSpreadsheet, ChevronDown, LayoutDashboard, ShieldCheck, ArrowRight, TrendingUp, Settings } from 'lucide-react';
+import {
+  ArrowLeft,
+  PawPrint,
+  Package,
+  Users,
+  Leaf,
+  ScrollText,
+  FileSpreadsheet,
+  ChevronDown,
+  LayoutDashboard,
+  ShieldCheck,
+  ArrowRight,
+  TrendingUp,
+  Settings,
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -48,14 +62,15 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
   {
     label: 'Species Groups',
-    description: 'Create species groups and assign coordinators to manage them. View the assignment overview.',
+    description:
+      'Create species groups and assign coordinators to manage them. View the assignment overview.',
     icon: <Leaf className="h-6 w-6" />,
     tab: 'species-groups',
     adminOnly: true,
   },
   {
     label: 'Manage Species',
-    description: 'Add, edit, or remove species from your organisation\'s species list.',
+    description: "Add, edit, or remove species from your organisation's species list.",
     icon: <PawPrint className="h-6 w-6" />,
     tab: 'species',
     adminOnly: true,
@@ -83,7 +98,8 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
   {
     label: 'Organisation Settings',
-    description: 'Configure animal ID format, organisation short code, and other org-level settings.',
+    description:
+      'Configure animal ID format, organisation short code, and other org-level settings.',
     icon: <Settings className="h-6 w-6" />,
     tab: 'org-settings',
     adminOnly: true,
@@ -127,12 +143,27 @@ function AdminPageContent() {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<string | null>(
-    () => searchParams?.get('tab') ?? null
-  );
+  const [activeTab, setActiveTab] = useState<string | null>(() => searchParams?.get('tab') ?? null);
   const { user } = useUser();
   const { organization } = useOrganization();
   const router = useRouter();
+  const tabParam = searchParams?.get('tab') ?? null;
+
+  useEffect(() => {
+    setActiveTab(tabParam);
+  }, [tabParam]);
+
+  const selectTab = (tab: string) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams?.toString());
+    if (tab === 'home') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tab);
+    }
+    const query = params.toString();
+    router.replace(query ? `/admin?${query}` : '/admin', { scroll: false });
+  };
 
   useEffect(() => {
     if (!organization?.id) return;
@@ -154,7 +185,7 @@ function AdminPageContent() {
           router.replace('/');
           return;
         }
-        setSpecies(speciesData.map(s => s.name));
+        setSpecies(speciesData.map((s) => s.name));
         setAssets(assetsData);
         setUserRole(role);
       } catch (error) {
@@ -187,9 +218,18 @@ function AdminPageContent() {
   // Clamp activeTab to an allowed value when role/org changes
   useEffect(() => {
     if (activeTab && !allowedTabs.includes(activeTab)) {
-      setActiveTab(allowedTabs[0] || 'home');
+      const fallback = allowedTabs[0] || 'home';
+      setActiveTab(fallback);
+      const params = new URLSearchParams(searchParams?.toString());
+      if (fallback === 'home') {
+        params.delete('tab');
+      } else {
+        params.set('tab', fallback);
+      }
+      const query = params.toString();
+      router.replace(query ? `/admin?${query}` : '/admin', { scroll: false });
     }
-  }, [activeTab, allowedTabs]);
+  }, [activeTab, allowedTabs, router, searchParams]);
 
   if (loading) {
     return (
@@ -230,7 +270,7 @@ function AdminPageContent() {
         </div>
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-        <Tabs value={activeTab ?? 'home'} onValueChange={setActiveTab}>
+        <Tabs value={activeTab ?? 'home'} onValueChange={selectTab}>
           <TabsList className="flex flex-wrap w-full gap-1 h-auto p-1">
             <TabsTrigger value="home">
               <LayoutDashboard className="mr-2 h-4 w-4" />
@@ -257,12 +297,15 @@ function AdminPageContent() {
                     <ChevronDown className="ml-1 h-3 w-3" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-[var(--radix-dropdown-menu-trigger-width)]">
-                  <DropdownMenuItem onClick={() => setActiveTab('species-groups')}>
+                <DropdownMenuContent
+                  align="start"
+                  className="min-w-[var(--radix-dropdown-menu-trigger-width)]"
+                >
+                  <DropdownMenuItem onClick={() => selectTab('species-groups')}>
                     <Leaf className="mr-2 h-4 w-4" />
                     Species Groups
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setActiveTab('species')}>
+                  <DropdownMenuItem onClick={() => selectTab('species')}>
                     <PawPrint className="mr-2 h-4 w-4" />
                     Manage Species
                   </DropdownMenuItem>
@@ -282,7 +325,9 @@ function AdminPageContent() {
                 <DropdownMenuTrigger asChild>
                   <button
                     className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                      activeTab === 'audit-log' || activeTab === 'data-export' || activeTab === 'org-settings'
+                      activeTab === 'audit-log' ||
+                      activeTab === 'data-export' ||
+                      activeTab === 'org-settings'
                         ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground'
                     }`}
@@ -292,16 +337,19 @@ function AdminPageContent() {
                     <ChevronDown className="ml-1 h-3 w-3" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-[var(--radix-dropdown-menu-trigger-width)]">
-                  <DropdownMenuItem onClick={() => setActiveTab('audit-log')}>
+                <DropdownMenuContent
+                  align="start"
+                  className="min-w-[var(--radix-dropdown-menu-trigger-width)]"
+                >
+                  <DropdownMenuItem onClick={() => selectTab('audit-log')}>
                     <ScrollText className="mr-2 h-4 w-4" />
                     Audit Log
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setActiveTab('data-export')}>
+                  <DropdownMenuItem onClick={() => selectTab('data-export')}>
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     Data Export
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setActiveTab('org-settings')}>
+                  <DropdownMenuItem onClick={() => selectTab('org-settings')}>
                     <Settings className="mr-2 h-4 w-4" />
                     Organisation Settings
                   </DropdownMenuItem>
@@ -327,7 +375,7 @@ function AdminPageContent() {
                 {visibleActions.map((action) => (
                   <button
                     key={action.tab}
-                    onClick={() => setActiveTab(action.tab)}
+                    onClick={() => selectTab(action.tab)}
                     className="text-left group"
                   >
                     <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2 rounded-lg">
@@ -383,7 +431,10 @@ function AdminPageContent() {
                     Audit Log
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Immutable record of all actions taken within this organisation. All timestamps are displayed in Australian Eastern Time (AEST/AEDT). Audit entries are logged automatically for every create, update, and delete operation and must not be modified or deleted.
+                    Immutable record of all actions taken within this organisation. All timestamps
+                    are displayed in Australian Eastern Time (AEST/AEDT). Audit entries are logged
+                    automatically for every create, update, and delete operation and must not be
+                    modified or deleted.
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -416,7 +467,7 @@ function AdminPageContent() {
               </CardContent>
             </Card>
           </TabsContent>
-           <TabsContent value="assets">
+          <TabsContent value="assets">
             <Card>
               <CardHeader>
                 <CardTitle>Asset List</CardTitle>
