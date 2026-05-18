@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ interface AnimalsClientProps {
 }
 
 export default function AnimalsClient({ initialAnimals, species, carers }: AnimalsClientProps) {
-  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
   const [speciesList, setSpeciesList] = useState<string[]>(species);
   const [carersList, setCarersList] = useState<{ value: string; label: string }[]>(carers);
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
@@ -32,14 +32,17 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
         if (!organization) return;
         const orgId = organization.id;
         const [animalsData, speciesData, carersData] = await Promise.all([
-          fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
-          fetch(`/api/species?orgId=${orgId}`).then(r => r.json()),
-          fetch(`/api/carers?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/animals?orgId=${orgId}`).then((r) => r.json()),
+          fetch(`/api/species?orgId=${orgId}`).then((r) => r.json()),
+          fetch(`/api/carers?orgId=${orgId}`).then((r) => r.json()),
         ]);
-        
-        setAnimals(animalsData.sort((a: Animal, b: Animal) => 
-          new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
-        ));
+
+        setAnimals(
+          animalsData.sort(
+            (a: Animal, b: Animal) =>
+              new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
+          )
+        );
         setSpeciesList(speciesData.map((s: any) => s.name || ''));
         setCarersList(carersData.map((c: any) => ({ value: c.id, label: c.name })));
       } catch (error) {
@@ -63,14 +66,17 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
             if (!organization) return;
             const orgId = organization.id;
             const [animalsData, speciesData, carersData] = await Promise.all([
-              fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
-              fetch(`/api/species?orgId=${orgId}`).then(r => r.json()),
-              fetch(`/api/carers?orgId=${orgId}`).then(r => r.json()),
+              fetch(`/api/animals?orgId=${orgId}`).then((r) => r.json()),
+              fetch(`/api/species?orgId=${orgId}`).then((r) => r.json()),
+              fetch(`/api/carers?orgId=${orgId}`).then((r) => r.json()),
             ]);
-            
-            setAnimals(animalsData.sort((a: Animal, b: Animal) => 
-              new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
-            ));
+
+            setAnimals(
+              animalsData.sort(
+                (a: Animal, b: Animal) =>
+                  new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
+              )
+            );
             setSpeciesList(speciesData.map((s: any) => s.name || ''));
             setCarersList(carersData.map((c: any) => ({ value: c.id, label: c.name })));
           } catch (error) {
@@ -89,38 +95,51 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
     setAnimalToEdit(null);
     setAddDialogOpen(true);
   };
-  
+
   const handleOpenEditDialog = (animal: Animal) => {
     setAnimalToEdit(animal);
     setAddDialogOpen(true);
-  }
+  };
 
-  // Adapter for AddAnimalDialog (create-only)
+  const refreshLookups = async (orgId: string) => {
+    const [animalsData, speciesData, carersData] = await Promise.all([
+      fetch(`/api/animals?orgId=${orgId}`).then((r) => r.json()),
+      fetch(`/api/species?orgId=${orgId}`).then((r) => r.json()),
+      fetch(`/api/carers?orgId=${orgId}`).then((r) => r.json()),
+    ]);
+
+    setAnimals(
+      animalsData.sort(
+        (a: Animal, b: Animal) => new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
+      )
+    );
+    setSpeciesList(speciesData.map((s: any) => s.name || ''));
+    setCarersList(carersData.map((c: any) => ({ value: c.id, label: c.name })));
+  };
+
+  // Adapter for AddAnimalDialog create and edit flows.
   const handleAnimalAdd = async (animalData: any) => {
     if (!user || !organization) return;
-    try {
-      await fetch('/api/animals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...animalData, clerkOrganizationId: organization.id })
-      });
-      const [animalsData, speciesData, carersData] = await Promise.all([
-        fetch(`/api/animals?orgId=${organization.id}`).then(r => r.json()),
-        fetch(`/api/species?orgId=${organization.id}`).then(r => r.json()),
-        fetch(`/api/carers?orgId=${organization.id}`).then(r => r.json()),
-      ]);
-      setAnimals(animalsData.sort((a: Animal, b: Animal) => new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()));
-      setSpeciesList(speciesData.map((s: any) => s.name || ''));
-      setCarersList(carersData.map((c: any) => c.name || ''));
-      setAddDialogOpen(false);
-    } catch (error) {
-      console.error('Error adding animal via API:', error);
+    const isEditing = !!animalToEdit;
+    const res = await fetch(isEditing ? `/api/animals/${animalToEdit.id}` : '/api/animals', {
+      method: isEditing ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...animalData, clerkOrganizationId: organization.id }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to save animal' }));
+      throw new Error(err.error || 'Failed to save animal');
     }
+
+    await refreshLookups(organization.id);
+    setAnimalToEdit(null);
+    setAddDialogOpen(false);
   };
 
   const handleAnimalSubmit = async (submittedAnimal: Animal) => {
-    const isEditing = animals.some(animal => animal.id === submittedAnimal.id);
-    
+    const isEditing = animals.some((animal) => animal.id === submittedAnimal.id);
+
     if (isEditing) {
       try {
         await fetch(`/api/animals/${submittedAnimal.id}`, {
@@ -142,20 +161,24 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
         console.error('Error creating animal:', error);
       }
     }
-    
+
     // Refresh animals from data store
     const refreshData = async () => {
       try {
         const orgId = organization?.id;
+        if (!orgId) return;
         const [animalsData, speciesData, carersData] = await Promise.all([
-          fetch(`/api/animals?orgId=${orgId}`).then(r => r.json()),
-          fetch(`/api/species?orgId=${orgId}`).then(r => r.json()),
-          fetch(`/api/carers?orgId=${orgId}`).then(r => r.json()),
+          fetch(`/api/animals?orgId=${orgId}`).then((r) => r.json()),
+          fetch(`/api/species?orgId=${orgId}`).then((r) => r.json()),
+          fetch(`/api/carers?orgId=${orgId}`).then((r) => r.json()),
         ]);
-        
-        setAnimals(animalsData.sort((a: Animal, b: Animal) => 
-          new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
-        ));
+
+        setAnimals(
+          animalsData.sort(
+            (a: Animal, b: Animal) =>
+              new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
+          )
+        );
         setSpeciesList(speciesData.map((s: any) => s.name || ''));
         setCarersList(carersData.map((c: any) => ({ value: c.id, label: c.name })));
       } catch (error) {
@@ -201,26 +224,37 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">Animals</h2>
             <div className="flex items-center gap-2">
-              <Button variant={viewMode === 'grid' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('grid')}>
-                <LayoutGrid className="h-4 w-4"/>
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid className="h-4 w-4" />
               </Button>
-              <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('table')}>
-                <List className="h-4 w-4"/>
+              <Button
+                variant={viewMode === 'table' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => setViewMode('table')}
+              >
+                <List className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-
           {/* Animal Records */}
           {viewMode === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {animals.map(animal => (
+              {animals.map((animal) => (
                 <AnimalCard key={animal.id} animal={animal} />
               ))}
             </div>
           ) : (
             <div className="bg-card rounded-lg shadow-sm">
-              <AnimalTable animals={animals} onEdit={handleOpenEditDialog} carerMap={Object.fromEntries((carersList || []).map(c => [c.value, c.label]))} />
+              <AnimalTable
+                animals={animals}
+                onEdit={handleOpenEditDialog}
+                carerMap={Object.fromEntries((carersList || []).map((c) => [c.value, c.label]))}
+              />
             </div>
           )}
 
@@ -234,7 +268,7 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
         </div>
       </main>
 
-      <AddAnimalDialog 
+      <AddAnimalDialog
         isOpen={isAddDialogOpen}
         setIsOpen={setAddDialogOpen}
         onAnimalAdd={handleAnimalAdd}
@@ -244,4 +278,4 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
       />
     </div>
   );
-} 
+}

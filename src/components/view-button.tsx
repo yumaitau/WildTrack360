@@ -1,26 +1,36 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { useState } from "react";
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { useState } from 'react';
 
 interface ViewButtonProps {
   href: string;
   label?: string;
-  size?: "sm" | "default" | "lg";
-  variant?: "outline" | "default" | "secondary" | "ghost" | "link" | "destructive";
+  size?: 'sm' | 'default' | 'lg';
+  variant?: 'outline' | 'default' | 'secondary' | 'ghost' | 'link' | 'destructive';
 }
 
-export function ViewButton({ href, label = "View", size = "sm", variant = "outline" }: ViewButtonProps) {
+export function ViewButton({
+  href,
+  label = 'View',
+  size = 'sm',
+  variant = 'outline',
+}: ViewButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   return (
-    <Link href={href}>
-      <Button 
-        variant={variant}
-        size={size}
-        onClick={() => setIsLoading(true)}
-        disabled={isLoading}
+    <Button variant={variant} size={size} asChild>
+      <Link
+        href={href}
+        aria-disabled={isLoading}
+        onClick={(event) => {
+          if (isLoading) {
+            event.preventDefault();
+            return;
+          }
+          setIsLoading(true);
+        }}
       >
         {isLoading ? (
           <>
@@ -30,7 +40,7 @@ export function ViewButton({ href, label = "View", size = "sm", variant = "outli
         ) : (
           label
         )}
-      </Button>
-    </Link>
+      </Link>
+    </Button>
   );
 }
