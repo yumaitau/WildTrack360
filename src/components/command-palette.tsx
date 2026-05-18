@@ -94,8 +94,12 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
       const isPaletteShortcut = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
+      const target = event.target as HTMLElement | null;
+      const isEditableTarget =
+        target?.isContentEditable ||
+        target?.matches('input, textarea, [contenteditable="true"], [contenteditable]');
 
-      if (isPaletteShortcut) {
+      if (isPaletteShortcut && !isEditableTarget) {
         event.preventDefault();
         setOpen((value) => !value);
         return;

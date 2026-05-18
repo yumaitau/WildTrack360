@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ClerkProvider } from '@clerk/nextjs';
+import { headers } from 'next/headers';
 import { Toaster } from 'sonner';
 import { GoogleMapsProvider } from '@/components/google-maps-provider';
 import { CommandPalette, type CommandItem } from '@/components/command-palette';
@@ -220,14 +221,48 @@ const commandItems: CommandItem[] = [
   // Append tenant-specific recent records here as serializable CommandItem data.
 ];
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
+
+function normalizeHost(value: string | null | undefined): string | null {
+  const rawHost = value?.split(',')[0]?.trim().toLowerCase();
+
+  if (!rawHost) {
+    return null;
+  }
+
+  try {
+    return new URL(rawHost.includes('://') ? rawHost : `https://${rawHost}`).host;
+  } catch {
+    return null;
+  }
+}
+
+function buildAllowedRedirectOrigins(currentHost: string | null): string[] {
+  const rootDomain = normalizeHost(ROOT_DOMAIN);
+
+  if (!rootDomain) {
+    return [];
+  }
+
+  const allowedHosts = new Set([rootDomain]);
+  const tenantHost = normalizeHost(currentHost);
+
+  if (tenantHost === rootDomain || tenantHost?.endsWith(`.${rootDomain}`)) {
+    allowedHosts.add(tenantHost);
+  }
+
+  return Array.from(allowedHosts).flatMap(host => [
+    new URL(`https://${host}`).origin,
+    new URL(`http://${host}`).origin,
+  ]);
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const headerStore = await headers();
+  const allowedRedirectOrigins = buildAllowedRedirectOrigins(headerStore.get('host'));
+
   return (
-    <ClerkProvider
-      allowedRedirectOrigins={[
-        `https://*.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`,
-        `http://*.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`,
-      ]}
-    >
+    <ClerkProvider allowedRedirectOrigins={allowedRedirectOrigins}>
       <html lang="en" suppressHydrationWarning>
         <head>
           <link rel="preconnect" href="https://fonts.googleapis.com" />
