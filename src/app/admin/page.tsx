@@ -218,9 +218,18 @@ function AdminPageContent() {
   // Clamp activeTab to an allowed value when role/org changes
   useEffect(() => {
     if (activeTab && !allowedTabs.includes(activeTab)) {
-      setActiveTab(allowedTabs[0] || 'home');
+      const fallback = allowedTabs[0] || 'home';
+      setActiveTab(fallback);
+      const params = new URLSearchParams(searchParams?.toString());
+      if (fallback === 'home') {
+        params.delete('tab');
+      } else {
+        params.set('tab', fallback);
+      }
+      const query = params.toString();
+      router.replace(query ? `/admin?${query}` : '/admin', { scroll: false });
     }
-  }, [activeTab, allowedTabs]);
+  }, [activeTab, allowedTabs, router, searchParams]);
 
   if (loading) {
     return (

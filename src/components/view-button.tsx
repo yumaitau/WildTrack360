@@ -24,12 +24,19 @@ export function ViewButton({
       <Link
         href={href}
         aria-disabled={isLoading}
+        tabIndex={isLoading ? -1 : undefined}
+        style={isLoading ? { pointerEvents: 'none' } : undefined}
         onClick={(event) => {
           if (isLoading) {
             event.preventDefault();
             return;
           }
           setIsLoading(true);
+        }}
+        onKeyDown={(event) => {
+          if (isLoading && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+          }
         }}
       >
         {isLoading ? (

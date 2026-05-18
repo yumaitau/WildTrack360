@@ -89,7 +89,7 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [organization]);
 
   const handleOpenAddDialog = () => {
     setAnimalToEdit(null);
@@ -102,19 +102,24 @@ export default function AnimalsClient({ initialAnimals, species, carers }: Anima
   };
 
   const refreshLookups = async (orgId: string) => {
-    const [animalsData, speciesData, carersData] = await Promise.all([
-      fetch(`/api/animals?orgId=${orgId}`).then((r) => r.json()),
-      fetch(`/api/species?orgId=${orgId}`).then((r) => r.json()),
-      fetch(`/api/carers?orgId=${orgId}`).then((r) => r.json()),
-    ]);
+    try {
+      const [animalsData, speciesData, carersData] = await Promise.all([
+        fetch(`/api/animals?orgId=${orgId}`).then((r) => r.json()),
+        fetch(`/api/species?orgId=${orgId}`).then((r) => r.json()),
+        fetch(`/api/carers?orgId=${orgId}`).then((r) => r.json()),
+      ]);
 
-    setAnimals(
-      animalsData.sort(
-        (a: Animal, b: Animal) => new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
-      )
-    );
-    setSpeciesList(speciesData.map((s: any) => s.name || ''));
-    setCarersList(carersData.map((c: any) => ({ value: c.id, label: c.name })));
+      setAnimals(
+        animalsData.sort(
+          (a: Animal, b: Animal) =>
+            new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime()
+        )
+      );
+      setSpeciesList(speciesData.map((s: any) => s.name || ''));
+      setCarersList(carersData.map((c: any) => ({ value: c.id, label: c.name })));
+    } catch (error) {
+      console.error('Error refreshing lookups after save:', error);
+    }
   };
 
   // Adapter for AddAnimalDialog create and edit flows.
