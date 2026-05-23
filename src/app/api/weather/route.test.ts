@@ -60,6 +60,39 @@ describe('GET /api/weather', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('returns 400 JSON for out-of-range lat/lng', async () => {
+    mockAuth.mockResolvedValue({
+      userId: 'user-1',
+      orgId: 'org-1',
+      sessionClaims: { org_url: 'tenant' },
+    })
+
+    const response = await GET(weatherRequest('lat=95&lng=200'))
+
+    expect(response.status).toBe(400)
+    expect(response.headers.get('content-type')).toContain('application/json')
+    expect(await response.json()).toEqual({
+      error: 'lat must be between -90 and 90 and lng between -180 and 180.',
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('returns JSON when the Google Weather API key is missing', async () => {
+    mockAuth.mockResolvedValue({
+      userId: 'user-1',
+      orgId: 'org-1',
+      sessionClaims: { org_url: 'tenant' },
+    })
+    delete process.env.GOOGLE_WEATHER_API_KEY
+
+    const response = await GET(weatherRequest())
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get('content-type')).toContain('application/json')
+    expect(await response.json()).toEqual({ error: 'Missing Google Weather API key.' })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('maps Google response to the exact Android response object', async () => {
     mockAuth.mockResolvedValue({
       userId: 'user-1',
@@ -84,6 +117,7 @@ describe('GET /api/weather', () => {
     expect(url.searchParams.get('location.latitude')).toBe('-35.2809')
     expect(url.searchParams.get('location.longitude')).toBe('149.13')
     expect(url.searchParams.get('unitsSystem')).toBe('METRIC')
+    expect(vi.mocked(fetch).mock.calls[0][1]).toMatchObject({ signal: expect.any(AbortSignal) })
   })
 
   it('returns JSON 502 when Google Weather fails', async () => {

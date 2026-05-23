@@ -33,6 +33,7 @@ type GoogleWeatherResponse = {
 }
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000'
+const GOOGLE_WEATHER_TIMEOUT_MS = 5000
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status })
@@ -115,9 +116,12 @@ export async function GET(request: Request) {
   if (lat === null || lng === null) {
     return errorResponse('lat and lng must be finite numbers.', 400)
   }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return errorResponse('lat must be between -90 and 90 and lng between -180 and 180.', 400)
+  }
 
   const apiKey = process.env.GOOGLE_WEATHER_API_KEY
-  if (!apiKey) return errorResponse('Google Weather is not configured.', 502)
+  if (!apiKey) return errorResponse('Missing Google Weather API key.', 500)
 
   const weatherUrl = new URL('https://weather.googleapis.com/v1/currentConditions:lookup')
   weatherUrl.searchParams.set('key', apiKey)
@@ -125,8 +129,11 @@ export async function GET(request: Request) {
   weatherUrl.searchParams.set('location.longitude', String(lng))
   weatherUrl.searchParams.set('unitsSystem', 'METRIC')
 
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), GOOGLE_WEATHER_TIMEOUT_MS)
+
   try {
-    const response = await fetch(weatherUrl)
+    const response = await fetch(weatherUrl, { signal: controller.signal })
     if (!response.ok) {
       return errorResponse('Google Weather request failed.', 502)
     }
@@ -135,5 +142,7 @@ export async function GET(request: Request) {
     return NextResponse.json(mapGoogleWeatherResponse(googleWeather))
   } catch {
     return errorResponse('Google Weather request failed.', 502)
+  } finally {
+    clearTimeout(timeout)
   }
 }
