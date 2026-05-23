@@ -92,6 +92,13 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
     return [];
   }, [rescueLocation, releaseLocation]);
 
+  const mapKey = useMemo(() => {
+    return [
+      rescueLocation ? `${rescueLocation.lat},${rescueLocation.lng}` : 'no-rescue',
+      releaseLocation ? `${releaseLocation.lat},${releaseLocation.lng}` : 'no-release',
+    ].join('|');
+  }, [rescueLocation, releaseLocation]);
+
   const zoom = useMemo(() => {
     // Calculate appropriate zoom level based on whether we have both locations
     if (rescueLocation && releaseLocation) {
@@ -109,6 +116,15 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
       return 10;
     }
     return 12;
+  }, [rescueLocation, releaseLocation]);
+
+  const fitMapToLocations = useCallback((map: google.maps.Map) => {
+    if (!rescueLocation || !releaseLocation) return;
+
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend({ lat: rescueLocation.lat, lng: rescueLocation.lng });
+    bounds.extend({ lat: releaseLocation.lat, lng: releaseLocation.lng });
+    map.fitBounds(bounds, 48);
   }, [rescueLocation, releaseLocation]);
 
   if (!rescueLocation && !releaseLocation) {
@@ -152,9 +168,11 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
 
   const MapView = ({ containerStyle, showZoomControls = false }: { containerStyle: React.CSSProperties, showZoomControls?: boolean }) => (
     <GoogleMap
+      key={mapKey}
       mapContainerStyle={containerStyle}
       center={center}
       zoom={zoom}
+      onLoad={fitMapToLocations}
       options={{
         ...options,
         mapTypeId: mapType,
