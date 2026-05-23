@@ -12,6 +12,7 @@ const isPublicRoute = createRouteMatcher([
   "/unauthorized(.*)",
   "/api/keepalive(.*)",
   "/api/internal/(.*)",
+  "/api/weather(.*)",
   "/pin(.*)",
   "/api/pin(.*)",
 ]);
