@@ -48,6 +48,7 @@ import { useOrganization, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { getPhotoUrl } from "@/lib/photo-url";
+import { mapFirstValidLocation, mapLocation, type JsonCoordinates } from "@/lib/location-coordinates";
 
 interface AnimalDetailClientProps {
   initialAnimal: Animal;
@@ -738,13 +739,11 @@ export default function AnimalDetailClient({
               <RecordTimeline
                 records={records}
                 userMap={liveUserMap}
-                rescueLocation={((): { lat: number; lng: number; address: string } | undefined => {
-                  const rc = animal.rescueCoordinates as unknown as { lat?: number; lng?: number } | null;
-                  if (rc && typeof rc.lat === 'number' && typeof rc.lng === 'number') {
-                    return { lat: rc.lat, lng: rc.lng, address: animal.rescueLocation || 'Unknown location' };
-                  }
-                  return undefined;
-                })()}
+                rescueLocation={mapLocation(
+                  animal.rescueCoordinates as JsonCoordinates,
+                  animal.rescueLocation,
+                  'Unknown location'
+                )}
                 jurisdiction={jurisdiction}
               />
                 </TabsContent>
@@ -836,23 +835,19 @@ export default function AnimalDetailClient({
                 onRemindersChange={setReminders}
               />
               <LocationMap
-                rescueLocation={((): { lat: number; lng: number; address: string } | undefined => {
-                  const rc = animal.rescueCoordinates as unknown as { lat?: number; lng?: number } | null;
-                  if (rc && typeof rc.lat === 'number' && typeof rc.lng === 'number') {
-                    return { lat: rc.lat, lng: rc.lng, address: animal.rescueLocation || 'Unknown location' };
-                  }
-                  return undefined;
-                })()}
-                releaseLocation={((): { lat: number; lng: number; address: string } | undefined => {
-                  // Try Animal model first, then ReleaseChecklist
-                  const coords = (animal.releaseCoordinates || releaseChecklist?.releaseCoordinates) as { lat?: number; lng?: number } | null;
-                  const location = animal.releaseLocation || releaseChecklist?.releaseLocation;
-
-                  if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number' && location) {
-                    return { lat: coords.lat, lng: coords.lng, address: location };
-                  }
-                  return undefined;
-                })()}
+                rescueLocation={mapLocation(
+                  animal.rescueCoordinates as JsonCoordinates,
+                  animal.rescueLocation,
+                  'Unknown location'
+                )}
+                releaseLocation={mapFirstValidLocation(
+                  [
+                    animal.releaseCoordinates as JsonCoordinates,
+                    releaseChecklist?.releaseCoordinates as JsonCoordinates,
+                  ],
+                  animal.releaseLocation || releaseChecklist?.releaseLocation,
+                  'Release location'
+                )}
                 animalName={animal.name}
                 jurisdiction={jurisdiction}
               />
