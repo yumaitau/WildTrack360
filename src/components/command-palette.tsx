@@ -52,13 +52,14 @@ function scoreItem(item: CommandItem, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return 1;
 
+  const title = item.title ?? '';
   const haystack = [item.title, item.subtitle, item.group, ...(item.keywords ?? [])]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
 
-  if (item.title.toLowerCase().startsWith(q)) return 100;
-  if (item.title.toLowerCase().includes(q)) return 80;
+  if (title.toLowerCase().startsWith(q)) return 100;
+  if (title.toLowerCase().includes(q)) return 80;
   if (haystack.includes(q)) return 50;
 
   let cursor = 0;
@@ -93,11 +94,13 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
 
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
-      const isPaletteShortcut = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
-      const target = event.target as HTMLElement | null;
+      const key = typeof event.key === 'string' ? event.key.toLowerCase() : '';
+      const isPaletteShortcut = key === 'k' && (event.metaKey || event.ctrlKey);
+      const target = event.target;
       const isEditableTarget =
-        target?.isContentEditable ||
-        target?.matches('input, textarea, [contenteditable="true"], [contenteditable]');
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.matches('input, textarea, [contenteditable="true"], [contenteditable]'));
 
       if (isPaletteShortcut && !isEditableTarget) {
         event.preventDefault();
@@ -105,7 +108,7 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
         return;
       }
 
-      if (event.key === 'Escape') {
+      if (key === 'escape') {
         setOpen(false);
       }
     }
