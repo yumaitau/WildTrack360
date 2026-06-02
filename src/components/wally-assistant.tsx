@@ -2,7 +2,7 @@
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { Loader2, Maximize2, Minimize2, Send, X } from 'lucide-react';
+import { Loader2, Maximize2, Minimize2, Send, ShieldCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOrganization, useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,30 @@ function renderMessage(content: string) {
         {block}
       </p>
     ));
+}
+
+function WallyTrustNotice({ fullscreen = false }: { fullscreen?: boolean }) {
+  return (
+    <div
+      className={cn(
+        'rounded-md border border-primary/20 bg-primary/10 text-primary',
+        fullscreen ? 'px-4 py-3' : 'mx-3 mt-3 px-3 py-2'
+      )}
+    >
+      <div className="flex gap-2">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0" />
+        <div className="space-y-1">
+          <p className={cn('font-medium', fullscreen ? 'text-sm' : 'text-xs')}>
+            Sovereign Australian AI, protected by enterprise-grade security
+          </p>
+          <p className={cn('leading-relaxed text-primary/85', fullscreen ? 'text-sm' : 'text-[11px]')}>
+            Wally runs through AWS Bedrock&apos;s Australia geography. WildTrack360 does not store Wally conversations,
+            and prompts or responses are not used to train the model.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function WallyAssistant() {
@@ -251,7 +275,7 @@ export function WallyAssistant() {
                 Wally the Wallaby
               </h2>
               <p className="truncate text-xs text-muted-foreground sm:text-sm">
-                AI assistant powered by AWS Bedrock
+                Australian-hosted AI assistant powered by AWS Bedrock
               </p>
             </div>
             <Button
@@ -276,27 +300,32 @@ export function WallyAssistant() {
             </Button>
           </div>
 
+          {!isFullscreen && <WallyTrustNotice />}
+
           {isFullscreen && (
             <div className="border-b border-border bg-background/60 px-5 py-4">
-              <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">WildTrack360 workspace assistant</p>
-                  <p className="max-w-2xl text-sm text-muted-foreground">
-                    Ask Wally to summarise caseload risk, open calls, reminders, release prep, or where a record belongs.
-                  </p>
+              <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-[1fr_360px]">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">WildTrack360 workspace assistant</p>
+                    <p className="max-w-2xl text-sm text-muted-foreground">
+                      Ask Wally to summarise caseload risk, open calls, reminders, release prep, or where a record belongs.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:flex">
+                    {starterPrompts.slice(0, 3).map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        className="rounded-md border border-border bg-popover px-3 py-2 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                        onClick={() => void sendMessage(prompt)}
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:flex">
-                  {starterPrompts.slice(0, 3).map((prompt) => (
-                    <button
-                      key={prompt}
-                      type="button"
-                      className="rounded-md border border-border bg-popover px-3 py-2 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                      onClick={() => void sendMessage(prompt)}
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
+                <WallyTrustNotice fullscreen />
               </div>
             </div>
           )}
