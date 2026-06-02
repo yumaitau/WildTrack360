@@ -26,6 +26,14 @@ describe("reconcileOrder", () => {
     expect(reconcileOrder(["a", "gone", "b"], ["a", "b"])).toEqual(["a", "b"]);
   });
 
+  it("falls back to server order for malformed (non-array) stored shapes", () => {
+    // A parseable-but-wrong localStorage value (e.g. {} from an older build)
+    // must not throw during hydration.
+    expect(
+      reconcileOrder({} as unknown as string[], ["a", "b"]),
+    ).toEqual(["a", "b"]);
+  });
+
   it("appends new widgets that were not in the stored order", () => {
     expect(reconcileOrder(["b", "a"], ["a", "b", "c", "d"])).toEqual([
       "b",
@@ -59,6 +67,10 @@ describe("reconcileHidden", () => {
       "a",
       "b",
     ]);
+  });
+
+  it("returns empty for malformed (non-array) stored shapes", () => {
+    expect(reconcileHidden({} as unknown as string[], ["a", "b"])).toEqual([]);
   });
 });
 

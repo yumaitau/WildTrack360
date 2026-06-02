@@ -30,7 +30,7 @@ export function reconcileOrder(
   stored: string[] | null | undefined,
   currentIds: string[],
 ): string[] {
-  if (!stored) return [...currentIds];
+  if (!Array.isArray(stored)) return [...currentIds];
 
   const currentSet = new Set(currentIds);
   const seen = new Set<string>();
@@ -58,7 +58,7 @@ export function reconcileHidden(
   stored: string[] | null | undefined,
   currentIds: string[],
 ): string[] {
-  if (!stored) return [];
+  if (!Array.isArray(stored)) return [];
   const currentSet = new Set(currentIds);
   const seen = new Set<string>();
   const result: string[] = [];

@@ -288,6 +288,9 @@ export default function DraggableSections({
     persistOrder([...currentIds]);
     persistHidden([]);
     persistSizes({});
+    if (showTrendWindow && onTrendWindowChange) {
+      onTrendWindowChange(DEFAULT_TREND_WINDOW);
+    }
   };
 
   const isCustomized =
