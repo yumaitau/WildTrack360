@@ -5,6 +5,7 @@ import { headers } from 'next/headers';
 import { Toaster } from 'sonner';
 import { GoogleMapsProvider } from '@/components/google-maps-provider';
 import { CommandPalette, type CommandItem } from '@/components/command-palette';
+import { WallyAssistant } from '@/components/wally-assistant';
 
 export const metadata: Metadata = {
   title: 'WildTrack360',
@@ -275,6 +276,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <body className="font-body antialiased min-h-screen">
           <GoogleMapsProvider>{children}</GoogleMapsProvider>
           <CommandPalette items={commandItems} />
+          <WallyAssistant />
           <Toaster richColors position="top-right" />
         </body>
       </html>
