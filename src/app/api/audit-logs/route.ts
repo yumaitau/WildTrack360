@@ -6,18 +6,19 @@ import type { AuditAction, Prisma } from '@prisma/client';
 
 const VALID_ACTIONS: AuditAction[] = [
   'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'ROLE_CHANGE', 'ASSIGN', 'UNASSIGN',
+  'SUBMIT', 'APPROVE', 'REJECT', 'EXPORT',
 ];
 
 const VALID_ENTITIES = new Set([
   'Animal', 'Record', 'Species', 'ReleaseChecklist',
   'HygieneLog', 'IncidentReport', 'Asset', 'CarerTraining',
   'CarerProfile', 'OrgMember', 'SpeciesGroup', 'CoordinatorSpeciesAssignment',
+  'AIAssistantDiscussion',
 ]);
 
-// Clerk user IDs are alphanumeric with underscores, max ~50 chars
-const USER_ID_PATTERN = /^[a-zA-Z0-9_]{1,128}$/;
+const USER_SEARCH_PATTERN = /^[a-zA-Z0-9_@.\-\s+]{1,160}$/;
 
-const VALID_SORT_FIELDS = ['createdAt', 'action', 'entity', 'userId'] as const;
+const VALID_SORT_FIELDS = ['createdAt', 'action', 'entity', 'userId', 'userEmail'] as const;
 type SortField = (typeof VALID_SORT_FIELDS)[number];
 
 export async function GET(request: Request) {
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
     // Filters
     const actionFilter = searchParams.get('action');
     const entityFilter = searchParams.get('entity');
-    const userIdFilter = searchParams.get('userId');
+    const userFilter = searchParams.get('user') ?? searchParams.get('userId');
 
     const where: Prisma.AuditLogWhereInput = { orgId };
 
@@ -50,8 +51,12 @@ export async function GET(request: Request) {
     if (entityFilter && VALID_ENTITIES.has(entityFilter)) {
       where.entity = entityFilter;
     }
-    if (userIdFilter && USER_ID_PATTERN.test(userIdFilter)) {
-      where.userId = userIdFilter;
+    if (userFilter && USER_SEARCH_PATTERN.test(userFilter)) {
+      where.OR = [
+        { userId: { contains: userFilter, mode: 'insensitive' } },
+        { userName: { contains: userFilter, mode: 'insensitive' } },
+        { userEmail: { contains: userFilter, mode: 'insensitive' } },
+      ];
     }
 
     // Sorting

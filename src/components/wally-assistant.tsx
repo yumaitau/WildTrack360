@@ -21,10 +21,12 @@ type AssistantMode = 'closed' | 'popup' | 'fullscreen';
 const wallyAvatarSrc = '/assistants/wally-avatar.png';
 
 const starterPrompts = [
-  'What needs attention today?',
-  'Summarise open call logs.',
-  'Which animals are ready for release?',
-  'Help me check compliance gaps.',
+  'Which open call logs need follow-up?',
+  'Summarise unresolved incidents by severity.',
+  'Which animals are marked ready for release?',
+  'What reminders are due soon?',
+  'Show recent admissions and risk signals.',
+  'Which carer training expires in 60 days?',
 ];
 
 function makeId() {
@@ -82,8 +84,8 @@ function WallyTrustNotice({ fullscreen = false }: { fullscreen?: boolean }) {
             Sovereign Australian AI, protected by enterprise-grade security
           </p>
           <p className={cn('leading-relaxed text-primary/85', fullscreen ? 'text-sm' : 'text-[11px]')}>
-            Wally runs through AWS Bedrock&apos;s Australia geography. WildTrack360 does not store Wally conversations,
-            and prompts or responses are not used to train the model.
+            Wally runs through AWS Bedrock&apos;s Australia geography. Discussions are recorded in your organisation
+            audit log for accountability, and prompts or responses are not used to train the model.
           </p>
         </div>
       </div>
@@ -101,7 +103,7 @@ export function WallyAssistant() {
       id: makeId(),
       role: 'assistant',
       content:
-        "Hi, I'm Wally. Ask me about your caseload, call logs, reminders, reporting prep, or where to record something in WildTrack360.",
+        "Hi, I'm Wally. I can answer from your WildTrack360 workspace context, including visible animals, open call logs, unresolved incidents, reminders, release readiness, recent records, and expiring carer training.",
     },
   ]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -312,8 +314,8 @@ export function WallyAssistant() {
                       Ask Wally to summarise caseload risk, open calls, reminders, release prep, or where a record belongs.
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 sm:flex">
-                    {starterPrompts.slice(0, 3).map((prompt) => (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {starterPrompts.slice(0, 4).map((prompt) => (
                       <button
                         key={prompt}
                         type="button"
