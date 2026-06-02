@@ -21,6 +21,8 @@ import { useRouter } from "next/navigation";
 
 interface RecentAdmissionsChartProps {
   animals: Animal[];
+  /** Trend window in weeks. Defaults to ~30 days when not provided. */
+  weeks?: number;
 }
 
 const chartConfig = {
@@ -30,13 +32,14 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export default function RecentAdmissionsChart({ animals }: RecentAdmissionsChartProps) {
+export default function RecentAdmissionsChart({ animals, weeks }: RecentAdmissionsChartProps) {
   const router = useRouter();
-  const thirtyDaysAgo = subDays(new Date(), 30);
-  
-  const recentAnimals = animals.filter(a => new Date(a.dateFound) >= thirtyDaysAgo);
+  const days = weeks && weeks > 0 ? weeks * 7 : 30;
+  const windowStart = subDays(new Date(), days);
 
-  const data = Array.from({ length: 30 }).map((_, i) => {
+  const recentAnimals = animals.filter(a => new Date(a.dateFound) >= windowStart);
+
+  const data = Array.from({ length: days }).map((_, i) => {
     const date = subDays(new Date(), i);
     return {
       date: format(date, 'MMM d'),
@@ -64,7 +67,7 @@ export default function RecentAdmissionsChart({ animals }: RecentAdmissionsChart
     <Card>
       <CardHeader>
         <CardTitle>Recent Admissions</CardTitle>
-        <CardDescription>Admissions in the last 30 days. Click a bar to filter results.</CardDescription>
+        <CardDescription>Admissions in the last {days} days. Click a bar to filter results.</CardDescription>
       </CardHeader>
       <CardContent>
          <ChartContainer config={chartConfig} className="h-[300px] w-full">
