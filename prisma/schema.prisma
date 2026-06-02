@@ -798,6 +798,19 @@ model AdminNotificationDismissal {
   @@map("admin_notification_dismissals")
 }
 
+model WallyUsageSummary {
+  id           String   @id @default(cuid())
+  orgId        String   @map("org_id")
+  dateKey      String   @map("date_key") // YYYY-MM-DD in Australia/Sydney
+  messageCount Int      @default(0) @map("message_count")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([orgId, dateKey])
+  @@index([orgId])
+  @@map("wally_usage_summaries")
+}
+
 enum AuditAction {
   CREATE
   UPDATE

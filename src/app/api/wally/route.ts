@@ -5,13 +5,14 @@ import { streamText, type LanguageModelUsage } from 'ai';
 import { z } from 'zod';
 import { logAudit } from '@/lib/audit';
 import { getUserRole } from '@/lib/rbac';
-import { WALLY_MAX_HISTORY } from '@/lib/wally/constants';
+import { WALLY_MAX_HISTORY, WALLY_USAGE_TIME_ZONE } from '@/lib/wally/constants';
 import {
   buildWallyOperationalContext,
   buildWallySystemPrompt,
   buildWallyUserPrompt,
   WALLY_MODEL,
 } from '@/lib/wally/context';
+import { reserveWallyOrgMessage } from '@/lib/wally/usage';
 
 export const runtime = 'nodejs';
 
@@ -92,6 +93,22 @@ export async function POST(request: Request) {
   try {
     const requestMessages = parsed.data.messages;
     const prompt = latestUserPrompt(requestMessages);
+    const usageReservation = await reserveWallyOrgMessage(authenticatedOrgId);
+
+    if (!usageReservation.allowed) {
+      return NextResponse.json(
+        {
+          error: `Wally has reached the daily limit of ${usageReservation.limit} messages for this organisation. Try again tomorrow.`,
+          limit: usageReservation.limit,
+          used: usageReservation.used,
+          remaining: usageReservation.remaining,
+          dateKey: usageReservation.dateKey,
+          timeZone: WALLY_USAGE_TIME_ZONE,
+        },
+        { status: 429 }
+      );
+    }
+
     const auditConversation = requestMessages.map((message, index) => ({
       index,
       role: message.role,
@@ -144,6 +161,13 @@ export async function POST(request: Request) {
           assistantToolActions: {
             toolCallCount: toolCallCount ?? 0,
             toolResultCount: toolResultCount ?? 0,
+          },
+          quota: {
+            limit: usageReservation.limit,
+            used: usageReservation.used,
+            remaining: usageReservation.remaining,
+            dateKey: usageReservation.dateKey,
+            timeZone: WALLY_USAGE_TIME_ZONE,
           },
           finishReason: finishReason ?? null,
           usage: auditUsage(usage),
