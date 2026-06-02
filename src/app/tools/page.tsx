@@ -7,13 +7,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bird, PawPrint, ArrowRight, Utensils } from "lucide-react";
+import { Bird, PawPrint, ArrowRight, Utensils, BarChart3 } from "lucide-react";
 
 export const metadata = {
   title: "Tools — WildTrack360",
 };
 
 const tools = [
+  {
+    href: "/tools/reporting",
+    title: "Custom Reporting",
+    description:
+      "Build lightweight, read-only reports with a small safe query language. Preview results, save queries to your organisation, and pin them to the dashboard.",
+    icon: BarChart3,
+  },
   {
     href: "/tools/feed-roster",
     title: "Feed Roster",

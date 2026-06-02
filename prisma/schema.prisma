@@ -811,6 +811,25 @@ model WallyUsageSummary {
   @@map("wally_usage_summaries")
 }
 
+// Saved custom reporting queries (safe app-specific QL — see src/lib/custom-query).
+// Scoped per Clerk organisation (tenant). Query text is validated through the
+// QL parser before persistence; it is NEVER raw SQL.
+model SavedReportQuery {
+  id              String   @id @default(cuid())
+  orgId           String   @map("org_id") // Clerk organisation (tenant) id
+  createdByUserId String   @map("created_by_user_id") // Clerk user id of the author
+  name            String
+  query           String // safe QL text, validated by parseCustomQuery
+  visualization   String   @default("table") // number | table | bar | pie | line
+  showOnDashboard Boolean  @default(false) @map("show_on_dashboard")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([orgId])
+  @@index([orgId, showOnDashboard])
+  @@map("saved_report_queries")
+}
+
 enum AuditAction {
   CREATE
   UPDATE

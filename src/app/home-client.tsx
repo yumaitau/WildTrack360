@@ -33,6 +33,7 @@ import SpeciesDistributionChart from '@/components/species-distribution-chart';
 import RecentAdmissionsChart from '@/components/recent-admissions-chart';
 import CarerWorkloadDashboard from '@/components/carer-workload-dashboard';
 import ReleasesVsAdmissionsChart from '@/components/releases-vs-admissions-chart';
+import { CustomQueryWidgets } from '@/components/custom-query/custom-query-widgets';
 import { TrainingExpiryAlerts } from '@/components/training-expiry-alerts';
 import { AdminComplianceChecklist } from '@/components/admin-compliance-checklist';
 import { CallLogDashboard } from '@/components/call-log-dashboard';
@@ -498,6 +499,11 @@ function AdminCoordinatorView({
             ? 'Manage release checklists for your animals. State-specific compliance features are available when a jurisdiction is configured.'
             : 'View compliance overview, registers, hygiene logs, incident reports, and release checklists. Generate reports for your organization.'}
         </p>
+      </div>
+
+      {/* Saved custom report widgets (pinned to dashboard) */}
+      <div className="mb-8">
+        <CustomQueryWidgets />
       </div>
     </>
   );
