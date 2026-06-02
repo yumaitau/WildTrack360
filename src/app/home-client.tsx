@@ -33,6 +33,7 @@ import SpeciesDistributionChart from '@/components/species-distribution-chart';
 import RecentAdmissionsChart from '@/components/recent-admissions-chart';
 import CarerWorkloadDashboard from '@/components/carer-workload-dashboard';
 import ReleasesVsAdmissionsChart from '@/components/releases-vs-admissions-chart';
+import { CustomQueryWidgets } from '@/components/custom-query/custom-query-widgets';
 import { TrainingExpiryAlerts } from '@/components/training-expiry-alerts';
 import { AdminComplianceChecklist } from '@/components/admin-compliance-checklist';
 import { CallLogDashboard } from '@/components/call-log-dashboard';
@@ -473,6 +474,10 @@ function AdminCoordinatorView({
 
       <div className="grid grid-cols-1 gap-8 mb-8">
         <ReleasesVsAdmissionsChart animals={animals} />
+      </div>
+
+      <div className="mb-8">
+        <CustomQueryWidgets />
       </div>
     </>
   );
