@@ -40,6 +40,13 @@ import { CallLogDashboard } from '@/components/call-log-dashboard';
 import { FeedRosterSummaryCarer } from '@/components/feed-roster-summary-carer';
 import { FeedRosterSummaryOrg } from '@/components/feed-roster-summary-org';
 import { NSWReportingReminderBanner } from '@/components/nsw-reporting-reminder-banner';
+import DraggableSections, { type DashboardSection } from '@/components/draggable-sections';
+import {
+  TREND_WINDOW_STORAGE_KEY,
+  DEFAULT_TREND_WINDOW,
+  validateTrendWindow,
+  type TrendWindow,
+} from '@/lib/dashboard-layout';
 import type { FeedRosterItem } from '@/lib/feed-roster';
 import type { NSWReminderBannerData } from '@/lib/nsw-reminder-types';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
@@ -223,6 +230,46 @@ function AdminCoordinatorView({
   jurisdiction: string;
   feedRosterItems: FeedRosterItem[];
 }) {
+  // Default trend timeframe for trend widgets. Persisted to the browser only.
+  const [trendWindow, setTrendWindow] = useState<TrendWindow>(DEFAULT_TREND_WINDOW);
+  useEffect(() => {
+    try {
+      setTrendWindow(validateTrendWindow(localStorage.getItem(TREND_WINDOW_STORAGE_KEY)));
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, []);
+  const handleTrendWindowChange = useCallback((weeks: TrendWindow) => {
+    setTrendWindow(weeks);
+    try {
+      localStorage.setItem(TREND_WINDOW_STORAGE_KEY, String(weeks));
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, []);
+
+  const carerMap = useMemo(
+    () => Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name])),
+    [carersList],
+  );
+
+  // Operational dashboard widgets. Each is draggable, hideable, and (where it
+  // makes sense) resizable to half width. Order/visibility/size persist to
+  // localStorage via DraggableSections.
+  const dashboardSections: DashboardSection[] = useMemo(
+    () => [
+      { id: 'call-log', title: 'Call Log', node: <CallLogDashboard /> },
+      { id: 'feed-roster', title: 'Feed Roster', node: <FeedRosterSummaryOrg items={feedRosterItems} /> },
+      { id: 'stats', title: 'Key Stats', node: <DashboardStats animals={animals} /> },
+      { id: 'training-alerts', title: 'Training Alerts', node: <TrainingExpiryAlerts /> },
+      { id: 'species-distribution', title: 'Species Distribution', node: <SpeciesDistributionChart animals={animals} />, resizable: true },
+      { id: 'recent-admissions', title: 'Recent Admissions', node: <RecentAdmissionsChart animals={animals} weeks={trendWindow} />, resizable: true },
+      { id: 'carer-workload', title: 'Carer Workload', node: <CarerWorkloadDashboard animals={animals} carerMap={carerMap} /> },
+      { id: 'releases-vs-admissions', title: 'Releases vs Admissions', node: <ReleasesVsAdmissionsChart animals={animals} /> },
+    ],
+    [animals, carerMap, feedRosterItems, trendWindow],
+  );
+
   return (
     <>
       {/* Admin Compliance Checklist */}
@@ -278,21 +325,13 @@ function AdminCoordinatorView({
         </div>
       </div>
 
-      {/* Call Log */}
-      <CallLogDashboard />
-
-      {/* Feed Roster Overview */}
-      <FeedRosterSummaryOrg items={feedRosterItems} />
-
-      {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 gap-6 mb-8">
-        <DashboardStats animals={animals} />
-      </div>
-
-      {/* Training Alerts */}
-      <div className="mb-8">
-        <TrainingExpiryAlerts />
-      </div>
+      {/* Draggable dashboard widgets */}
+      <DraggableSections
+        sections={dashboardSections}
+        showTrendWindow
+        trendWindow={trendWindow}
+        onTrendWindowChange={handleTrendWindowChange}
+      />
 
       {/* Animals Table/Grid */}
       <div className="bg-card rounded-lg shadow-md p-4 sm:p-6 mb-8">
@@ -462,20 +501,7 @@ function AdminCoordinatorView({
         </p>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 gap-8 mb-8">
-        <SpeciesDistributionChart animals={animals} />
-        <RecentAdmissionsChart animals={animals} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 mb-8">
-        <CarerWorkloadDashboard animals={animals} carerMap={Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name]))} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 mb-8">
-        <ReleasesVsAdmissionsChart animals={animals} />
-      </div>
-
+      {/* Saved custom report widgets (pinned to dashboard) */}
       <div className="mb-8">
         <CustomQueryWidgets />
       </div>
