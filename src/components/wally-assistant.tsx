@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { WALLY_MAX_HISTORY } from '@/lib/wally/constants';
 
 type AssistantMessage = {
   id: string;
@@ -19,6 +20,7 @@ type AssistantMessage = {
 type AssistantMode = 'closed' | 'popup' | 'fullscreen';
 
 const wallyAvatarSrc = '/assistants/wally-avatar.png';
+const WALLY_UNAVAILABLE_MESSAGE = 'Wally is unavailable right now.';
 
 const starterPrompts = [
   'Which open call logs need follow-up?',
@@ -67,6 +69,39 @@ function renderMessage(content: string) {
         {block}
       </p>
     ));
+}
+
+async function getWallyErrorMessage(response: Response) {
+  let text = '';
+
+  try {
+    text = await response.text();
+  } catch {
+    return WALLY_UNAVAILABLE_MESSAGE;
+  }
+
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    return WALLY_UNAVAILABLE_MESSAGE;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as { error?: unknown; message?: unknown };
+    const message = typeof parsed.error === 'string' ? parsed.error : parsed.message;
+
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  } catch {
+    // Fall back to short plain-text responses from the API.
+  }
+
+  if (trimmed.length <= 180 && !trimmed.startsWith('<')) {
+    return trimmed;
+  }
+
+  return WALLY_UNAVAILABLE_MESSAGE;
 }
 
 function WallyTrustNotice({ fullscreen = false }: { fullscreen?: boolean }) {
@@ -161,20 +196,26 @@ export function WallyAssistant() {
     abortRef.current = controller;
 
     try {
+      const history = nextMessages
+        .filter((message) => message.content.trim().length > 0)
+        .slice(-WALLY_MAX_HISTORY)
+        .map(({ role, content }) => ({ role, content }));
+
       const response = await fetch('/api/wally', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: nextMessages
-            .filter((message) => message.content.trim().length > 0)
-            .map(({ role, content }) => ({ role, content })),
+          messages: history,
         }),
         signal: controller.signal,
       });
 
-      if (!response.ok || !response.body) {
-        const text = await response.text();
-        throw new Error(text || 'Wally is unavailable right now.');
+      if (!response.ok) {
+        throw new Error(await getWallyErrorMessage(response));
+      }
+
+      if (!response.body) {
+        throw new Error(WALLY_UNAVAILABLE_MESSAGE);
       }
 
       const reader = response.body.getReader();
@@ -207,14 +248,13 @@ export function WallyAssistant() {
       }
     } catch (error) {
       if (controller.signal.aborted) return;
-      const message = error instanceof Error ? error.message : 'Wally is unavailable right now.';
+      const message = error instanceof Error ? error.message : WALLY_UNAVAILABLE_MESSAGE;
       setMessages((current) =>
         current.map((item) =>
           item.id === assistantMessage.id
             ? {
                 ...item,
-                content:
-                  'I could not get a response from Bedrock just now. Check the AWS Bedrock credentials, region, and model access, then try again.',
+                content: message,
               }
             : item
         )
@@ -241,6 +281,14 @@ export function WallyAssistant() {
   function stopStreaming() {
     abortRef.current?.abort();
     setIsStreaming(false);
+  }
+
+  function closeWally() {
+    if (isStreaming) {
+      stopStreaming();
+    }
+
+    setMode('closed');
   }
 
   const isOpen = mode !== 'closed';
@@ -295,7 +343,7 @@ export function WallyAssistant() {
               variant="ghost"
               size="icon"
               className="size-8"
-              onClick={() => setMode('closed')}
+              onClick={closeWally}
               aria-label="Close Wally"
             >
               <X className="size-4" />
@@ -433,7 +481,13 @@ export function WallyAssistant() {
         <Button
           type="button"
           className="h-12 rounded-full px-3 shadow-xl shadow-primary/25"
-          onClick={() => setMode((current) => (current === 'closed' ? 'popup' : 'closed'))}
+          onClick={() => {
+            if (isOpen) {
+              closeWally();
+            } else {
+              setMode('popup');
+            }
+          }}
           aria-expanded={isOpen}
           aria-label={isOpen ? 'Close Wally the Wallaby' : 'Open Wally the Wallaby'}
         >

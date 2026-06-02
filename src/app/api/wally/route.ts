@@ -5,6 +5,7 @@ import { streamText, type LanguageModelUsage } from 'ai';
 import { z } from 'zod';
 import { logAudit } from '@/lib/audit';
 import { getUserRole } from '@/lib/rbac';
+import { WALLY_MAX_HISTORY } from '@/lib/wally/constants';
 import {
   buildWallyOperationalContext,
   buildWallySystemPrompt,
@@ -20,7 +21,7 @@ const MessageSchema = z.object({
 });
 
 const RequestSchema = z.object({
-  messages: z.array(MessageSchema).min(1).max(16),
+  messages: z.array(MessageSchema).min(1).max(WALLY_MAX_HISTORY),
 });
 
 const MAX_AUDIT_TEXT_LENGTH = 6000;
