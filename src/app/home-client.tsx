@@ -248,7 +248,7 @@ function AdminCoordinatorView({
           </Link>
         </div>
 
-        {userRole === 'ADMIN' && (
+        {(userRole === 'ADMIN' || userRole === 'COORDINATOR_ALL') && (
           <div>
             <Link href="/reports/custom">
               <Button variant="outline" className="w-full sm:w-auto">
@@ -474,7 +474,7 @@ function AdminCoordinatorView({
         <DashboardWidgets
           animals={animals}
           carerMap={Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name]))}
-          canUseReports={userRole === 'ADMIN'}
+          canUseReports={userRole === 'ADMIN' || userRole === 'COORDINATOR_ALL'}
         />
       </div>
     </>

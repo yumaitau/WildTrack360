@@ -1,9 +1,11 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { getUserRole, hasPermission } from '@/lib/rbac';
+import { getUserRole } from '@/lib/rbac';
+import { canUseCustomReports } from '@/lib/ql/access';
 import { CustomQueryWorkbench } from '@/components/ql/custom-query-workbench';
 
-// Custom reports are organisation-wide aggregates, gated on report:view_org.
+// Custom reports are organisation-wide aggregates, limited to ADMIN and
+// COORDINATOR_ALL (the roles with org-wide visibility).
 export default async function CustomReportsPage() {
   const { userId, orgId } = await auth();
 
@@ -11,7 +13,7 @@ export default async function CustomReportsPage() {
   if (!orgId) redirect('/');
 
   const role = await getUserRole(userId, orgId);
-  if (!hasPermission(role, 'report:view_org')) {
+  if (!canUseCustomReports(role)) {
     redirect('/unauthorized');
   }
 
