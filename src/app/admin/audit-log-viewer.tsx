@@ -42,19 +42,21 @@ interface AuditLogResponse {
   pagination: Pagination;
 }
 
-type SortField = 'createdAt' | 'action' | 'entity' | 'userId';
+type SortField = 'createdAt' | 'action' | 'entity' | 'userId' | 'userEmail';
 type SortDir = 'asc' | 'desc';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const ACTIONS = [
   'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'ROLE_CHANGE', 'ASSIGN', 'UNASSIGN',
+  'SUBMIT', 'APPROVE', 'REJECT', 'EXPORT',
 ] as const;
 
 const ENTITIES = [
   'Animal', 'Record', 'Species', 'ReleaseChecklist',
   'HygieneLog', 'IncidentReport', 'Asset', 'CarerTraining',
   'CarerProfile', 'OrgMember', 'SpeciesGroup', 'CoordinatorSpeciesAssignment',
+  'AIAssistantDiscussion',
 ] as const;
 
 const ACTION_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'warning' | 'success'> = {
@@ -65,6 +67,10 @@ const ACTION_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'destructiv
   ROLE_CHANGE: 'warning',
   ASSIGN: 'default',
   UNASSIGN: 'outline',
+  SUBMIT: 'default',
+  APPROVE: 'success',
+  REJECT: 'destructive',
+  EXPORT: 'outline',
 };
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
@@ -101,7 +107,7 @@ export function AuditLogViewer() {
       params.set('sortDir', sortDir);
       if (actionFilter !== 'all') params.set('action', actionFilter);
       if (entityFilter !== 'all') params.set('entity', entityFilter);
-      if (appliedUserSearch) params.set('userId', appliedUserSearch);
+      if (appliedUserSearch) params.set('user', appliedUserSearch);
 
       const res = await fetch(`/api/audit-logs?${params}`);
       if (!res.ok) throw new Error(await res.text());
@@ -161,10 +167,29 @@ export function AuditLogViewer() {
 
   const formatMetadata = (meta: Record<string, unknown> | null) => {
     if (!meta) return '—';
+
+    if (meta.event === 'AI_DISCUSSION') {
+      const prompt = typeof meta.latestPrompt === 'string' ? meta.latestPrompt : null;
+      const response = typeof meta.assistantResponse === 'string' ? meta.assistantResponse : null;
+      const status = typeof meta.status === 'string' ? meta.status : 'recorded';
+
+      return [
+        `status: ${status}`,
+        prompt ? `prompt: ${prompt}` : null,
+        response ? `response: ${response}` : null,
+      ]
+        .filter(Boolean)
+        .join('; ');
+    }
+
     const entries = Object.entries(meta);
     if (entries.length === 0) return '—';
     return entries.map(([k, v]) => {
-      const val = Array.isArray(v) ? v.join(', ') : String(v);
+      const val = Array.isArray(v)
+        ? v.join(', ')
+        : typeof v === 'object' && v !== null
+          ? JSON.stringify(v)
+          : String(v);
       return `${k}: ${val}`;
     }).join('; ');
   };
@@ -204,7 +229,7 @@ export function AuditLogViewer() {
         <div className="relative w-full sm:w-[240px]">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Filter by User ID..."
+            placeholder="Search user email, name, or ID..."
             value={userSearch}
             onChange={(e) => setUserSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') setAppliedUserSearch(userSearch); }}
@@ -251,6 +276,12 @@ export function AuditLogViewer() {
                 </button>
               </TableHead>
               <TableHead>
+                <button className="flex items-center font-medium" onClick={() => toggleSort('userEmail')}>
+                  Email
+                  <SortIcon field="userEmail" />
+                </button>
+              </TableHead>
+              <TableHead>
                 <button className="flex items-center font-medium" onClick={() => toggleSort('action')}>
                   Action
                   <SortIcon field="action" />
@@ -269,13 +300,13 @@ export function AuditLogViewer() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Loading audit logs...
                 </TableCell>
               </TableRow>
             ) : logs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No audit logs found{hasActiveFilters ? ' matching your filters.' : '.'}
                 </TableCell>
               </TableRow>
@@ -289,11 +320,14 @@ export function AuditLogViewer() {
                     {log.userName || log.userEmail ? (
                       <div>
                         {log.userName && <div className="text-sm font-medium">{log.userName}</div>}
-                        <div className="text-xs text-muted-foreground">{log.userEmail || log.userId}</div>
+                        <div className="font-mono text-xs text-muted-foreground">{log.userId}</div>
                       </div>
                     ) : (
                       <span className="font-mono text-xs">{log.userId}</span>
                     )}
+                  </TableCell>
+                  <TableCell className="max-w-[240px] truncate text-sm" title={log.userEmail || 'No email captured'}>
+                    {log.userEmail || <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
                     <Badge variant={ACTION_BADGE_VARIANT[log.action] || 'outline'}>
