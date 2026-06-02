@@ -1,7 +1,8 @@
 'use client';
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
-import { Bot, Loader2, Maximize2, MessageCircle, Minimize2, PawPrint, Send, X } from 'lucide-react';
+import Image from 'next/image';
+import { Loader2, Maximize2, Minimize2, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOrganization, useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,10 @@ type AssistantMessage = {
   content: string;
 };
 
+type AssistantMode = 'closed' | 'popup' | 'fullscreen';
+
+const wallyAvatarSrc = '/assistants/wally-avatar.png';
+
 const starterPrompts = [
   'What needs attention today?',
   'Summarise open call logs.',
@@ -26,16 +31,23 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function WallyMark({ className }: { className?: string }) {
+function WallyMark({ className, priority = false }: { className?: string; priority?: boolean }) {
   return (
     <div
       className={cn(
-        'relative grid size-10 shrink-0 place-items-center rounded-full border border-primary/30 bg-primary text-primary-foreground shadow-lg shadow-primary/20',
+        'relative shrink-0 overflow-hidden rounded-full border border-primary/30 bg-muted shadow-lg shadow-primary/20',
         className
       )}
       aria-hidden="true"
     >
-      <PawPrint className="size-5 opacity-95" />
+      <Image
+        src={wallyAvatarSrc}
+        alt=""
+        fill
+        priority={priority}
+        sizes="(max-width: 640px) 64px, 96px"
+        className="object-cover"
+      />
       <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-background bg-accent text-[10px] font-bold leading-none text-accent-foreground">
         W
       </span>
@@ -58,8 +70,7 @@ function renderMessage(content: string) {
 export function WallyAssistant() {
   const { isSignedIn, isLoaded } = useUser();
   const { organization } = useOrganization();
-  const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [mode, setMode] = useState<AssistantMode>('closed');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<AssistantMessage[]>([
     {
@@ -78,11 +89,22 @@ export function WallyAssistant() {
     if (viewport) {
       viewport.scrollTop = viewport.scrollHeight;
     }
-  }, [messages, open]);
+  }, [messages, mode]);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
+
+  useEffect(() => {
+    if (mode !== 'fullscreen') return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mode]);
 
   if (!isLoaded || !isSignedIn || !organization) {
     return null;
@@ -106,7 +128,7 @@ export function WallyAssistant() {
 
     setMessages(nextMessages);
     setInput('');
-    setOpen(true);
+    setMode((current) => (current === 'closed' ? 'popup' : current));
     setIsStreaming(true);
 
     const controller = new AbortController();
@@ -195,46 +217,98 @@ export function WallyAssistant() {
     setIsStreaming(false);
   }
 
+  const isOpen = mode !== 'closed';
+  const isFullscreen = mode === 'fullscreen';
+
   return (
-    <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-3 sm:bottom-5 sm:right-5">
-      {open && (
+    <div
+      className={cn(
+        'fixed z-40 flex flex-col items-end gap-3',
+        isFullscreen
+          ? 'inset-0 bg-foreground/25 p-0 backdrop-blur-sm'
+          : 'bottom-4 right-4 sm:bottom-5 sm:right-5'
+      )}
+    >
+      {isOpen && (
         <section
           aria-label="Wally the Wallaby AI assistant"
           className={cn(
-            'flex max-h-[calc(100vh-7rem)] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl sm:w-[390px]',
-            expanded && 'sm:w-[620px]'
+            'flex flex-col overflow-hidden border border-border bg-popover text-popover-foreground shadow-2xl',
+            isFullscreen
+              ? 'h-full w-full rounded-none sm:m-6 sm:h-[calc(100vh-3rem)] sm:w-[calc(100vw-3rem)] sm:rounded-lg'
+              : 'max-h-[calc(100vh-7rem)] w-[calc(100vw-2rem)] rounded-lg sm:w-[390px]'
           )}
         >
-          <div className="flex items-center gap-3 border-b border-border bg-muted/45 px-4 py-3">
-            <WallyMark className="size-9" />
+          <div
+            className={cn(
+              'flex items-center gap-3 border-b border-border bg-muted/45 px-4 py-3',
+              isFullscreen && 'px-5 py-4'
+            )}
+          >
+            <WallyMark className={cn(isFullscreen ? 'size-14' : 'size-9')} priority />
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-sm font-semibold">Wally the Wallaby</h2>
-              <p className="truncate text-xs text-muted-foreground">AI assistant powered by AWS Bedrock</p>
+              <h2 className={cn('truncate font-semibold', isFullscreen ? 'text-lg' : 'text-sm')}>
+                Wally the Wallaby
+              </h2>
+              <p className="truncate text-xs text-muted-foreground sm:text-sm">
+                AI assistant powered by AWS Bedrock
+              </p>
             </div>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="hidden size-8 sm:inline-flex"
-              onClick={() => setExpanded((value) => !value)}
-              aria-label={expanded ? 'Shrink Wally' : 'Expand Wally'}
+              className="size-8 sm:inline-flex"
+              onClick={() => setMode(isFullscreen ? 'popup' : 'fullscreen')}
+              aria-label={isFullscreen ? 'Return Wally to popup' : 'Open Wally full screen'}
             >
-              {expanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+              {isFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="size-8"
-              onClick={() => setOpen(false)}
+              onClick={() => setMode('closed')}
               aria-label="Close Wally"
             >
               <X className="size-4" />
             </Button>
           </div>
 
-          <ScrollArea ref={viewportRef} className="h-[min(520px,calc(100vh-17rem))] px-4 py-4">
-            <div className="space-y-4 pr-2">
+          {isFullscreen && (
+            <div className="border-b border-border bg-background/60 px-5 py-4">
+              <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">WildTrack360 workspace assistant</p>
+                  <p className="max-w-2xl text-sm text-muted-foreground">
+                    Ask Wally to summarise caseload risk, open calls, reminders, release prep, or where a record belongs.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:flex">
+                  {starterPrompts.slice(0, 3).map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      className="rounded-md border border-border bg-popover px-3 py-2 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                      onClick={() => void sendMessage(prompt)}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <ScrollArea
+            ref={viewportRef}
+            className={cn(
+              'px-4 py-4',
+              isFullscreen ? 'min-h-0 flex-1' : 'h-[min(520px,calc(100vh-17rem))]'
+            )}
+          >
+            <div className={cn('mx-auto space-y-4 pr-2', isFullscreen && 'max-w-4xl')}>
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -244,8 +318,14 @@ export function WallyAssistant() {
                   )}
                 >
                   {message.role === 'assistant' && (
-                    <div className="mt-1 grid size-7 shrink-0 place-items-center rounded-full bg-primary/12 text-primary">
-                      <Bot className="size-4" />
+                    <div className="relative mt-1 size-8 shrink-0 overflow-hidden rounded-full border border-primary/20 bg-muted">
+                      <Image
+                        src={wallyAvatarSrc}
+                        alt=""
+                        fill
+                        sizes="32px"
+                        className="object-cover"
+                      />
                     </div>
                   )}
                   <div
@@ -285,14 +365,20 @@ export function WallyAssistant() {
             </div>
           </ScrollArea>
 
-          <form className="border-t border-border bg-muted/35 p-3" onSubmit={handleSubmit}>
-            <div className="flex items-end gap-2">
+          <form
+            className={cn('border-t border-border bg-muted/35 p-3', isFullscreen && 'px-5 py-4')}
+            onSubmit={handleSubmit}
+          >
+            <div className={cn('mx-auto flex items-end gap-2', isFullscreen && 'max-w-4xl')}>
               <Textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask Wally..."
-                className="max-h-32 min-h-11 resize-none bg-background text-sm"
+                className={cn(
+                  'max-h-32 min-h-11 resize-none bg-background text-sm',
+                  isFullscreen && 'min-h-14'
+                )}
                 disabled={isStreaming}
               />
               {isStreaming ? (
@@ -305,23 +391,31 @@ export function WallyAssistant() {
                 </Button>
               )}
             </div>
-            <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+            <p className={cn('mt-2 text-[11px] leading-snug text-muted-foreground', isFullscreen && 'mx-auto max-w-4xl')}>
               Review AI output before acting. Health, release, and licence decisions still need the right human sign-off.
             </p>
           </form>
         </section>
       )}
 
-      <Button
-        type="button"
-        className="h-12 rounded-full px-4 shadow-xl shadow-primary/25"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-label={open ? 'Close Wally the Wallaby' : 'Open Wally the Wallaby'}
-      >
-        {open ? <X className="size-5" /> : <MessageCircle className="size-5" />}
-        <span>Wally</span>
-      </Button>
+      {!isFullscreen && (
+        <Button
+          type="button"
+          className="h-12 rounded-full px-3 shadow-xl shadow-primary/25"
+          onClick={() => setMode((current) => (current === 'closed' ? 'popup' : 'closed'))}
+          aria-expanded={isOpen}
+          aria-label={isOpen ? 'Close Wally the Wallaby' : 'Open Wally the Wallaby'}
+        >
+          {isOpen ? (
+            <X className="size-5" />
+          ) : (
+            <span className="relative size-7 overflow-hidden rounded-full border border-primary-foreground/35">
+              <Image src={wallyAvatarSrc} alt="" fill sizes="28px" className="object-cover" />
+            </span>
+          )}
+          <span>Wally</span>
+        </Button>
+      )}
     </div>
   );
 }
