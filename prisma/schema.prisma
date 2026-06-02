@@ -1139,3 +1139,28 @@ model CallLogOutcome {
   @@index([clerkOrganizationId])
   @@map("call_log_outcomes")
 }
+
+// Saved custom-QL reports. `queryText` is the safe-QL source (never SQL); it is
+// re-parsed and re-validated against the allowlist on every execution. Saved
+// queries are organisation-scoped and may optionally surface as dashboard
+// widgets.
+model SavedQuery {
+  id              String  @id @default(cuid())
+  name            String
+  description     String?
+  queryText       String  @map("query_text")
+  // One of: table | number | bar | pie | line — validated in the API layer.
+  chartType       String  @default("table") @map("chart_type")
+  showOnDashboard Boolean @default(false) @map("show_on_dashboard")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Clerk Relations (tenant scope + author)
+  clerkOrganizationId String @map("clerk_organization_id")
+  createdByUserId     String @map("created_by_user_id")
+
+  @@index([clerkOrganizationId])
+  @@index([clerkOrganizationId, showOnDashboard])
+  @@map("saved_queries")
+}

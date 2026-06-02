@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, ShieldCheck, ShieldAlert, User, RefreshCw, LogOut, Building, AlertTriangle, Clock, Menu, X, Calculator } from 'lucide-react';
+import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, ShieldCheck, ShieldAlert, User, RefreshCw, LogOut, Building, AlertTriangle, Clock, Menu, X, Calculator, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Animal } from '@prisma/client';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -29,10 +29,7 @@ import { AnimalTable } from '@/components/animal-table';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { AddAnimalDialog } from '@/components/add-animal-dialog';
 import DashboardStats from '@/components/dashboard-stats';
-import SpeciesDistributionChart from '@/components/species-distribution-chart';
-import RecentAdmissionsChart from '@/components/recent-admissions-chart';
-import CarerWorkloadDashboard from '@/components/carer-workload-dashboard';
-import ReleasesVsAdmissionsChart from '@/components/releases-vs-admissions-chart';
+import { DashboardWidgets } from '@/components/dashboard/dashboard-widgets';
 import { TrainingExpiryAlerts } from '@/components/training-expiry-alerts';
 import { AdminComplianceChecklist } from '@/components/admin-compliance-checklist';
 import { CallLogDashboard } from '@/components/call-log-dashboard';
@@ -251,6 +248,17 @@ function AdminCoordinatorView({
           </Link>
         </div>
 
+        {userRole === 'ADMIN' && (
+          <div>
+            <Link href="/reports/custom">
+              <Button variant="outline" className="w-full sm:w-auto">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Custom Reports
+              </Button>
+            </Link>
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <Button
             variant={viewMode === 'grid' ? 'default' : 'outline'}
@@ -461,18 +469,13 @@ function AdminCoordinatorView({
         </p>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 gap-8 mb-8">
-        <SpeciesDistributionChart animals={animals} />
-        <RecentAdmissionsChart animals={animals} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 mb-8">
-        <CarerWorkloadDashboard animals={animals} carerMap={Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name]))} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 mb-8">
-        <ReleasesVsAdmissionsChart animals={animals} />
+      {/* Insights — draggable, hideable, resizable widgets + saved custom reports */}
+      <div className="mb-8">
+        <DashboardWidgets
+          animals={animals}
+          carerMap={Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name]))}
+          canUseReports={userRole === 'ADMIN'}
+        />
       </div>
     </>
   );
