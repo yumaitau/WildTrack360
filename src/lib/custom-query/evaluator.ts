@@ -34,6 +34,7 @@ export interface EvaluateOptions {
   defaultStart?: Date;
   defaultEnd?: Date;
   now?: Date;
+  carerNamesById?: Record<string, string>;
 }
 
 function labelOf(value: NormalizedRow[string]): string {
@@ -43,10 +44,7 @@ function labelOf(value: NormalizedRow[string]): string {
   return s.length === 0 ? 'Unknown' : s;
 }
 
-function matchesWhere(
-  row: NormalizedRow,
-  where: { field: string; value: string }
-): boolean {
+function matchesWhere(row: NormalizedRow, where: { field: string; value: string }): boolean {
   const actual = row[where.field];
   const expected = where.value;
   const expectedLower = expected.toLowerCase();
@@ -129,13 +127,9 @@ function aggregateMultiSeries(
     byBucket.set(bucket, (byBucket.get(bucket) ?? 0) + v);
   }
 
-  const buckets = [...bucketSet].sort((a, b) =>
-    a < b ? -1 : a > b ? 1 : 0
-  );
+  const buckets = [...bucketSet].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
-  let groups = [...groupTotals.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([g]) => g);
+  let groups = [...groupTotals.entries()].sort((a, b) => b[1] - a[1]).map(([g]) => g);
   if (ast.limit !== undefined) groups = groups.slice(0, ast.limit);
 
   const series: CustomQuerySeries[] = groups.map((group) => {
@@ -149,13 +143,48 @@ function aggregateMultiSeries(
   // Top-level rows = totals per bucket across the (limited) series.
   const topRows: CustomQueryRow[] = buckets.map((b) => ({
     label: b,
-    value: series.reduce(
-      (sum, s) => sum + (s.rows.find((r) => r.label === b)?.value ?? 0),
-      0
-    ),
+    value: series.reduce((sum, s) => sum + (s.rows.find((r) => r.label === b)?.value ?? 0), 0),
   }));
 
   return { rows: topRows, series };
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function carerNameFor(id: unknown, carerNamesById?: Record<string, string>): string | null {
+  if (typeof id !== 'string' || id.trim().length === 0) return null;
+  return carerNamesById?.[id] ?? null;
+}
+
+function enrichReportRow(
+  source: CustomQuerySource,
+  row: Record<string, unknown>,
+  options: EvaluateOptions
+): Record<string, unknown> {
+  if (source.model === 'animal') {
+    const hasCarer = typeof row.carerId === 'string' && row.carerId.trim().length > 0;
+    return {
+      ...row,
+      carerName:
+        carerNameFor(row.carerId, options.carerNamesById) ?? (hasCarer ? 'Unknown carer' : null),
+    };
+  }
+
+  if (source.model === 'animalTransfer') {
+    const hasCarer = typeof row.toCarerId === 'string' && row.toCarerId.trim().length > 0;
+    return {
+      ...row,
+      carerName:
+        carerNameFor(row.toCarerId, options.carerNamesById) ??
+        stringOrNull(row.receivingContactName) ??
+        stringOrNull(row.receivingEntity) ??
+        (hasCarer ? 'Unknown carer' : null),
+    };
+  }
+
+  return row;
 }
 
 async function fetchNormalizedRows(
@@ -176,12 +205,15 @@ async function fetchNormalizedRows(
 
   const raw = await delegate.findMany({
     where: {
+      ...(source.baseWhere ?? {}),
       clerkOrganizationId: options.orgId,
       [source.dateField]: { gte: range.start, lte: range.end },
     },
   });
 
-  return (raw as Record<string, unknown>[]).map((r) => source.normalize(r));
+  return (raw as Record<string, unknown>[]).map((r) =>
+    source.normalize(enrichReportRow(source, r, options))
+  );
 }
 
 /**
@@ -212,9 +244,7 @@ export async function evaluateCustomQuery(
     if (!source) throw new CustomQueryError(`Unknown source "${ast.source}".`);
 
     const rows = await fetchNormalizedRows(source, ast, options);
-    const filtered = ast.where
-      ? rows.filter((r) => matchesWhere(r, ast.where!))
-      : rows;
+    const filtered = ast.where ? rows.filter((r) => matchesWhere(r, ast.where!)) : rows;
 
     const base: CustomQueryResult = {
       query: ast.raw,

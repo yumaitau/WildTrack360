@@ -6,10 +6,8 @@ import {
   canPreviewReports,
   ReportAccessError,
 } from '@/lib/custom-query/access';
-import {
-  evaluateCustomQueries,
-  type QueryablePrisma,
-} from '@/lib/custom-query/evaluator';
+import { evaluateCustomQueries, type QueryablePrisma } from '@/lib/custom-query/evaluator';
+import { getReportCarerNamesById } from '@/lib/custom-query/carer-names';
 
 const MAX_LINES = 20;
 
@@ -26,6 +24,10 @@ function parseDate(value: string | undefined): Date | undefined {
   if (!value) return undefined;
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function needsCarerNames(queries: string[]) {
+  return queries.some((query) => /\b(?:carerName|animal_assignments)\b/i.test(query));
 }
 
 // POST /api/report-queries/preview
@@ -45,9 +47,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    const lines = (
-      parsed.data.queries ?? (parsed.data.query ? [parsed.data.query] : [])
-    )
+    const lines = (parsed.data.queries ?? (parsed.data.query ? [parsed.data.query] : []))
       .map((q) => q.trim())
       .filter((q) => q.length > 0)
       .slice(0, MAX_LINES);
@@ -56,11 +56,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ results: [] });
     }
 
+    const carerNamesById = needsCarerNames(lines)
+      ? await getReportCarerNamesById(orgId)
+      : undefined;
+
     const results = await evaluateCustomQueries(lines, {
       prisma: prisma as unknown as QueryablePrisma,
       orgId,
       defaultStart: parseDate(parsed.data.start),
       defaultEnd: parseDate(parsed.data.end),
+      carerNamesById,
     });
 
     return NextResponse.json({ results });

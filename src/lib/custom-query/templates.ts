@@ -34,6 +34,19 @@ export const PREBUILT_CUSTOM_QUERIES: readonly PrebuiltCustomQuery[] = [
     query: 'count from animals group by species limit 10 chart bar',
   },
   {
+    id: 'animals-by-current-carer',
+    label: 'Animals admitted in range by current carer',
+    description:
+      'Snapshot report filtered by dateFound: animals admitted in the selected range, grouped by their current assigned carer.',
+    query: 'count from animals group by carerName limit 10 chart table',
+  },
+  {
+    id: 'animal-assignments-by-carer',
+    label: 'Assignment events by carer',
+    description: 'Internal carer assignment events grouped by receiving carer.',
+    query: 'count from animal_assignments group by carerName limit 10 chart table',
+  },
+  {
     id: 'intake-trend',
     label: 'Animal intake trend',
     description: 'Animals admitted per month, split by species.',

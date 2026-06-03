@@ -5,15 +5,17 @@ import {
   canPreviewReports,
   ReportAccessError,
 } from '@/lib/custom-query/access';
-import {
-  evaluateCustomQuery,
-  type QueryablePrisma,
-} from '@/lib/custom-query/evaluator';
+import { evaluateCustomQuery, type QueryablePrisma } from '@/lib/custom-query/evaluator';
+import { getReportCarerNamesById } from '@/lib/custom-query/carer-names';
 
 function parseDate(value: string | null): Date | undefined {
   if (!value) return undefined;
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function needsCarerNames(query: string) {
+  return /\b(?:carerName|animal_assignments)\b/i.test(query);
 }
 
 // GET /api/report-queries/dashboard?start=&end=
@@ -38,6 +40,10 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'asc' },
     });
 
+    const carerNamesById = queries.some((query) => needsCarerNames(query.query))
+      ? await getReportCarerNamesById(orgId)
+      : undefined;
+
     const widgets = await Promise.all(
       queries.map(async (q) => ({
         id: q.id,
@@ -48,6 +54,7 @@ export async function GET(request: Request) {
           orgId,
           defaultStart,
           defaultEnd,
+          carerNamesById,
         }),
       }))
     );

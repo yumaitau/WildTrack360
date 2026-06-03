@@ -31,10 +31,10 @@ describe('evaluateCustomQuery — aggregation', () => {
         { severity: 'LOW', date: new Date('2026-05-03') },
       ],
     });
-    const result = await evaluateCustomQuery(
-      'count from incidents group by severity chart bar',
-      { prisma, orgId: ORG }
-    );
+    const result = await evaluateCustomQuery('count from incidents group by severity chart bar', {
+      prisma,
+      orgId: ORG,
+    });
     expect(result.ok).toBe(true);
     expect(result.visualization).toBe('bar');
     expect(result.rows).toEqual([
@@ -45,10 +45,10 @@ describe('evaluateCustomQuery — aggregation', () => {
 
   it('returns empty rows for an empty grouped result', async () => {
     const { prisma } = fakePrisma({ incidentReport: [] });
-    const result = await evaluateCustomQuery(
-      'count from incidents group by severity chart bar',
-      { prisma, orgId: ORG }
-    );
+    const result = await evaluateCustomQuery('count from incidents group by severity chart bar', {
+      prisma,
+      orgId: ORG,
+    });
     expect(result.ok).toBe(true);
     expect(result.rows).toEqual([]);
   });
@@ -118,6 +118,97 @@ describe('evaluateCustomQuery — aggregation', () => {
       { label: '2026-05', value: 2 },
     ]);
   });
+
+  it('groups current animals by assigned carer display name without exposing IDs', async () => {
+    const { prisma, calls } = fakePrisma({
+      animal: [
+        { species: 'Koala', carerId: 'carer_a', dateFound: new Date('2025-08-01') },
+        { species: 'Possum', carerId: 'carer_a', dateFound: new Date('2025-09-01') },
+        { species: 'Wombat', carerId: 'carer_b', dateFound: new Date('2025-10-01') },
+      ],
+    });
+    const result = await evaluateCustomQuery(
+      'count from animals between 2025-06-03 and 2026-06-03 group by carerName limit 1 chart table',
+      {
+        prisma,
+        orgId: ORG,
+        carerNamesById: {
+          carer_a: 'Ava Carer',
+          carer_b: 'Ben Carer',
+        },
+      }
+    );
+    expect(result.rows).toEqual([{ label: 'Ava Carer', value: 2 }]);
+    expect(calls.animal[0].where).not.toHaveProperty('carerId');
+    expect(JSON.stringify(result)).not.toContain('carer_a');
+  });
+
+  it('groups internal assignment events by receiving carer display name', async () => {
+    const { prisma, calls } = fakePrisma({
+      animalTransfer: [
+        {
+          toCarerId: 'carer_a',
+          fromCarerId: null,
+          transferType: 'INTERNAL_CARER',
+          transferDate: new Date('2025-08-01'),
+        },
+        {
+          toCarerId: 'carer_a',
+          fromCarerId: 'carer_b',
+          transferType: 'INTERNAL_CARER',
+          transferDate: new Date('2025-09-01'),
+        },
+        {
+          toCarerId: 'carer_b',
+          fromCarerId: null,
+          transferType: 'INTERNAL_CARER',
+          transferDate: new Date('2025-10-01'),
+        },
+      ],
+    });
+    const result = await evaluateCustomQuery(
+      'count from animal_assignments between 2025-06-03 and 2026-06-03 group by carerName limit 1 chart table',
+      {
+        prisma,
+        orgId: ORG,
+        carerNamesById: {
+          carer_a: 'Ava Carer',
+          carer_b: 'Ben Carer',
+        },
+      }
+    );
+    expect(result.rows).toEqual([{ label: 'Ava Carer', value: 2 }]);
+    expect(calls.animalTransfer[0].where).toMatchObject({
+      clerkOrganizationId: ORG,
+      transferType: 'INTERNAL_CARER',
+      toCarerId: { not: null },
+    });
+    expect(JSON.stringify(result)).not.toContain('carer_a');
+  });
+
+  it('falls back to stored transfer contact names for former carers', async () => {
+    const { prisma } = fakePrisma({
+      animalTransfer: [
+        {
+          toCarerId: 'former_carer',
+          receivingContactName: 'Former Carer',
+          receivingEntity: 'Fallback Entity',
+          transferType: 'INTERNAL_CARER',
+          transferDate: new Date('2025-08-01'),
+        },
+      ],
+    });
+    const result = await evaluateCustomQuery(
+      'count from animal_assignments between 2025-06-03 and 2026-06-03 group by carerName chart table',
+      {
+        prisma,
+        orgId: ORG,
+        carerNamesById: {},
+      }
+    );
+    expect(result.rows).toEqual([{ label: 'Former Carer', value: 1 }]);
+    expect(JSON.stringify(result)).not.toContain('former_carer');
+  });
 });
 
 describe('evaluateCustomQuery — tenant isolation & scoping', () => {
@@ -136,10 +227,10 @@ describe('evaluateCustomQuery — tenant isolation & scoping', () => {
   it('ignores any attempt to target another org through the query text', async () => {
     const { prisma, calls } = fakePrisma({ incidentReport: [] });
     // `orgId` is not an allowlisted field — parser rejects it, so this is ok:false
-    const result = await evaluateCustomQuery(
-      'count from incidents where orgId = other_org',
-      { prisma, orgId: ORG }
-    );
+    const result = await evaluateCustomQuery('count from incidents where orgId = other_org', {
+      prisma,
+      orgId: ORG,
+    });
     expect(result.ok).toBe(false);
     // And nothing was fetched.
     expect(calls.incidentReport).toBeUndefined();

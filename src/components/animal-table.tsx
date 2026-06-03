@@ -1,7 +1,7 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import Link from "next/link"
+import * as React from 'react';
+import Link from 'next/link';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -13,10 +13,10 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Pen } from "lucide-react"
+} from '@tanstack/react-table';
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Pen } from 'lucide-react';
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -25,8 +25,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -34,116 +34,113 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Animal } from "@prisma/client"
-import { StatusBadge } from "./status-badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select"
-
+} from '@/components/ui/table';
+import { Animal } from '@prisma/client';
+import { StatusBadge } from './status-badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface AnimalTableProps {
-    animals: Animal[];
-    onEdit: (animal: Animal) => void;
-    carerMap?: Record<string, string>;
+  animals: Animal[];
+  onEdit: (animal: Animal) => void;
+  carerMap?: Record<string, string>;
 }
 
 export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
-  const [data, setData] = React.useState(animals)
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = React.useState({})
+  const [data, setData] = React.useState(animals);
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = React.useState({});
+  const [globalFilter, setGlobalFilter] = React.useState('');
 
   React.useEffect(() => {
     setData(animals);
-  }, [animals])
+  }, [animals]);
 
   const columns: ColumnDef<Animal>[] = [
     {
-      accessorKey: "name",
+      accessorKey: 'name',
       header: ({ column }) => {
         return (
           <Button
             variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
             Name
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
-        )
+        );
       },
-      cell: ({ row }) => <Link className="font-medium text-primary hover:underline" href={`/animals/${row.original.id}`}>{row.getValue("name")}</Link>,
+      cell: ({ row }) => (
+        <Link
+          className="font-medium text-primary hover:underline"
+          href={`/animals/${row.original.id}`}
+        >
+          {row.getValue('name')}
+        </Link>
+      ),
       filterFn: (row, id, value) => {
         const rowValue = row.getValue(id) as string;
         return rowValue.toLowerCase().includes(value.toLowerCase());
       },
     },
     {
-      accessorKey: "species",
+      accessorKey: 'species',
       header: ({ column }) => {
         return (
           <Button
             variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
             Species
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
-        )
+        );
       },
-      cell: ({ row }) => <div>{row.getValue("species")}</div>,
+      cell: ({ row }) => <div>{row.getValue('species')}</div>,
       filterFn: (row, id, value) => {
-        if (!value || value === "all") return true;
+        if (!value || value === 'all') return true;
         return row.getValue(id) === value;
       },
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => <StatusBadge status={row.getValue('status')} />,
       filterFn: (row, id, value) => {
-        if (!value || value === "all") return true;
+        if (!value || value === 'all') return true;
         return row.getValue(id) === value;
       },
     },
     {
-      accessorKey: "dateFound",
+      accessorKey: 'dateFound',
       header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-              Date Found
-              <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-          )
-        },
-      cell: ({ row }) => new Date(row.getValue("dateFound")).toLocaleDateString('en-CA'),
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Date Found
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => new Date(row.getValue('dateFound')).toLocaleDateString('en-CA'),
     },
     {
-      id: "carer",
-      header: "Carer",
+      id: 'carer',
+      header: 'Carer',
       cell: ({ row }) => {
-        const original: any = row.original as any;
-        const carerName = (original?.carerId && carerMap?.[original.carerId]) || "—";
+        const carerName = (row.original.carerId && carerMap?.[row.original.carerId]) || '—';
         return <div>{carerName}</div>;
       },
     },
     {
-      id: "actions",
+      id: 'actions',
       enableHiding: false,
       cell: ({ row }) => {
-        const animal = row.original
-  
+        const animal = row.original;
+
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -155,30 +152,42 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem asChild>
-                  <Link href={`/animals/${animal.id}`}>View details</Link>
+                <Link href={`/animals/${animal.id}`}>View details</Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onEdit(animal)}>
                 <Pen className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(animal.id)}
-              >
+              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(animal.id)}>
                 Copy animal ID
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        )
+        );
       },
     },
-  ]
+  ];
 
   const table = useReactTable({
     data,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: (row, _columnId, value) => {
+      const search = String(value ?? '')
+        .trim()
+        .toLowerCase();
+      if (!search) return true;
+
+      const animal = row.original;
+      const carerName = animal.carerId ? carerMap?.[animal.carerId] : '';
+
+      return [animal.name, animal.orgAnimalId, animal.species, animal.status, carerName]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(search));
+    },
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -190,20 +199,21 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
       columnFilters,
       columnVisibility,
       rowSelection,
+      globalFilter,
     },
-  })
+  });
 
   const statusOptions = [
-    { value: "IN_CARE", label: "In Care" },
-    { value: "READY_FOR_RELEASE", label: "Ready for Release" },
-    { value: "RELEASED", label: "Released" },
-    { value: "DECEASED", label: "Deceased" },
-    { value: "TRANSFERRED", label: "Transferred" },
+    { value: 'IN_CARE', label: 'In Care' },
+    { value: 'READY_FOR_RELEASE', label: 'Ready for Release' },
+    { value: 'RELEASED', label: 'Released' },
+    { value: 'DECEASED', label: 'Deceased' },
+    { value: 'TRANSFERRED', label: 'Transferred' },
   ];
 
   // Get unique species from animals
   const speciesOptions = React.useMemo(() => {
-    const uniqueSpecies = Array.from(new Set(animals.map(a => a.species).filter(Boolean)));
+    const uniqueSpecies = Array.from(new Set(animals.map((a) => a.species).filter(Boolean)));
     return uniqueSpecies.sort();
   }, [animals]);
 
@@ -211,25 +221,21 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
     <div className="w-full">
       <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center py-4 gap-3 sm:gap-4">
         <Input
-          placeholder="Filter by name..."
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("name")?.setFilterValue(event.target.value)
-          }
+          placeholder="Search animals..."
+          value={globalFilter}
+          onChange={(event) => table.setGlobalFilter(event.target.value)}
           className="w-full sm:max-w-sm"
         />
         <div className="flex flex-wrap gap-3 w-full sm:w-auto">
           <Select
-              value={
-                  (table.getColumn("status")?.getFilterValue() as string) ?? "all"
+            value={(table.getColumn('status')?.getFilterValue() as string) ?? 'all'}
+            onValueChange={(value) => {
+              if (value === 'all') {
+                table.getColumn('status')?.setFilterValue(undefined);
+              } else {
+                table.getColumn('status')?.setFilterValue(value);
               }
-              onValueChange={(value) => {
-                  if (value === "all") {
-                      table.getColumn("status")?.setFilterValue(undefined);
-                  } else {
-                      table.getColumn("status")?.setFilterValue(value);
-                  }
-              }}
+            }}
           >
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Filter by status" />
@@ -237,21 +243,21 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               {statusOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Select
-              value={
-                  (table.getColumn("species")?.getFilterValue() as string) ?? "all"
+            value={(table.getColumn('species')?.getFilterValue() as string) ?? 'all'}
+            onValueChange={(value) => {
+              if (value === 'all') {
+                table.getColumn('species')?.setFilterValue(undefined);
+              } else {
+                table.getColumn('species')?.setFilterValue(value);
               }
-              onValueChange={(value) => {
-                  if (value === "all") {
-                      table.getColumn("species")?.setFilterValue(undefined);
-                  } else {
-                      table.getColumn("species")?.setFilterValue(value);
-                  }
-              }}
+            }}
           >
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Filter by species" />
@@ -259,7 +265,9 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
             <SelectContent>
               <SelectItem value="all">All Species</SelectItem>
               {speciesOptions.map((species) => (
-                  <SelectItem key={species} value={species}>{species}</SelectItem>
+                <SelectItem key={species} value={species}>
+                  {species}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -280,13 +288,11 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
                     key={column.id}
                     className="capitalize"
                     checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
                   >
                     {column.id}
                   </DropdownMenuCheckboxItem>
-                )
+                );
               })}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -301,12 +307,9 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
                     <TableHead key={header.id}>
                       {header.isPlaceholder
                         ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                        : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
-                  )
+                  );
                 })}
               </TableRow>
             ))}
@@ -314,26 +317,17 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   No results.
                 </TableCell>
               </TableRow>
@@ -343,8 +337,8 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
       </div>
       <div className="flex flex-col sm:flex-row items-center justify-end gap-2 sm:space-x-2 py-4">
         <div className="text-sm text-muted-foreground order-2 sm:order-1 sm:flex-1">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1} ·{' '}
+          {table.getFilteredRowModel().rows.length} result(s)
         </div>
         <div className="space-x-2 order-1 sm:order-2">
           <Button
@@ -366,5 +360,5 @@ export function AnimalTable({ animals, onEdit, carerMap }: AnimalTableProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

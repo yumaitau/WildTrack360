@@ -3,6 +3,9 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Loader2, Maximize2, Minimize2, Send, ShieldCheck, X } from 'lucide-react';
+import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
+import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
 import { useOrganization, useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
@@ -19,7 +22,7 @@ type AssistantMessage = {
 
 type AssistantMode = 'closed' | 'popup' | 'fullscreen';
 
-const wallyAvatarSrc = '/assistants/wally-avatar.png';
+const wallyAvatarSrc = '/assistants/wally-avatar.svg';
 const WALLY_UNAVAILABLE_MESSAGE = 'Wally is unavailable right now.';
 
 const starterPrompts = [
@@ -50,16 +53,17 @@ function WallyMark({ className, priority = false }: { className?: string; priori
         fill
         priority={priority}
         sizes="(max-width: 640px) 64px, 96px"
-        className="object-cover"
+        className="object-contain"
       />
-      <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-background bg-accent text-[10px] font-bold leading-none text-accent-foreground">
-        W
-      </span>
     </div>
   );
 }
 
-function renderMessage(content: string) {
+function isSafeLink(href: string) {
+  return /^(https?:\/\/|mailto:|\/(?!\/))/i.test(href);
+}
+
+function renderPlainMessage(content: string) {
   return content
     .split(/\n{2,}/)
     .map((block) => block.trim())
@@ -69,6 +73,106 @@ function renderMessage(content: string) {
         {block}
       </p>
     ));
+}
+
+const markdownComponents: Components = {
+  p: ({ children }) => <p className="leading-relaxed">{children}</p>,
+  h1: ({ children }) => <h3 className="pt-1 text-base font-semibold leading-snug">{children}</h3>,
+  h2: ({ children }) => <h3 className="pt-1 text-sm font-semibold leading-snug">{children}</h3>,
+  h3: ({ children }) => <h3 className="pt-1 text-sm font-semibold leading-snug">{children}</h3>,
+  h4: ({ children }) => <h4 className="pt-1 text-sm font-semibold leading-snug">{children}</h4>,
+  h5: ({ children }) => <h5 className="pt-1 text-sm font-semibold leading-snug">{children}</h5>,
+  h6: ({ children }) => <h6 className="pt-1 text-sm font-semibold leading-snug">{children}</h6>,
+  a: ({ href, children }) => {
+    if (!href || !isSafeLink(href)) {
+      return <span>{children}</span>;
+    }
+
+    const external = !href.startsWith('/');
+    return (
+      <a
+        href={href}
+        target={external ? '_blank' : undefined}
+        rel={external ? 'noreferrer' : undefined}
+        className="font-medium underline underline-offset-2"
+      >
+        {children}
+      </a>
+    );
+  },
+  ul: ({ children }) => <ul className="ml-4 list-disc space-y-1">{children}</ul>,
+  ol: ({ children }) => <ol className="ml-4 list-decimal space-y-1">{children}</ol>,
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  blockquote: ({ children }) => (
+    <blockquote className="rounded-md border border-border bg-muted/40 px-3 py-2 text-muted-foreground">
+      {children}
+    </blockquote>
+  ),
+  pre: ({ children }) => (
+    <pre className="max-w-full overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs leading-relaxed">
+      {children}
+    </pre>
+  ),
+  code: ({ className, children, ...props }) => {
+    const text = String(children);
+    const isBlock = text.includes('\n') || className?.startsWith('language-');
+
+    return (
+      <code
+        className={cn(
+          isBlock ? className : 'rounded bg-muted px-1 py-0.5 text-[0.92em]',
+          isBlock && 'text-xs'
+        )}
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+  table: ({ children }) => (
+    <div className="my-2 max-w-full overflow-x-auto rounded-md border border-border">
+      <table className="w-full min-w-max border-collapse text-left text-xs">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-muted/70 text-muted-foreground">{children}</thead>,
+  tbody: ({ children }) => <tbody>{children}</tbody>,
+  tr: ({ children }) => <tr className="border-t border-border first:border-t-0">{children}</tr>,
+  th: ({ children }) => (
+    <th className="border-b border-border px-3 py-2 font-medium">{children}</th>
+  ),
+  td: ({ children }) => <td className="px-3 py-2 align-top">{children}</td>,
+  hr: () => <hr className="border-border" />,
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+  em: ({ children }) => <em className="italic">{children}</em>,
+  del: ({ children }) => <del className="text-muted-foreground line-through">{children}</del>,
+  input: ({ checked, type }) => {
+    if (type !== 'checkbox') {
+      return null;
+    }
+
+    return (
+      <input
+        type="checkbox"
+        checked={Boolean(checked)}
+        disabled
+        className="mr-2 align-middle"
+        aria-label={checked ? 'Completed' : 'Not completed'}
+      />
+    );
+  },
+};
+
+function renderAssistantMessage(content: string) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkBreaks]}
+      skipHtml
+      components={markdownComponents}
+      urlTransform={(url) => (isSafeLink(url) ? url : '')}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }
 
 async function getWallyErrorMessage(response: Response) {
@@ -118,9 +222,15 @@ function WallyTrustNotice({ fullscreen = false }: { fullscreen?: boolean }) {
           <p className={cn('font-medium', fullscreen ? 'text-sm' : 'text-xs')}>
             Sovereign Australian AI, protected by enterprise-grade security
           </p>
-          <p className={cn('leading-relaxed text-primary/85', fullscreen ? 'text-sm' : 'text-[11px]')}>
-            Wally runs through AWS Bedrock&apos;s Australia geography. Discussions are recorded in your organisation
-            audit log for accountability, and prompts or responses are not used to train the model.
+          <p
+            className={cn(
+              'leading-relaxed text-primary/85',
+              fullscreen ? 'text-sm' : 'text-[11px]'
+            )}
+          >
+            Wally runs through AWS Bedrock&apos;s Australia geography. Discussions are recorded in
+            your organisation audit log for accountability, and prompts or responses are not used to
+            train the model.
           </p>
         </div>
       </div>
@@ -228,9 +338,7 @@ export function WallyAssistant() {
         streamedText += decoder.decode(value, { stream: true });
         setMessages((current) =>
           current.map((message) =>
-            message.id === assistantMessage.id
-              ? { ...message, content: streamedText }
-              : message
+            message.id === assistantMessage.id ? { ...message, content: streamedText } : message
           )
         );
       }
@@ -240,9 +348,7 @@ export function WallyAssistant() {
         streamedText += tail;
         setMessages((current) =>
           current.map((message) =>
-            message.id === assistantMessage.id
-              ? { ...message, content: streamedText }
-              : message
+            message.id === assistantMessage.id ? { ...message, content: streamedText } : message
           )
         );
       }
@@ -357,9 +463,12 @@ export function WallyAssistant() {
               <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-[1fr_360px]">
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm font-medium text-foreground">WildTrack360 workspace assistant</p>
+                    <p className="text-sm font-medium text-foreground">
+                      WildTrack360 workspace assistant
+                    </p>
                     <p className="max-w-2xl text-sm text-muted-foreground">
-                      Ask Wally to summarise caseload risk, open calls, reminders, release prep, or where a record belongs.
+                      Ask Wally to summarise caseload risk, open calls, reminders, release prep, or
+                      where a record belongs.
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -416,7 +525,11 @@ export function WallyAssistant() {
                     )}
                   >
                     {message.content ? (
-                      <div className="space-y-2">{renderMessage(message.content)}</div>
+                      <div className="space-y-2">
+                        {message.role === 'assistant'
+                          ? renderAssistantMessage(message.content)
+                          : renderPlainMessage(message.content)}
+                      </div>
                     ) : (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="size-4 animate-spin" />
@@ -461,17 +574,34 @@ export function WallyAssistant() {
                 disabled={isStreaming}
               />
               {isStreaming ? (
-                <Button type="button" variant="outline" size="icon" onClick={stopStreaming} aria-label="Stop Wally">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={stopStreaming}
+                  aria-label="Stop Wally"
+                >
                   <X className="size-4" />
                 </Button>
               ) : (
-                <Button type="submit" size="icon" disabled={!input.trim()} aria-label="Send to Wally">
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={!input.trim()}
+                  aria-label="Send to Wally"
+                >
                   <Send className="size-4" />
                 </Button>
               )}
             </div>
-            <p className={cn('mt-2 text-[11px] leading-snug text-muted-foreground', isFullscreen && 'mx-auto max-w-4xl')}>
-              Review AI output before acting. Health, release, and licence decisions still need the right human sign-off.
+            <p
+              className={cn(
+                'mt-2 text-[11px] leading-snug text-muted-foreground',
+                isFullscreen && 'mx-auto max-w-4xl'
+              )}
+            >
+              Review AI output before acting. Health, release, and licence decisions still need the
+              right human sign-off.
             </p>
           </form>
         </section>
@@ -495,7 +625,7 @@ export function WallyAssistant() {
             <X className="size-5" />
           ) : (
             <span className="relative size-7 overflow-hidden rounded-full border border-primary-foreground/35">
-              <Image src={wallyAvatarSrc} alt="" fill sizes="28px" className="object-cover" />
+              <Image src={wallyAvatarSrc} alt="" fill sizes="28px" className="object-contain" />
             </span>
           )}
           <span>Wally</span>

@@ -1,45 +1,39 @@
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Bird, PawPrint, ArrowRight, Utensils, BarChart3 } from "lucide-react";
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Bird, PawPrint, ArrowRight, Utensils, BarChart3, ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: "Tools — WildTrack360",
+  title: 'Tools — WildTrack360',
 };
 
 const tools = [
   {
-    href: "/tools/reporting",
-    title: "Custom Reporting",
+    href: '/tools/reporting',
+    title: 'Custom Reporting',
     description:
-      "Build lightweight, read-only reports with a small safe query language. Preview results, save queries to your organisation, and pin them to the dashboard.",
+      'Build lightweight, read-only reports with a small safe query language. Preview results, save queries to your organisation, and pin them to the dashboard.',
     icon: BarChart3,
   },
   {
-    href: "/tools/feed-roster",
-    title: "Feed Roster",
+    href: '/tools/feed-roster',
+    title: 'Feed Roster',
     description:
       "Review today's feeding schedule, identify overdue feeds, and log feeding records from one field-friendly dashboard.",
     icon: Utensils,
   },
   {
-    href: "/tools/feed-calculator/flying-fox",
-    title: "Flying Fox Feed Calculator",
+    href: '/tools/feed-calculator/flying-fox',
+    title: 'Flying Fox Feed Calculator',
     description:
-      "Calculate daily milk volumes, per-feed amounts, and stage guidance for Grey-headed and Little Red Flying Fox pups.",
+      'Calculate daily milk volumes, per-feed amounts, and stage guidance for Grey-headed and Little Red Flying Fox pups.',
     icon: Bird,
   },
   {
-    href: "/tools/feed-calculator/macropod",
-    title: "Macropod Joey Feed Calculator",
+    href: '/tools/feed-calculator/macropod',
+    title: 'Macropod Joey Feed Calculator',
     description:
-      "Determine the correct Wombaroo formula stage and daily feed plan for Eastern Grey Kangaroos, Red-necked Wallabies, Swamp Wallabies and Common Wallaroos.",
+      'Determine the correct Wombaroo formula stage and daily feed plan for Eastern Grey Kangaroos, Red-necked Wallabies, Swamp Wallabies and Common Wallaroos.',
     icon: PawPrint,
   },
 ];
@@ -47,13 +41,21 @@ const tools = [
 export default function ToolsPage() {
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6 max-w-5xl">
-      <div className="space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-bold">Care Tools</h1>
-        <p className="text-muted-foreground text-sm sm:text-base">
-          Quick-reference calculators for rehabilitation care. These tools
-          produce guideline values — always confirm feed plans with your vet
-          and the formula manufacturer&apos;s documentation.
-        </p>
+      <div className="space-y-4">
+        <Button asChild variant="outline" size="sm">
+          <Link href="/">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Home
+          </Link>
+        </Button>
+        <div className="space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-bold">Care Tools</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Quick-reference calculators for rehabilitation care. These tools produce guideline
+            values — always confirm feed plans with your vet and the formula manufacturer&apos;s
+            documentation.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
