@@ -26,12 +26,46 @@ const wallyAvatarSrc = '/assistants/wally-avatar.svg';
 const WALLY_UNAVAILABLE_MESSAGE = 'Wally is unavailable right now.';
 
 const starterPrompts = [
-  'Which open call logs need follow-up?',
-  'Summarise unresolved incidents by severity.',
-  'Which animals are marked ready for release?',
-  'What reminders are due soon?',
-  'Show recent admissions and risk signals.',
-  'Which carer training expires in 60 days?',
+  {
+    category: 'Docs',
+    label: 'How do I admit my first animal?',
+    prompt: 'How do I admit my first animal in WildTrack360?',
+  },
+  {
+    category: 'Docs',
+    label: 'Walk me through a release checklist.',
+    prompt: 'Walk me through creating a release checklist for an animal ready for release.',
+  },
+  {
+    category: 'Workspace',
+    label: 'Which open call logs need follow-up?',
+    prompt: 'Which open call logs need follow-up?',
+  },
+  {
+    category: 'Workspace',
+    label: 'What reminders are due soon?',
+    prompt: 'What reminders are due soon?',
+  },
+  {
+    category: 'Reports',
+    label: 'Make a report for unresolved incidents.',
+    prompt: 'Make a custom reporting query for unresolved incidents by severity.',
+  },
+  {
+    category: 'Compliance',
+    label: 'What should I check before NSW reporting?',
+    prompt: 'What should I check before NSW annual reporting?',
+  },
+  {
+    category: 'Admin',
+    label: 'Where do I manage roles and species groups?',
+    prompt: 'Where do I manage roles and species groups?',
+  },
+  {
+    category: 'Care tools',
+    label: 'How does the feed roster find overdue feeds?',
+    prompt: 'How does the feed roster decide which animals are overdue for feeding?',
+  },
 ];
 
 function makeId() {
@@ -238,6 +272,27 @@ function WallyTrustNotice({ fullscreen = false }: { fullscreen?: boolean }) {
   );
 }
 
+function WallyPromptExample({
+  example,
+  onSelect,
+}: {
+  example: (typeof starterPrompts)[number];
+  onSelect: (prompt: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="rounded-md border border-border bg-background px-3 py-2 text-left text-xs text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      onClick={() => onSelect(example.prompt)}
+    >
+      <span className="block text-[11px] font-medium text-muted-foreground">
+        {example.category}
+      </span>
+      <span className="block font-medium leading-snug">{example.label}</span>
+    </button>
+  );
+}
+
 export function WallyAssistant() {
   const { isSignedIn, isLoaded } = useUser();
   const { organization } = useOrganization();
@@ -248,7 +303,7 @@ export function WallyAssistant() {
       id: makeId(),
       role: 'assistant',
       content:
-        "Hi, I'm Wally. I can answer from your WildTrack360 workspace context, including visible animals, open call logs, unresolved incidents, reminders, release readiness, recent records, and expiring carer training.",
+        "Hi, I'm Wally. I can answer from WildTrack360's public docs and your workspace context. Ask me how to use a module, where a workflow lives, or to summarise visible animals, open call logs, unresolved incidents, reminders, release readiness, recent records, expiring carer training, and custom reports.",
     },
   ]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -467,20 +522,17 @@ export function WallyAssistant() {
                       WildTrack360 workspace assistant
                     </p>
                     <p className="max-w-2xl text-sm text-muted-foreground">
-                      Ask Wally to summarise caseload risk, open calls, reminders, release prep, or
-                      where a record belongs.
+                      Ask Wally to explain documented workflows, link the right help page, summarise
+                      live workspace risks, or turn a reporting question into a safe query.
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {starterPrompts.slice(0, 4).map((prompt) => (
-                      <button
-                        key={prompt}
-                        type="button"
-                        className="rounded-md border border-border bg-popover px-3 py-2 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                        onClick={() => void sendMessage(prompt)}
-                      >
-                        {prompt}
-                      </button>
+                    {starterPrompts.slice(0, 6).map((example) => (
+                      <WallyPromptExample
+                        key={example.prompt}
+                        example={example}
+                        onSelect={(prompt) => void sendMessage(prompt)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -542,15 +594,12 @@ export function WallyAssistant() {
 
               {messages.length === 1 && (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {starterPrompts.map((prompt) => (
-                    <button
-                      key={prompt}
-                      type="button"
-                      className="rounded-md border border-border bg-background px-3 py-2 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                      onClick={() => void sendMessage(prompt)}
-                    >
-                      {prompt}
-                    </button>
+                  {starterPrompts.map((example) => (
+                    <WallyPromptExample
+                      key={example.prompt}
+                      example={example}
+                      onSelect={(prompt) => void sendMessage(prompt)}
+                    />
                   ))}
                 </div>
               )}
