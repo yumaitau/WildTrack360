@@ -18,7 +18,9 @@ describe('parseCustomQuery — valid grammar', () => {
   });
 
   it('parses sum of a numeric field', () => {
-    const ast = parseCustomQuery('sum trainingHours from carer_training group by trainingType chart pie');
+    const ast = parseCustomQuery(
+      'sum trainingHours from carer_training group by trainingType chart pie'
+    );
     expect(ast.operation).toBe('sum');
     expect(ast.metric).toBe('trainingHours');
     expect(ast.source).toBe('carer_training');
@@ -38,6 +40,17 @@ describe('parseCustomQuery — valid grammar', () => {
     expect(ast.visualization).toBe('line');
   });
 
+  it('parses carer assignment reporting queries', () => {
+    const ast = parseCustomQuery(
+      'count from animal_assignments between 2025-06-03 and 2026-06-03 group by carerName limit 1 chart table'
+    );
+    expect(ast.source).toBe('animal_assignments');
+    expect(ast.between).toEqual({ start: '2025-06-03', end: '2026-06-03' });
+    expect(ast.groupBy).toBe('carerName');
+    expect(ast.limit).toBe(1);
+    expect(ast.visualization).toBe('table');
+  });
+
   it('infers line for trend queries and bar for grouped queries', () => {
     expect(parseCustomQuery('count from records trend by recordedDay').visualization).toBe('line');
     expect(parseCustomQuery('count from records group by type').visualization).toBe('bar');
@@ -54,8 +67,7 @@ describe('parseCustomQuery — valid grammar', () => {
 });
 
 describe('parseCustomQuery — rejections', () => {
-  const expectReject = (q: string) =>
-    expect(() => parseCustomQuery(q)).toThrow(CustomQueryError);
+  const expectReject = (q: string) => expect(() => parseCustomQuery(q)).toThrow(CustomQueryError);
 
   it('rejects unknown sources', () => {
     expectReject('count from dragons');

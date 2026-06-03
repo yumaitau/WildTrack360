@@ -1,11 +1,29 @@
 // src/app/home-client.tsx
-"use client";
+'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PawPrint, PlusCircle, Settings, List, LayoutGrid, Shield, ShieldCheck, ShieldAlert, User, RefreshCw, LogOut, Building, AlertTriangle, Clock, Menu, X, Calculator } from 'lucide-react';
+import {
+  PawPrint,
+  PlusCircle,
+  Settings,
+  List,
+  LayoutGrid,
+  Shield,
+  ShieldCheck,
+  ShieldAlert,
+  User,
+  RefreshCw,
+  LogOut,
+  Building,
+  AlertTriangle,
+  Clock,
+  Menu,
+  X,
+  Calculator,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Animal } from '@prisma/client';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -14,7 +32,14 @@ import { useIsMobile } from '@/hooks/use-mobile';
 type CreateAnimalData = {
   name: string;
   species: string;
-  status: 'ADMITTED' | 'IN_CARE' | 'READY_FOR_RELEASE' | 'RELEASED' | 'DECEASED' | 'TRANSFERRED' | 'PERMANENT_CARE';
+  status:
+    | 'ADMITTED'
+    | 'IN_CARE'
+    | 'READY_FOR_RELEASE'
+    | 'RELEASED'
+    | 'DECEASED'
+    | 'TRANSFERRED'
+    | 'PERMANENT_CARE';
   dateFound: Date;
   dateReleased: Date | null;
   outcomeDate: Date | null;
@@ -33,7 +58,7 @@ import SpeciesDistributionChart from '@/components/species-distribution-chart';
 import RecentAdmissionsChart from '@/components/recent-admissions-chart';
 import CarerWorkloadDashboard from '@/components/carer-workload-dashboard';
 import ReleasesVsAdmissionsChart from '@/components/releases-vs-admissions-chart';
-import { CustomQueryWidgets } from '@/components/custom-query/custom-query-widgets';
+import { QueryResultChart } from '@/components/custom-query/query-result-chart';
 import { TrainingExpiryAlerts } from '@/components/training-expiry-alerts';
 import { AdminComplianceChecklist } from '@/components/admin-compliance-checklist';
 import { CallLogDashboard } from '@/components/call-log-dashboard';
@@ -41,6 +66,7 @@ import { FeedRosterSummaryCarer } from '@/components/feed-roster-summary-carer';
 import { FeedRosterSummaryOrg } from '@/components/feed-roster-summary-org';
 import { NSWReportingReminderBanner } from '@/components/nsw-reporting-reminder-banner';
 import DraggableSections, { type DashboardSection } from '@/components/draggable-sections';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   TREND_WINDOW_STORAGE_KEY,
   DEFAULT_TREND_WINDOW,
@@ -49,15 +75,26 @@ import {
 } from '@/lib/dashboard-layout';
 import type { FeedRosterItem } from '@/lib/feed-roster';
 import type { NSWReminderBannerData } from '@/lib/nsw-reminder-types';
+import type { CustomQueryResult } from '@/lib/custom-query/types';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { getJurisdictionFromOrg } from '@/lib/config';
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
+  const res = await fetch(url, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+  });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+interface DashboardReportWidget {
+  id: string;
+  name: string;
+  visualization: string;
+  result: CustomQueryResult;
 }
 
 interface HomeClientProps {
@@ -93,7 +130,7 @@ function CarerView({
   const recentlyAdmitted = useMemo(() => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    return animals.filter(a => new Date(a.dateFound) >= sevenDaysAgo);
+    return animals.filter((a) => new Date(a.dateFound) >= sevenDaysAgo);
   }, [animals]);
 
   return (
@@ -105,12 +142,16 @@ function CarerView({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{isOrgWide ? 'All Animals' : 'Animals in My Care'}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {isOrgWide ? 'All Animals' : 'Animals in My Care'}
+            </CardTitle>
             <PawPrint className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{animals.length}</div>
-            <p className="text-xs text-muted-foreground">{isOrgWide ? 'Organisation-wide caseload' : 'Currently assigned to you'}</p>
+            <p className="text-xs text-muted-foreground">
+              {isOrgWide ? 'Organisation-wide caseload' : 'Currently assigned to you'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -148,6 +189,7 @@ function CarerView({
             size="sm"
             onClick={onRefresh}
             disabled={isLoading}
+            aria-label="Refresh dashboard"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
@@ -158,8 +200,16 @@ function CarerView({
       {animals.length === 0 ? (
         <Card className="p-8 text-center">
           <PawPrint className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-lg font-medium text-muted-foreground">{isOrgWide ? 'No animals in the organisation yet' : 'No animals currently assigned to you'}</p>
-          <p className="text-sm text-muted-foreground mt-1">{isOrgWide ? 'Animals will appear here once they are added to the organisation.' : 'Animals will appear here once they are assigned to your care.'}</p>
+          <p className="text-lg font-medium text-muted-foreground">
+            {isOrgWide
+              ? 'No animals in the organisation yet'
+              : 'No animals currently assigned to you'}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isOrgWide
+              ? 'Animals will appear here once they are added to the organisation.'
+              : 'Animals will appear here once they are assigned to your care.'}
+          </p>
         </Card>
       ) : (
         <div className="bg-card rounded-lg shadow-md p-4 sm:p-6 mb-8">
@@ -178,9 +228,7 @@ function CarerView({
                     <p className="text-xs font-mono text-muted-foreground">{animal.orgAnimalId}</p>
                   )}
                   <p className="text-sm text-muted-foreground">{animal.species}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Status: {animal.status}
-                  </p>
+                  <p className="text-sm text-muted-foreground">Status: {animal.status}</p>
                   <div className="mt-3">
                     <Button size="sm" variant="outline" onClick={() => onEdit(animal)}>
                       View
@@ -196,7 +244,9 @@ function CarerView({
       {/* Quick link */}
       <div className="text-center">
         <Link href="/animals">
-          <Button variant="outline">{isOrgWide ? 'View All Animals' : 'View All My Animals'}</Button>
+          <Button variant="outline">
+            {isOrgWide ? 'View All Animals' : 'View All My Animals'}
+          </Button>
         </Link>
       </div>
     </>
@@ -206,8 +256,6 @@ function CarerView({
 function AdminCoordinatorView({
   animals,
   userRole,
-  viewMode,
-  setViewMode,
   isLoading,
   onRefresh,
   onEdit,
@@ -216,11 +264,10 @@ function AdminCoordinatorView({
   organization,
   jurisdiction,
   feedRosterItems,
+  dashboardRefreshCycle,
 }: {
   animals: Animal[];
   userRole: string;
-  viewMode: 'grid' | 'list';
-  setViewMode: (mode: 'grid' | 'list') => void;
   isLoading: boolean;
   onRefresh: () => void;
   onEdit: (animal: Animal) => void;
@@ -229,6 +276,7 @@ function AdminCoordinatorView({
   organization: any;
   jurisdiction: string;
   feedRosterItems: FeedRosterItem[];
+  dashboardRefreshCycle: number;
 }) {
   // Default trend timeframe for trend widgets. Persisted to the browser only.
   const [trendWindow, setTrendWindow] = useState<TrendWindow>(DEFAULT_TREND_WINDOW);
@@ -250,8 +298,77 @@ function AdminCoordinatorView({
 
   const carerMap = useMemo(
     () => Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name])),
-    [carersList],
+    [carersList]
   );
+  const [customReportWidgets, setCustomReportWidgets] = useState<DashboardReportWidget[] | null>(
+    null
+  );
+
+  useEffect(() => {
+    let active = true;
+    setCustomReportWidgets(null);
+
+    fetch('/api/report-queries/dashboard')
+      .then((response) => (response.ok ? response.json() : { widgets: [] }))
+      .then((data: { widgets?: DashboardReportWidget[] }) => {
+        if (active) setCustomReportWidgets(data.widgets ?? []);
+      })
+      .catch(() => {
+        if (active) setCustomReportWidgets([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [organization?.id, dashboardRefreshCycle]);
+
+  const customReportSections: DashboardSection[] = useMemo(() => {
+    if (customReportWidgets === null) {
+      return [
+        {
+          id: 'custom-reports-loading',
+          title: 'Custom Reports',
+          resizable: true,
+          node: (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Custom reports</CardTitle>
+                <CardDescription>Loading pinned reporting widgets.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-6 w-2/3" />
+                <Skeleton className="h-48 w-full" />
+              </CardContent>
+            </Card>
+          ),
+        },
+      ];
+    }
+
+    return customReportWidgets.map((widget) => ({
+      id: `custom-report-${widget.id}`,
+      title: `Custom Report: ${widget.name}`,
+      resizable: true,
+      node: (
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-base">{widget.name}</CardTitle>
+                <CardDescription>Saved custom report</CardDescription>
+              </div>
+              <Link href="/tools/reporting" className="text-sm text-primary hover:underline">
+                Manage
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <QueryResultChart result={widget.result} height={220} />
+          </CardContent>
+        </Card>
+      ),
+    }));
+  }, [customReportWidgets]);
 
   // Operational dashboard widgets. Each is draggable, hideable, and (where it
   // makes sense) resizable to half width. Order/visibility/size persist to
@@ -259,15 +376,68 @@ function AdminCoordinatorView({
   const dashboardSections: DashboardSection[] = useMemo(
     () => [
       { id: 'call-log', title: 'Call Log', node: <CallLogDashboard /> },
-      { id: 'feed-roster', title: 'Feed Roster', node: <FeedRosterSummaryOrg items={feedRosterItems} /> },
+      {
+        id: 'feed-roster',
+        title: 'Feed Roster',
+        node: <FeedRosterSummaryOrg items={feedRosterItems} />,
+      },
       { id: 'stats', title: 'Key Stats', node: <DashboardStats animals={animals} /> },
       { id: 'training-alerts', title: 'Training Alerts', node: <TrainingExpiryAlerts /> },
-      { id: 'species-distribution', title: 'Species Distribution', node: <SpeciesDistributionChart animals={animals} />, resizable: true },
-      { id: 'recent-admissions', title: 'Recent Admissions', node: <RecentAdmissionsChart animals={animals} weeks={trendWindow} />, resizable: true },
-      { id: 'carer-workload', title: 'Carer Workload', node: <CarerWorkloadDashboard animals={animals} carerMap={carerMap} /> },
-      { id: 'releases-vs-admissions', title: 'Releases vs Admissions', node: <ReleasesVsAdmissionsChart animals={animals} /> },
+      {
+        id: 'species-distribution',
+        title: 'Species Distribution',
+        node: <SpeciesDistributionChart animals={animals} />,
+        resizable: true,
+      },
+      {
+        id: 'recent-admissions',
+        title: 'Recent Admissions',
+        node: <RecentAdmissionsChart animals={animals} weeks={trendWindow} />,
+        resizable: true,
+      },
+      {
+        id: 'carer-workload',
+        title: 'Carer Workload',
+        node: <CarerWorkloadDashboard animals={animals} carerMap={carerMap} />,
+      },
+      {
+        id: 'releases-vs-admissions',
+        title: 'Releases vs Admissions',
+        node: <ReleasesVsAdmissionsChart animals={animals} />,
+      },
+      {
+        id: 'animals',
+        title: 'Animals',
+        node: (
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <CardTitle>Animals</CardTitle>
+                  <CardDescription>
+                    Search, filter, sort and page through the animals visible to your role.
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" onClick={onAddNew}>
+                    <PlusCircle className="mr-1 h-4 w-4" />
+                    Add Animal
+                  </Button>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href="/animals">Manage Animals</Link>
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <AnimalTable animals={animals} onEdit={onEdit} carerMap={carerMap} />
+            </CardContent>
+          </Card>
+        ),
+      },
+      ...customReportSections,
     ],
-    [animals, carerMap, feedRosterItems, trendWindow],
+    [animals, carerMap, customReportSections, feedRosterItems, onAddNew, onEdit, trendWindow]
   );
 
   return (
@@ -285,40 +455,26 @@ function AdminCoordinatorView({
       {/* Action Bar */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="flex-1">
-          <Button
-            onClick={onAddNew}
-            className="w-full sm:w-auto"
-          >
+          <Button onClick={onAddNew} className="w-full sm:w-auto">
             <PlusCircle className="h-4 w-4 mr-2" />
             Add New Animal
           </Button>
         </div>
         <div>
           <Link href="/animals">
-            <Button variant="outline" className="w-full sm:w-auto">Manage Animals</Button>
+            <Button variant="outline" className="w-full sm:w-auto">
+              Manage Animals
+            </Button>
           </Link>
         </div>
 
         <div className="flex items-center gap-2">
           <Button
-            variant={viewMode === 'grid' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('grid')}
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('list')}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          <Button
             variant="outline"
             size="sm"
             onClick={onRefresh}
             disabled={isLoading}
+            aria-label="Refresh dashboard"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
@@ -333,52 +489,8 @@ function AdminCoordinatorView({
         onTrendWindowChange={handleTrendWindowChange}
       />
 
-      {/* Animals Table/Grid */}
-      <div className="bg-card rounded-lg shadow-md p-4 sm:p-6 mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold">Animals</h2>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button size="sm" onClick={onAddNew}>
-              <PlusCircle className="h-4 w-4 mr-1" />
-              Add New Animal
-            </Button>
-            <Link href="/animals">
-              <Button size="sm" variant="secondary">Manage Animals</Button>
-            </Link>
-          </div>
-        </div>
-
-        {viewMode === 'list' ? (
-          <AnimalTable
-            animals={animals}
-            onEdit={onEdit}
-            carerMap={Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name]))}
-          />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {animals.map((animal) => (
-              <div key={animal.id} className="bg-background rounded-lg p-4 border">
-                <h3 className="font-semibold text-lg">{animal.name}</h3>
-                {animal.orgAnimalId && (
-                  <p className="text-xs font-mono text-muted-foreground">{animal.orgAnimalId}</p>
-                )}
-                <p className="text-sm text-muted-foreground">{animal.species}</p>
-                <p className="text-sm text-muted-foreground">
-                  Status: {animal.status}
-                </p>
-                <div className="mt-3">
-                  <Button size="sm" variant="outline" onClick={() => onEdit(animal)}>
-                    Edit
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Animals Without Carers Alert */}
-      {animals.filter(a => !a.carerId).length > 0 && (
+      {animals.filter((a) => !a.carerId).length > 0 && (
         <Card className="border-orange-200 bg-orange-50 mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-orange-800">
@@ -391,28 +503,34 @@ function AdminCoordinatorView({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {animals.filter(a => !a.carerId).slice(0, 6).map((animal) => (
-                <div key={animal.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                  <div className="flex-1">
-                    <div className="font-medium">{animal.name}</div>
-                    <div className="text-sm text-muted-foreground">{animal.species}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Status: {animal.status.replace(/_/g, ' ')}
+              {animals
+                .filter((a) => !a.carerId)
+                .slice(0, 6)
+                .map((animal) => (
+                  <div
+                    key={animal.id}
+                    className="flex items-center justify-between p-3 bg-white rounded-lg border"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{animal.name}</div>
+                      <div className="text-sm text-muted-foreground">{animal.species}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Status: {animal.status.replace(/_/g, ' ')}
+                      </div>
                     </div>
+                    <Link href={`/animals/${animal.id}`}>
+                      <Button variant="outline" size="sm">
+                        Assign Carer
+                      </Button>
+                    </Link>
                   </div>
-                  <Link href={`/animals/${animal.id}`}>
-                    <Button variant="outline" size="sm">
-                      Assign Carer
-                    </Button>
-                  </Link>
-                </div>
-              ))}
+                ))}
             </div>
-            {animals.filter(a => !a.carerId).length > 6 && (
+            {animals.filter((a) => !a.carerId).length > 6 && (
               <div className="mt-4 text-center">
                 <Link href="/animals">
                   <Button variant="outline">
-                    View All {animals.filter(a => !a.carerId).length} Animals Without Carers
+                    View All {animals.filter((a) => !a.carerId).length} Animals Without Carers
                   </Button>
                 </Link>
               </div>
@@ -430,30 +548,38 @@ function AdminCoordinatorView({
               Carers With Incomplete Profiles
             </CardTitle>
             <CardDescription>
-              These organisation members need their carer profile completed before animals can be assigned to them
+              These organisation members need their carer profile completed before animals can be
+              assigned to them
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {(carersList || []).filter((c: any) => !c.hasProfile).slice(0, 6).map((carer: any) => (
-                <div key={carer.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                  <div className="flex-1">
-                    <div className="font-medium">{carer.name}</div>
-                    <div className="text-sm text-muted-foreground">{carer.email}</div>
+              {(carersList || [])
+                .filter((c: any) => !c.hasProfile)
+                .slice(0, 6)
+                .map((carer: any) => (
+                  <div
+                    key={carer.id}
+                    className="flex items-center justify-between p-3 bg-white rounded-lg border"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{carer.name}</div>
+                      <div className="text-sm text-muted-foreground">{carer.email}</div>
+                    </div>
+                    <Link href="/admin">
+                      <Button variant="outline" size="sm">
+                        Complete Profile
+                      </Button>
+                    </Link>
                   </div>
-                  <Link href="/admin">
-                    <Button variant="outline" size="sm">
-                      Complete Profile
-                    </Button>
-                  </Link>
-                </div>
-              ))}
+                ))}
             </div>
             {(carersList || []).filter((c: any) => !c.hasProfile).length > 6 && (
               <div className="mt-4 text-center">
                 <Link href="/admin">
                   <Button variant="outline">
-                    View All {(carersList || []).filter((c: any) => !c.hasProfile).length} Incomplete Profiles
+                    View All {(carersList || []).filter((c: any) => !c.hasProfile).length}{' '}
+                    Incomplete Profiles
                   </Button>
                 </Link>
               </div>
@@ -463,17 +589,20 @@ function AdminCoordinatorView({
       )}
 
       {/* Animals Without Animal IDs Banner */}
-      {userRole === 'ADMIN' && animals.filter(a => !a.orgAnimalId).length > 0 && (
+      {userRole === 'ADMIN' && animals.filter((a) => !a.orgAnimalId).length > 0 && (
         <Card className="border-blue-200 bg-blue-50 mb-8">
           <CardContent className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="font-medium text-blue-800">
-                  {animals.filter(a => !a.orgAnimalId).length} animal{animals.filter(a => !a.orgAnimalId).length !== 1 ? 's' : ''} missing an Animal ID
+                  {animals.filter((a) => !a.orgAnimalId).length} animal
+                  {animals.filter((a) => !a.orgAnimalId).length !== 1 ? 's' : ''} missing an Animal
+                  ID
                 </p>
                 <p className="text-sm text-blue-600">
-                  Edit each animal to assign an ID, or configure auto-generation in Admin &gt; Organisation Settings.
+                  Edit each animal to assign an ID, or configure auto-generation in Admin &gt;
+                  Organisation Settings.
                 </p>
               </div>
             </div>
@@ -491,7 +620,9 @@ function AdminCoordinatorView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h2 className="text-xl sm:text-2xl font-bold">Compliance</h2>
           <Link href="/compliance">
-            <Button size="sm" variant="secondary">Open Compliance</Button>
+            <Button size="sm" variant="secondary">
+              Open Compliance
+            </Button>
           </Link>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -499,11 +630,6 @@ function AdminCoordinatorView({
             ? 'Manage release checklists for your animals. State-specific compliance features are available when a jurisdiction is configured.'
             : 'View compliance overview, registers, hygiene logs, incident reports, and release checklists. Generate reports for your organization.'}
         </p>
-      </div>
-
-      {/* Saved custom report widgets (pinned to dashboard) */}
-      <div className="mb-8">
-        <CustomQueryWidgets />
       </div>
     </>
   );
@@ -521,11 +647,13 @@ export default function HomeClient({
   const { signOut } = useClerk();
   const { toast } = useToast();
   const router = useRouter();
-  
+
   const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
   const [speciesList, setSpeciesList] = useState(species || []);
   const [carersList, setCarersList] = useState(carers || []);
-  const [feedRosterItems, setFeedRosterItems] = useState<FeedRosterItem[]>(initialFeedRosterItems || []);
+  const [feedRosterItems, setFeedRosterItems] = useState<FeedRosterItem[]>(
+    initialFeedRosterItems || []
+  );
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [animalToEdit, setAnimalToEdit] = useState<Animal | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -535,6 +663,7 @@ export default function HomeClient({
   const [userRole, setUserRole] = useState<string>('CARER');
   const [hasIncompleteProfile, setHasIncompleteProfile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dashboardRefreshCycle, setDashboardRefreshCycle] = useState(0);
   const isMobile = useIsMobile();
 
   // Close mobile menu when viewport switches to desktop
@@ -611,10 +740,14 @@ export default function HomeClient({
         timeZone: 'Australia/Sydney',
       })
     );
-    const msg = hourSydney < 12 ? 'Good morning' : hourSydney < 18 ? 'Good afternoon' : 'Good evening';
+    const msg =
+      hourSydney < 12 ? 'Good morning' : hourSydney < 18 ? 'Good afternoon' : 'Good evening';
     setGreeting(msg);
   }, []);
 
+  const handleOpenAddAnimal = useCallback(() => {
+    setIsAddDialogOpen(true);
+  }, []);
 
   const handleAddAnimal = async (animalData: CreateAnimalData) => {
     if (!user || !organization) return;
@@ -627,26 +760,30 @@ export default function HomeClient({
           clerkOrganizationId: organization.id,
         }),
       });
-      setAnimals(prev => [created, ...prev]);
+      setAnimals((prev) => [created, ...prev]);
       setIsAddDialogOpen(false);
+      setDashboardRefreshCycle((cycle) => cycle + 1);
       refreshRoster();
     } catch (error) {
       console.error('Error adding animal:', error);
       toast({
         variant: 'destructive',
         title: 'Failed to add animal',
-        description: error instanceof Error ? error.message : 'Please try again.'
+        description: error instanceof Error ? error.message : 'Please try again.',
       });
     }
   };
 
-  const handleEditAnimal = async (animal: Animal) => {
-    router.push(`/animals/${animal.id}`);
-  };
+  const handleEditAnimal = useCallback(
+    (animal: Animal) => {
+      router.push(`/animals/${animal.id}`);
+    },
+    [router]
+  );
 
   const handleRefresh = async () => {
     if (!user || !organization) return;
-    
+
     setIsLoading(true);
     try {
       const orgId = organization.id;
@@ -659,9 +796,15 @@ export default function HomeClient({
       setAnimals(newAnimals);
       setSpeciesList(newSpecies);
       setCarersList(newCarers);
+      setDashboardRefreshCycle((cycle) => cycle + 1);
 
       // Re-check incomplete profile on refresh
-      if (userRole !== 'ADMIN' && userRole !== 'COORDINATOR_ALL' && userRole !== 'CARER_ALL' && user) {
+      if (
+        userRole !== 'ADMIN' &&
+        userRole !== 'COORDINATOR_ALL' &&
+        userRole !== 'CARER_ALL' &&
+        user
+      ) {
         const currentCarer = (newCarers || []).find((c: any) => c.id === user.id);
         setHasIncompleteProfile(currentCarer?.hasProfile === false);
       } else {
@@ -713,11 +856,28 @@ export default function HomeClient({
                         {organization.name}
                       </span>
                     )}
-                    <Badge variant={userRole === 'ADMIN' ? 'default' : (userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') ? 'secondary' : 'outline'} className="text-xs">
+                    <Badge
+                      variant={
+                        userRole === 'ADMIN'
+                          ? 'default'
+                          : userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL'
+                            ? 'secondary'
+                            : 'outline'
+                      }
+                      className="text-xs"
+                    >
                       {userRole === 'ADMIN' && <ShieldAlert className="h-3 w-3 mr-1" />}
-                      {(userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') && <ShieldCheck className="h-3 w-3 mr-1" />}
-                      {(userRole === 'CARER' || userRole === 'CARER_ALL') && <Shield className="h-3 w-3 mr-1" />}
-                      {userRole === 'COORDINATOR_ALL' ? 'Coordinator (All)' : userRole === 'CARER_ALL' ? 'Carer (All)' : userRole}
+                      {(userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') && (
+                        <ShieldCheck className="h-3 w-3 mr-1" />
+                      )}
+                      {(userRole === 'CARER' || userRole === 'CARER_ALL') && (
+                        <Shield className="h-3 w-3 mr-1" />
+                      )}
+                      {userRole === 'COORDINATOR_ALL'
+                        ? 'Coordinator (All)'
+                        : userRole === 'CARER_ALL'
+                          ? 'Carer (All)'
+                          : userRole}
                     </Badge>
                   </div>
                 </div>
@@ -730,9 +890,7 @@ export default function HomeClient({
               </Button>
               {userRole !== 'CARER' && userRole !== 'CARER_ALL' && (
                 <Link href="/admin">
-                  <Button size="sm">
-                    {userRole === 'ADMIN' ? 'Admin' : 'Coordinator'}
-                  </Button>
+                  <Button size="sm">{userRole === 'ADMIN' ? 'Admin' : 'Coordinator'}</Button>
                 </Link>
               )}
               <Button variant="outline" size="sm" onClick={handleSignOut}>
@@ -747,7 +905,7 @@ export default function HomeClient({
               size="sm"
               className="md:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -769,11 +927,28 @@ export default function HomeClient({
                         {organization.name}
                       </span>
                     )}
-                    <Badge variant={userRole === 'ADMIN' ? 'default' : (userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') ? 'secondary' : 'outline'} className="text-xs">
+                    <Badge
+                      variant={
+                        userRole === 'ADMIN'
+                          ? 'default'
+                          : userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL'
+                            ? 'secondary'
+                            : 'outline'
+                      }
+                      className="text-xs"
+                    >
                       {userRole === 'ADMIN' && <ShieldAlert className="h-3 w-3 mr-1" />}
-                      {(userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') && <ShieldCheck className="h-3 w-3 mr-1" />}
-                      {(userRole === 'CARER' || userRole === 'CARER_ALL') && <Shield className="h-3 w-3 mr-1" />}
-                      {userRole === 'COORDINATOR_ALL' ? 'Coordinator (All)' : userRole === 'CARER_ALL' ? 'Carer (All)' : userRole}
+                      {(userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') && (
+                        <ShieldCheck className="h-3 w-3 mr-1" />
+                      )}
+                      {(userRole === 'CARER' || userRole === 'CARER_ALL') && (
+                        <Shield className="h-3 w-3 mr-1" />
+                      )}
+                      {userRole === 'COORDINATOR_ALL'
+                        ? 'Coordinator (All)'
+                        : userRole === 'CARER_ALL'
+                          ? 'Carer (All)'
+                          : userRole}
                     </Badge>
                   </div>
                 </div>
@@ -818,13 +993,16 @@ export default function HomeClient({
       {/* User + Organization Summary under Brandmark */}
       <div className="flex flex-col items-center gap-2 mb-2 px-4 text-center">
         <p className="text-lg font-medium">
-          {greeting}{user?.firstName ? `, ${user.firstName} ${user.lastName || ''}` : ''}
+          {greeting}
+          {user?.firstName ? `, ${user.firstName} ${user.lastName || ''}` : ''}
         </p>
         {organization?.name && (
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{organization.name}</span>
             {orgJurisdiction && (
-              <span className="text-xs border rounded px-2 py-0.5 bg-muted text-muted-foreground">Jurisdiction: {orgJurisdiction}</span>
+              <span className="text-xs border rounded px-2 py-0.5 bg-muted text-muted-foreground">
+                Jurisdiction: {orgJurisdiction}
+              </span>
             )}
           </div>
         )}
@@ -839,7 +1017,8 @@ export default function HomeClient({
           <div className="flex items-center gap-3 p-4 mb-6 rounded-lg border border-amber-300 bg-amber-50 text-amber-800">
             <AlertTriangle className="h-5 w-5 flex-shrink-0" />
             <p className="text-sm font-medium">
-              Your carer profile is incomplete. Please contact your organisation administrator to complete your profile before animals can be assigned to you.
+              Your carer profile is incomplete. Please contact your organisation administrator to
+              complete your profile before animals can be assigned to you.
             </p>
           </div>
         )}
@@ -860,16 +1039,15 @@ export default function HomeClient({
           <AdminCoordinatorView
             animals={animals}
             userRole={userRole}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
             isLoading={isLoading}
             onRefresh={handleRefresh}
             onEdit={handleEditAnimal}
-            onAddNew={() => setIsAddDialogOpen(true)}
+            onAddNew={handleOpenAddAnimal}
             carersList={carersList}
             organization={organization}
             jurisdiction={orgJurisdiction}
             feedRosterItems={feedRosterItems}
+            dashboardRefreshCycle={dashboardRefreshCycle}
           />
         )}
       </main>
@@ -880,14 +1058,16 @@ export default function HomeClient({
         setIsOpen={setIsAddDialogOpen}
         onAnimalAdd={handleAddAnimal}
         animalToEdit={animalToEdit}
-        species={(speciesList || []).map((s: any) => ({ 
-          value: s.name, 
-          label: s.name 
+        species={(speciesList || []).map((s: any) => ({
+          value: s.name,
+          label: s.name,
         }))}
-        carers={(carersList || []).filter((c: any) => c.hasProfile).map((c: any) => ({
-          value: c.id,
-          label: c.name
-        }))}
+        carers={(carersList || [])
+          .filter((c: any) => c.hasProfile)
+          .map((c: any) => ({
+            value: c.id,
+            label: c.name,
+          }))}
       />
 
       {/* Footer */}

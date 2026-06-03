@@ -12,6 +12,8 @@
 //   * Only derived/categorical reporting fields are exposed. We deliberately do
 //     NOT expose: org/user IDs, Clerk/auth IDs, emails, raw notes/descriptions,
 //     coordinates, addresses, attachments/JSON payloads, or raw record IDs.
+//     Carer display names are exposed for operational reporting; IDs and emails
+//     remain hidden.
 //   * Free-form text (notes, descriptions) is reduced to boolean `has*` flags
 //     so sensitive content can never leak through a report.
 
@@ -63,6 +65,8 @@ export interface CustomQuerySource {
   model: string;
   /** Scalar DateTime field used for `between` filtering and the default window. */
   dateField: string;
+  /** Additional fixed Prisma filter applied by the evaluator for this source. */
+  baseWhere?: Record<string, unknown>;
   /** Allowlisted, queryable normalised field names. */
   fields: readonly string[];
   /** Subset of `fields` that are numeric (valid `sum` metrics). */
@@ -92,6 +96,8 @@ export const CUSTOM_QUERY_SOURCES = {
       'deceased',
       'hasPhoto',
       'hasNotes',
+      'hasCarer',
+      'carerName',
       'weightGrams',
       'foundDay',
       'foundMonth',
@@ -110,11 +116,31 @@ export const CUSTOM_QUERY_SOURCES = {
       deceased: r.status === 'DECEASED',
       hasPhoto: hasText(r.photo),
       hasNotes: hasText(r.notes),
+      hasCarer: r.carerId != null,
+      carerName: asString(r.carerName) ?? 'Unassigned',
       weightGrams: asNumber(r.initialWeightGrams),
       foundDay: toDayKey(asDate(r.dateFound)),
       foundMonth: toMonthKey(asDate(r.dateFound)),
       releasedDay: toDayKey(asDate(r.dateReleased)),
       releasedMonth: toMonthKey(asDate(r.dateReleased)),
+    }),
+  },
+  animal_assignments: {
+    label: 'Animal assignments',
+    description: 'Internal carer assignment events by receiving carer.',
+    model: 'animalTransfer',
+    dateField: 'transferDate',
+    baseWhere: {
+      transferType: 'INTERNAL_CARER',
+      toCarerId: { not: null },
+    },
+    fields: ['carerName', 'hasPreviousCarer', 'assignmentDay', 'assignmentMonth'],
+    numericFields: [],
+    normalize: (r) => ({
+      carerName: asString(r.carerName),
+      hasPreviousCarer: r.fromCarerId != null,
+      assignmentDay: toDayKey(asDate(r.transferDate)),
+      assignmentMonth: toMonthKey(asDate(r.transferDate)),
     }),
   },
   incidents: {
@@ -207,13 +233,7 @@ export const CUSTOM_QUERY_SOURCES = {
     description: 'Animal care log entries (feeding, medical, weight, etc.).',
     model: 'record',
     dateField: 'date',
-    fields: [
-      'type',
-      'hasNotes',
-      'hasLocation',
-      'recordedDay',
-      'recordedMonth',
-    ],
+    fields: ['type', 'hasNotes', 'hasLocation', 'recordedDay', 'recordedMonth'],
     numericFields: [],
     normalize: (r) => ({
       type: asString(r.type),
@@ -228,13 +248,7 @@ export const CUSTOM_QUERY_SOURCES = {
     description: 'Release readiness checklists by release type.',
     model: 'releaseChecklist',
     dateField: 'releaseDate',
-    fields: [
-      'releaseType',
-      'completed',
-      'within10km',
-      'releasedDay',
-      'releasedMonth',
-    ],
+    fields: ['releaseType', 'completed', 'within10km', 'releasedDay', 'releasedMonth'],
     numericFields: [],
     normalize: (r) => ({
       releaseType: asString(r.releaseType),
@@ -249,13 +263,7 @@ export const CUSTOM_QUERY_SOURCES = {
     description: 'Post-release sightings by reported condition.',
     model: 'postReleaseMonitoring',
     dateField: 'date',
-    fields: [
-      'animalCondition',
-      'hasPhotos',
-      'hasNotes',
-      'observedDay',
-      'observedMonth',
-    ],
+    fields: ['animalCondition', 'hasPhotos', 'hasNotes', 'observedDay', 'observedMonth'],
     numericFields: [],
     normalize: (r) => ({
       animalCondition: asString(r.animalCondition),
@@ -270,13 +278,7 @@ export const CUSTOM_QUERY_SOURCES = {
     description: 'Equipment / asset inventory by type and status.',
     model: 'asset',
     dateField: 'createdAt',
-    fields: [
-      'type',
-      'status',
-      'hasAssignee',
-      'createdDay',
-      'createdMonth',
-    ],
+    fields: ['type', 'status', 'hasAssignee', 'createdDay', 'createdMonth'],
     numericFields: [],
     snapshot: true,
     normalize: (r) => ({
@@ -292,10 +294,9 @@ export const CUSTOM_QUERY_SOURCES = {
 export type CustomQuerySourceName = keyof typeof CUSTOM_QUERY_SOURCES;
 
 /** Plain {source: fields[]} view, handy for autocomplete in the client. */
-export const CUSTOM_QUERY_FIELDS_BY_SOURCE: Record<string, readonly string[]> =
-  Object.fromEntries(
-    Object.entries(CUSTOM_QUERY_SOURCES).map(([name, cfg]) => [name, cfg.fields])
-  );
+export const CUSTOM_QUERY_FIELDS_BY_SOURCE: Record<string, readonly string[]> = Object.fromEntries(
+  Object.entries(CUSTOM_QUERY_SOURCES).map(([name, cfg]) => [name, cfg.fields])
+);
 
 export function isCustomQuerySource(name: string): name is CustomQuerySourceName {
   return Object.prototype.hasOwnProperty.call(CUSTOM_QUERY_SOURCES, name);
