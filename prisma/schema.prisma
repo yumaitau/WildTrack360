@@ -46,17 +46,17 @@ model Animal {
   releasePostcode String? @map("release_postcode") // Postcode of release location
 
   // NSW-specific fields
-  encounterType      String? @map("encounter_type")
-  initialWeightGrams Int?    @map("initial_weight_grams")
-  weightUnit         String? @default("g") @map("weight_unit")
-  animalCondition    String? @map("animal_condition")
-  pouchCondition     String? @map("pouch_condition")
-  fate               String?
+  encounterType       String? @map("encounter_type")
+  initialWeightGrams  Int?    @map("initial_weight_grams")
+  weightUnit          String? @default("g") @map("weight_unit")
+  animalCondition     String? @map("animal_condition")
+  pouchCondition      String? @map("pouch_condition")
+  fate                String?
   // NSW Datasheet splits "mark/band/microchip" into two columns:
   // Tag/Band colour and number, and Microchip number.
   tagBandColourNumber String? @map("tag_band_colour_number")
   microchipNumber     String? @map("microchip_number")
-  lifeStage          String? @map("life_stage")
+  lifeStage           String? @map("life_stage")
 
   // NSW compliance workflow fields
   dateAdmitted  DateTime? @map("date_admitted")
@@ -69,8 +69,8 @@ model Animal {
   // same animal isn't counted twice across organisations. The Detailed
   // Report emits sourceOrgAnimalId in place of this org's orgAnimalId when
   // interOrgTransferReceived is set.
-  sourceOrgAnimalId        String?  @map("source_org_animal_id")
-  interOrgTransferReceived Boolean  @default(false) @map("inter_org_transfer_received")
+  sourceOrgAnimalId        String? @map("source_org_animal_id")
+  interOrgTransferReceived Boolean @default(false) @map("inter_org_transfer_received")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -83,18 +83,18 @@ model Animal {
   carerId String?
   carer   CarerProfile? @relation(fields: [carerId], references: [id])
 
-  records           Record[]
-  photos            Photo[]
-  releaseChecklists ReleaseChecklist[]
-  incidentReports   IncidentReport[]
-  transfers                  AnimalTransfer[]
-  permanentCare              PermanentCareApproval?
-  permanentCareApplications  PermanentCareApplication[]
-  preservedSpecimen          PreservedSpecimen?
-  reminders                AnimalReminder[]
-  callLogs                 CallLog[]
-  postReleaseMonitoring    PostReleaseMonitoring[]
-  growthMeasurements       GrowthMeasurement[]
+  records                   Record[]
+  photos                    Photo[]
+  releaseChecklists         ReleaseChecklist[]
+  incidentReports           IncidentReport[]
+  transfers                 AnimalTransfer[]
+  permanentCare             PermanentCareApproval?
+  permanentCareApplications PermanentCareApplication[]
+  preservedSpecimen         PreservedSpecimen?
+  reminders                 AnimalReminder[]
+  callLogs                  CallLog[]
+  postReleaseMonitoring     PostReleaseMonitoring[]
+  growthMeasurements        GrowthMeasurement[]
 
   @@unique([clerkOrganizationId, orgAnimalId])
   @@map("animals")
@@ -168,19 +168,19 @@ model CarerProfile {
   active        Boolean   @default(true)
 
   // NSW-specific fields
-  streetAddress           String?   @map("street_address")
-  suburb                  String?
-  state                   String?   @default("NSW")
-  postcode                String?
-  executivePosition       String?   @map("executive_position")
-  speciesCoordinatorFor   String?   @map("species_coordinator_for")
-  rehabilitatesKoala         Boolean @default(false) @map("rehabilitates_koala")
-  rehabilitatesFlyingFox     Boolean @default(false) @map("rehabilitates_flying_fox")
-  rehabilitatesBirdOfPrey    Boolean @default(false) @map("rehabilitates_bird_of_prey")
-  rehabilitatesVenomousSnake Boolean @default(false) @map("rehabilitates_venomous_snake")
-  rehabilitatesMarineReptile Boolean @default(false) @map("rehabilitates_marine_reptile")
-  memberSince             DateTime? @map("member_since")
-  trainingLevel           String?   @map("training_level")
+  streetAddress              String?   @map("street_address")
+  suburb                     String?
+  state                      String?   @default("NSW")
+  postcode                   String?
+  executivePosition          String?   @map("executive_position")
+  speciesCoordinatorFor      String?   @map("species_coordinator_for")
+  rehabilitatesKoala         Boolean   @default(false) @map("rehabilitates_koala")
+  rehabilitatesFlyingFox     Boolean   @default(false) @map("rehabilitates_flying_fox")
+  rehabilitatesBirdOfPrey    Boolean   @default(false) @map("rehabilitates_bird_of_prey")
+  rehabilitatesVenomousSnake Boolean   @default(false) @map("rehabilitates_venomous_snake")
+  rehabilitatesMarineReptile Boolean   @default(false) @map("rehabilitates_marine_reptile")
+  memberSince                DateTime? @map("member_since")
+  trainingLevel              String?   @map("training_level")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -199,6 +199,10 @@ model CarerProfile {
 
   // Hygiene Logs
   hygieneLogs HygieneLog[]
+
+  // Optional link to a Member record so the same person can be both a carer
+  // and a paying member. Established by the Phase 5 backfill script.
+  linkedMember Member?
 
   @@unique([clerkOrganizationId, memberId])
   @@map("carers")
@@ -325,12 +329,12 @@ model PostReleaseMonitoring {
 
   // Core observation data
   date            DateTime // Date of sighting/observation
-  time            String?  // Time of sighting (HH:mm)
-  location        String?  // Human-readable location description
-  coordinates     Json?    // { lat: number, lng: number }
+  time            String? // Time of sighting (HH:mm)
+  location        String? // Human-readable location description
+  coordinates     Json? // { lat: number, lng: number }
   animalCondition String?  @map("animal_condition") // e.g., "Healthy", "Injured", "Distressed", "Unknown"
-  notes           String   // Observation notes (required)
-  photos          Json?    // Array of S3 keys
+  notes           String // Observation notes (required)
+  photos          Json? // Array of S3 keys
 
   // Metadata
   createdAt           DateTime @default(now())
@@ -459,7 +463,7 @@ model AnimalTransfer {
 
   // Authorization and verification
   transferAuthorizedBy String?
-  verifiedByUserId     String? @map("verified_by_user_id")
+  verifiedByUserId     String?   @map("verified_by_user_id")
   verifiedAt           DateTime? @map("verified_at")
   transferNotes        String?
   documents            Json? // Array of document URLs/references
@@ -527,14 +531,14 @@ model PermanentCareApplication {
   animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
 
   // Application workflow
-  status             ApplicationStatus @default(DRAFT)
-  createdByUserId    String            @map("created_by_user_id")
-  submittedByUserId  String?           @map("submitted_by_user_id")
-  submittedAt        DateTime?         @map("submitted_at")
+  status            ApplicationStatus @default(DRAFT)
+  createdByUserId   String            @map("created_by_user_id")
+  submittedByUserId String?           @map("submitted_by_user_id")
+  submittedAt       DateTime?         @map("submitted_at")
 
   // Non-releasable reasons and justification
-  nonReleasableReasons     String   @map("non_releasable_reasons")
-  euthanasiaJustification  String   @map("euthanasia_justification")
+  nonReleasableReasons    String @map("non_releasable_reasons")
+  euthanasiaJustification String @map("euthanasia_justification")
 
   // Vet report (required before submission)
   vetReportUrl String? @map("vet_report_url")
@@ -547,12 +551,12 @@ model PermanentCareApplication {
   npwsApprovalDate   DateTime? @map("npws_approval_date")
 
   // Permanent care keeper/facility
-  keeperName       String? @map("keeper_name")
-  facilityName     String? @map("facility_name")
-  facilityAddress  String? @map("facility_address")
-  facilitySuburb   String? @map("facility_suburb")
-  facilityState    String? @default("NSW") @map("facility_state")
-  facilityPostcode String? @map("facility_postcode")
+  keeperName       String?                @map("keeper_name")
+  facilityName     String?                @map("facility_name")
+  facilityAddress  String?                @map("facility_address")
+  facilitySuburb   String?                @map("facility_suburb")
+  facilityState    String?                @default("NSW") @map("facility_state")
+  facilityPostcode String?                @map("facility_postcode")
   category         PermanentCareCategory?
 
   // Review
@@ -785,13 +789,13 @@ model AdminNotificationLog {
 }
 
 model AdminNotificationDismissal {
-  id           String   @id @default(cuid())
-  orgId        String   @map("org_id")
-  userId       String   @map("user_id")
-  kind         String
-  reminderKey  String   @map("reminder_key")
-  year         Int
-  dismissedAt  DateTime @default(now()) @map("dismissed_at")
+  id          String   @id @default(cuid())
+  orgId       String   @map("org_id")
+  userId      String   @map("user_id")
+  kind        String
+  reminderKey String   @map("reminder_key")
+  year        Int
+  dismissedAt DateTime @default(now()) @map("dismissed_at")
 
   @@unique([orgId, userId, kind, reminderKey, year])
   @@index([orgId, kind, year])
@@ -969,9 +973,9 @@ model PindropSession {
 
 enum SmsTier {
   NONE
-  LITE       // 100 / month
-  STANDARD   // 500 / month
-  PRO        // 1500 / month
+  LITE // 100 / month
+  STANDARD // 500 / month
+  PRO // 1500 / month
 }
 
 enum SmsStatus {
@@ -987,27 +991,27 @@ enum Environment {
 }
 
 model SmsSubscription {
-  id              String   @id @default(cuid())
-  organisationId  String   @unique @map("organisation_id")
-  tier            SmsTier  @default(NONE)
-  monthlyLimit    Int?     @map("monthly_limit") // override tier default
-  overageEnabled  Boolean  @default(false) @map("overage_enabled")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  organisationId String   @unique @map("organisation_id")
+  tier           SmsTier  @default(NONE)
+  monthlyLimit   Int?     @map("monthly_limit") // override tier default
+  overageEnabled Boolean  @default(false) @map("overage_enabled")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@map("sms_subscriptions")
 }
 
 model SmsUsageSummary {
-  id              String      @id @default(cuid())
-  organisationId  String      @map("organisation_id")
-  environment     Environment @default(PRODUCTION)
-  year            Int
-  month           Int         // 1-12
-  messageCount    Int         @default(0) @map("message_count")
-  overageCount    Int         @default(0) @map("overage_count")
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  organisationId String      @map("organisation_id")
+  environment    Environment @default(PRODUCTION)
+  year           Int
+  month          Int // 1-12
+  messageCount   Int         @default(0) @map("message_count")
+  overageCount   Int         @default(0) @map("overage_count")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@unique([organisationId, environment, year, month])
   @@index([organisationId])
@@ -1015,16 +1019,16 @@ model SmsUsageSummary {
 }
 
 model SmsLog {
-  id              String      @id @default(cuid())
-  organisationId  String      @map("organisation_id")
-  environment     Environment @default(PRODUCTION)
-  recipientPhone  String      @map("recipient_phone")
-  messagePreview  String?     @map("message_preview") // first 50 chars only — no full body for PII safety
-  purpose         String      // e.g. "PIN_DROP_LINK"
-  sentById        String?     @map("sent_by_id") // Clerk userId
-  status          SmsStatus
-  snsMessageId    String?     @map("sns_message_id")
-  createdAt       DateTime    @default(now())
+  id             String      @id @default(cuid())
+  organisationId String      @map("organisation_id")
+  environment    Environment @default(PRODUCTION)
+  recipientPhone String      @map("recipient_phone")
+  messagePreview String?     @map("message_preview") // first 50 chars only — no full body for PII safety
+  purpose        String // e.g. "PIN_DROP_LINK"
+  sentById       String?     @map("sent_by_id") // Clerk userId
+  status         SmsStatus
+  snsMessageId   String?     @map("sns_message_id")
+  createdAt      DateTime    @default(now())
 
   @@index([organisationId])
   @@index([organisationId, createdAt])
@@ -1034,24 +1038,27 @@ model SmsLog {
 // ─── Organisation Settings ─────────────────────────────────────────────────
 
 model OrganisationSettings {
-  id                   String   @id @default(cuid())
-  clerkOrganisationId  String   @unique @map("clerk_organisation_id")
-  orgShortCode         String   @default("ORG") @map("org_short_code")
-  animalIdTemplate     String   @default("{ORG_SHORT}-{YYYY}-{seq:4}") @map("animal_id_template")
-  contactEmail         String?  @map("contact_email")
-  contactPhone         String?  @map("contact_phone")
-  licenseNumber        String?  @map("license_number")
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  clerkOrganisationId String   @unique @map("clerk_organisation_id")
+  orgShortCode        String   @default("ORG") @map("org_short_code")
+  animalIdTemplate    String   @default("{ORG_SHORT}-{YYYY}-{seq:4}") @map("animal_id_template")
+  contactEmail        String?  @map("contact_email")
+  contactPhone        String?  @map("contact_phone")
+  licenseNumber       String?  @map("license_number")
+  abn                 String?
+  dgrEndorsed         Boolean  @default(false) @map("dgr_endorsed")
+  receiptPrefix       String?  @map("receipt_prefix")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@map("organisation_settings")
 }
 
 model AnimalIdSequence {
-  id                   String @id @default(cuid())
-  clerkOrganisationId  String @map("clerk_organisation_id")
-  year                 Int
-  nextValue            Int    @default(1) @map("next_value")
+  id                  String @id @default(cuid())
+  clerkOrganisationId String @map("clerk_organisation_id")
+  year                Int
+  nextValue           Int    @default(1) @map("next_value")
 
   @@unique([clerkOrganisationId, year])
   @@map("animal_id_sequences")
@@ -1062,19 +1069,19 @@ model AnimalIdSequence {
 // System-level reference data for expected growth by species + sex + age.
 // Not org-scoped — published scientific data is shared across all organisations.
 model SpeciesGrowthReference {
-  id           String @id @default(cuid())
-  speciesName  String @map("species_name")
+  id           String  @id @default(cuid())
+  speciesName  String  @map("species_name")
   sex          String // "Male", "Female", "Unknown"
-  ageDays      Int    @map("age_days")
-  weightGrams  Float? @map("weight_grams")
-  headLengthMm Float? @map("head_length_mm")
-  earLengthMm  Float? @map("ear_length_mm")
-  armLengthMm  Float? @map("arm_length_mm")
-  legLengthMm  Float? @map("leg_length_mm")
-  footLengthMm Float? @map("foot_length_mm")
-  tailLengthMm Float? @map("tail_length_mm")
-  bodyLengthMm Float? @map("body_length_mm")
-  wingLengthMm Float? @map("wing_length_mm")
+  ageDays      Int     @map("age_days")
+  weightGrams  Float?  @map("weight_grams")
+  headLengthMm Float?  @map("head_length_mm")
+  earLengthMm  Float?  @map("ear_length_mm")
+  armLengthMm  Float?  @map("arm_length_mm")
+  legLengthMm  Float?  @map("leg_length_mm")
+  footLengthMm Float?  @map("foot_length_mm")
+  tailLengthMm Float?  @map("tail_length_mm")
+  bodyLengthMm Float?  @map("body_length_mm")
+  wingLengthMm Float?  @map("wing_length_mm")
   reference    String? // citation / data source
 
   @@unique([speciesName, sex, ageDays])
@@ -1157,4 +1164,299 @@ model CallLogOutcome {
   @@unique([label, clerkOrganizationId])
   @@index([clerkOrganizationId])
   @@map("call_log_outcomes")
+}
+
+// ─── Feature Flags ──────────────────────────────────────────────────────────
+// Per-org rollout switch. The WildTrack360-Admin app is the source of truth
+// for toggling: it writes rows here, and every gated route + API in the
+// tenant app calls `isFeatureEnabled(orgId, feature)` before doing work.
+// Default policy: feature is OFF when no row exists, so anything new must be
+// explicitly opted in per org.
+
+model OrgFeatureFlag {
+  id                  String   @id @default(cuid())
+  clerkOrganizationId String   @map("clerk_organization_id")
+  feature             String // e.g. "MEMBERSHIP_PLATFORM"
+  enabled             Boolean  @default(false)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([clerkOrganizationId, feature])
+  @@index([clerkOrganizationId])
+  @@map("org_feature_flags")
+}
+
+// ─── Form Builder ───────────────────────────────────────────────────────────
+// Generic custom-field primitive. First consumer is Member, but the polymorphic
+// entityType enum lets future entities (donor surveys, intake assessments,
+// volunteer apps) reuse the same template + submission shape.
+
+enum FormEntityType {
+  MEMBER
+}
+
+model FormTemplate {
+  id                  String         @id @default(cuid())
+  clerkOrganizationId String         @map("clerk_organization_id")
+  entityType          FormEntityType @map("entity_type")
+  name                String
+  version             Int            @default(1)
+  fieldsJson          Json           @map("fields_json")
+  isActive            Boolean        @default(true) @map("is_active")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  @@unique([clerkOrganizationId, entityType])
+  @@index([clerkOrganizationId])
+  @@map("form_templates")
+}
+
+// ─── Membership ─────────────────────────────────────────────────────────────
+
+enum MemberStatus {
+  ACTIVE
+  LAPSED
+  CANCELLED
+  DECEASED
+}
+
+enum BillingInterval {
+  ONE_OFF
+  MONTHLY
+  ANNUAL
+  LIFETIME
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum GstHandling {
+  NONE
+  INCLUSIVE
+  EXCLUSIVE
+}
+
+model Member {
+  id                  String       @id @default(cuid())
+  clerkOrganizationId String       @map("clerk_organization_id")
+  clerkUserId         String?      @map("clerk_user_id") // null until portal claimed
+  carerProfileId      String?      @unique @map("carer_profile_id")
+  stripeCustomerId    String?      @map("stripe_customer_id")
+  email               String
+  firstName           String       @map("first_name")
+  lastName            String       @map("last_name")
+  phone               String?
+  addressLine1        String?      @map("address_line_1")
+  addressLine2        String?      @map("address_line_2")
+  suburb              String?
+  state               String?
+  postcode            String?
+  country             String       @default("AU")
+  memberNumber        String?      @map("member_number")
+  status              MemberStatus @default(ACTIVE)
+  joinedAt            DateTime     @default(now()) @map("joined_at")
+  customFieldsJson    Json         @default("{}") @map("custom_fields_json")
+  archivedAt          DateTime?    @map("archived_at")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  memberships        Membership[]
+  payments           Payment[]
+  donations          Donation[]
+  recurringDonations RecurringDonation[]
+  carerProfile       CarerProfile?       @relation(fields: [carerProfileId], references: [id])
+
+  @@unique([clerkOrganizationId, email])
+  @@unique([clerkOrganizationId, memberNumber])
+  @@index([clerkOrganizationId, status])
+  @@index([clerkUserId])
+  @@map("members")
+}
+
+model MembershipTier {
+  id                  String          @id @default(cuid())
+  clerkOrganizationId String          @map("clerk_organization_id")
+  name                String
+  description         String?
+  amountCents         Int             @map("amount_cents")
+  currency            String          @default("AUD")
+  billingInterval     BillingInterval @map("billing_interval")
+  gstHandling         GstHandling     @default(NONE) @map("gst_handling")
+  stripeProductId     String?         @map("stripe_product_id")
+  stripePriceId       String?         @map("stripe_price_id")
+  active              Boolean         @default(true)
+  archivedAt          DateTime?       @map("archived_at")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  memberships Membership[]
+
+  @@index([clerkOrganizationId, active])
+  @@map("membership_tiers")
+}
+
+model Membership {
+  id                   String           @id @default(cuid())
+  clerkOrganizationId  String           @map("clerk_organization_id")
+  memberId             String           @map("member_id")
+  tierId               String           @map("tier_id")
+  periodStart          DateTime         @map("period_start")
+  periodEnd            DateTime         @map("period_end")
+  status               MembershipStatus
+  stripeSubscriptionId String?          @map("stripe_subscription_id")
+  paymentId            String?          @map("payment_id")
+  createdAt            DateTime         @default(now()) @map("created_at")
+
+  member Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tier   MembershipTier @relation(fields: [tierId], references: [id])
+
+  @@index([clerkOrganizationId, status])
+  @@index([memberId, periodEnd])
+  @@map("memberships")
+}
+
+// ─── Stripe Connect ─────────────────────────────────────────────────────────
+
+enum PaymentKind {
+  DONATION_ONE_OFF
+  DONATION_RECURRING
+  MEMBERSHIP_ONE_OFF
+  MEMBERSHIP_RECURRING
+}
+
+enum PaymentStatus {
+  REQUIRES_ACTION
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model StripeAccount {
+  clerkOrganizationId   String    @id @map("clerk_organization_id")
+  stripeAccountId       String    @unique @map("stripe_account_id")
+  accountType           String    @default("standard") @map("account_type")
+  chargesEnabled        Boolean   @default(false) @map("charges_enabled")
+  payoutsEnabled        Boolean   @default(false) @map("payouts_enabled")
+  detailsSubmitted      Boolean   @default(false) @map("details_submitted")
+  country               String    @default("AU")
+  defaultCurrency       String    @default("AUD") @map("default_currency")
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
+  // Cached Stripe Product id for arbitrary-amount recurring donations. One
+  // product reused for every donor amount; a fresh Price is created per
+  // subscription so amounts can vary without polluting the product list.
+  donationProductId     String?   @map("donation_product_id")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@map("stripe_accounts")
+}
+
+model StripeEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now()) @map("processed_at")
+  payload     Json
+
+  @@index([type])
+  @@map("stripe_events")
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  clerkOrganizationId   String        @map("clerk_organization_id")
+  memberId              String?       @map("member_id")
+  kind                  PaymentKind
+  stripePaymentIntentId String?       @unique @map("stripe_payment_intent_id")
+  stripeInvoiceId       String?       @unique @map("stripe_invoice_id")
+  stripeChargeId        String?       @map("stripe_charge_id")
+  amountCents           Int           @map("amount_cents")
+  applicationFeeCents   Int           @map("application_fee_cents")
+  currency              String        @default("AUD")
+  status                PaymentStatus
+  receiptUrl            String?       @map("receipt_url")
+  receiptNumber         String?       @map("receipt_number")
+  metadata              Json?
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  member    Member?    @relation(fields: [memberId], references: [id])
+  donations Donation[]
+
+  @@index([clerkOrganizationId, status])
+  @@index([clerkOrganizationId, createdAt])
+  @@index([memberId])
+  @@map("payments")
+}
+
+model Donation {
+  id                  String   @id @default(cuid())
+  clerkOrganizationId String   @map("clerk_organization_id")
+  memberId            String?  @map("member_id")
+  donorEmail          String   @map("donor_email")
+  donorName           String?  @map("donor_name")
+  amountCents         Int      @map("amount_cents")
+  feeCents            Int      @map("fee_cents")
+  currency            String   @default("AUD")
+  isAnonymous         Boolean  @default(false) @map("is_anonymous")
+  message             String?
+  paymentId           String   @map("payment_id")
+  recurringDonationId String?  @map("recurring_donation_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  member            Member?            @relation(fields: [memberId], references: [id])
+  payment           Payment            @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  recurringDonation RecurringDonation? @relation(fields: [recurringDonationId], references: [id])
+
+  @@index([clerkOrganizationId, createdAt])
+  @@index([memberId])
+  @@map("donations")
+}
+
+enum SubStatus {
+  PENDING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+model RecurringDonation {
+  id                   String          @id @default(cuid())
+  clerkOrganizationId  String          @map("clerk_organization_id")
+  memberId             String?         @map("member_id")
+  donorEmail           String          @map("donor_email")
+  donorName            String?         @map("donor_name")
+  amountCents          Int             @map("amount_cents")
+  currency             String          @default("AUD")
+  interval             BillingInterval
+  status               SubStatus
+  // Nullable: the row is created before the Stripe call so the cuid can
+  // serve as Stripe's idempotency key; the subscription id is patched in
+  // once Stripe returns. NULL means the local pending row was written but
+  // the Stripe call did not finish — webhook handlers tolerate this state.
+  stripeSubscriptionId String?         @unique @map("stripe_subscription_id")
+  stripeCustomerId     String          @map("stripe_customer_id")
+  startedAt            DateTime        @map("started_at")
+  cancelledAt          DateTime?       @map("cancelled_at")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+
+  member    Member?    @relation(fields: [memberId], references: [id])
+  donations Donation[]
+
+  @@index([clerkOrganizationId, status])
+  @@index([memberId])
+  @@map("recurring_donations")
+}
+
+model ReceiptSequence {
+  clerkOrganizationId String @map("clerk_organization_id")
+  year                Int
+  lastNumber          Int    @default(0) @map("last_number")
+
+  @@id([clerkOrganizationId, year])
+  @@map("receipt_sequences")
 }

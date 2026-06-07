@@ -15,6 +15,15 @@ const isPublicRoute = createRouteMatcher([
   "/api/weather(.*)",
   "/pin(.*)",
   "/api/pin(.*)",
+  // Member portal: routed past Clerk org enforcement because members are NOT
+  // part of a Clerk Organization — they are bound to a wildlife org via
+  // Member.clerkOrganizationId. The portal layout and /api/portal handlers
+  // run their own auth + membership checks.
+  "/portal(.*)",
+  "/api/portal(.*)",
+  // Stripe webhook is callback-only; signature verification inside the handler
+  // is the gate, not Clerk auth.
+  "/api/stripe/webhook(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

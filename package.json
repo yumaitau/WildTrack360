@@ -68,6 +68,8 @@
     "@react-email/render": "^2.0.8",
     "@react-google-maps/api": "^2.20.7",
     "@sentry/nextjs": "^10.40.0",
+    "@stripe/react-stripe-js": "^6.6.0",
+    "@stripe/stripe-js": "^9.7.0",
     "@tanstack/react-form": "^1.14.2",
     "@tanstack/react-table": "^8.19.3",
     "@tanstack/zod-form-adapter": "^0.42.1",
@@ -100,6 +102,7 @@
     "remark-gfm": "^4.0.1",
     "resend": "^6.12.2",
     "sonner": "^2.0.7",
+    "stripe": "^22.2.0",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.25.76"
