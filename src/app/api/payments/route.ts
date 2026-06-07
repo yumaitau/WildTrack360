@@ -21,11 +21,38 @@ export async function GET(request: Request) {
   const status = searchParams.get('status') ?? undefined;
   const kind = searchParams.get('kind') ?? undefined;
 
+  const VALID_STATUS = ['SUCCEEDED', 'REQUIRES_ACTION', 'FAILED', 'REFUNDED'] as const;
+  const VALID_KIND = [
+    'DONATION_ONE_OFF',
+    'MEMBERSHIP_ONE_OFF',
+    'DONATION_RECURRING',
+    'MEMBERSHIP_RECURRING',
+  ] as const;
+  const statusFilter =
+    status && (VALID_STATUS as readonly string[]).includes(status)
+      ? (status as (typeof VALID_STATUS)[number])
+      : undefined;
+  const kindFilter =
+    kind && (VALID_KIND as readonly string[]).includes(kind)
+      ? (kind as (typeof VALID_KIND)[number])
+      : undefined;
+
   const payments = await prisma.payment.findMany({
     where: {
       clerkOrganizationId: orgId,
-      ...(status ? { status: status as 'SUCCEEDED' | 'REQUIRES_ACTION' | 'FAILED' | 'REFUNDED' } : {}),
-      ...(kind ? { kind: kind as 'DONATION_ONE_OFF' | 'MEMBERSHIP_ONE_OFF' | 'DONATION_RECURRING' | 'MEMBERSHIP_RECURRING' } : {}),
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(kindFilter ? { kind: kindFilter } : {}),
+      // Hide the pending "subscription-anchor" Payment rows that exist only
+      // to serve as a Stripe idempotency key during MEMBERSHIP_RECURRING
+      // checkout. They never become chargeable in their own right; the actual
+      // payments arrive later via invoice.payment_succeeded with their own
+      // stripe_invoice_id. Showing them in the ledger as "Requires action"
+      // forever would just be noise.
+      NOT: {
+        kind: 'MEMBERSHIP_RECURRING',
+        status: 'REQUIRES_ACTION',
+        stripeInvoiceId: null,
+      },
     },
     include: {
       member: { select: { id: true, firstName: true, lastName: true, email: true } },

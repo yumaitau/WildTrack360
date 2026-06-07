@@ -109,11 +109,15 @@ async function handlePaymentIntentSucceeded(intent: Stripe.PaymentIntent) {
   const receiptUrl =
     typeof intent.latest_charge === 'object' ? intent.latest_charge?.receipt_url ?? null : null;
 
-  // Only mint a new receipt number on the first SUCCEEDED transition. Stripe
-  // can re-fire payment_intent.succeeded (e.g. after the dispatcher's roll-
-  // back deletes the StripeEvent marker on an unrelated failure) and we
-  // don't want each retry to burn a sequence slot.
-  const isFirstSuccess = payment.status !== 'SUCCEEDED' && !payment.receiptNumber;
+  // Whether this is the first time we've seen this PaymentIntent succeed.
+  // Stripe can re-fire payment_intent.succeeded (after our dispatcher rolled
+  // back a StripeEvent marker on a separate failure, or simply because Stripe
+  // retries until it gets a clean 200). We use this flag to gate every
+  // side-effect that should happen exactly once: minting a receipt number,
+  // creating the Donation row, creating the Membership row, writing the audit
+  // log entry. Without these gates, retries would create duplicate Donation
+  // rows pointing to the same Payment and duplicate Membership periods.
+  const isFirstSuccess = payment.status !== 'SUCCEEDED';
   const receiptNumber =
     payment.receiptNumber ??
     (isFirstSuccess ? await nextReceiptNumber(payment.clerkOrganizationId) : null);
@@ -127,6 +131,8 @@ async function handlePaymentIntentSucceeded(intent: Stripe.PaymentIntent) {
       receiptNumber,
     },
   });
+
+  if (!isFirstSuccess) return;
 
   if (payment.kind === 'DONATION_ONE_OFF') {
     const meta = (payment.metadata ?? {}) as {
@@ -231,11 +237,13 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   const existing = await prisma.payment.findUnique({
     where: { stripeInvoiceId: invoice.id },
   });
-  // Only allocate a receipt number on the first successful transition. A
-  // retry of the same invoice event should not burn another sequence slot.
+  // Whether this invoice is being recorded as paid for the first time. Used
+  // both to gate the receipt-number mint (don't burn a sequence slot on retry)
+  // and to gate the Donation/Membership row creation below (don't pile up
+  // duplicate rows if Stripe re-delivers the same invoice event).
+  const isFirstSuccess = existing?.status !== 'SUCCEEDED';
   const receiptNumber =
-    existing?.receiptNumber ??
-    (existing?.status === 'SUCCEEDED' ? null : await nextReceiptNumber(orgId));
+    existing?.receiptNumber ?? (isFirstSuccess ? await nextReceiptNumber(orgId) : null);
 
   const payment = await prisma.payment.upsert({
     where: { stripeInvoiceId: invoice.id },
@@ -258,7 +266,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     },
   });
 
-  if (kind === 'DONATION_RECURRING') {
+  if (isFirstSuccess && kind === 'DONATION_RECURRING') {
     const recurring = await prisma.recurringDonation.findUnique({
       where: { stripeSubscriptionId: subscriptionIdStr },
     });
@@ -291,7 +299,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
         },
       });
     }
-  } else if (kind === 'MEMBERSHIP_RECURRING' && memberId && meta.tierId) {
+  } else if (isFirstSuccess && kind === 'MEMBERSHIP_RECURRING' && memberId && meta.tierId) {
     const tier = await prisma.membershipTier.findUnique({ where: { id: meta.tierId } });
     if (tier) {
       // Prefer the invoice's actual billing period over a wall-clock guess.
@@ -350,24 +358,49 @@ async function handleInvoiceFailed(invoice: Stripe.Invoice) {
         ? subscriptionId.id
         : null;
   if (!subscriptionIdStr) return;
+
   await prisma.recurringDonation
     .update({
       where: { stripeSubscriptionId: subscriptionIdStr },
       data: { status: 'PAST_DUE' },
     })
     .catch(() => {});
+
   if (!invoice.id) return;
+
+  // Resolve the org + kind from the Subscription metadata rather than the
+  // Invoice metadata (Stripe does not always copy our Subscription metadata
+  // onto auto-generated invoices). Without this lookup, the create branch
+  // below would persist a Payment with clerk_organization_id='unknown'; if
+  // the invoice later succeeds the upsert.update only flips status and the
+  // bad orgId sticks, leaving the payment unattributable in the ledger.
+  let orgId = invoice.metadata?.clerkOrganizationId ?? null;
+  let kind: 'DONATION_RECURRING' | 'MEMBERSHIP_RECURRING' = 'DONATION_RECURRING';
+  let memberId: string | null = null;
+  try {
+    const sub = await getStripe().subscriptions.retrieve(subscriptionIdStr);
+    const meta = sub.metadata ?? {};
+    orgId = orgId ?? meta.clerkOrganizationId ?? null;
+    if (meta.kind === 'MEMBERSHIP_RECURRING') kind = 'MEMBERSHIP_RECURRING';
+    memberId = meta.memberId || null;
+  } catch {
+    // Stripe lookup failed; skip writing a Payment row with a bogus orgId.
+  }
+  if (!orgId) return;
+
   await prisma.payment
     .upsert({
       where: { stripeInvoiceId: invoice.id },
       create: {
-        clerkOrganizationId: invoice.metadata?.clerkOrganizationId ?? 'unknown',
-        kind: 'DONATION_RECURRING',
+        clerkOrganizationId: orgId,
+        memberId,
+        kind,
         stripeInvoiceId: invoice.id,
         amountCents: invoice.amount_due,
         applicationFeeCents: 0,
         currency: (invoice.currency ?? 'aud').toUpperCase(),
         status: 'FAILED',
+        metadata: { subscriptionId: subscriptionIdStr },
       },
       update: { status: 'FAILED' },
     })
@@ -375,26 +408,45 @@ async function handleInvoiceFailed(invoice: Stripe.Invoice) {
 }
 
 async function handleSubscriptionChanged(sub: Stripe.Subscription) {
-  const recurring = await prisma.recurringDonation.findUnique({
-    where: { stripeSubscriptionId: sub.id },
-  });
-  if (!recurring) return;
-
-  const status: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' =
+  const recurringStatus: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' =
     sub.status === 'active' || sub.status === 'trialing'
       ? 'ACTIVE'
       : sub.status === 'past_due' || sub.status === 'unpaid'
         ? 'PAST_DUE'
         : 'CANCELLED';
 
-  await prisma.recurringDonation.update({
+  // A given Stripe Subscription is either a recurring donation OR a recurring
+  // membership — never both. Update whichever local row matches; ignore the
+  // event entirely if neither exists.
+
+  const recurring = await prisma.recurringDonation.findUnique({
     where: { stripeSubscriptionId: sub.id },
-    data: {
-      status,
-      cancelledAt:
-        status === 'CANCELLED' && !recurring.cancelledAt ? new Date() : recurring.cancelledAt,
-    },
   });
+  if (recurring) {
+    await prisma.recurringDonation.update({
+      where: { stripeSubscriptionId: sub.id },
+      data: {
+        status: recurringStatus,
+        cancelledAt:
+          recurringStatus === 'CANCELLED' && !recurring.cancelledAt
+            ? new Date()
+            : recurring.cancelledAt,
+      },
+    });
+    return;
+  }
+
+  // Recurring memberships: when the Stripe subscription cancels, every
+  // outstanding Membership row tied to it should flip from ACTIVE to
+  // CANCELLED so reports stop counting it. PAST_DUE / ACTIVE keeps the
+  // membership active; the period will tick over normally on the next paid
+  // invoice (or expire when periodEnd passes for grace handling).
+  if (recurringStatus === 'CANCELLED') {
+    await prisma.membership.updateMany({
+      where: { stripeSubscriptionId: sub.id, status: { in: ['ACTIVE', 'PENDING'] } },
+      data: { status: 'CANCELLED' },
+    });
+  }
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge) {
@@ -405,6 +457,15 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     where: { stripePaymentIntentId: intentId },
   });
   if (!payment) return;
+  // Stripe's `charge.refunded` fires for both full and partial refunds. Only
+  // flip status to REFUNDED on a FULL refund — partial refunds leave the
+  // payment SUCCEEDED so accounting still treats it as a real transaction
+  // (the partial amount can be tracked separately in a follow-up phase).
+  const fullyRefunded =
+    typeof charge.amount === 'number' &&
+    typeof charge.amount_refunded === 'number' &&
+    charge.amount_refunded >= charge.amount;
+  if (!fullyRefunded) return;
   await prisma.payment.update({
     where: { id: payment.id },
     data: { status: 'REFUNDED' },
