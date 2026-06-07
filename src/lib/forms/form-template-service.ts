@@ -73,8 +73,21 @@ export async function upsertTemplate(
   });
   const previousFields = existing ? parseFieldsJson(existing.fieldsJson) : [];
 
+  // Only spend the (potentially large) Member scan when we actually need it:
+  // an existing template, at least one persisted select / multiselect field,
+  // and at least one option being dropped on this PATCH. New templates,
+  // label-only edits, and adds skip the scan entirely.
+  const previousById = new Map(previousFields.map((f) => [f.id, f]));
+  const candidateOptionRemovals = nextFields.some((next) => {
+    if (next.type !== 'select' && next.type !== 'multiselect') return false;
+    const prev = previousById.get(next.id);
+    if (!prev || (prev.type !== 'select' && prev.type !== 'multiselect')) return false;
+    const nextOptions = new Set((next as { options: string[] }).options);
+    return (prev as { options: string[] }).options.some((opt) => !nextOptions.has(opt));
+  });
+
   const usedOptionsByFieldId =
-    entityType === 'MEMBER' && existing
+    entityType === 'MEMBER' && existing && candidateOptionRemovals
       ? await collectUsedSelectOptions(orgId, entityType, previousFields)
       : new Map<string, Set<string>>();
 
@@ -118,26 +131,38 @@ async function collectUsedSelectOptions(
   );
   if (selectFields.length === 0 || entityType !== 'MEMBER') return new Map();
 
-  const members = await prisma.member.findMany({
-    where: { clerkOrganizationId: orgId },
-    select: { customFieldsJson: true },
-  });
-
   const used = new Map<string, Set<string>>();
   for (const field of selectFields) {
     used.set(field.id, new Set());
   }
 
-  for (const member of members) {
-    const values = (member.customFieldsJson ?? {}) as Record<string, unknown>;
-    if (!values || typeof values !== 'object') continue;
-    for (const field of selectFields) {
-      const v = values[field.id];
-      const bucket = used.get(field.id);
-      if (!bucket) continue;
-      if (typeof v === 'string') bucket.add(v);
-      else if (Array.isArray(v)) for (const item of v) if (typeof item === 'string') bucket.add(item);
+  // Cursor-paginate so a large org's members can't OOM the API container.
+  // We only need the customFieldsJson column; payload per row is small.
+  const PAGE_SIZE = 500;
+  let cursor: string | undefined;
+  while (true) {
+    const page = await prisma.member.findMany({
+      where: { clerkOrganizationId: orgId },
+      select: { id: true, customFieldsJson: true },
+      orderBy: { id: 'asc' },
+      take: PAGE_SIZE,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    });
+    if (page.length === 0) break;
+    for (const member of page) {
+      const values = (member.customFieldsJson ?? {}) as Record<string, unknown>;
+      if (!values || typeof values !== 'object') continue;
+      for (const field of selectFields) {
+        const v = values[field.id];
+        const bucket = used.get(field.id);
+        if (!bucket) continue;
+        if (typeof v === 'string') bucket.add(v);
+        else if (Array.isArray(v))
+          for (const item of v) if (typeof item === 'string') bucket.add(item);
+      }
     }
+    if (page.length < PAGE_SIZE) break;
+    cursor = page[page.length - 1].id;
   }
   return used;
 }

@@ -39,7 +39,7 @@ export function DonateForm() {
       };
       if (recurring !== 'NONE') {
         endpoint = '/api/portal/checkout/recurring-donation';
-        body = { amountCents, interval: recurring };
+        body = { amountCents, interval: recurring, isAnonymous };
       }
 
       const res = await fetch(endpoint, {
@@ -131,29 +131,27 @@ export function DonateForm() {
         </div>
 
         {recurring === 'NONE' && (
-          <>
-            <div className="space-y-1.5">
-              <Label htmlFor="message">Message (optional)</Label>
-              <Textarea
-                id="message"
-                rows={3}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Anything you'd like the organisation to know"
-              />
-            </div>
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={isAnonymous}
-                onChange={(e) => setIsAnonymous(e.target.checked)}
-                className="h-4 w-4"
-              />
-              Show as anonymous in the donor list
-            </label>
-          </>
+          <div className="space-y-1.5">
+            <Label htmlFor="message">Message (optional)</Label>
+            <Textarea
+              id="message"
+              rows={3}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Anything you'd like the organisation to know"
+            />
+          </div>
         )}
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={isAnonymous}
+            onChange={(e) => setIsAnonymous(e.target.checked)}
+            className="h-4 w-4"
+          />
+          Show as anonymous in the donor list
+        </label>
 
         <div className="flex justify-end">
           <Button onClick={startCheckout} disabled={creating || amountCents < 200}>

@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       amountCents?: number;
       interval?: 'MONTHLY' | 'ANNUAL';
+      isAnonymous?: boolean;
     };
     if (typeof body.amountCents !== 'number') {
       return NextResponse.json({ error: 'amountCents required' }, { status: 400 });
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
       donorName: `${session.member.firstName} ${session.member.lastName}`.trim(),
       amountCents: body.amountCents,
       interval: body.interval,
+      isAnonymous: Boolean(body.isAnonymous),
     });
     return NextResponse.json(result);
   } catch (error) {

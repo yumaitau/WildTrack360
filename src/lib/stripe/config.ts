@@ -21,9 +21,11 @@ export interface BaseUrl {
 }
 
 export function resolveBaseUrl(): string {
-  return (
+  // VERCEL_URL is set by Vercel as a bare host (no scheme); prepend https://
+  // so Stripe's accountLinks.create accepts it. NEXT_PUBLIC_APP_URL is
+  // expected to already carry its scheme.
+  const raw =
     process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.VERCEL_URL ??
-    'http://localhost:3000'
-  ).replace(/\/$/, '');
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  return raw.replace(/\/$/, '');
 }

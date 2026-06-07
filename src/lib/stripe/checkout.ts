@@ -55,6 +55,17 @@ function validateAmount(amountCents: number) {
 // to the connected wildlife org. The client confirms with the returned secret
 // via Stripe Elements. Persisted Payment row stays REQUIRES_ACTION until the
 // payment_intent.succeeded webhook flips it.
+//
+// Idempotency model: the local `Payment` row is created BEFORE the Stripe
+// call and its cuid is passed as Stripe's idempotency key. A retry — same
+// browser submit, a job retry, anything that re-enters this function with
+// the same arguments — would mint a fresh Payment row with a new cuid and
+// therefore a new Stripe object, which is the right behaviour for a fresh
+// user intent. What this protects against is the dangerous case: the Stripe
+// call succeeds but our DB write fails (network blip mid-update), then we
+// re-enter with the same Payment.id (e.g. a worker retry that reads the
+// pending row). Stripe returns the existing PaymentIntent rather than
+// minting a duplicate chargeable object.
 export async function createDonationPayment(args: CreateDonationArgs): Promise<CheckoutResult> {
   validateAmount(args.amountCents);
   const account = await requireActiveConnectAccount(args.orgId);
@@ -63,27 +74,11 @@ export async function createDonationPayment(args: CreateDonationArgs): Promise<C
   const fee = platformFeeCents(args.amountCents);
   const kind: PaymentKind = 'DONATION_ONE_OFF';
 
-  const intent = await stripe.paymentIntents.create({
-    amount: args.amountCents,
-    currency: DEFAULT_CURRENCY.toLowerCase(),
-    application_fee_amount: fee,
-    transfer_data: { destination: account.stripeAccountId },
-    receipt_email: args.donorEmail,
-    automatic_payment_methods: { enabled: true },
-    metadata: {
-      kind,
-      clerkOrganizationId: args.orgId,
-      memberId: args.memberId ?? '',
-      isAnonymous: String(Boolean(args.isAnonymous)),
-    },
-  });
-
   const payment = await prisma.payment.create({
     data: {
       clerkOrganizationId: args.orgId,
       memberId: args.memberId ?? null,
       kind,
-      stripePaymentIntentId: intent.id,
       amountCents: args.amountCents,
       applicationFeeCents: fee,
       currency: DEFAULT_CURRENCY,
@@ -97,6 +92,30 @@ export async function createDonationPayment(args: CreateDonationArgs): Promise<C
     },
   });
 
+  const intent = await stripe.paymentIntents.create(
+    {
+      amount: args.amountCents,
+      currency: DEFAULT_CURRENCY.toLowerCase(),
+      application_fee_amount: fee,
+      transfer_data: { destination: account.stripeAccountId },
+      receipt_email: args.donorEmail,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        kind,
+        clerkOrganizationId: args.orgId,
+        memberId: args.memberId ?? '',
+        isAnonymous: String(Boolean(args.isAnonymous)),
+        paymentId: payment.id,
+      },
+    },
+    { idempotencyKey: payment.id }
+  );
+
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data: { stripePaymentIntentId: intent.id },
+  });
+
   if (!intent.client_secret) throw new Error('Stripe did not return a client_secret');
 
   return {
@@ -106,9 +125,10 @@ export async function createDonationPayment(args: CreateDonationArgs): Promise<C
   };
 }
 
-// One-off membership purchase. Reuses the destination-charge shape so the same
-// webhook handler can fan out: on succeed, we read PaymentKind from metadata
-// and create the Membership row.
+// One-off membership purchase. Same create-local-row-first + idempotency-key
+// pattern as createDonationPayment; the webhook handler fans out on
+// payment_intent.succeeded by reading PaymentKind to decide whether to
+// create a Donation or Membership row.
 export async function createMembershipPayment(args: CreateMembershipArgs): Promise<CheckoutResult> {
   const tier = await prisma.membershipTier.findFirst({
     where: { id: args.tierId, clerkOrganizationId: args.orgId, active: true, archivedAt: null },
@@ -124,33 +144,41 @@ export async function createMembershipPayment(args: CreateMembershipArgs): Promi
   const fee = platformFeeCents(tier.amountCents);
   const kind: PaymentKind = 'MEMBERSHIP_ONE_OFF';
 
-  const intent = await stripe.paymentIntents.create({
-    amount: tier.amountCents,
-    currency: tier.currency.toLowerCase(),
-    application_fee_amount: fee,
-    transfer_data: { destination: account.stripeAccountId },
-    receipt_email: args.donorEmail,
-    automatic_payment_methods: { enabled: true },
-    metadata: {
-      kind,
-      clerkOrganizationId: args.orgId,
-      memberId: args.memberId,
-      tierId: tier.id,
-    },
-  });
-
   const payment = await prisma.payment.create({
     data: {
       clerkOrganizationId: args.orgId,
       memberId: args.memberId,
       kind,
-      stripePaymentIntentId: intent.id,
       amountCents: tier.amountCents,
       applicationFeeCents: fee,
       currency: tier.currency,
       status: 'REQUIRES_ACTION',
       metadata: { tierId: tier.id, tierName: tier.name },
     },
+  });
+
+  const intent = await stripe.paymentIntents.create(
+    {
+      amount: tier.amountCents,
+      currency: tier.currency.toLowerCase(),
+      application_fee_amount: fee,
+      transfer_data: { destination: account.stripeAccountId },
+      receipt_email: args.donorEmail,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        kind,
+        clerkOrganizationId: args.orgId,
+        memberId: args.memberId,
+        tierId: tier.id,
+        paymentId: payment.id,
+      },
+    },
+    { idempotencyKey: payment.id }
+  );
+
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data: { stripePaymentIntentId: intent.id },
   });
 
   if (!intent.client_secret) throw new Error('Stripe did not return a client_secret');

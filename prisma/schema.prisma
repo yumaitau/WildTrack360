@@ -1432,7 +1432,11 @@ model RecurringDonation {
   currency             String          @default("AUD")
   interval             BillingInterval
   status               SubStatus
-  stripeSubscriptionId String          @unique @map("stripe_subscription_id")
+  // Nullable: the row is created before the Stripe call so the cuid can
+  // serve as Stripe's idempotency key; the subscription id is patched in
+  // once Stripe returns. NULL means the local pending row was written but
+  // the Stripe call did not finish — webhook handlers tolerate this state.
+  stripeSubscriptionId String?         @unique @map("stripe_subscription_id")
   stripeCustomerId     String          @map("stripe_customer_id")
   startedAt            DateTime        @map("started_at")
   cancelledAt          DateTime?       @map("cancelled_at")

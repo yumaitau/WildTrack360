@@ -41,6 +41,12 @@ async function requireActiveConnectAccount(orgId: string) {
 // lives on the platform (not the connected account) because destination
 // charges route funds via transfer_data; the platform owns the Customer +
 // PaymentMethod records.
+//
+// Concurrency: two parallel donate/membership submits for the same member
+// could both observe null stripeCustomerId, both create a Customer, then
+// race on the update. We pass an idempotency key derived from the member id
+// so Stripe coalesces duplicate creates server-side, and we use a
+// conditional updateMany so only one writer claims the column.
 export async function ensureStripeCustomer(args: {
   memberId: string;
   email: string;
@@ -51,15 +57,25 @@ export async function ensureStripeCustomer(args: {
   if (member.stripeCustomerId) return member.stripeCustomerId;
 
   const stripe = getStripe();
-  const customer = await stripe.customers.create({
-    email: args.email,
-    name: args.name ?? undefined,
-    metadata: { memberId: member.id, clerkOrganizationId: member.clerkOrganizationId },
-  });
-  await prisma.member.update({
-    where: { id: member.id },
+  const customer = await stripe.customers.create(
+    {
+      email: args.email,
+      name: args.name ?? undefined,
+      metadata: { memberId: member.id, clerkOrganizationId: member.clerkOrganizationId },
+    },
+    { idempotencyKey: `member-customer:${member.id}` }
+  );
+
+  const claim = await prisma.member.updateMany({
+    where: { id: member.id, stripeCustomerId: null },
     data: { stripeCustomerId: customer.id },
   });
+  if (claim.count === 0) {
+    // Another writer beat us. Re-read and prefer the winner's customer id;
+    // ours is orphaned but harmless (Stripe customers carry no balance).
+    const winner = await prisma.member.findUniqueOrThrow({ where: { id: member.id } });
+    return winner.stripeCustomerId ?? customer.id;
+  }
   return customer.id;
 }
 
@@ -126,12 +142,22 @@ interface CreateRecurringDonationArgs {
   donorName?: string | null;
   amountCents: number;
   interval: 'MONTHLY' | 'ANNUAL';
+  isAnonymous?: boolean;
 }
 
 // Recurring donation as a Stripe Subscription. Arbitrary amount → fresh Price
 // per subscription (no Product reuse since each donor amount is unique). The
 // 5% fee is taken via application_fee_percent on the subscription. Returns
 // the PaymentIntent client_secret so the client confirms with Elements.
+//
+// Idempotency model: the local RecurringDonation row is created BEFORE the
+// Stripe calls; its cuid then serves as Stripe's idempotency key for both
+// Price.create and Subscription.create. If the Stripe call partially fails
+// (network blip after Stripe accepted but before we wrote stripeSubscriptionId)
+// a retry with the same RecurringDonation.id will hit Stripe's idempotency
+// cache and return the same Subscription rather than minting a duplicate
+// chargeable object. The webhook handler tolerates a NULL stripeSubscriptionId
+// (orphan pending rows) until they're either patched or pruned.
 export async function createRecurringDonationSubscription(
   args: CreateRecurringDonationArgs
 ): Promise<SubscriptionResult> {
@@ -147,34 +173,6 @@ export async function createRecurringDonationSubscription(
     name: args.donorName,
   });
 
-  const productId = await ensureDonationProductId(args.orgId);
-  const price = await stripe.prices.create({
-    product: productId,
-    unit_amount: args.amountCents,
-    currency: DEFAULT_CURRENCY.toLowerCase(),
-    recurring: intervalToStripe(args.interval),
-    metadata: {
-      clerkOrganizationId: args.orgId,
-      memberId: args.memberId,
-      kind: 'DONATION_RECURRING',
-    },
-  });
-
-  const subscription = await stripe.subscriptions.create({
-    customer: customerId,
-    items: [{ price: price.id }],
-    application_fee_percent: PLATFORM_FEE_PERCENT,
-    transfer_data: { destination: account.stripeAccountId },
-    payment_behavior: 'default_incomplete',
-    payment_settings: { save_default_payment_method: 'on_subscription' },
-    expand: ['latest_invoice.confirmation_secret', 'latest_invoice.payments'],
-    metadata: {
-      kind: 'DONATION_RECURRING',
-      clerkOrganizationId: args.orgId,
-      memberId: args.memberId,
-    },
-  });
-
   const recurring = await prisma.recurringDonation.create({
     data: {
       clerkOrganizationId: args.orgId,
@@ -185,10 +183,54 @@ export async function createRecurringDonationSubscription(
       currency: DEFAULT_CURRENCY,
       interval: args.interval,
       status: 'ACTIVE',
-      stripeSubscriptionId: subscription.id,
+      stripeSubscriptionId: null,
       stripeCustomerId: customerId,
       startedAt: new Date(),
     },
+  });
+
+  const productId = await ensureDonationProductId(args.orgId);
+  const price = await stripe.prices.create(
+    {
+      product: productId,
+      unit_amount: args.amountCents,
+      currency: DEFAULT_CURRENCY.toLowerCase(),
+      recurring: intervalToStripe(args.interval),
+      metadata: {
+        clerkOrganizationId: args.orgId,
+        memberId: args.memberId,
+        kind: 'DONATION_RECURRING',
+        recurringDonationId: recurring.id,
+      },
+    },
+    { idempotencyKey: `${recurring.id}:price` }
+  );
+
+  const subscription = await stripe.subscriptions.create(
+    {
+      customer: customerId,
+      items: [{ price: price.id }],
+      application_fee_percent: PLATFORM_FEE_PERCENT,
+      transfer_data: { destination: account.stripeAccountId },
+      payment_behavior: 'default_incomplete',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
+      expand: ['latest_invoice.confirmation_secret', 'latest_invoice.payments'],
+      metadata: {
+        kind: 'DONATION_RECURRING',
+        clerkOrganizationId: args.orgId,
+        memberId: args.memberId,
+        recurringDonationId: recurring.id,
+        // Propagated to every instalment Donation row in the webhook handler
+        // so anonymous selections persist across the full subscription life.
+        isAnonymous: String(Boolean(args.isAnonymous)),
+      },
+    },
+    { idempotencyKey: `${recurring.id}:sub` }
+  );
+
+  await prisma.recurringDonation.update({
+    where: { id: recurring.id },
+    data: { stripeSubscriptionId: subscription.id },
   });
 
   const clientSecret = extractClientSecret(subscription);
@@ -228,21 +270,44 @@ export async function createMembershipSubscription(
     name: args.donorName,
   });
 
-  const subscription = await stripe.subscriptions.create({
-    customer: customerId,
-    items: [{ price: priceId }],
-    application_fee_percent: PLATFORM_FEE_PERCENT,
-    transfer_data: { destination: account.stripeAccountId },
-    payment_behavior: 'default_incomplete',
-    payment_settings: { save_default_payment_method: 'on_subscription' },
-    expand: ['latest_invoice.confirmation_secret', 'latest_invoice.payments'],
-    metadata: {
-      kind: 'MEMBERSHIP_RECURRING',
+  // A local Payment row with status REQUIRES_ACTION serves as the
+  // idempotency anchor for the recurring-membership Subscription.create call.
+  // The cuid is used as Stripe's idempotency key; the webhook handler for
+  // invoice.payment_succeeded later upserts further Payment rows keyed on
+  // stripe_invoice_id, so this anchor row stays as the "checkout intent" and
+  // is harmless if Stripe never returns.
+  const pending = await prisma.payment.create({
+    data: {
       clerkOrganizationId: args.orgId,
       memberId: args.memberId,
-      tierId: tier.id,
+      kind: 'MEMBERSHIP_RECURRING',
+      amountCents: tier.amountCents,
+      applicationFeeCents: 0,
+      currency: tier.currency,
+      status: 'REQUIRES_ACTION',
+      metadata: { tierId: tier.id, tierName: tier.name, role: 'subscription-anchor' },
     },
   });
+
+  const subscription = await stripe.subscriptions.create(
+    {
+      customer: customerId,
+      items: [{ price: priceId }],
+      application_fee_percent: PLATFORM_FEE_PERCENT,
+      transfer_data: { destination: account.stripeAccountId },
+      payment_behavior: 'default_incomplete',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
+      expand: ['latest_invoice.confirmation_secret', 'latest_invoice.payments'],
+      metadata: {
+        kind: 'MEMBERSHIP_RECURRING',
+        clerkOrganizationId: args.orgId,
+        memberId: args.memberId,
+        tierId: tier.id,
+        pendingPaymentId: pending.id,
+      },
+    },
+    { idempotencyKey: pending.id }
+  );
 
   const clientSecret = extractClientSecret(subscription);
   return { clientSecret, subscriptionId: subscription.id };

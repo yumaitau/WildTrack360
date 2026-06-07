@@ -26,19 +26,31 @@ export async function getPortalMember(clerkUserId: string): Promise<PortalSessio
   const email = await fetchClerkEmail(clerkUserId);
   if (!email) return null;
 
-  const member = await prisma.member.findFirst({
+  const candidate = await prisma.member.findFirst({
     where: {
       clerkUserId: null,
       archivedAt: null,
       email: { equals: email, mode: 'insensitive' },
     },
   });
-  if (!member) return null;
+  if (!candidate) return null;
 
-  const updated = await prisma.member.update({
-    where: { id: member.id },
+  // Conditional update guarded by `clerkUserId: null` so two concurrent
+  // claims for the same email don't both succeed. The second loses the race
+  // (count=0) and falls back to re-fetching whoever holds the row now —
+  // which is the correct mapping anyway because the first claim won.
+  const claimResult = await prisma.member.updateMany({
+    where: { id: candidate.id, clerkUserId: null },
     data: { clerkUserId },
   });
+  if (claimResult.count === 0) {
+    const winner = await prisma.member.findFirst({
+      where: { id: candidate.id },
+    });
+    if (!winner || winner.clerkUserId !== clerkUserId) return null;
+    return { member: winner, email };
+  }
+  const updated = await prisma.member.findUniqueOrThrow({ where: { id: candidate.id } });
   return { member: updated, email };
 }
 

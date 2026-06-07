@@ -25,6 +25,12 @@ export async function dispatchEvent(event: Stripe.Event): Promise<DispatchResult
   const existing = await prisma.stripeEvent.findUnique({ where: { id: event.id } });
   if (existing) return { alreadyProcessed: true, type: event.type };
 
+  // Write the marker FIRST so any concurrent webhook delivery (Stripe will
+  // fire duplicates if our 200 lands late) loses the race against the unique
+  // PK. We then wrap the business handlers in try/catch and DELETE the marker
+  // on failure so Stripe's retry policy can re-deliver the event and we
+  // actually get another shot at it. Without this, an exception inside any
+  // handler permanently buries the event because the marker already exists.
   await prisma.stripeEvent.create({
     data: {
       id: event.id,
@@ -33,32 +39,39 @@ export async function dispatchEvent(event: Stripe.Event): Promise<DispatchResult
     },
   });
 
-  switch (event.type) {
-    case 'account.updated':
-      await handleAccountUpdated(event.data.object as Stripe.Account);
-      break;
-    case 'payment_intent.succeeded':
-      await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
-      break;
-    case 'payment_intent.payment_failed':
-      await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
-      break;
-    case 'charge.refunded':
-      await handleChargeRefunded(event.data.object as Stripe.Charge);
-      break;
-    case 'invoice.payment_succeeded':
-      await handleInvoicePaid(event.data.object as Stripe.Invoice);
-      break;
-    case 'invoice.payment_failed':
-      await handleInvoiceFailed(event.data.object as Stripe.Invoice);
-      break;
-    case 'customer.subscription.updated':
-    case 'customer.subscription.deleted':
-      await handleSubscriptionChanged(event.data.object as Stripe.Subscription);
-      break;
-    default:
-      // Unknown events are silently recorded in stripe_events for audit.
-      break;
+  try {
+    switch (event.type) {
+      case 'account.updated':
+        await handleAccountUpdated(event.data.object as Stripe.Account);
+        break;
+      case 'payment_intent.succeeded':
+        await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
+        break;
+      case 'payment_intent.payment_failed':
+        await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
+        break;
+      case 'charge.refunded':
+        await handleChargeRefunded(event.data.object as Stripe.Charge);
+        break;
+      case 'invoice.payment_succeeded':
+        await handleInvoicePaid(event.data.object as Stripe.Invoice);
+        break;
+      case 'invoice.payment_failed':
+        await handleInvoiceFailed(event.data.object as Stripe.Invoice);
+        break;
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted':
+        await handleSubscriptionChanged(event.data.object as Stripe.Subscription);
+        break;
+      default:
+        // Unknown events are silently recorded in stripe_events for audit.
+        break;
+    }
+  } catch (error) {
+    // Roll back the idempotency marker so Stripe retries can re-enter this
+    // function. We swallow the delete error to avoid masking the real cause.
+    await prisma.stripeEvent.delete({ where: { id: event.id } }).catch(() => {});
+    throw error;
   }
 
   return { alreadyProcessed: false, type: event.type };
@@ -96,8 +109,14 @@ async function handlePaymentIntentSucceeded(intent: Stripe.PaymentIntent) {
   const receiptUrl =
     typeof intent.latest_charge === 'object' ? intent.latest_charge?.receipt_url ?? null : null;
 
+  // Only mint a new receipt number on the first SUCCEEDED transition. Stripe
+  // can re-fire payment_intent.succeeded (e.g. after the dispatcher's roll-
+  // back deletes the StripeEvent marker on an unrelated failure) and we
+  // don't want each retry to burn a sequence slot.
+  const isFirstSuccess = payment.status !== 'SUCCEEDED' && !payment.receiptNumber;
   const receiptNumber =
-    payment.receiptNumber ?? (await nextReceiptNumber(payment.clerkOrganizationId));
+    payment.receiptNumber ??
+    (isFirstSuccess ? await nextReceiptNumber(payment.clerkOrganizationId) : null);
 
   const updated = await prisma.payment.update({
     where: { id: payment.id },
@@ -179,6 +198,11 @@ async function handlePaymentIntentFailed(intent: Stripe.PaymentIntent) {
 // stripe_invoice_id unique index) and, depending on subscription metadata,
 // either a Donation row (linked to RecurringDonation) or a Membership row.
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
+  // Stripe always populates invoice.id for invoice.payment_succeeded, but the
+  // SDK types mark it optional — guard anyway so we never collapse multiple
+  // invoices into a single Payment row keyed on the empty string.
+  if (!invoice.id) return;
+
   const subscriptionId = invoice.parent?.subscription_details?.subscription;
   const subscriptionIdStr =
     typeof subscriptionId === 'string'
@@ -204,10 +228,17 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     (amountCents * Number(sub.application_fee_percent ?? 0)) / 100
   );
 
-  const receiptNumber = await nextReceiptNumber(orgId);
+  const existing = await prisma.payment.findUnique({
+    where: { stripeInvoiceId: invoice.id },
+  });
+  // Only allocate a receipt number on the first successful transition. A
+  // retry of the same invoice event should not burn another sequence slot.
+  const receiptNumber =
+    existing?.receiptNumber ??
+    (existing?.status === 'SUCCEEDED' ? null : await nextReceiptNumber(orgId));
 
   const payment = await prisma.payment.upsert({
-    where: { stripeInvoiceId: invoice.id ?? '' },
+    where: { stripeInvoiceId: invoice.id },
     create: {
       clerkOrganizationId: orgId,
       memberId,
@@ -232,6 +263,11 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
       where: { stripeSubscriptionId: subscriptionIdStr },
     });
     if (recurring) {
+      // isAnonymous is carried on the Subscription metadata (the canonical
+      // copy lives there because RecurringDonation doesn't have a column for
+      // it); read it back here so every instalment Donation row keeps the
+      // donor's stated preference.
+      const isAnonymous = (meta.isAnonymous ?? '').toLowerCase() === 'true';
       await prisma.donation.create({
         data: {
           clerkOrganizationId: orgId,
@@ -241,6 +277,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
           amountCents,
           feeCents: applicationFeeCents,
           currency: payment.currency,
+          isAnonymous,
           paymentId: payment.id,
           recurringDonationId: recurring.id,
         },
@@ -249,20 +286,40 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   } else if (kind === 'MEMBERSHIP_RECURRING' && memberId && meta.tierId) {
     const tier = await prisma.membershipTier.findUnique({ where: { id: meta.tierId } });
     if (tier) {
-      const start = new Date();
-      const end = computeMembershipEnd(start, tier.billingInterval);
-      await prisma.membership.create({
-        data: {
-          clerkOrganizationId: orgId,
-          memberId,
-          tierId: tier.id,
-          periodStart: start,
-          periodEnd: end,
-          status: 'ACTIVE',
-          stripeSubscriptionId: subscriptionIdStr,
-          paymentId: payment.id,
-        },
+      // Prefer the invoice's actual billing period over a wall-clock guess.
+      // Also dedupe by (stripeSubscriptionId, periodStart) so a re-delivery of
+      // the same invoice doesn't pile up overlapping Membership rows for the
+      // same cycle.
+      const line = invoice.lines?.data?.[0];
+      const periodStart = line?.period?.start
+        ? new Date(line.period.start * 1000)
+        : new Date();
+      const periodEnd = line?.period?.end
+        ? new Date(line.period.end * 1000)
+        : computeMembershipEnd(periodStart, tier.billingInterval);
+
+      const existingMembership = await prisma.membership.findFirst({
+        where: { stripeSubscriptionId: subscriptionIdStr, periodStart },
       });
+      if (existingMembership) {
+        await prisma.membership.update({
+          where: { id: existingMembership.id },
+          data: { periodEnd, status: 'ACTIVE', paymentId: payment.id },
+        });
+      } else {
+        await prisma.membership.create({
+          data: {
+            clerkOrganizationId: orgId,
+            memberId,
+            tierId: tier.id,
+            periodStart,
+            periodEnd,
+            status: 'ACTIVE',
+            stripeSubscriptionId: subscriptionIdStr,
+            paymentId: payment.id,
+          },
+        });
+      }
     }
   }
 

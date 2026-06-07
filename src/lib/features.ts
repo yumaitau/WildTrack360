@@ -1,5 +1,6 @@
 'server-only';
 
+import { cache } from 'react';
 import { NextResponse } from 'next/server';
 import { prisma } from './prisma';
 
@@ -10,28 +11,23 @@ import { prisma } from './prisma';
 export const FEATURES = ['MEMBERSHIP_PLATFORM'] as const;
 export type Feature = (typeof FEATURES)[number];
 
-// Per-request cache so layout + page + many API calls in the same request
-// don't all round-trip to the DB. The Next.js server invokes this within a
-// single rendering pass so an in-memory Map keyed by `${orgId}:${feature}` is
-// safe; the cache GC happens naturally between requests.
-const cache = new Map<string, boolean>();
-
-function cacheKey(orgId: string, feature: Feature): string {
-  return `${orgId}:${feature}`;
-}
+// Per-request memo via React.cache: the same (orgId, feature) pair within a
+// single render pass / API handler invocation hits the DB once. Critically,
+// the cache scope is the React request, not the Node process — flipping a
+// feature in the admin app takes effect on the very next request, not "after
+// the container restarts" (which is what a module-scope Map would mean).
+const lookupFlag = cache(
+  async (orgId: string, feature: Feature): Promise<boolean> => {
+    const row = await prisma.orgFeatureFlag.findUnique({
+      where: { clerkOrganizationId_feature: { clerkOrganizationId: orgId, feature } },
+      select: { enabled: true },
+    });
+    return row?.enabled ?? false;
+  }
+);
 
 export async function isFeatureEnabled(orgId: string, feature: Feature): Promise<boolean> {
-  const key = cacheKey(orgId, feature);
-  const hit = cache.get(key);
-  if (hit !== undefined) return hit;
-
-  const row = await prisma.orgFeatureFlag.findUnique({
-    where: { clerkOrganizationId_feature: { clerkOrganizationId: orgId, feature } },
-    select: { enabled: true },
-  });
-  const enabled = row?.enabled ?? false;
-  cache.set(key, enabled);
-  return enabled;
+  return lookupFlag(orgId, feature);
 }
 
 // Throw helper for API routes — pair with the existing requirePermission
