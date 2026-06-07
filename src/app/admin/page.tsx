@@ -18,6 +18,8 @@ import {
   ArrowRight,
   TrendingUp,
   Settings,
+  HeartHandshake,
+  CreditCard,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -50,6 +52,8 @@ interface QuickAction {
   icon: React.ReactNode;
   tab: string;
   adminOnly: boolean;
+  href?: string;
+  requiresFeature?: 'MEMBERSHIP_PLATFORM';
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
@@ -59,6 +63,24 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: <Users className="h-6 w-6" />,
     tab: 'people',
     adminOnly: true,
+  },
+  {
+    label: 'Members & Tiers',
+    description: 'Manage your supporter roster and membership pricing tiers.',
+    icon: <HeartHandshake className="h-6 w-6" />,
+    tab: 'members',
+    adminOnly: true,
+    href: '/admin/members',
+    requiresFeature: 'MEMBERSHIP_PLATFORM',
+  },
+  {
+    label: 'Payments & Donations',
+    description: 'View the payment ledger, connect Stripe, and manage donations and membership fees.',
+    icon: <CreditCard className="h-6 w-6" />,
+    tab: 'payments',
+    adminOnly: true,
+    href: '/admin/payments',
+    requiresFeature: 'MEMBERSHIP_PLATFORM',
   },
   {
     label: 'Species Groups',
@@ -142,6 +164,7 @@ function AdminPageContent() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [features, setFeatures] = useState<Record<string, boolean>>({});
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(() => searchParams?.get('tab') ?? null);
   const { user } = useUser();
@@ -174,10 +197,11 @@ function AdminPageContent() {
     const loadData = async () => {
       try {
         const orgId = organization.id;
-        const [speciesData, assetsData, roleData] = await Promise.all([
+        const [speciesData, assetsData, roleData, featureData] = await Promise.all([
           apiJson<any[]>(`/api/species?orgId=${orgId}`),
           apiJson<Asset[]>(`/api/assets?orgId=${orgId}`),
           apiJson<any>('/api/rbac/my-role'),
+          apiJson<Record<string, boolean>>('/api/features/me').catch(() => ({})),
         ]);
         if (cancelled) return;
         const role = roleData.role || 'CARER';
@@ -188,6 +212,7 @@ function AdminPageContent() {
         setSpecies(speciesData.map((s) => s.name));
         setAssets(assetsData);
         setUserRole(role);
+        setFeatures(featureData);
       } catch (error) {
         if (cancelled) return;
         console.error('Error loading admin data:', error);
@@ -254,7 +279,11 @@ function AdminPageContent() {
     );
   }
 
-  const visibleActions = QUICK_ACTIONS.filter((a) => !a.adminOnly || isAdmin);
+  const visibleActions = QUICK_ACTIONS.filter((a) => {
+    if (a.adminOnly && !isAdmin) return false;
+    if (a.requiresFeature && !features[a.requiresFeature]) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -373,6 +402,26 @@ function AdminPageContent() {
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleActions.map((action) => (
+                  action.href ? (
+                  <Link
+                    key={action.tab}
+                    href={action.href}
+                    className="text-left group block"
+                  >
+                    <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-md rounded-lg">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div className="rounded-lg bg-primary/10 text-primary p-2.5">{action.icon}</div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                        </div>
+                        <CardTitle className="text-base mt-3">{action.label}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <CardDescription className="text-sm leading-relaxed">{action.description}</CardDescription>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                  ) : (
                   <button
                     key={action.tab}
                     onClick={() => selectTab(action.tab)}
@@ -395,6 +444,7 @@ function AdminPageContent() {
                       </CardContent>
                     </Card>
                   </button>
+                  )
                 ))}
               </div>
             </div>

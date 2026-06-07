@@ -39,7 +39,11 @@ export type Permission =
   | 'compliance:manage_transfers'
   | 'compliance:override_validation'
   | 'compliance:export_registers'
-  | 'compliance:manage_post_release';
+  | 'compliance:manage_post_release'
+  | 'member:view_all'
+  | 'member:manage'
+  | 'membership:configure'
+  | 'donation:view';
 
 // ─── Permission Matrix ───────────────────────────────────────────────────────
 const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
@@ -69,6 +73,10 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'compliance:override_validation',
     'compliance:export_registers',
     'compliance:manage_post_release',
+    'member:view_all',
+    'member:manage',
+    'membership:configure',
+    'donation:view',
   ]),
   COORDINATOR_ALL: new Set([
     'animal:view_all',
@@ -86,6 +94,8 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'compliance:submit_permanent_care',
     'compliance:manage_transfers',
     'compliance:manage_post_release',
+    'member:view_all',
+    'donation:view',
   ]),
   COORDINATOR: new Set([
     'animal:view_species_group',
