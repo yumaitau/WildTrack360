@@ -1417,6 +1417,7 @@ model Donation {
 }
 
 enum SubStatus {
+  PENDING
   ACTIVE
   PAST_DUE
   CANCELLED

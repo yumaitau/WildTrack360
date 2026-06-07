@@ -263,6 +263,14 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
       where: { stripeSubscriptionId: subscriptionIdStr },
     });
     if (recurring) {
+      // Promote PENDING → ACTIVE on the first successful invoice. Idempotent
+      // for subsequent renewals because the where-clause filters on PENDING.
+      if (recurring.status === 'PENDING') {
+        await prisma.recurringDonation.updateMany({
+          where: { id: recurring.id, status: 'PENDING' },
+          data: { status: 'ACTIVE' },
+        });
+      }
       // isAnonymous is carried on the Subscription metadata (the canonical
       // copy lives there because RecurringDonation doesn't have a column for
       // it); read it back here so every instalment Donation row keeps the

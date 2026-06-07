@@ -173,6 +173,10 @@ export async function createRecurringDonationSubscription(
     name: args.donorName,
   });
 
+  // Created as PENDING because the row exists before Stripe confirms anything
+  // (the cuid is needed up-front as Stripe's idempotency key). The webhook
+  // flips it to ACTIVE on the first invoice.payment_succeeded, and
+  // customer.subscription.updated keeps it in sync after that.
   const recurring = await prisma.recurringDonation.create({
     data: {
       clerkOrganizationId: args.orgId,
@@ -182,7 +186,7 @@ export async function createRecurringDonationSubscription(
       amountCents: args.amountCents,
       currency: DEFAULT_CURRENCY,
       interval: args.interval,
-      status: 'ACTIVE',
+      status: 'PENDING',
       stripeSubscriptionId: null,
       stripeCustomerId: customerId,
       startedAt: new Date(),
