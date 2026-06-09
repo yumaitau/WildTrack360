@@ -72,7 +72,7 @@ export async function listMembers(
   return prisma.member.findMany({
     where,
     orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-    take: 500,
+    take: 5000,
   });
 }
 

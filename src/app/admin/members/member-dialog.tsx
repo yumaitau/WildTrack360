@@ -27,6 +27,7 @@ export interface MemberFormValue {
   country?: string | null;
   memberNumber?: string | null;
   status?: 'ACTIVE' | 'LAPSED' | 'CANCELLED' | 'DECEASED';
+  joinedAt?: string | null;
   customFields?: Record<string, unknown>;
 }
 
@@ -50,8 +51,16 @@ const EMPTY: MemberFormValue = {
   country: 'AU',
   memberNumber: '',
   status: 'ACTIVE',
+  joinedAt: '',
   customFields: {},
 };
+
+function toDateInput(value: unknown): string {
+  if (!value) return '';
+  const d = new Date(value as string);
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+}
 
 export function MemberDialog({ open, onOpenChange, initial, onSubmit }: Props) {
   const [values, setValues] = useState<MemberFormValue>(EMPTY);
@@ -82,6 +91,7 @@ export function MemberDialog({ open, onOpenChange, initial, onSubmit }: Props) {
         ...(initial ?? {}),
         status: initial?.status ?? 'ACTIVE',
         country: initial?.country ?? 'AU',
+        joinedAt: toDateInput(initial?.joinedAt) || new Date().toISOString().slice(0, 10),
         customFields: seededCustom,
       });
       setAddressSearch(initial?.addressLine1 ?? '');
@@ -137,6 +147,13 @@ export function MemberDialog({ open, onOpenChange, initial, onSubmit }: Props) {
                   <SelectItem value="DECEASED">Deceased</SelectItem>
                 </SelectContent>
               </Select>
+            </Field>
+            <Field label="Joined date">
+              <Input
+                type="date"
+                value={values.joinedAt ?? ''}
+                onChange={(e) => set('joinedAt', e.target.value)}
+              />
             </Field>
           </div>
 
