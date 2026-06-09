@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { logAudit } from '@/lib/audit';
-import { exchangeCodeAndStore, verifyOAuthState } from '@/lib/square/oauth';
+import { exchangeCodeAndStore, consumeOAuthState } from '@/lib/square/oauth';
 import { resolveBaseUrl } from '@/lib/square/config';
 
 // Square redirects here (a single canonical host) after the seller authorises.
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   if (sqError || !code) return NextResponse.redirect(`${settings}?error=${sqError ?? 'denied'}`);
 
-  const orgId = verifyOAuthState(url.searchParams.get('state'));
+  const orgId = await consumeOAuthState(url.searchParams.get('state'));
   if (!orgId) return NextResponse.redirect(`${settings}?error=state`);
 
   try {

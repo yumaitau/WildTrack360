@@ -1383,6 +1383,19 @@ model SquareEvent {
   @@map("square_events")
 }
 
+// Single-use, short-lived OAuth state nonce → org. Lets the Square OAuth
+// callback (on one canonical host) recover the org without a session. Deleted
+// on use; expired rows are pruned opportunistically.
+model SquareOAuthState {
+  state               String   @id
+  clerkOrganizationId String   @map("clerk_organization_id")
+  expiresAt           DateTime @map("expires_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("square_oauth_states")
+}
+
 model Payment {
   id                  String        @id @default(cuid())
   clerkOrganizationId String        @map("clerk_organization_id")

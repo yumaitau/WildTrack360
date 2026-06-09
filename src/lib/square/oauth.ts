@@ -1,6 +1,6 @@
 'server-only';
 
-import { createHmac, timingSafeEqual } from 'crypto';
+import { randomBytes } from 'crypto';
 import { prisma } from '../prisma';
 import { encryptSecret, decryptSecret } from '../crypto';
 import {
@@ -29,41 +29,33 @@ const REFRESH_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
 const OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
 
-function stateSecret(): string {
-  const key = process.env.ENCRYPTION_KEY;
-  if (!key) throw new Error('ENCRYPTION_KEY is not configured');
-  return key;
+// Create a single-use OAuth `state` nonce mapped to the org, with a short TTL.
+// The callback (on one canonical host) recovers the org from it WITHOUT a Clerk
+// session — the admin who starts the flow is on their org subdomain. The
+// authorize route is auth-gated, so only an authorised admin can mint one.
+// Expired rows are pruned opportunistically (OAuth connects are low-volume).
+export async function createOAuthState(orgId: string): Promise<string> {
+  const state = randomBytes(32).toString('base64url');
+  await prisma.squareOAuthState.create({
+    data: {
+      state,
+      clerkOrganizationId: orgId,
+      expiresAt: new Date(Date.now() + OAUTH_STATE_TTL_MS),
+    },
+  });
+  await prisma.squareOAuthState.deleteMany({ where: { expiresAt: { lt: new Date() } } }).catch(() => {});
+  return state;
 }
 
-// Sign the org id into the OAuth `state` so the callback can recover it WITHOUT
-// a Clerk session — the callback lives on one canonical host, but the admin who
-// starts the flow is on their org subdomain. The authorize route is auth-gated,
-// so only an authorised admin can mint a valid state; a 15-minute expiry + the
-// single-use Square `code` prevent replay.
-export function signOAuthState(orgId: string): string {
-  const payload = `${orgId}.${Date.now() + OAUTH_STATE_TTL_MS}`;
-  const sig = createHmac('sha256', stateSecret()).update(payload).digest('base64url');
-  return `${Buffer.from(payload).toString('base64url')}.${sig}`;
-}
-
-export function verifyOAuthState(state: string | null): string | null {
+// Consume an OAuth `state` nonce (single-use), returning the org id if it exists
+// and hasn't expired. The row is deleted on lookup so it can't be replayed.
+export async function consumeOAuthState(state: string | null): Promise<string | null> {
   if (!state) return null;
-  const [b64, sig] = state.split('.');
-  if (!b64 || !sig) return null;
-  let payload: string;
-  try {
-    payload = Buffer.from(b64, 'base64url').toString('utf8');
-  } catch {
-    return null;
-  }
-  const expected = createHmac('sha256', stateSecret()).update(payload).digest('base64url');
-  const got = Buffer.from(sig);
-  const want = Buffer.from(expected);
-  if (got.length !== want.length || !timingSafeEqual(got, want)) return null;
-  const [orgId, expStr] = payload.split('.');
-  const exp = Number(expStr);
-  if (!orgId || !Number.isFinite(exp) || exp < Date.now()) return null;
-  return orgId;
+  const row = await prisma.squareOAuthState.findUnique({ where: { state } });
+  if (!row) return null;
+  await prisma.squareOAuthState.delete({ where: { state } }).catch(() => {});
+  if (row.expiresAt < new Date()) return null;
+  return row.clerkOrganizationId;
 }
 
 export function buildAuthorizeUrl(state: string): string {

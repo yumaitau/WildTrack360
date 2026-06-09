@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
-import { buildAuthorizeUrl, signOAuthState } from '@/lib/square/oauth';
+import { buildAuthorizeUrl, createOAuthState } from '@/lib/square/oauth';
 
 // Kick off Square OAuth: redirect the admin to Square's authorize page. The org
 // id is carried as a SIGNED `state` so the callback (on a single canonical host)
@@ -20,5 +20,5 @@ export async function GET() {
   } catch {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  return NextResponse.redirect(buildAuthorizeUrl(signOAuthState(orgId)));
+  return NextResponse.redirect(buildAuthorizeUrl(await createOAuthState(orgId)));
 }
