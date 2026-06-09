@@ -76,8 +76,13 @@ export async function chargeSubscriptionNow(subscriptionId: string): Promise<Cha
     },
   });
 
+  // Charge first. ONLY a failure of payments.create is a real charge failure
+  // that should trigger dunning. We must never run dunning (which retries with a
+  // fresh idempotency key) after the card has actually been charged, or we risk
+  // double-charging the member.
+  const client = getSquareClient(accessToken);
+  let sqPayment;
   try {
-    const client = getSquareClient(accessToken);
     const res = await client.payments.create({
       sourceId: sub.squareCardId,
       customerId: sub.squareCustomerId,
@@ -88,51 +93,60 @@ export async function chargeSubscriptionNow(subscriptionId: string): Promise<Cha
       referenceId: payment.id,
       buyerEmailAddress: sub.donorEmail,
     });
-    const sqPayment = res.payment;
+    sqPayment = res.payment;
     if (!sqPayment?.id) throw new Error('Square did not return a payment');
-
-    const applied = await recordSuccessfulPayment({
-      localPaymentId: payment.id,
-      squarePayment: sqPayment,
-    });
-
-    // Advance from the scheduled anchor (not wall-clock) to avoid drift, but
-    // never schedule the next charge in the past if we're catching up late.
-    const base = sub.nextChargeAt > new Date() ? sub.nextChargeAt : new Date();
-    const next = computeNextCharge(base, sub.interval as 'MONTHLY' | 'ANNUAL');
-    await prisma.recurringSubscription.update({
-      where: { id: sub.id },
-      data: {
-        status: 'ACTIVE',
-        lastChargedAt: new Date(),
-        nextChargeAt: next,
-        failedAttempts: 0,
-      },
-    });
-    return {
-      status: sqPayment.status ?? 'COMPLETED',
-      paymentId: payment.id,
-      receiptNumber: applied.receiptNumber,
-    };
-  } catch (error) {
-    await prisma.payment.update({ where: { id: payment.id }, data: { status: 'FAILED' } });
+  } catch (chargeError) {
+    await prisma.payment.update({ where: { id: payment.id }, data: { status: 'FAILED' } }).catch(() => {});
     const attempts = sub.failedAttempts + 1;
     const giveUp = attempts >= MAX_FAILED_ATTEMPTS;
+    await prisma.recurringSubscription
+      .update({
+        where: { id: sub.id },
+        data: {
+          failedAttempts: attempts,
+          status: giveUp ? 'CANCELLED' : 'PAST_DUE',
+          cancelledAt: giveUp ? new Date() : sub.cancelledAt,
+          nextChargeAt: giveUp ? sub.nextChargeAt : new Date(Date.now() + RETRY_BACKOFF_MS),
+        },
+      })
+      .catch(() => {});
+    if (giveUp) {
+      await prisma.membership
+        .updateMany({
+          where: { recurringSubscriptionId: sub.id, status: { in: ['ACTIVE', 'PENDING'] } },
+          data: { status: 'CANCELLED' },
+        })
+        .catch(() => {});
+    }
+    throw chargeError;
+  }
+
+  // The card HAS been charged. Advance the cycle from the scheduled anchor (not
+  // wall-clock) so the worker can't re-charge it, then do the bookkeeping. A
+  // bookkeeping failure here is NOT a charge failure — never dun or re-charge;
+  // the payment.updated webhook reconciles the Payment + Membership idempotently.
+  const base = sub.nextChargeAt > new Date() ? sub.nextChargeAt : new Date();
+  const next = computeNextCharge(base, sub.interval as 'MONTHLY' | 'ANNUAL');
+  try {
+    const applied = await recordSuccessfulPayment({ localPaymentId: payment.id, squarePayment: sqPayment });
     await prisma.recurringSubscription.update({
       where: { id: sub.id },
-      data: {
-        failedAttempts: attempts,
-        status: giveUp ? 'CANCELLED' : 'PAST_DUE',
-        cancelledAt: giveUp ? new Date() : sub.cancelledAt,
-        nextChargeAt: giveUp ? sub.nextChargeAt : new Date(Date.now() + RETRY_BACKOFF_MS),
-      },
+      data: { status: 'ACTIVE', lastChargedAt: new Date(), nextChargeAt: next, failedAttempts: 0 },
     });
-    if (giveUp) {
-      await prisma.membership.updateMany({
-        where: { recurringSubscriptionId: sub.id, status: { in: ['ACTIVE', 'PENDING'] } },
-        data: { status: 'CANCELLED' },
-      });
-    }
-    throw error;
+    return { status: sqPayment.status ?? 'COMPLETED', paymentId: payment.id, receiptNumber: applied.receiptNumber };
+  } catch (bookkeepingError) {
+    console.error('Subscription charged but local bookkeeping failed; webhook will reconcile', {
+      subscriptionId: sub.id,
+      paymentId: payment.id,
+      error: bookkeepingError instanceof Error ? bookkeepingError.message : String(bookkeepingError),
+    });
+    // Still advance so we never re-charge a card we already charged.
+    await prisma.recurringSubscription
+      .update({
+        where: { id: sub.id },
+        data: { status: 'ACTIVE', lastChargedAt: new Date(), nextChargeAt: next, failedAttempts: 0 },
+      })
+      .catch(() => {});
+    return { status: sqPayment.status ?? 'COMPLETED', paymentId: payment.id, receiptNumber: null };
   }
 }

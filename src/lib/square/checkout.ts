@@ -81,12 +81,26 @@ export async function createDonationPayment(args: CreateDonationArgs): Promise<C
   const sqPayment = res.payment;
   if (!sqPayment?.id) throw new Error('Square did not return a payment');
 
-  const applied = await recordSuccessfulPayment({ localPaymentId: payment.id, squarePayment: sqPayment });
+  // The card HAS been charged. If inline bookkeeping fails, don't surface an
+  // error to the caller — that would prompt a retry against an already-charged
+  // donor. The payment.updated webhook reconciles the Payment + Donation by
+  // referenceId. (The Square card nonce is single-use, so a retry can't reuse
+  // this token anyway.)
+  let receiptNumber: string | null = null;
+  try {
+    const applied = await recordSuccessfulPayment({ localPaymentId: payment.id, squarePayment: sqPayment });
+    receiptNumber = applied.receiptNumber;
+  } catch (bookkeepingError) {
+    console.error('Donation charged but local bookkeeping failed; webhook will reconcile', {
+      paymentId: payment.id,
+      error: bookkeepingError instanceof Error ? bookkeepingError.message : String(bookkeepingError),
+    });
+  }
   return {
     paymentId: payment.id,
     squarePaymentId: sqPayment.id,
     status: sqPayment.status ?? 'UNKNOWN',
-    receiptNumber: applied.receiptNumber,
+    receiptNumber,
   };
 }
 

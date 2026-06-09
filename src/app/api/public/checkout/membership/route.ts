@@ -48,7 +48,8 @@ export async function POST(request: Request) {
 
     const m = body.member ?? {};
     const email = String(m.email ?? '').trim();
-    if (!EMAIL_PATTERN.test(email) || email.length > 254) {
+    // Length cap runs before the regex to bound worst-case regex runtime (ReDoS defence).
+    if (email.length > 254 || !EMAIL_PATTERN.test(email)) {
       return NextResponse.json({ error: 'A valid email is required' }, { status: 400 });
     }
     const firstName = sanitizePlainText(String(m.firstName ?? ''));
@@ -94,9 +95,18 @@ export async function POST(request: Request) {
     });
 
     // Provision portal access (best-effort — never voids the paid membership).
-    // invitePortalMember itself only sends once a SUCCEEDED payment exists, which
-    // the checkout above has just recorded inline.
-    await invitePortalMember(member.id, org.orgId);
+    // invitePortalMember already swallows its own errors, but guard the call too
+    // so an unexpected throw can't fail the request after a successful charge
+    // (which would invite a retry against the now-charged card).
+    try {
+      await invitePortalMember(member.id, org.orgId);
+    } catch (inviteError) {
+      console.error('Membership paid but portal invite failed', {
+        memberId: member.id,
+        orgId: org.orgId,
+        error: inviteError instanceof Error ? inviteError.message : String(inviteError),
+      });
+    }
 
     return NextResponse.json(result);
   } catch (error) {

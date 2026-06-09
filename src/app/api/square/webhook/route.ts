@@ -26,7 +26,9 @@ export async function POST(request: Request) {
     const result = await dispatchEvent(event);
     return NextResponse.json(result);
   } catch (error) {
-    console.error(`Square webhook dispatch failed for ${event.type}:`, error);
+    // event.type is attacker-controlled, so keep it out of the format-string
+    // position — pass it as a separate argument.
+    console.error('Square webhook dispatch failed for type:', event.type, error);
     return NextResponse.json({ error: 'Webhook dispatch failed' }, { status: 500 });
   }
 }

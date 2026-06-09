@@ -9,8 +9,19 @@ export function sanitizePlainText(
 ): string {
   const allowNewlines = opts.allowNewlines ?? false;
 
-  // Strip HTML/XML tags, then neutralise any stray angle brackets left behind.
-  let out = String(input).replace(/<[^>]*>/g, '').replace(/[<>]/g, '');
+  // Bound length first so the tag strip can't be pushed into superlinear work
+  // by a pathological input (ReDoS guard).
+  let out = String(input).slice(0, 10_000);
+  // Strip HTML/XML tags. The inner class excludes both '<' and '>' (no overlap,
+  // linear), and we loop until stable so split/nested tags like
+  // "<scr<script>ipt>" can't reconstruct a tag after a single pass. Then remove
+  // any leftover angle brackets — the result provably contains no '<' or '>'.
+  let prev: string;
+  do {
+    prev = out;
+    out = out.replace(/<[^<>]*>/g, '');
+  } while (out !== prev);
+  out = out.replace(/[<>]/g, '');
   // Normalise line endings so only \n can survive (no lone \r for headers).
   out = out.replace(/\r\n?/g, '\n');
 

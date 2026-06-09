@@ -30,7 +30,8 @@ export async function POST(request: Request) {
     if (!body.sourceId) return NextResponse.json({ error: 'sourceId required' }, { status: 400 });
 
     const donorEmail = String(body.donorEmail ?? '').trim();
-    if (!EMAIL_PATTERN.test(donorEmail) || donorEmail.length > 254) {
+    // Length cap runs before the regex to bound worst-case regex runtime (ReDoS defence).
+    if (donorEmail.length > 254 || !EMAIL_PATTERN.test(donorEmail)) {
       return NextResponse.json({ error: 'A valid email is required' }, { status: 400 });
     }
 

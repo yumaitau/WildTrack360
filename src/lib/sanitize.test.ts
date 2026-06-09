@@ -19,6 +19,13 @@ describe('sanitizePlainText', () => {
     expect(sanitizePlainText('a > b < c')).toBe('a b c');
   });
 
+  it('fully strips split/nested tags (no <script reconstructs)', () => {
+    const out = sanitizePlainText('<scr<script>ipt>alert(1)</scr</script>ipt>');
+    expect(out).not.toContain('<');
+    expect(out).not.toContain('>');
+    expect(out.toLowerCase()).not.toContain('<script');
+  });
+
   it('strips control characters', () => {
     expect(sanitizePlainText(`a${NUL}b${BEL}c`)).toBe('a b c');
   });
