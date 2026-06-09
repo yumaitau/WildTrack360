@@ -3,9 +3,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Save, Loader2, Settings, Building2 } from "lucide-react";
+import { Save, Loader2, Settings, Building2, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 import { renderAnimalIdTemplate } from "@/lib/animalId/template";
 
@@ -17,6 +18,11 @@ export function OrganisationSettings() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
+  const [legalName, setLegalName] = useState("");
+  const [abn, setAbn] = useState("");
+  const [dgrEndorsed, setDgrEndorsed] = useState(false);
+  const [donationThankYouMessage, setDonationThankYouMessage] = useState("");
+  const [membershipThankYouMessage, setMembershipThankYouMessage] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/org-settings")
@@ -30,6 +36,11 @@ export function OrganisationSettings() {
         setContactEmail(data.contactEmail ?? "");
         setContactPhone(data.contactPhone ?? "");
         setLicenseNumber(data.licenseNumber ?? "");
+        setLegalName(data.legalName ?? "");
+        setAbn(data.abn ?? "");
+        setDgrEndorsed(Boolean(data.dgrEndorsed));
+        setDonationThankYouMessage(data.donationThankYouMessage ?? "");
+        setMembershipThankYouMessage(data.membershipThankYouMessage ?? "");
       })
       .catch(() => {
         toast.error("Failed to load organisation settings");
@@ -49,7 +60,7 @@ export function OrganisationSettings() {
     [animalIdTemplate, orgShortCode]
   );
 
-  const patchSettings = async (payload: Record<string, string>) => {
+  const patchSettings = async (payload: Record<string, string | boolean>) => {
     setSaving(true);
     try {
       const res = await fetch("/api/admin/org-settings", {
@@ -68,6 +79,15 @@ export function OrganisationSettings() {
 
   const saveContactCard = () =>
     patchSettings({ contactEmail, contactPhone, licenseNumber });
+
+  const saveBillingCard = () =>
+    patchSettings({
+      legalName,
+      abn,
+      dgrEndorsed,
+      donationThankYouMessage,
+      membershipThankYouMessage,
+    });
 
   const saveAnimalIdCard = () =>
     patchSettings({ orgShortCode, animalIdTemplate });
@@ -140,6 +160,106 @@ export function OrganisationSettings() {
           </div>
 
           <Button onClick={saveContactCard} disabled={saving}>
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save Settings
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ReceiptText className="h-5 w-5" />
+            Billing &amp; Receipts
+          </CardTitle>
+          <CardDescription>
+            Your registered name and ABN appear on the payment receipts emailed
+            to donors and members after they pay.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="legalName">Registered / legal name</Label>
+            <Input
+              id="legalName"
+              value={legalName}
+              onChange={(e) => setLegalName(e.target.value)}
+              placeholder="e.g., Wildlife Rescue Inc."
+              maxLength={200}
+            />
+            <p className="text-xs text-muted-foreground">
+              The entity name shown as the issuer on receipts. Leave blank to use
+              the default organisation name.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="abn">ABN</Label>
+            <Input
+              id="abn"
+              value={abn}
+              onChange={(e) => setAbn(e.target.value)}
+              placeholder="e.g., 12 345 678 901"
+              inputMode="numeric"
+              maxLength={20}
+            />
+            <p className="text-xs text-muted-foreground">
+              11-digit Australian Business Number. Printed on every receipt.
+            </p>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={dgrEndorsed}
+              onChange={(e) => setDgrEndorsed(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Endorsed Deductible Gift Recipient (DGR)
+          </label>
+          <p className="text-xs text-muted-foreground -mt-2">
+            When endorsed, donation receipts carry the tax-deductible gift notice.
+            Membership fees are never tax deductible.
+          </p>
+
+          <div className="space-y-2 border-t pt-4">
+            <Label htmlFor="donationThankYou">Donation thank-you message</Label>
+            <Textarea
+              id="donationThankYou"
+              rows={3}
+              value={donationThankYouMessage}
+              onChange={(e) => setDonationThankYouMessage(e.target.value)}
+              placeholder="Thank you for your generous donation. Your support helps us care for injured wildlife."
+              maxLength={1000}
+            />
+            <p className="text-xs text-muted-foreground">
+              Shown at the top of the receipt emailed after a donation. Use{" "}
+              <code className="bg-muted px-1 rounded">{"{name}"}</code> to insert the
+              donor&apos;s name. Leave blank for the default message.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="membershipThankYou">Membership thank-you message</Label>
+            <Textarea
+              id="membershipThankYou"
+              rows={3}
+              value={membershipThankYouMessage}
+              onChange={(e) => setMembershipThankYouMessage(e.target.value)}
+              placeholder="Thank you for joining as a member. Welcome to our community of wildlife supporters!"
+              maxLength={1000}
+            />
+            <p className="text-xs text-muted-foreground">
+              Shown on the receipt emailed after a membership signup or renewal.
+              Supports <code className="bg-muted px-1 rounded">{"{name}"}</code>.
+            </p>
+          </div>
+
+          <Button onClick={saveBillingCard} disabled={saving}>
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

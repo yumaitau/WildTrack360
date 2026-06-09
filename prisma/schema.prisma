@@ -1040,14 +1040,22 @@ model SmsLog {
 model OrganisationSettings {
   id                  String   @id @default(cuid())
   clerkOrganisationId String   @unique @map("clerk_organisation_id")
+  // Public subdomain handle (Clerk publicMetadata.org_url), mirrored here so
+  // unauthenticated public donate/join pages can resolve subdomain → org.
+  orgUrl              String?  @unique @map("org_url")
   orgShortCode        String   @default("ORG") @map("org_short_code")
   animalIdTemplate    String   @default("{ORG_SHORT}-{YYYY}-{seq:4}") @map("animal_id_template")
+  legalName           String?  @map("legal_name")
   contactEmail        String?  @map("contact_email")
   contactPhone        String?  @map("contact_phone")
   licenseNumber       String?  @map("license_number")
   abn                 String?
   dgrEndorsed         Boolean  @default(false) @map("dgr_endorsed")
   receiptPrefix       String?  @map("receipt_prefix")
+  // Org-customisable thank-you wording on the receipt email, per payment type.
+  // Supports a {name} token replaced with the donor/member name.
+  donationThankYouMessage   String? @map("donation_thank_you_message")
+  membershipThankYouMessage String? @map("membership_thank_you_message")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -1244,8 +1252,14 @@ model Member {
   id                  String       @id @default(cuid())
   clerkOrganizationId String       @map("clerk_organization_id")
   clerkUserId         String?      @map("clerk_user_id") // null until portal claimed
+  // Portal-invite tracking. We only send a Clerk invitation after the member
+  // pays; the invitation id is kept so the org can see invite status and revoke
+  // the pending Clerk account if needed. clerkUserId is set once they activate.
+  clerkInvitationId   String?      @map("clerk_invitation_id")
+  portalInvitedAt     DateTime?    @map("portal_invited_at")
   carerProfileId      String?      @unique @map("carer_profile_id")
-  stripeCustomerId    String?      @map("stripe_customer_id")
+  squareCustomerId    String?      @map("square_customer_id")
+  squareCardId        String?      @map("square_card_id")
   email               String
   firstName           String       @map("first_name")
   lastName            String       @map("last_name")
@@ -1264,11 +1278,11 @@ model Member {
   createdAt           DateTime     @default(now()) @map("created_at")
   updatedAt           DateTime     @updatedAt @map("updated_at")
 
-  memberships        Membership[]
-  payments           Payment[]
-  donations          Donation[]
-  recurringDonations RecurringDonation[]
-  carerProfile       CarerProfile?       @relation(fields: [carerProfileId], references: [id])
+  memberships            Membership[]
+  payments               Payment[]
+  donations              Donation[]
+  recurringSubscriptions RecurringSubscription[]
+  carerProfile           CarerProfile?           @relation(fields: [carerProfileId], references: [id])
 
   @@unique([clerkOrganizationId, email])
   @@unique([clerkOrganizationId, memberNumber])
@@ -1286,8 +1300,6 @@ model MembershipTier {
   currency            String          @default("AUD")
   billingInterval     BillingInterval @map("billing_interval")
   gstHandling         GstHandling     @default(NONE) @map("gst_handling")
-  stripeProductId     String?         @map("stripe_product_id")
-  stripePriceId       String?         @map("stripe_price_id")
   active              Boolean         @default(true)
   archivedAt          DateTime?       @map("archived_at")
   createdAt           DateTime        @default(now()) @map("created_at")
@@ -1300,26 +1312,28 @@ model MembershipTier {
 }
 
 model Membership {
-  id                   String           @id @default(cuid())
-  clerkOrganizationId  String           @map("clerk_organization_id")
-  memberId             String           @map("member_id")
-  tierId               String           @map("tier_id")
-  periodStart          DateTime         @map("period_start")
-  periodEnd            DateTime         @map("period_end")
-  status               MembershipStatus
-  stripeSubscriptionId String?          @map("stripe_subscription_id")
-  paymentId            String?          @map("payment_id")
-  createdAt            DateTime         @default(now()) @map("created_at")
+  id                      String           @id @default(cuid())
+  clerkOrganizationId     String           @map("clerk_organization_id")
+  memberId                String           @map("member_id")
+  tierId                  String           @map("tier_id")
+  periodStart             DateTime         @map("period_start")
+  periodEnd               DateTime         @map("period_end")
+  status                  MembershipStatus
+  recurringSubscriptionId String?          @map("recurring_subscription_id")
+  paymentId               String?          @map("payment_id")
+  createdAt               DateTime         @default(now()) @map("created_at")
 
-  member Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  tier   MembershipTier @relation(fields: [tierId], references: [id])
+  member                Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tier                  MembershipTier         @relation(fields: [tierId], references: [id])
+  recurringSubscription RecurringSubscription? @relation(fields: [recurringSubscriptionId], references: [id])
 
   @@index([clerkOrganizationId, status])
   @@index([memberId, periodEnd])
+  @@index([recurringSubscriptionId])
   @@map("memberships")
 }
 
-// ─── Stripe Connect ─────────────────────────────────────────────────────────
+// ─── Square (app-fee / OAuth) ───────────────────────────────────────────────
 
 enum PaymentKind {
   DONATION_ONE_OFF
@@ -1335,53 +1349,60 @@ enum PaymentStatus {
   REFUNDED
 }
 
-model StripeAccount {
-  clerkOrganizationId   String    @id @map("clerk_organization_id")
-  stripeAccountId       String    @unique @map("stripe_account_id")
-  accountType           String    @default("standard") @map("account_type")
-  chargesEnabled        Boolean   @default(false) @map("charges_enabled")
-  payoutsEnabled        Boolean   @default(false) @map("payouts_enabled")
-  detailsSubmitted      Boolean   @default(false) @map("details_submitted")
-  country               String    @default("AU")
-  defaultCurrency       String    @default("AUD") @map("default_currency")
-  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
-  // Cached Stripe Product id for arbitrary-amount recurring donations. One
-  // product reused for every donor amount; a fresh Price is created per
-  // subscription so amounts can vary without polluting the product list.
-  donationProductId     String?   @map("donation_product_id")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+// Per-org Square OAuth connection. The org authorises our app against THEIR
+// Square account; we charge on their behalf with app_fee_money. Access tokens
+// expire after 30 days — refreshed lazily via the refresh token. Tokens are
+// stored encrypted at rest (AES-256-GCM, see src/lib/crypto.ts) because they
+// authorise charges on the org's account.
+model SquareConnection {
+  clerkOrganizationId String    @id @map("clerk_organization_id")
+  merchantId          String    @unique @map("merchant_id")
+  locationId          String    @map("location_id")
+  accessTokenEnc      String    @map("access_token_enc")
+  refreshTokenEnc     String    @map("refresh_token_enc")
+  tokenExpiresAt      DateTime  @map("token_expires_at")
+  scopes              String[]
+  connectedAt         DateTime  @default(now()) @map("connected_at")
+  revokedAt           DateTime? @map("revoked_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  @@map("stripe_accounts")
+  @@map("square_connections")
 }
 
-model StripeEvent {
+// Webhook idempotency marker. id = Square event_id; the dispatcher refuses to
+// re-process a seen id, writing the marker before running handlers and rolling
+// it back on handler failure so Square retries can re-enter.
+model SquareEvent {
   id          String   @id
   type        String
   processedAt DateTime @default(now()) @map("processed_at")
   payload     Json
 
   @@index([type])
-  @@map("stripe_events")
+  @@map("square_events")
 }
 
 model Payment {
-  id                    String        @id @default(cuid())
-  clerkOrganizationId   String        @map("clerk_organization_id")
-  memberId              String?       @map("member_id")
-  kind                  PaymentKind
-  stripePaymentIntentId String?       @unique @map("stripe_payment_intent_id")
-  stripeInvoiceId       String?       @unique @map("stripe_invoice_id")
-  stripeChargeId        String?       @map("stripe_charge_id")
-  amountCents           Int           @map("amount_cents")
-  applicationFeeCents   Int           @map("application_fee_cents")
-  currency              String        @default("AUD")
-  status                PaymentStatus
-  receiptUrl            String?       @map("receipt_url")
-  receiptNumber         String?       @map("receipt_number")
-  metadata              Json?
-  createdAt             DateTime      @default(now()) @map("created_at")
-  updatedAt             DateTime      @updatedAt @map("updated_at")
+  id                  String        @id @default(cuid())
+  clerkOrganizationId String        @map("clerk_organization_id")
+  memberId            String?       @map("member_id")
+  kind                PaymentKind
+  squarePaymentId     String?       @unique @map("square_payment_id")
+  squareOrderId       String?       @map("square_order_id")
+  amountCents         Int           @map("amount_cents")
+  // Our 5% application fee (app_fee_money), deposited to the platform account.
+  applicationFeeCents Int           @map("application_fee_cents")
+  // Square's processing fee, known only once the payment settles — filled in
+  // asynchronously by the payment.updated webhook.
+  processingFeeCents  Int?          @map("processing_fee_cents")
+  currency            String        @default("AUD")
+  status              PaymentStatus
+  receiptUrl          String?       @map("receipt_url")
+  receiptNumber       String?       @map("receipt_number")
+  metadata            Json?
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
 
   member    Member?    @relation(fields: [memberId], references: [id])
   donations Donation[]
@@ -1393,23 +1414,23 @@ model Payment {
 }
 
 model Donation {
-  id                  String   @id @default(cuid())
-  clerkOrganizationId String   @map("clerk_organization_id")
-  memberId            String?  @map("member_id")
-  donorEmail          String   @map("donor_email")
-  donorName           String?  @map("donor_name")
-  amountCents         Int      @map("amount_cents")
-  feeCents            Int      @map("fee_cents")
-  currency            String   @default("AUD")
-  isAnonymous         Boolean  @default(false) @map("is_anonymous")
-  message             String?
-  paymentId           String   @map("payment_id")
-  recurringDonationId String?  @map("recurring_donation_id")
-  createdAt           DateTime @default(now()) @map("created_at")
+  id                      String   @id @default(cuid())
+  clerkOrganizationId     String   @map("clerk_organization_id")
+  memberId                String?  @map("member_id")
+  donorEmail              String   @map("donor_email")
+  donorName               String?  @map("donor_name")
+  amountCents             Int      @map("amount_cents")
+  feeCents                Int      @map("fee_cents")
+  currency                String   @default("AUD")
+  isAnonymous             Boolean  @default(false) @map("is_anonymous")
+  message                 String?
+  paymentId               String   @map("payment_id")
+  recurringSubscriptionId String?  @map("recurring_subscription_id")
+  createdAt               DateTime @default(now()) @map("created_at")
 
-  member            Member?            @relation(fields: [memberId], references: [id])
-  payment           Payment            @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  recurringDonation RecurringDonation? @relation(fields: [recurringDonationId], references: [id])
+  member                Member?                @relation(fields: [memberId], references: [id])
+  payment               Payment                @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  recurringSubscription RecurringSubscription? @relation(fields: [recurringSubscriptionId], references: [id])
 
   @@index([clerkOrganizationId, createdAt])
   @@index([memberId])
@@ -1423,33 +1444,47 @@ enum SubStatus {
   CANCELLED
 }
 
-model RecurringDonation {
-  id                   String          @id @default(cuid())
-  clerkOrganizationId  String          @map("clerk_organization_id")
-  memberId             String?         @map("member_id")
-  donorEmail           String          @map("donor_email")
-  donorName            String?         @map("donor_name")
-  amountCents          Int             @map("amount_cents")
-  currency             String          @default("AUD")
-  interval             BillingInterval
-  status               SubStatus
-  // Nullable: the row is created before the Stripe call so the cuid can
-  // serve as Stripe's idempotency key; the subscription id is patched in
-  // once Stripe returns. NULL means the local pending row was written but
-  // the Stripe call did not finish — webhook handlers tolerate this state.
-  stripeSubscriptionId String?         @unique @map("stripe_subscription_id")
-  stripeCustomerId     String          @map("stripe_customer_id")
-  startedAt            DateTime        @map("started_at")
-  cancelledAt          DateTime?       @map("cancelled_at")
-  createdAt            DateTime        @default(now()) @map("created_at")
-  updatedAt            DateTime        @updatedAt @map("updated_at")
+enum SubscriptionKind {
+  DONATION
+  MEMBERSHIP
+}
 
-  member    Member?    @relation(fields: [memberId], references: [id])
-  donations Donation[]
+// A self-billed recurring charge. Square's native Subscriptions API can't
+// attach app_fee_money, so we vault a card-on-file on the org's Square account
+// and our own BullMQ worker charges it each cycle via CreatePayment +
+// app_fee_money. `nextChargeAt` is the billing anchor the worker scans;
+// `failedAttempts` drives dunning (PAST_DUE → CANCELLED after N misses).
+model RecurringSubscription {
+  id                  String           @id @default(cuid())
+  clerkOrganizationId String           @map("clerk_organization_id")
+  memberId            String?          @map("member_id")
+  kind                SubscriptionKind
+  tierId              String?          @map("tier_id")
+  donorEmail          String           @map("donor_email")
+  donorName           String?          @map("donor_name")
+  amountCents         Int              @map("amount_cents")
+  currency            String           @default("AUD")
+  interval            BillingInterval
+  status              SubStatus
+  isAnonymous         Boolean          @default(false) @map("is_anonymous")
+  squareCustomerId    String           @map("square_customer_id")
+  squareCardId        String           @map("square_card_id")
+  nextChargeAt        DateTime         @map("next_charge_at")
+  lastChargedAt       DateTime?        @map("last_charged_at")
+  failedAttempts      Int              @default(0) @map("failed_attempts")
+  startedAt           DateTime         @map("started_at")
+  cancelledAt         DateTime?        @map("cancelled_at")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  member      Member?      @relation(fields: [memberId], references: [id])
+  donations   Donation[]
+  memberships Membership[]
 
   @@index([clerkOrganizationId, status])
   @@index([memberId])
-  @@map("recurring_donations")
+  @@index([status, nextChargeAt])
+  @@map("recurring_subscriptions")
 }
 
 model ReceiptSequence {

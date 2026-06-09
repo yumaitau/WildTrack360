@@ -42,17 +42,10 @@ export async function GET(request: Request) {
       clerkOrganizationId: orgId,
       ...(statusFilter ? { status: statusFilter } : {}),
       ...(kindFilter ? { kind: kindFilter } : {}),
-      // Hide the pending "subscription-anchor" Payment rows that exist only
-      // to serve as a Stripe idempotency key during MEMBERSHIP_RECURRING
-      // checkout. They never become chargeable in their own right; the actual
-      // payments arrive later via invoice.payment_succeeded with their own
-      // stripe_invoice_id. Showing them in the ledger as "Requires action"
-      // forever would just be noise.
-      NOT: {
-        kind: 'MEMBERSHIP_RECURRING',
-        status: 'REQUIRES_ACTION',
-        stripeInvoiceId: null,
-      },
+      // Hide payment rows that never completed a charge — a failed inline
+      // Square charge leaves a REQUIRES_ACTION row behind. Successful, failed
+      // (settled) and refunded rows all carry a squarePaymentId.
+      NOT: { status: 'REQUIRES_ACTION', squarePaymentId: null },
     },
     include: {
       member: { select: { id: true, firstName: true, lastName: true, email: true } },

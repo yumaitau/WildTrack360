@@ -1,4 +1,5 @@
 import { MembershipPicker } from './membership-picker';
+import { ManageSubscriptions } from './manage-subscriptions';
 
 export default function MembershipPickerPage() {
   return (
@@ -9,6 +10,7 @@ export default function MembershipPickerPage() {
           Choose a membership tier. One-off tiers grant a year of membership; monthly and annual tiers renew automatically until you cancel.
         </p>
       </div>
+      <ManageSubscriptions />
       <MembershipPicker />
     </div>
   );

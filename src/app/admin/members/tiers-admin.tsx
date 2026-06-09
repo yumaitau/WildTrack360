@@ -109,7 +109,7 @@ export function TiersAdmin() {
         <div>
           <CardTitle>Membership tiers</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Pricing tiers used for membership checkout. Recurring tiers will sync to Stripe in Phase 4.
+            Pricing tiers used for membership checkout. Recurring tiers are billed automatically each cycle.
           </p>
         </div>
         <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>

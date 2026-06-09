@@ -30,7 +30,15 @@ interface Member {
   memberNumber: string | null;
   status: 'ACTIVE' | 'LAPSED' | 'CANCELLED' | 'DECEASED';
   joinedAt: string;
+  clerkUserId: string | null;
+  clerkInvitationId: string | null;
   customFieldsJson?: Record<string, unknown> | null;
+}
+
+function portalState(m: Member): { label: string; className: string } {
+  if (m.clerkUserId) return { label: 'Active', className: 'bg-emerald-500/10 text-emerald-700 border-emerald-200' };
+  if (m.clerkInvitationId) return { label: 'Invited', className: 'bg-amber-500/10 text-amber-700 border-amber-200' };
+  return { label: '—', className: 'bg-muted text-muted-foreground' };
 }
 
 const STATUS_COLORS: Record<Member['status'], string> = {
@@ -118,6 +126,15 @@ export function MembersAdmin() {
     }
   }
 
+  async function handleInvite(member: Member) {
+    try {
+      await apiJson(`/api/members/${member.id}/invite`, { method: 'POST' });
+      toast.success(`Portal invitation sent to ${member.email}`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
   const filtered = useMemo(() => members, [members]);
 
   return (
@@ -195,6 +212,7 @@ export function MembersAdmin() {
                         <TableHead>Member #</TableHead>
                         <TableHead>Location</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Portal</TableHead>
                         <TableHead>Joined</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -202,13 +220,13 @@ export function MembersAdmin() {
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center text-muted-foreground">
                             Loading…
                           </TableCell>
                         </TableRow>
                       ) : filtered.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center text-muted-foreground">
                             No members yet. Create one to get started.
                           </TableCell>
                         </TableRow>
@@ -228,6 +246,11 @@ export function MembersAdmin() {
                                 {m.status}
                               </Badge>
                             </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={portalState(m).className}>
+                                {portalState(m).label}
+                              </Badge>
+                            </TableCell>
                             <TableCell>{new Date(m.joinedAt).toLocaleDateString('en-AU')}</TableCell>
                             <TableCell className="text-right space-x-2">
                               <Button
@@ -244,6 +267,13 @@ export function MembersAdmin() {
                                 }}
                               >
                                 Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleInvite(m)}
+                              >
+                                Invite
                               </Button>
                               <Button
                                 variant="ghost"

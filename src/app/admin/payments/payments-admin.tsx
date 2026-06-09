@@ -17,6 +17,7 @@ interface PaymentRow {
   status: string;
   amountCents: number;
   applicationFeeCents: number;
+  processingFeeCents: number | null;
   currency: string;
   receiptNumber: string | null;
   createdAt: string;
@@ -71,7 +72,7 @@ export function PaymentsAdmin() {
           <div className="flex gap-2">
             <Link href="/admin/payments/settings">
               <Button variant="outline">
-                <Settings className="h-4 w-4 mr-2" /> Stripe settings
+                <Settings className="h-4 w-4 mr-2" /> Square settings
               </Button>
             </Link>
             <Link href="/admin">
@@ -89,7 +90,8 @@ export function PaymentsAdmin() {
             <div>
               <CardTitle>Payment ledger</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                One row per Stripe PaymentIntent. The platform fee (5%) is captured on the platform; the rest settles to your Stripe account.
+                One row per Square payment. The platform fee (5%) is collected via Square&apos;s app
+                fee; the rest settles to your Square account, less Square&apos;s processing fee.
               </p>
             </div>
             <Button variant="ghost" size="sm" onClick={load}>
@@ -106,6 +108,7 @@ export function PaymentsAdmin() {
                     <TableHead>Donor / Member</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="text-right">Platform fee</TableHead>
+                    <TableHead className="text-right">Square fee</TableHead>
                     <TableHead>Receipt #</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead></TableHead>
@@ -114,12 +117,12 @@ export function PaymentsAdmin() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">Loading…</TableCell>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground">Loading…</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground">
-                        No payments yet. Once Stripe Connect is set up, donations and membership payments will appear here.
+                      <TableCell colSpan={9} className="text-center text-muted-foreground">
+                        No payments yet. Once Square is connected, donations and membership payments will appear here.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -139,6 +142,11 @@ export function PaymentsAdmin() {
                           </TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">
                             {formatAmount(r.applicationFeeCents, r.currency)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">
+                            {r.processingFeeCents == null
+                              ? '—'
+                              : formatAmount(r.processingFeeCents, r.currency)}
                           </TableCell>
                           <TableCell className="font-mono text-xs">{r.receiptNumber ?? '—'}</TableCell>
                           <TableCell>

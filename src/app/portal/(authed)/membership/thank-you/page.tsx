@@ -15,7 +15,7 @@ export default function MembershipThankYouPage() {
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground text-center">
           <p>
-            Thanks for joining. Your membership will appear on your dashboard once Stripe confirms the payment.
+            Thanks for joining. Your membership will appear on your dashboard once your payment is confirmed.
           </p>
           <Link href="/portal">
             <Button variant="outline" className="w-full">Back to dashboard</Button>

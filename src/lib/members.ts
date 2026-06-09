@@ -134,6 +134,24 @@ export async function createMember(orgId: string, body: Record<string, unknown>)
   });
 }
 
+// Find an existing (non-archived) member by org + email, else create one. Used
+// by the public Join flow so repeated signups with the same email reuse the
+// same Member record rather than fanning out duplicates.
+export async function findOrCreateMember(orgId: string, body: Record<string, unknown>) {
+  const email = typeof body.email === 'string' ? body.email.trim() : '';
+  if (email) {
+    const existing = await prisma.member.findFirst({
+      where: {
+        clerkOrganizationId: orgId,
+        email: { equals: email, mode: 'insensitive' },
+        archivedAt: null,
+      },
+    });
+    if (existing) return existing;
+  }
+  return createMember(orgId, body);
+}
+
 export async function updateMember(
   id: string,
   orgId: string,
