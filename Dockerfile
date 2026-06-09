@@ -5,7 +5,7 @@ ARG NODE_VERSION=lts-slim
 # Stage 1: Build Next.js application
 # ============================================
 
-FROM node:${NODE_VERSION} as build-stage
+FROM node:${NODE_VERSION} AS build-stage
 
 # Set working directory
 WORKDIR /usr/src/app
@@ -45,9 +45,11 @@ ENV NEXT_PUBLIC_GOOGLE_MAPS_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_KEY
 ENV NEXT_PUBLIC_ROOT_DOMAIN=$NEXT_PUBLIC_ROOT_DOMAIN
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV NEXT_PUBLIC_SENTRY_ORG=$NEXT_PUBLIC_SENTRY_ORG
-ENV NEXT_PUBLIC_SENTRY_PROJECT=$NEXT_PUBLIC_ENTRY_PROJECT
+ENV NEXT_PUBLIC_SENTRY_PROJECT=$NEXT_PUBLIC_SENTRY_PROJECT
 
-# Build the application
+# Build the application. Raise Node's heap — `next build` exceeds the default
+# ~2GB old-space limit on this codebase and OOMs (exit 134) otherwise.
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # ============================================

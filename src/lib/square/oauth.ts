@@ -1,5 +1,6 @@
 'server-only';
 
+import { randomBytes } from 'crypto';
 import { prisma } from '../prisma';
 import { encryptSecret, decryptSecret } from '../crypto';
 import {
@@ -25,6 +26,37 @@ export const SQUARE_OAUTH_SCOPES = [
 // Refresh the access token once it's within this window of expiry. Square
 // access tokens last 30 days; refresh tokens (code flow) don't expire.
 const REFRESH_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
+
+const OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
+
+// Create a single-use OAuth `state` nonce mapped to the org, with a short TTL.
+// The callback (on one canonical host) recovers the org from it WITHOUT a Clerk
+// session — the admin who starts the flow is on their org subdomain. The
+// authorize route is auth-gated, so only an authorised admin can mint one.
+// Expired rows are pruned opportunistically (OAuth connects are low-volume).
+export async function createOAuthState(orgId: string): Promise<string> {
+  const state = randomBytes(32).toString('base64url');
+  await prisma.squareOAuthState.create({
+    data: {
+      state,
+      clerkOrganizationId: orgId,
+      expiresAt: new Date(Date.now() + OAUTH_STATE_TTL_MS),
+    },
+  });
+  await prisma.squareOAuthState.deleteMany({ where: { expiresAt: { lt: new Date() } } }).catch(() => {});
+  return state;
+}
+
+// Consume an OAuth `state` nonce (single-use), returning the org id if it exists
+// and hasn't expired. The row is deleted on lookup so it can't be replayed.
+export async function consumeOAuthState(state: string | null): Promise<string | null> {
+  if (!state) return null;
+  const row = await prisma.squareOAuthState.findUnique({ where: { state } });
+  if (!row) return null;
+  await prisma.squareOAuthState.delete({ where: { state } }).catch(() => {});
+  if (row.expiresAt < new Date()) return null;
+  return row.clerkOrganizationId;
+}
 
 export function buildAuthorizeUrl(state: string): string {
   const params = new URLSearchParams({

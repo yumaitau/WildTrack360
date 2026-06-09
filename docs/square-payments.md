@@ -40,6 +40,12 @@ Generate an encryption key: `node -e "console.log(require('crypto').randomBytes(
 
 ## Square Developer Dashboard setup
 
+There is **one** OAuth redirect and **one** webhook per Square *application*, so both use a single
+**canonical host** (`<host>` below = your root domain or a dedicated host — **not** a tenant
+subdomain). Orgs start the OAuth flow from their own subdomain, but the callback recovers the org from
+a signed `state`, and the webhook resolves the org from the event payload + HMAC signature — so
+neither needs to be per-org.
+
 1. Create an application; accept the PAAF PDS/FSG (Australia).
 2. **OAuth** → set the redirect URL to `SQUARE_OAUTH_REDIRECT_URL`
    (`https://<host>/api/square/oauth/callback`).

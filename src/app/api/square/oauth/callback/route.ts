@@ -1,32 +1,31 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { requirePermission } from '@/lib/rbac';
 import { logAudit } from '@/lib/audit';
-import { exchangeCodeAndStore } from '@/lib/square/oauth';
+import { exchangeCodeAndStore, consumeOAuthState } from '@/lib/square/oauth';
 import { resolveBaseUrl } from '@/lib/square/config';
 
-// Square redirects here after the seller authorises (or declines). We verify
-// the session org matches the `state`, exchange the code for tokens, persist
-// the connection, then bounce back to the payments settings page.
+// Square redirects here (a single canonical host) after the seller authorises.
+// The org is recovered from the signed `state` — minted by the auth-gated
+// authorize route — so this works regardless of which org subdomain started the
+// flow and needs no Clerk session here. Exchange the code, persist the
+// connection, bounce back to the payments settings page.
 export async function GET(request: Request) {
-  const base = resolveBaseUrl();
-  const settings = `${base}/admin/payments/settings`;
-  const { userId, orgId } = await auth();
-  if (!userId || !orgId) return NextResponse.redirect(`${settings}?error=auth`);
-
+  const settings = `${resolveBaseUrl()}/admin/payments/settings`;
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
-  const state = url.searchParams.get('state');
   const sqError = url.searchParams.get('error');
 
   if (sqError || !code) return NextResponse.redirect(`${settings}?error=${sqError ?? 'denied'}`);
-  if (state !== orgId) return NextResponse.redirect(`${settings}?error=state`);
+
+  const orgId = await consumeOAuthState(url.searchParams.get('state'));
+  if (!orgId) return NextResponse.redirect(`${settings}?error=state`);
 
   try {
-    await requirePermission(userId, orgId, 'settings:manage');
     await exchangeCodeAndStore(orgId, code);
+    // userId is best-effort (session may not be present on this host).
+    const { userId } = await auth();
     logAudit({
-      userId,
+      userId: userId ?? 'square-oauth',
       orgId,
       action: 'CREATE',
       entity: 'SquareConnection',

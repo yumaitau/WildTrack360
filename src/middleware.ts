@@ -27,9 +27,11 @@ const isPublicRoute = createRouteMatcher([
   "/donate(.*)",
   "/join(.*)",
   "/api/public/(.*)",
-  // Square webhook + OAuth callback are callback-only; signature / state
-  // verification inside the handlers is the gate, not Clerk auth.
+  // Square webhook + OAuth callback are callback-only on a single canonical
+  // host; HMAC signature / signed-state verification inside the handlers is the
+  // gate, not Clerk auth (the caller arrives from Square without our session).
   "/api/square/webhook(.*)",
+  "/api/square/oauth/callback(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
