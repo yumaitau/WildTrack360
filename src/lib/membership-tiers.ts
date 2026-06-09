@@ -41,8 +41,8 @@ function pick(body: Record<string, unknown>): Partial<TierInput> {
 
 export async function createTier(orgId: string, body: Record<string, unknown>) {
   const data = pick(body);
-  if (!data.name || data.amountCents === undefined || !data.billingInterval) {
-    throw new Error('name, amountCents and billingInterval are required');
+  if (!data.name || data.amountCents === undefined) {
+    throw new Error('name and amountCents are required');
   }
   if (data.amountCents < 0) throw new Error('amountCents must be non-negative');
 
@@ -53,7 +53,9 @@ export async function createTier(orgId: string, body: Record<string, unknown>) {
       description: data.description ?? null,
       amountCents: data.amountCents,
       currency: data.currency ?? 'AUD',
-      billingInterval: data.billingInterval,
+      // Memberships are always an annual commitment that auto-renews — the
+      // billing interval is fixed, not chosen per tier.
+      billingInterval: 'ANNUAL',
       gstHandling: data.gstHandling ?? 'NONE',
       active: data.active ?? true,
     },
@@ -70,7 +72,7 @@ export async function updateTier(id: string, orgId: string, body: Record<string,
     update.amountCents = data.amountCents;
   }
   if (data.currency !== undefined) update.currency = data.currency;
-  if (data.billingInterval !== undefined) update.billingInterval = data.billingInterval;
+  // billingInterval is intentionally not updatable — memberships are always ANNUAL.
   if (data.gstHandling !== undefined) update.gstHandling = data.gstHandling;
   if (data.active !== undefined) update.active = data.active;
 

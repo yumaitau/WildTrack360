@@ -1,6 +1,8 @@
 import {
+  formatAbn,
   formatAmountCents,
   receiptKindLabel,
+  resolveThankYouMessage,
   type ReceiptData,
 } from '@/lib/receipts';
 
@@ -11,6 +13,7 @@ import {
 export function ReceiptView({ data }: { data: ReceiptData }) {
   const { payment, org, donorEmail, donorName, taxDeductible } = data;
   const issuedAt = new Date(payment.createdAt);
+  const thankYou = resolveThankYouMessage(data.thankYouMessage, donorName);
 
   return (
     <div className="receipt mx-auto max-w-2xl bg-white text-black p-10 print:p-0">
@@ -30,7 +33,7 @@ export function ReceiptView({ data }: { data: ReceiptData }) {
       <header className="border-b pb-4 mb-6">
         <h1>{org.name}</h1>
         <p className="text-sm text-gray-600 mt-1">
-          {org.abn ? `ABN ${org.abn}` : 'ABN not on file'}
+          {org.abn ? `ABN ${formatAbn(org.abn)}` : 'ABN not on file'}
           {org.dgrEndorsed ? ' · Endorsed Deductible Gift Recipient' : ''}
         </p>
         {(org.contactEmail || org.contactPhone) && (
@@ -39,6 +42,8 @@ export function ReceiptView({ data }: { data: ReceiptData }) {
           </p>
         )}
       </header>
+
+      {thankYou && <p className="text-sm mb-6">{thankYou}</p>}
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div>

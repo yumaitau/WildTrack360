@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getUserRole } from "@/lib/rbac";
+import { sanitizePlainText } from "@/lib/sanitize";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -49,8 +50,18 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  const { orgShortCode, animalIdTemplate, contactEmail, contactPhone, licenseNumber } =
-    body as Record<string, unknown>;
+  const {
+    orgShortCode,
+    animalIdTemplate,
+    contactEmail,
+    contactPhone,
+    licenseNumber,
+    legalName,
+    abn,
+    dgrEndorsed,
+    donationThankYouMessage,
+    membershipThankYouMessage,
+  } = body as Record<string, unknown>;
 
   if (orgShortCode != null) {
     if (typeof orgShortCode !== "string" || orgShortCode.trim().length === 0 || orgShortCode.length > 20) {
@@ -86,12 +97,55 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Licence number is too long" }, { status: 400 });
   }
 
-  const data: Record<string, string | null> = {};
+  // Legal/registered name shown as the issuer on payment receipts.
+  const normalisedLegalName = normaliseOptional(legalName, "legalName");
+  if (normalisedLegalName instanceof Response) return normalisedLegalName;
+  if (normalisedLegalName.value && normalisedLegalName.value.length > 200) {
+    return NextResponse.json({ error: "Legal name is too long" }, { status: 400 });
+  }
+
+  // ABN: 11 digits, spaces allowed for readability. Stored as entered (trimmed).
+  const normalisedAbn = normaliseOptional(abn, "abn");
+  if (normalisedAbn instanceof Response) return normalisedAbn;
+  if (normalisedAbn.value && !/^\d{11}$/.test(normalisedAbn.value.replace(/\s/g, ""))) {
+    return NextResponse.json({ error: "ABN must be 11 digits" }, { status: 400 });
+  }
+
+  if (dgrEndorsed != null && typeof dgrEndorsed !== "boolean") {
+    return NextResponse.json({ error: "Invalid DGR flag" }, { status: 400 });
+  }
+
+  // Custom thank-you wording on receipt emails (optional, clearable).
+  const normalisedDonationMsg = normaliseOptional(donationThankYouMessage, "donationThankYouMessage");
+  if (normalisedDonationMsg instanceof Response) return normalisedDonationMsg;
+  if (normalisedDonationMsg.value && normalisedDonationMsg.value.length > 1000) {
+    return NextResponse.json({ error: "Donation message is too long" }, { status: 400 });
+  }
+
+  const normalisedMembershipMsg = normaliseOptional(membershipThankYouMessage, "membershipThankYouMessage");
+  if (normalisedMembershipMsg instanceof Response) return normalisedMembershipMsg;
+  if (normalisedMembershipMsg.value && normalisedMembershipMsg.value.length > 1000) {
+    return NextResponse.json({ error: "Membership message is too long" }, { status: 400 });
+  }
+
+  // Strip HTML / control chars from free text that gets rendered into receipt
+  // emails. clean() preserves null (used to clear a field).
+  const clean = (v: string | null, allowNewlines = false) =>
+    v == null ? null : sanitizePlainText(v, { allowNewlines }) || null;
+
+  const data: Record<string, string | boolean | null> = {};
   if (typeof orgShortCode === "string") data.orgShortCode = orgShortCode.trim();
   if (typeof animalIdTemplate === "string") data.animalIdTemplate = animalIdTemplate.trim();
-  if (normalisedEmail.provided) data.contactEmail = normalisedEmail.value;
-  if (normalisedPhone.provided) data.contactPhone = normalisedPhone.value;
-  if (normalisedLicense.provided) data.licenseNumber = normalisedLicense.value;
+  if (normalisedEmail.provided) data.contactEmail = clean(normalisedEmail.value);
+  if (normalisedPhone.provided) data.contactPhone = clean(normalisedPhone.value);
+  if (normalisedLicense.provided) data.licenseNumber = clean(normalisedLicense.value);
+  if (normalisedLegalName.provided) data.legalName = clean(normalisedLegalName.value);
+  if (normalisedAbn.provided) data.abn = normalisedAbn.value;
+  if (typeof dgrEndorsed === "boolean") data.dgrEndorsed = dgrEndorsed;
+  if (normalisedDonationMsg.provided)
+    data.donationThankYouMessage = clean(normalisedDonationMsg.value, true);
+  if (normalisedMembershipMsg.provided)
+    data.membershipThankYouMessage = clean(normalisedMembershipMsg.value, true);
 
   const settings = await prisma.organisationSettings.upsert({
     where: { clerkOrganisationId: orgId },

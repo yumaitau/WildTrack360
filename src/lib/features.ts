@@ -7,7 +7,7 @@ import { prisma } from './prisma';
 // All gateable features. Keep this list tight — each value here represents a
 // product surface that ships dark for new orgs and is flipped on per-org via
 // the WildTrack360-Admin app. MEMBERSHIP_PLATFORM wraps the entire member +
-// donation + Stripe Connect bundle as a single rollout switch.
+// donation + Square payments bundle as a single rollout switch.
 export const FEATURES = ['MEMBERSHIP_PLATFORM'] as const;
 export type Feature = (typeof FEATURES)[number];
 

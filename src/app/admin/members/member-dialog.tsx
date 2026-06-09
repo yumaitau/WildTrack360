@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { DynamicFormFields } from '@/components/forms/dynamic-form-fields';
+import { AddressAutocomplete, type AddressDetails } from '@/components/address-autocomplete';
 import type { FormField } from '@/lib/forms/form-templates';
 
 export interface MemberFormValue {
@@ -56,6 +57,7 @@ export function MemberDialog({ open, onOpenChange, initial, onSubmit }: Props) {
   const [values, setValues] = useState<MemberFormValue>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [customFieldsTemplate, setCustomFieldsTemplate] = useState<FormField[]>([]);
+  const [addressSearch, setAddressSearch] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -82,6 +84,7 @@ export function MemberDialog({ open, onOpenChange, initial, onSubmit }: Props) {
         country: initial?.country ?? 'AU',
         customFields: seededCustom,
       });
+      setAddressSearch(initial?.addressLine1 ?? '');
     }
   }, [open, initial]);
 
@@ -139,6 +142,18 @@ export function MemberDialog({ open, onOpenChange, initial, onSubmit }: Props) {
 
           <div className="space-y-2">
             <Label>Address</Label>
+            <AddressAutocomplete
+              value={addressSearch}
+              onChange={setAddressSearch}
+              onSelect={(details: AddressDetails) => {
+                set('addressLine1', details.streetAddress);
+                set('suburb', details.suburb);
+                set('state', details.state);
+                set('postcode', details.postcode);
+                setAddressSearch(details.formattedAddress);
+              }}
+              placeholder="Start typing an address..."
+            />
             <Input
               placeholder="Address line 1"
               value={values.addressLine1 ?? ''}

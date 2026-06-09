@@ -75,7 +75,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
   {
     label: 'Payments & Donations',
-    description: 'View the payment ledger, connect Stripe, and manage donations and membership fees.',
+    description: 'View the payment ledger, connect Square, and manage donations and membership fees.',
     icon: <CreditCard className="h-6 w-6" />,
     tab: 'payments',
     adminOnly: true,

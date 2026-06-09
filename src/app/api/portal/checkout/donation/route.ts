@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPortalMember } from '@/lib/portal';
 import { gateFeature } from '@/lib/features';
-import { createDonationPayment } from '@/lib/stripe/checkout';
+import { createDonationPayment } from '@/lib/square/checkout';
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -18,9 +18,14 @@ export async function POST(request: Request) {
       amountCents?: number;
       message?: string | null;
       isAnonymous?: boolean;
+      sourceId?: string;
+      verificationToken?: string | null;
     };
     if (typeof body.amountCents !== 'number') {
       return NextResponse.json({ error: 'amountCents required' }, { status: 400 });
+    }
+    if (!body.sourceId) {
+      return NextResponse.json({ error: 'sourceId required' }, { status: 400 });
     }
     const result = await createDonationPayment({
       orgId: session.member.clerkOrganizationId,
@@ -30,6 +35,8 @@ export async function POST(request: Request) {
       message: body.message ?? null,
       isAnonymous: Boolean(body.isAnonymous),
       memberId: session.member.id,
+      sourceId: body.sourceId,
+      verificationToken: body.verificationToken ?? null,
     });
     return NextResponse.json(result);
   } catch (error) {

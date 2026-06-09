@@ -21,9 +21,15 @@ const isPublicRoute = createRouteMatcher([
   // run their own auth + membership checks.
   "/portal(.*)",
   "/api/portal(.*)",
-  // Stripe webhook is callback-only; signature verification inside the handler
-  // is the gate, not Clerk auth.
-  "/api/stripe/webhook(.*)",
+  // Public, no-login donate / become-a-member pages (embeddable from org
+  // websites). The handlers resolve the org from the subdomain and rely on
+  // Square + server-side amount validation, not Clerk auth.
+  "/donate(.*)",
+  "/join(.*)",
+  "/api/public/(.*)",
+  // Square webhook + OAuth callback are callback-only; signature / state
+  // verification inside the handlers is the gate, not Clerk auth.
+  "/api/square/webhook(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

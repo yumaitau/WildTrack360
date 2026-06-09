@@ -15,7 +15,7 @@ export default function ThankYouPage() {
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground text-center">
           <p>
-            Your donation has been received. Stripe will email you a receipt and your wildlife organisation has been notified.
+            Your donation has been received. You&apos;ll receive a receipt by email and your wildlife organisation has been notified.
           </p>
           <Link href="/portal">
             <Button variant="outline" className="w-full">Back to dashboard</Button>

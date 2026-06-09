@@ -69,7 +69,8 @@ export function TierDialog({ open, onOpenChange, initial, onSubmit }: Props) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await onSubmit(values);
+      // Memberships are always an annual auto-renewing commitment.
+      await onSubmit({ ...values, billingInterval: 'ANNUAL' });
     } finally {
       setSubmitting(false);
     }
@@ -113,16 +114,10 @@ export function TierDialog({ open, onOpenChange, initial, onSubmit }: Props) {
               <Input value={values.currency} onChange={(e) => set('currency', e.target.value.toUpperCase())} />
             </div>
             <div className="space-y-1.5">
-              <Label>Billing interval</Label>
-              <Select value={values.billingInterval} onValueChange={(v) => set('billingInterval', v as TierFormValue['billingInterval'])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ONE_OFF">One-off</SelectItem>
-                  <SelectItem value="MONTHLY">Monthly</SelectItem>
-                  <SelectItem value="ANNUAL">Annual</SelectItem>
-                  <SelectItem value="LIFETIME">Lifetime</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Billing</Label>
+              <div className="flex h-9 items-center rounded-md border bg-muted/40 px-3 text-sm text-muted-foreground">
+                Annual — auto-renews
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>GST handling</Label>

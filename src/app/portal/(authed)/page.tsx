@@ -54,7 +54,7 @@ export default async function PortalDashboardPage() {
               </>
             ) : (
               <p className="text-muted-foreground">
-                You don&apos;t have an active membership tier yet. Membership purchase will be available once Stripe Connect is enabled for your organisation.
+                You don&apos;t have an active membership tier yet. Membership purchase will be available once your organisation has connected Square.
               </p>
             )}
             {member.memberNumber && (

@@ -1,9 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { requirePermission } from '@/lib/rbac';
-import { StripeSettingsAdmin } from './stripe-settings-admin';
+import { SquareSettingsAdmin } from './square-settings-admin';
 
-export default async function StripeSettingsPage() {
+export default async function SquareSettingsPage() {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) redirect('/sign-in');
 
@@ -13,5 +13,5 @@ export default async function StripeSettingsPage() {
     redirect('/');
   }
 
-  return <StripeSettingsAdmin />;
+  return <SquareSettingsAdmin />;
 }

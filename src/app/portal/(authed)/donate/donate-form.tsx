@@ -1,23 +1,30 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { StripeCheckout } from '@/components/portal/stripe-checkout';
+import { SquareCheckout } from '@/components/portal/square-checkout';
 
 const QUICK_AMOUNTS = [25, 50, 100, 250];
 
+interface SquareConfig {
+  applicationId: string;
+  locationId: string;
+}
+
 export function DonateForm() {
+  const router = useRouter();
   const [amountStr, setAmountStr] = useState('50');
   const [message, setMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [recurring, setRecurring] = useState<'NONE' | 'MONTHLY' | 'ANNUAL'>('NONE');
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [config, setConfig] = useState<SquareConfig | null>(null);
+  const [preparing, setPreparing] = useState(false);
 
   const amountCents = useMemo(() => {
     const n = Number.parseFloat(amountStr);
@@ -29,38 +36,30 @@ export function DonateForm() {
       toast.error('Minimum donation is $2');
       return;
     }
-    setCreating(true);
+    setPreparing(true);
     try {
-      let endpoint = '/api/portal/checkout/donation';
-      let body: Record<string, unknown> = {
-        amountCents,
-        message: message || null,
-        isAnonymous,
-      };
-      if (recurring !== 'NONE') {
-        endpoint = '/api/portal/checkout/recurring-donation';
-        body = { amountCents, interval: recurring, isAnonymous };
-      }
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch('/api/portal/square-config');
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? 'Failed to start checkout');
+        throw new Error(data.error ?? 'Payments are not available right now');
       }
-      const { clientSecret: secret } = (await res.json()) as { clientSecret: string };
-      setClientSecret(secret);
+      setConfig((await res.json()) as SquareConfig);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
-      setCreating(false);
+      setPreparing(false);
     }
   }
 
-  if (clientSecret) {
+  if (config) {
+    const endpoint =
+      recurring === 'NONE'
+        ? '/api/portal/checkout/donation'
+        : '/api/portal/checkout/recurring-donation';
+    const payload =
+      recurring === 'NONE'
+        ? { amountCents, message: message || null, isAnonymous }
+        : { amountCents, interval: recurring, isAnonymous };
     return (
       <Card>
         <CardHeader>
@@ -71,10 +70,16 @@ export function DonateForm() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <StripeCheckout
-            clientSecret={clientSecret}
-            returnUrl={`${window.location.origin}/portal/donate/thank-you`}
-            onCancel={() => setClientSecret(null)}
+          <SquareCheckout
+            applicationId={config.applicationId}
+            locationId={config.locationId}
+            endpoint={endpoint}
+            payload={payload}
+            amountCents={amountCents}
+            intent={recurring === 'NONE' ? 'CHARGE' : 'STORE'}
+            submitLabel={recurring === 'NONE' ? 'Donate' : 'Start donation'}
+            onSuccess={() => router.push('/portal/donate/thank-you')}
+            onCancel={() => setConfig(null)}
           />
         </CardContent>
       </Card>
@@ -154,8 +159,8 @@ export function DonateForm() {
         </label>
 
         <div className="flex justify-end">
-          <Button onClick={startCheckout} disabled={creating || amountCents < 200}>
-            {creating
+          <Button onClick={startCheckout} disabled={preparing || amountCents < 200}>
+            {preparing
               ? 'Preparing checkout…'
               : `Continue to payment · $${(amountCents / 100).toFixed(2)}${
                   recurring !== 'NONE' ? ` / ${recurring === 'MONTHLY' ? 'mo' : 'yr'}` : ''

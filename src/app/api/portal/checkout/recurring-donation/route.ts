@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPortalMember } from '@/lib/portal';
 import { gateFeature } from '@/lib/features';
-import { createRecurringDonationSubscription } from '@/lib/stripe/subscriptions';
+import { createRecurringSubscription } from '@/lib/square/subscriptions';
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -18,6 +18,8 @@ export async function POST(request: Request) {
       amountCents?: number;
       interval?: 'MONTHLY' | 'ANNUAL';
       isAnonymous?: boolean;
+      sourceId?: string;
+      verificationToken?: string | null;
     };
     if (typeof body.amountCents !== 'number') {
       return NextResponse.json({ error: 'amountCents required' }, { status: 400 });
@@ -25,14 +27,20 @@ export async function POST(request: Request) {
     if (body.interval !== 'MONTHLY' && body.interval !== 'ANNUAL') {
       return NextResponse.json({ error: 'interval must be MONTHLY or ANNUAL' }, { status: 400 });
     }
-    const result = await createRecurringDonationSubscription({
+    if (!body.sourceId) {
+      return NextResponse.json({ error: 'sourceId required' }, { status: 400 });
+    }
+    const result = await createRecurringSubscription({
       orgId: session.member.clerkOrganizationId,
       memberId: session.member.id,
+      kind: 'DONATION',
       donorEmail: session.email,
       donorName: `${session.member.firstName} ${session.member.lastName}`.trim(),
       amountCents: body.amountCents,
       interval: body.interval,
       isAnonymous: Boolean(body.isAnonymous),
+      sourceId: body.sourceId,
+      verificationToken: body.verificationToken ?? null,
     });
     return NextResponse.json(result);
   } catch (error) {

@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { StripeCheckout } from '@/components/portal/stripe-checkout';
+import { SquareCheckout } from '@/components/portal/square-checkout';
 
 interface Tier {
   id: string;
@@ -14,6 +15,11 @@ interface Tier {
   amountCents: number;
   currency: string;
   billingInterval: 'ONE_OFF' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
+}
+
+interface SquareConfig {
+  applicationId: string;
+  locationId: string;
 }
 
 const INTERVAL_LABEL: Record<Tier['billingInterval'], string> = {
@@ -28,11 +34,12 @@ function formatAmount(cents: number, currency: string) {
 }
 
 export function MembershipPicker() {
+  const router = useRouter();
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [config, setConfig] = useState<SquareConfig | null>(null);
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
-  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -46,31 +53,30 @@ export function MembershipPicker() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function pick(tier: Tier) {
-    setSubmitting(tier.id);
+    setPreparing(tier.id);
     try {
-      const res = await fetch('/api/portal/checkout/membership', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tierId: tier.id }),
-      });
+      const res = await fetch('/api/portal/square-config');
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? 'Checkout failed');
+        throw new Error(data.error ?? 'Payments are not available right now');
       }
-      const { clientSecret: secret } = (await res.json()) as { clientSecret: string };
-      setClientSecret(secret);
+      setConfig((await res.json()) as SquareConfig);
       setSelectedTier(tier);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
-      setSubmitting(null);
+      setPreparing(null);
     }
   }
 
-  if (clientSecret && selectedTier) {
+  if (config && selectedTier) {
+    const isRecurring =
+      selectedTier.billingInterval === 'MONTHLY' || selectedTier.billingInterval === 'ANNUAL';
     return (
       <Card>
         <CardHeader>
@@ -80,10 +86,20 @@ export function MembershipPicker() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <StripeCheckout
-            clientSecret={clientSecret}
-            returnUrl={`${window.location.origin}/portal/membership/thank-you`}
-            onCancel={() => { setClientSecret(null); setSelectedTier(null); }}
+          <SquareCheckout
+            applicationId={config.applicationId}
+            locationId={config.locationId}
+            endpoint="/api/portal/checkout/membership"
+            payload={{ tierId: selectedTier.id }}
+            amountCents={selectedTier.amountCents}
+            currency={selectedTier.currency}
+            intent={isRecurring ? 'STORE' : 'CHARGE'}
+            submitLabel="Join"
+            onSuccess={() => router.push('/portal/membership/thank-you')}
+            onCancel={() => {
+              setConfig(null);
+              setSelectedTier(null);
+            }}
           />
         </CardContent>
       </Card>
@@ -111,17 +127,11 @@ export function MembershipPicker() {
               <Badge variant="outline">{INTERVAL_LABEL[t.billingInterval]}</Badge>
             </div>
             <p className="text-2xl font-bold mt-2">{formatAmount(t.amountCents, t.currency)}</p>
-            {t.description && (
-              <p className="text-sm text-muted-foreground mt-1">{t.description}</p>
-            )}
+            {t.description && <p className="text-sm text-muted-foreground mt-1">{t.description}</p>}
           </CardHeader>
           <CardContent>
-            <Button
-              className="w-full"
-              onClick={() => pick(t)}
-              disabled={submitting !== null}
-            >
-              {submitting === t.id ? 'Loading…' : 'Choose this tier'}
+            <Button className="w-full" onClick={() => pick(t)} disabled={preparing !== null}>
+              {preparing === t.id ? 'Loading…' : 'Choose this tier'}
             </Button>
           </CardContent>
         </Card>
