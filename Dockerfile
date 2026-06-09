@@ -69,6 +69,13 @@ COPY --from=build-stage --chown=node:node /usr/src/app/package*.json ./
 COPY --from=build-stage --chown=node:node /usr/src/app/prisma ./prisma
 COPY --from=build-stage --chown=node:node /usr/src/app/public ./public
 
+# The BullMQ worker (`npm run worker`) runs the TypeScript source directly via
+# tsx, so the runtime image needs src/ + tsconfig.json (for the @/ path alias).
+# This lets the SAME image run either the app (default CMD) or the worker when
+# the start command is overridden to `npm run worker` (e.g. a second Coolify app).
+COPY --from=build-stage --chown=node:node /usr/src/app/src ./src
+COPY --from=build-stage --chown=node:node /usr/src/app/tsconfig.json ./tsconfig.json
+
 # Switch to non-root user for security best practices
 USER node
 

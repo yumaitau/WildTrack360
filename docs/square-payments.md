@@ -50,22 +50,33 @@ Generate an encryption key: `node -e "console.log(require('crypto').randomBytes(
 
 ## The recurring worker
 
-The worker is a **separate long-running process** (it can't run on Vercel serverless). It needs
-`DATABASE_URL` + `REDIS_URL`.
-
-```bash
-# local
-docker run -d -p 6379:6379 redis:7-alpine
-npm run worker          # tsx src/worker/worker-main.ts
-```
+The worker is a **separate long-running process** (it is NOT the Next.js server). It needs
+`DATABASE_URL`, `REDIS_URL`, and the Square + `ENCRYPTION_KEY` + `RESEND_*` vars (it charges cards and
+emails receipts). Run it with `npm run worker` (= `tsx src/worker/worker-main.ts`).
 
 It registers two BullMQ job schedulers on boot:
 - `charge-due-subscriptions` (`0 2 * * *`) — charges every `RecurringSubscription` whose
   `nextChargeAt` has passed. Dunning: after 4 consecutive failures the sub + its memberships cancel.
 - `refresh-square-tokens` (`0 */6 * * *`) — refreshes Square OAuth tokens nearing their 30-day expiry.
 
-For production, run it as its own service (e.g. a container with `CMD ["npm","run","worker"]`)
-alongside a Redis instance.
+### Local
+
+`docker compose up -d` (now includes Redis), then `npm run worker` in a second terminal.
+
+### Production — Coolify
+
+The app deploys from the `Dockerfile`. The same image can run the worker because the runtime stage
+includes `src/` + `tsconfig.json` (the worker runs via `tsx`). Set it up Coolify-native:
+
+1. **Redis** — add a Redis resource in Coolify; copy its connection string into `REDIS_URL` on both
+   the app and the worker.
+2. **Worker** — create a **second application** from the same repo/Dockerfile, and override its start
+   command to `npm run worker`. Give it the same env as the app (`DATABASE_URL`, `REDIS_URL`,
+   `SQUARE_*`, `ENCRYPTION_KEY`, `RESEND_*`). Run a single instance (the schedulers are reconciled on
+   boot; multiple workers would each try to register them).
+
+> Note: `vercel.json` is unused on Coolify — its cron does **not** fire here. Any work that relied on
+> it (e.g. `nsw-reminders`) needs a Coolify scheduled task or a BullMQ scheduler instead.
 
 ## Sandbox test flow
 
