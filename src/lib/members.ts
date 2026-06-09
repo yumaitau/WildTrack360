@@ -2,7 +2,7 @@
 
 import { prisma } from './prisma';
 import type { Prisma, MemberStatus } from '@prisma/client';
-import { getActiveTemplate } from './forms/form-template-service';
+import { getActiveTemplate, type SerializedTemplate } from './forms/form-template-service';
 import { buildValuesSchema, serializeValues } from './forms/form-templates';
 
 export interface MemberInput {
@@ -51,7 +51,12 @@ function pickMemberFields(body: Record<string, unknown>): Partial<MemberInput> {
 
 export async function listMembers(
   orgId: string,
-  opts: { search?: string; status?: MemberStatus; includeArchived?: boolean } = {}
+  opts: {
+    search?: string;
+    status?: MemberStatus;
+    includeArchived?: boolean;
+    limit?: number;
+  } = {}
 ) {
   const where: Prisma.MemberWhereInput = {
     clerkOrganizationId: orgId,
@@ -72,7 +77,7 @@ export async function listMembers(
   return prisma.member.findMany({
     where,
     orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-    take: 5000,
+    take: opts.limit ?? 500,
   });
 }
 
@@ -94,9 +99,12 @@ export async function getMember(id: string, orgId: string) {
 // a message-bearing Error so the API can surface it as a 400.
 async function validateCustomFields(
   orgId: string,
-  raw: Record<string, unknown> | null | undefined
+  raw: Record<string, unknown> | null | undefined,
+  cachedTemplate?: SerializedTemplate | null
 ): Promise<Record<string, unknown>> {
-  const template = await getActiveTemplate(orgId, 'MEMBER');
+  const template = cachedTemplate !== undefined
+    ? cachedTemplate
+    : await getActiveTemplate(orgId, 'MEMBER');
   if (!template || template.fields.length === 0) return {};
   const schema = buildValuesSchema(template.fields);
   const result = schema.safeParse(raw ?? {});
@@ -107,12 +115,20 @@ async function validateCustomFields(
   return serializeValues(result.data as Record<string, unknown>);
 }
 
-export async function createMember(orgId: string, body: Record<string, unknown>) {
+export async function createMember(
+  orgId: string,
+  body: Record<string, unknown>,
+  opts: { cachedTemplate?: SerializedTemplate | null } = {}
+) {
   const data = pickMemberFields(body);
   if (!data.email || !data.firstName || !data.lastName) {
     throw new Error('email, firstName and lastName are required');
   }
-  const customFieldsJson = await validateCustomFields(orgId, data.customFields ?? null);
+  const customFieldsJson = await validateCustomFields(
+    orgId,
+    data.customFields ?? null,
+    opts.cachedTemplate
+  );
   return prisma.member.create({
     data: {
       clerkOrganizationId: orgId,

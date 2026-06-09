@@ -1,10 +1,18 @@
 // Minimal RFC 4180 CSV serialize + parse. No deps. Handles quoted fields,
 // embedded commas/newlines, and doubled-quote escapes.
 
+// Cells starting with =, +, -, @, tab, or CR are interpreted as formulas by
+// Excel/Sheets/Numbers. Prefix with a single quote so the spreadsheet shows
+// the literal text instead of evaluating it.
+function neutralizeFormula(s: string): string {
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+}
+
 export function escapeCsvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const s = String(value);
-  if (s === '') return '';
+  const raw = String(value);
+  if (raw === '') return '';
+  const s = neutralizeFormula(raw);
   if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }
@@ -64,6 +72,9 @@ export function parseCsv(text: string): string[][] {
     }
     field += ch;
     i++;
+  }
+  if (inQuotes) {
+    throw new Error('Malformed CSV: unterminated quoted field');
   }
   if (field !== '' || row.length > 0) {
     row.push(field);

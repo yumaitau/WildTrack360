@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { getActiveTemplate } from '@/lib/forms/form-template-service';
 import { toCsv } from '@/lib/csv';
@@ -43,6 +44,11 @@ export async function GET() {
   }
   const gated = await gateFeature(orgId, 'MEMBERSHIP_PLATFORM');
   if (gated) return gated;
+  try {
+    await requirePermission(userId, orgId, 'member:manage');
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const template = await getActiveTemplate(orgId, 'MEMBER');
   const customFields = (template?.fields ?? []).filter((f) => !f.archived);

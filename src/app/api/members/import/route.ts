@@ -25,12 +25,26 @@ function coerceCustom(field: FormField, raw: string): unknown {
     case 'integer':
     case 'count': {
       const n = Number(v);
-      return Number.isFinite(n) ? n : undefined;
+      if (!Number.isFinite(n)) {
+        throw new Error(`custom:${field.key} "${v}" is not a valid number`);
+      }
+      if ((field.type === 'integer' || field.type === 'count') && !Number.isInteger(n)) {
+        throw new Error(`custom:${field.key} "${v}" must be an integer`);
+      }
+      return n;
     }
-    case 'boolean':
-      return /^(true|yes|1|y)$/i.test(v);
-    case 'multiselect':
-      return v.split(/[;|]/).map((s) => s.trim()).filter(Boolean);
+    case 'boolean': {
+      if (/^(true|yes|1|y)$/i.test(v)) return true;
+      if (/^(false|no|0|n)$/i.test(v)) return false;
+      throw new Error(`custom:${field.key} "${v}" is not a valid boolean (use true/false/yes/no/1/0)`);
+    }
+    case 'multiselect': {
+      const parts = v.split(/[;|]/).map((s) => s.trim()).filter(Boolean);
+      if (parts.length === 0) {
+        throw new Error(`custom:${field.key} "${v}" has no valid options (separate with ; or |)`);
+      }
+      return parts;
+    }
     case 'date':
     case 'datetime':
       return v;
@@ -120,29 +134,33 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const customFieldsPayload: Record<string, unknown> = {};
-    for (const [header, field] of Object.entries(customByHeader)) {
-      const coerced = coerceCustom(field, row[header] ?? '');
-      if (coerced !== undefined) customFieldsPayload[field.key] = coerced;
-    }
-
     try {
-      await createMember(orgId, {
-        email,
-        firstName: row.firstName ?? '',
-        lastName: row.lastName ?? '',
-        phone: row.phone || null,
-        addressLine1: row.addressLine1 || null,
-        addressLine2: row.addressLine2 || null,
-        suburb: row.suburb || null,
-        state: row.state || null,
-        postcode: row.postcode || null,
-        country: row.country || 'AU',
-        memberNumber: row.memberNumber || null,
-        status: row.status ? coerceStatus(row.status) : 'ACTIVE',
-        joinedAt: row.joinedAt ? row.joinedAt : null,
-        customFields: customFieldsPayload,
-      });
+      const customFieldsPayload: Record<string, unknown> = {};
+      for (const [header, field] of Object.entries(customByHeader)) {
+        const coerced = coerceCustom(field, row[header] ?? '');
+        if (coerced !== undefined) customFieldsPayload[field.key] = coerced;
+      }
+
+      await createMember(
+        orgId,
+        {
+          email,
+          firstName: row.firstName ?? '',
+          lastName: row.lastName ?? '',
+          phone: row.phone || null,
+          addressLine1: row.addressLine1 || null,
+          addressLine2: row.addressLine2 || null,
+          suburb: row.suburb || null,
+          state: row.state || null,
+          postcode: row.postcode || null,
+          country: row.country || 'AU',
+          memberNumber: row.memberNumber || null,
+          status: row.status ? coerceStatus(row.status) : 'ACTIVE',
+          joinedAt: row.joinedAt ? row.joinedAt : null,
+          customFields: customFieldsPayload,
+        },
+        { cachedTemplate: template }
+      );
       created++;
       results.push({ row: rowNum, email, status: 'created' });
     } catch (err) {

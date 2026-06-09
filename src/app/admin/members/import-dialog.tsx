@@ -32,12 +32,31 @@ interface Props {
 
 export function ImportDialog({ open, onOpenChange, onImported }: Props) {
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ImportResponse | null>(null);
 
   function reset() {
     setFile(null);
+    setFileError(null);
     setResult(null);
+  }
+
+  const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+  function handleFileSelected(picked: File | null) {
+    if (!picked) {
+      setFile(null);
+      setFileError(null);
+      return;
+    }
+    if (picked.size > MAX_FILE_BYTES) {
+      setFile(null);
+      setFileError(`File is ${(picked.size / 1024 / 1024).toFixed(1)} MB — max is 10 MB`);
+      return;
+    }
+    setFile(picked);
+    setFileError(null);
   }
 
   async function handleImport() {
@@ -53,7 +72,9 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
       }
       const data: ImportResponse = await res.json();
       setResult(data);
-      toast.success(`Imported ${data.created} of ${data.total} members`);
+      toast.success(
+        `Created ${data.created} (${data.skipped} skipped, ${data.failed} failed) of ${data.total} rows`
+      );
       onImported();
     } catch (err) {
       toast.error(`Import failed: ${(err as Error).message}`);
@@ -94,8 +115,9 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
             <Input
               type="file"
               accept=".csv,text/csv"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
             />
+            {fileError && <p className="text-sm text-destructive">{fileError}</p>}
           </div>
 
           {result && (

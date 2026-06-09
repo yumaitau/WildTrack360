@@ -47,7 +47,7 @@ export async function GET(request: Request) {
   const includeArchived = searchParams.get('includeArchived') === 'true';
 
   const [members, template] = await Promise.all([
-    listMembers(orgId, { includeArchived }),
+    listMembers(orgId, { includeArchived, limit: 5000 }),
     getActiveTemplate(orgId, 'MEMBER'),
   ]);
 

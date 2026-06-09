@@ -224,9 +224,17 @@ export function MembersAdmin() {
           Joined <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
-      cell: ({ row }) => new Date(row.original.joinedAt).toLocaleDateString('en-AU'),
-      sortingFn: (a, b) =>
-        new Date(a.original.joinedAt).getTime() - new Date(b.original.joinedAt).getTime(),
+      cell: ({ row }) => {
+        const d = new Date(row.original.joinedAt);
+        return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-AU') : '—';
+      },
+      sortingFn: (a, b) => {
+        const at = new Date(a.original.joinedAt).getTime();
+        const bt = new Date(b.original.joinedAt).getTime();
+        const av = Number.isFinite(at) ? at : -Infinity;
+        const bv = Number.isFinite(bt) ? bt : -Infinity;
+        return av - bv;
+      },
     },
     {
       id: 'actions',
