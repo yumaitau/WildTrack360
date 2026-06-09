@@ -1,4 +1,4 @@
-import 'server-only';
+'server-only';
 
 import type { ReactNode } from 'react';
 import { Resend } from 'resend';

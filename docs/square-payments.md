@@ -7,8 +7,8 @@ with `app_fee_money` = 5%. Funds settle into the org's Square account and the 5%
 the platform account automatically — no funds flow through the platform, no manual payouts.
 
 Recurring donations/memberships are **self-billed**: Square's native Subscriptions API can't attach an
-app fee, so we vault a card-on-file on the org's account and a BullMQ worker charges it each cycle via
-`CreatePayment` + `app_fee_money`.
+app fee, so we vault a card-on-file on the org's account and a scheduled job charges it each cycle via
+`CreatePayment` + `app_fee_money`. Memberships are always an annual auto-renewing commitment.
 
 > **AU compliance:** collecting an application fee in Australia requires accepting Square's *Payments
 > API Application Fee (PAAF)* Product Disclosure Statement + Financial Services Guide on the platform
@@ -26,7 +26,7 @@ app fee, so we vault a card-on-file on the org's account and a BullMQ worker cha
 | Recurring subscription create / cancel | `src/lib/square/subscriptions.ts` |
 | Self-billed charge engine + dunning | `src/lib/square/billing.ts` |
 | Webhook verify + dispatch + receipt mint | `src/lib/square/webhook.ts` |
-| BullMQ worker (cron schedulers) | `src/worker/*` |
+| Scheduled jobs (charge sweep, token refresh) | `src/scripts/*` |
 | OAuth + webhook routes | `src/app/api/square/**` |
 | Card form (Web Payments SDK) | `src/components/portal/square-checkout.tsx` |
 
@@ -34,7 +34,7 @@ app fee, so we vault a card-on-file on the org's account and a BullMQ worker cha
 
 See `.env.example`. Required: `SQUARE_ENVIRONMENT`, `SQUARE_APPLICATION_ID`,
 `SQUARE_APPLICATION_SECRET`, `NEXT_PUBLIC_SQUARE_APPLICATION_ID`, `SQUARE_OAUTH_REDIRECT_URL`,
-`SQUARE_WEBHOOK_SIGNATURE_KEY`, `SQUARE_WEBHOOK_NOTIFICATION_URL`, `REDIS_URL`, `ENCRYPTION_KEY`.
+`SQUARE_WEBHOOK_SIGNATURE_KEY`, `SQUARE_WEBHOOK_NOTIFICATION_URL`, `ENCRYPTION_KEY`.
 
 Generate an encryption key: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
 
@@ -48,35 +48,38 @@ Generate an encryption key: `node -e "console.log(require('crypto').randomBytes(
    `refund.created`, `refund.updated`, `oauth.authorization.revoked`. Copy the signature key into
    `SQUARE_WEBHOOK_SIGNATURE_KEY`.
 
-## The recurring worker
+## Scheduled jobs
 
-The worker is a **separate long-running process** (it is NOT the Next.js server). It needs
-`DATABASE_URL`, `REDIS_URL`, and the Square + `ENCRYPTION_KEY` + `RESEND_*` vars (it charges cards and
-emails receipts). Run it with `npm run worker` (= `tsx src/worker/worker-main.ts`).
+Two one-shot CLI scripts (run once, exit) — no Redis, no long-running worker. All billing state
+(`nextChargeAt`, `failedAttempts`/dunning) lives in the DB, so each run just processes what's due:
 
-It registers two BullMQ job schedulers on boot:
-- `charge-due-subscriptions` (`0 2 * * *`) — charges every `RecurringSubscription` whose
-  `nextChargeAt` has passed. Dunning: after 4 consecutive failures the sub + its memberships cancel.
-- `refresh-square-tokens` (`0 */6 * * *`) — refreshes Square OAuth tokens nearing their 30-day expiry.
+- `npm run charge-due` (`src/scripts/charge-due-subscriptions.ts`) — charges every
+  `RecurringSubscription` whose `nextChargeAt` has passed; after 4 consecutive failures the sub + its
+  memberships cancel. Re-running is safe — each sub advances its own `nextChargeAt`.
+- `npm run refresh-tokens` (`src/scripts/refresh-square-tokens.ts`) — refreshes Square OAuth tokens
+  nearing their 30-day expiry.
+
+Both need `DATABASE_URL` + the Square / `ENCRYPTION_KEY` / `RESEND_*` vars (they charge cards and email
+receipts), and run via `tsx` (a production dependency; `src/` + `tsconfig.json` ship in the image).
 
 ### Local
 
-`docker compose up -d` (now includes Redis), then `npm run worker` in a second terminal.
+`docker compose up -d` (Postgres), then run a script directly, e.g. `npm run charge-due`.
 
-### Production — Coolify
+### Production — Coolify Scheduled Tasks
 
-The app deploys from the `Dockerfile`. The same image can run the worker because the runtime stage
-includes `src/` + `tsconfig.json` (the worker runs via `tsx`). Set it up Coolify-native:
+The single app image already contains everything. In the Coolify **app** → **Scheduled Tasks**, add:
 
-1. **Redis** — add a Redis resource in Coolify; copy its connection string into `REDIS_URL` on both
-   the app and the worker.
-2. **Worker** — create a **second application** from the same repo/Dockerfile, and override its start
-   command to `npm run worker`. Give it the same env as the app (`DATABASE_URL`, `REDIS_URL`,
-   `SQUARE_*`, `ENCRYPTION_KEY`, `RESEND_*`). Run a single instance (the schedulers are reconciled on
-   boot; multiple workers would each try to register them).
+| Name | Command | Frequency | Container |
+| --- | --- | --- | --- |
+| Charge due memberships | `npm run charge-due` | `0 2 * * *` | the app container |
+| Refresh Square tokens | `npm run refresh-tokens` | `0 */6 * * *` | the app container |
+
+Bump the task **Timeout** above 300s if a single sweep ever has many same-day renewals (unprocessed
+subs simply roll to the next run — no double-charge).
 
 > Note: `vercel.json` is unused on Coolify — its cron does **not** fire here. Any work that relied on
-> it (e.g. `nsw-reminders`) needs a Coolify scheduled task or a BullMQ scheduler instead.
+> it (e.g. `nsw-reminders`) should also become a Coolify Scheduled Task.
 
 ## Sandbox test flow
 
@@ -87,5 +90,5 @@ includes `src/` + `tsconfig.json` (the worker runs via `tsx`). Set it up Coolify
 4. Verify in the Square sandbox dashboard: the seller receives the amount, the platform app receives
    the 5% app fee. Locally, a `Payment` + `Donation`/`Membership` row appears and the receipt number
    mints once.
-5. Recurring: pick a monthly tier → card vaulted + first charge taken. To exercise a renewal, set the
-   sub's `nextChargeAt` into the past and run the worker (or wait for the 02:00 sweep).
+5. Recurring: join an annual membership → card vaulted + first charge taken. To exercise a renewal,
+   set the sub's `nextChargeAt` into the past and run `npm run charge-due`.
