@@ -2,7 +2,15 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Plus, Search, Settings2, Users } from 'lucide-react';
+import {
+  ArrowLeft, ArrowUpDown, ChevronDown, Download, Plus, Search,
+  Settings2, Upload, Users,
+} from 'lucide-react';
+import {
+  ColumnDef, ColumnFiltersState, SortingState, VisibilityState,
+  flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel,
+  getSortedRowModel, useReactTable,
+} from '@tanstack/react-table';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +23,12 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { MemberDialog, type MemberFormValue } from './member-dialog';
+import { ImportDialog } from './import-dialog';
 import { TiersAdmin } from './tiers-admin';
 
 interface Member {
@@ -67,30 +80,28 @@ async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
 export function MembersAdmin() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | Member['status']>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
+
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'lastName', desc: false }]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [globalFilter, setGlobalFilter] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (search.trim()) params.set('search', search.trim());
-      if (statusFilter !== 'all') params.set('status', statusFilter);
-      const data = await apiJson<Member[]>(`/api/members?${params}`);
+      const data = await apiJson<Member[]>(`/api/members`);
       setMembers(data);
     } catch (err) {
       toast.error(`Failed to load members: ${(err as Error).message}`);
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter]);
+  }, []);
 
-  useEffect(() => {
-    const t = setTimeout(load, 200);
-    return () => clearTimeout(t);
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   async function handleSubmit(values: MemberFormValue) {
     try {
@@ -135,7 +146,133 @@ export function MembersAdmin() {
     }
   }
 
-  const filtered = useMemo(() => members, [members]);
+  async function handleEdit(m: Member) {
+    try {
+      const full = await apiJson<Member>(`/api/members/${m.id}`);
+      setEditing(full);
+      setDialogOpen(true);
+    } catch (err) {
+      toast.error(`Failed to load member: ${(err as Error).message}`);
+    }
+  }
+
+  const columns = useMemo<ColumnDef<Member>[]>(() => [
+    {
+      id: 'name',
+      accessorFn: (m) => `${m.lastName}, ${m.firstName}`,
+      header: ({ column }) => (
+        <Button variant="ghost" className="-ml-3 h-8"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+          Name <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.firstName} {row.original.lastName}</span>
+      ),
+    },
+    {
+      accessorKey: 'email',
+      header: ({ column }) => (
+        <Button variant="ghost" className="-ml-3 h-8"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+          Email <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+    },
+    {
+      accessorKey: 'memberNumber',
+      header: 'Member #',
+      cell: ({ row }) => row.original.memberNumber ?? '—',
+    },
+    {
+      id: 'location',
+      header: 'Location',
+      accessorFn: (m) => [m.suburb, m.state, m.postcode].filter(Boolean).join(' '),
+      cell: ({ getValue }) => (getValue() as string) || '—',
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge variant="outline" className={STATUS_COLORS[row.original.status]}>
+          {row.original.status}
+        </Badge>
+      ),
+      filterFn: (row, id, value) => {
+        if (!value || value === 'all') return true;
+        return row.getValue(id) === value;
+      },
+    },
+    {
+      id: 'portal',
+      header: 'Portal',
+      accessorFn: (m) => (m.clerkUserId ? 'Active' : m.clerkInvitationId ? 'Invited' : '—'),
+      cell: ({ row }) => {
+        const s = portalState(row.original);
+        return <Badge variant="outline" className={s.className}>{s.label}</Badge>;
+      },
+      filterFn: (row, id, value) => {
+        if (!value || value === 'all') return true;
+        return row.getValue(id) === value;
+      },
+    },
+    {
+      accessorKey: 'joinedAt',
+      header: ({ column }) => (
+        <Button variant="ghost" className="-ml-3 h-8"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+          Joined <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const d = new Date(row.original.joinedAt);
+        return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-AU') : '—';
+      },
+      sortingFn: (a, b) => {
+        const at = new Date(a.original.joinedAt).getTime();
+        const bt = new Date(b.original.joinedAt).getTime();
+        const av = Number.isFinite(at) ? at : -Infinity;
+        const bv = Number.isFinite(bt) ? bt : -Infinity;
+        return av - bv;
+      },
+    },
+    {
+      id: 'actions',
+      enableHiding: false,
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => (
+        <div className="text-right space-x-2">
+          <Button variant="outline" size="sm" onClick={() => handleEdit(row.original)}>Edit</Button>
+          <Button variant="outline" size="sm" onClick={() => handleInvite(row.original)}>Invite</Button>
+          <Button variant="ghost" size="sm" onClick={() => handleArchive(row.original)}>Archive</Button>
+        </div>
+      ),
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], []);
+
+  const table = useReactTable({
+    data: members,
+    columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: (row, _id, value) => {
+      const search = String(value ?? '').trim().toLowerCase();
+      if (!search) return true;
+      const m = row.original;
+      return [m.firstName, m.lastName, m.email, m.memberNumber, m.suburb, m.state, m.postcode]
+        .filter(Boolean)
+        .some((f) => String(f).toLowerCase().includes(search));
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: 25 } },
+    state: { sorting, columnFilters, columnVisibility, globalFilter },
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -160,19 +297,28 @@ export function MembersAdmin() {
 
           <TabsContent value="members" className="space-y-4">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <CardTitle>Member roster</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
                     Wildlife organisation supporters, donors, and paying members.
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Link href="/admin/members/fields">
                     <Button variant="outline">
                       <Settings2 className="h-4 w-4 mr-2" /> Custom fields
                     </Button>
                   </Link>
+                  <Button variant="outline" onClick={() => setImportOpen(true)}>
+                    <Upload className="h-4 w-4 mr-2" /> Import CSV
+                  </Button>
+                  {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+                  <a href="/api/members/export">
+                    <Button variant="outline">
+                      <Download className="h-4 w-4 mr-2" /> Export CSV
+                    </Button>
+                  </a>
                   <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
                     <Plus className="h-4 w-4 mr-2" /> New member
                   </Button>
@@ -183,15 +329,20 @@ export function MembersAdmin() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search name, email, or member number"
+                      placeholder="Search name, email, member number, location"
                       className="pl-9"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
+                      value={globalFilter}
+                      onChange={(e) => setGlobalFilter(e.target.value)}
                     />
                   </div>
-                  <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-                    <SelectTrigger className="w-full sm:w-48">
-                      <SelectValue />
+                  <Select
+                    value={(table.getColumn('status')?.getFilterValue() as string) ?? 'all'}
+                    onValueChange={(v) => {
+                      table.getColumn('status')?.setFilterValue(v === 'all' ? undefined : v);
+                    }}
+                  >
+                    <SelectTrigger className="w-full sm:w-44">
+                      <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All statuses</SelectItem>
@@ -201,93 +352,114 @@ export function MembersAdmin() {
                       <SelectItem value="DECEASED">Deceased</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select
+                    value={(table.getColumn('portal')?.getFilterValue() as string) ?? 'all'}
+                    onValueChange={(v) => {
+                      table.getColumn('portal')?.setFilterValue(v === 'all' ? undefined : v);
+                    }}
+                  >
+                    <SelectTrigger className="w-full sm:w-44">
+                      <SelectValue placeholder="Portal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All portal</SelectItem>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Invited">Invited</SelectItem>
+                      <SelectItem value="—">Not invited</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline">
+                        Columns <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {table.getAllColumns()
+                        .filter((c) => c.getCanHide())
+                        .map((c) => (
+                          <DropdownMenuCheckboxItem
+                            key={c.id}
+                            className="capitalize"
+                            checked={c.getIsVisible()}
+                            onCheckedChange={(v) => c.toggleVisibility(!!v)}
+                          >
+                            {c.id}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Member #</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Portal</TableHead>
-                        <TableHead>Joined</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
+                      {table.getHeaderGroups().map((hg) => (
+                        <TableRow key={hg.id}>
+                          {hg.headers.map((h) => (
+                            <TableHead key={h.id}>
+                              {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      ))}
                     </TableHeader>
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center text-muted-foreground">
+                          <TableCell colSpan={columns.length} className="text-center text-muted-foreground h-24">
                             Loading…
                           </TableCell>
                         </TableRow>
-                      ) : filtered.length === 0 ? (
+                      ) : table.getRowModel().rows.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center text-muted-foreground">
-                            No members yet. Create one to get started.
+                          <TableCell colSpan={columns.length} className="text-center text-muted-foreground h-24">
+                            No members match your filters.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filtered.map((m) => (
-                          <TableRow key={m.id}>
-                            <TableCell className="font-medium">
-                              {m.firstName} {m.lastName}
-                            </TableCell>
-                            <TableCell>{m.email}</TableCell>
-                            <TableCell>{m.memberNumber ?? '—'}</TableCell>
-                            <TableCell>
-                              {[m.suburb, m.state, m.postcode].filter(Boolean).join(' ') || '—'}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={STATUS_COLORS[m.status]}>
-                                {m.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={portalState(m).className}>
-                                {portalState(m).label}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{new Date(m.joinedAt).toLocaleDateString('en-AU')}</TableCell>
-                            <TableCell className="text-right space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={async () => {
-                                  try {
-                                    const full = await apiJson<Member>(`/api/members/${m.id}`);
-                                    setEditing(full);
-                                    setDialogOpen(true);
-                                  } catch (err) {
-                                    toast.error(`Failed to load member: ${(err as Error).message}`);
-                                  }
-                                }}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleInvite(m)}
-                              >
-                                Invite
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleArchive(m)}
-                              >
-                                Archive
-                              </Button>
-                            </TableCell>
+                        table.getRowModel().rows.map((row) => (
+                          <TableRow key={row.id}>
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </TableCell>
+                            ))}
                           </TableRow>
                         ))
                       )}
                     </TableBody>
                   </Table>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1} ·{' '}
+                    {table.getFilteredRowModel().rows.length} result(s)
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={String(table.getState().pagination.pageSize)}
+                      onValueChange={(v) => table.setPageSize(Number(v))}
+                    >
+                      <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[10, 25, 50, 100, 250].map((n) => (
+                          <SelectItem key={n} value={String(n)}>{n} / page</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="sm"
+                      onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+                      Previous
+                    </Button>
+                    <Button variant="outline" size="sm"
+                      onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+                      Next
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -303,6 +475,11 @@ export function MembersAdmin() {
           onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditing(null); }}
           initial={editing}
           onSubmit={handleSubmit}
+        />
+        <ImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImported={load}
         />
       </main>
     </div>

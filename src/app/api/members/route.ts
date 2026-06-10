@@ -23,9 +23,13 @@ export async function GET(request: Request) {
   const search = searchParams.get('search') ?? undefined;
   const status = (searchParams.get('status') ?? undefined) as MemberStatus | undefined;
   const includeArchived = searchParams.get('includeArchived') === 'true';
+  const limitParam = Number(searchParams.get('limit'));
+  const limit = Number.isFinite(limitParam) && limitParam > 0
+    ? Math.min(limitParam, 5000)
+    : 5000;
 
   try {
-    const members = await listMembers(orgId, { search, status, includeArchived });
+    const members = await listMembers(orgId, { search, status, includeArchived, limit });
     return NextResponse.json(members);
   } catch (error) {
     console.error('Error listing members:', error);
