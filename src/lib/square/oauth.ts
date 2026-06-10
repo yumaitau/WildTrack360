@@ -62,7 +62,6 @@ export function buildAuthorizeUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: getApplicationId(),
     scope: SQUARE_OAUTH_SCOPES.join(' '),
-    session: 'false',
     state,
   });
   if (process.env.SQUARE_OAUTH_REDIRECT_URL) {
