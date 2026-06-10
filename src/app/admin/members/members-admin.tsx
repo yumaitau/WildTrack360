@@ -84,7 +84,7 @@ export function MembersAdmin() {
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
 
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'lastName', desc: false }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [globalFilter, setGlobalFilter] = useState('');
