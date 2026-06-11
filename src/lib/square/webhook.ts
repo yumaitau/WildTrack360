@@ -9,6 +9,7 @@ import { processingFeeCents } from './money';
 import { computeMembershipEnd } from './periods';
 import { markRevokedByMerchant } from './oauth';
 import { sendPaymentReceiptEmail } from '../email/payment-receipt';
+import { sendPaymentActivityAdminNotification } from '../email/payment-admin-notifications';
 import type { PaymentStatus } from '@prisma/client';
 
 export interface DispatchResult {
@@ -142,6 +143,14 @@ export async function recordSuccessfulPayment(args: {
     await sendPaymentReceiptEmail(payment.id, payment.clerkOrganizationId);
   } catch (error) {
     console.error('Failed to send payment receipt email:', error);
+  }
+
+  // Notify organisation admins about donation, member signup, and renewal
+  // activity. Best-effort and deduped per payment so webhooks cannot spam.
+  try {
+    await sendPaymentActivityAdminNotification(payment.id, payment.clerkOrganizationId);
+  } catch (error) {
+    console.error('Failed to send payment admin notification email:', error);
   }
 
   return { receiptNumber: updated.receiptNumber, status };

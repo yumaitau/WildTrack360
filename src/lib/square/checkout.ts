@@ -58,6 +58,7 @@ export async function createDonationPayment(args: CreateDonationArgs): Promise<C
       currency: DEFAULT_CURRENCY,
       status: 'REQUIRES_ACTION',
       metadata: {
+        adminNotificationEvent: 'donation-received',
         donorEmail: args.donorEmail,
         donorName: args.donorName ?? null,
         isAnonymous: Boolean(args.isAnonymous),

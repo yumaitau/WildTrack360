@@ -1,9 +1,12 @@
 import 'server-only';
 
 import { clerkClient } from '@clerk/nextjs/server';
+import type { OrgRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { sendEmail } from './resend';
 import { AdminNotificationEmail } from './templates/admin-notification';
+
+const DEFAULT_RECIPIENT_ROLES: OrgRole[] = ['ADMIN', 'COORDINATOR_ALL'];
 
 type AdminNotificationInput = {
   orgId: string;
@@ -12,13 +15,19 @@ type AdminNotificationInput = {
   body: string;
   cta: { label: string; href: string };
   info?: { label: string; value: string }[];
+  recipientRoles?: OrgRole[];
   dedupeKey: string;
 };
 
 type SendResult =
   | { userId: string; email: string; status: 'sent'; resendMessageId: string | null }
   | { userId: string; email: string; status: 'sent-unlogged'; resendMessageId: string | null }
-  | { userId: string; email?: string; status: 'skipped'; reason: 'duplicate' | 'missing-email' | 'missing-user' };
+  | {
+      userId: string;
+      email?: string;
+      status: 'skipped';
+      reason: 'duplicate' | 'missing-email' | 'missing-user';
+    };
 
 type ClerkUserWithEmailAddresses = {
   primaryEmailAddressId?: string | null;
@@ -45,12 +54,15 @@ function tagValue(value: string): string {
 
 export async function sendAdminNotification(input: AdminNotificationInput): Promise<SendResult[]> {
   const client = await clerkClient();
+  const recipientRoles = input.recipientRoles?.length
+    ? input.recipientRoles
+    : DEFAULT_RECIPIENT_ROLES;
   const [org, recipients] = await Promise.all([
     client.organizations.getOrganization({ organizationId: input.orgId }),
     prisma.orgMember.findMany({
       where: {
         orgId: input.orgId,
-        role: { in: ['ADMIN', 'COORDINATOR_ALL'] },
+        role: { in: recipientRoles },
       },
       select: { userId: true },
       orderBy: { userId: 'asc' },

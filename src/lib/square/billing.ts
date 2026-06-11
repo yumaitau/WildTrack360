@@ -56,6 +56,12 @@ export async function chargeSubscriptionNow(subscriptionId: string): Promise<Cha
 
   const fee = platformFeeCents(sub.amountCents);
   const kind: PaymentKind = sub.kind === 'DONATION' ? 'DONATION_RECURRING' : 'MEMBERSHIP_RECURRING';
+  const adminNotificationEvent =
+    sub.kind === 'DONATION'
+      ? 'donation-received'
+      : sub.lastChargedAt
+        ? 'membership-renewed'
+        : 'membership-signup';
 
   const payment = await prisma.payment.create({
     data: {
@@ -67,6 +73,7 @@ export async function chargeSubscriptionNow(subscriptionId: string): Promise<Cha
       currency: sub.currency,
       status: 'REQUIRES_ACTION',
       metadata: {
+        adminNotificationEvent,
         recurringSubscriptionId: sub.id,
         tierId: sub.tierId,
         donorEmail: sub.donorEmail,

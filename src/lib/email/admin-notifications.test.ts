@@ -109,6 +109,26 @@ describe('sendAdminNotification', () => {
     expect(mockPrisma.adminNotificationLog.create).not.toHaveBeenCalled();
   });
 
+  it('can restrict notifications to specific organisation roles', async () => {
+    mockPrisma.orgMember.findMany.mockResolvedValue([]);
+
+    await sendAdminNotification({
+      orgId: 'org-1',
+      kind: 'payment.donation',
+      title: 'New donation',
+      body: 'A donation was received.',
+      cta: { label: 'Review payment', href: '/admin/payments' },
+      dedupeKey: 'payment:pay-1',
+      recipientRoles: ['ADMIN'],
+    });
+
+    expect(mockPrisma.orgMember.findMany).toHaveBeenCalledWith({
+      where: { orgId: 'org-1', role: { in: ['ADMIN'] } },
+      select: { userId: true },
+      orderBy: { userId: 'asc' },
+    });
+  });
+
   it('reports sent-unlogged when the email sends but audit persistence fails', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockPrisma.orgMember.findMany.mockResolvedValue([{ userId: 'admin-1' }]);
