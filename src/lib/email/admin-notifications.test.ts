@@ -22,7 +22,7 @@ const { mockPrisma, mockClerk, mockSendEmail } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }));
-vi.mock('@clerk/nextjs/server', () => ({ clerkClient: vi.fn(async () => mockClerk) }));
+vi.mock('@/lib/clerk-server', () => ({ clerkClient: vi.fn(async () => mockClerk) }));
 vi.mock('./resend', () => ({ sendEmail: mockSendEmail }));
 
 import { sendAdminNotification } from './admin-notifications';

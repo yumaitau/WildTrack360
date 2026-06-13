@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAssets, createAsset } from '@/lib/database'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/clerk-server'
 import { logAudit } from '@/lib/audit'
 
 export async function GET(request: Request) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { SignIn } from '@clerk/nextjs';
+import { SignIn } from '@/lib/clerk-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HeartHandshake } from 'lucide-react';
 

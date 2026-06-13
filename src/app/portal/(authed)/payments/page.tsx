@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { redirect } from 'next/navigation';
 import { getPortalMember } from '@/lib/portal';
 import { prisma } from '@/lib/prisma';

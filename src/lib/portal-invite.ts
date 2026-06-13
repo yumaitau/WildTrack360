@@ -1,6 +1,6 @@
 'server-only';
 
-import { clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@/lib/clerk-server';
 import { prisma } from './prisma';
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';

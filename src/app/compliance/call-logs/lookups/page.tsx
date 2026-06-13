@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Home, Plus, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import Link from "next/link";
-import { useOrganization } from '@clerk/nextjs';
+import { useOrganization } from '@/lib/clerk-client';
 import { useToast } from "@/hooks/use-toast";
 
 interface LookupItem {

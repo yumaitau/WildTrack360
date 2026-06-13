@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getPortalMember } from '@/lib/portal';

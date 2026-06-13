@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/clerk-server";
 import ExcelJS from "exceljs";
 import { getEnrichedCarers } from "@/lib/carer-helpers";
 import { type ActiveFilter, getLicenceStatus, type LicenceFilter } from "@/lib/carer-report-utils";

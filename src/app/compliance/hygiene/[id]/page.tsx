@@ -6,7 +6,7 @@ import { Shield, Calendar, Download, ArrowLeft, AlertTriangle, CheckCircle, XCir
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@/lib/clerk-server";
 
 interface HygieneLogDetailPageProps {
   params: Promise<{

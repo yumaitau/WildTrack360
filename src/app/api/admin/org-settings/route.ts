@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/clerk-server";
 import { prisma } from "@/lib/prisma";
 import { getUserRole } from "@/lib/rbac";
 import { sanitizePlainText } from "@/lib/sanitize";

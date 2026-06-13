@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { bedrock } from '@ai-sdk/amazon-bedrock';
 import { streamText, type LanguageModelUsage } from 'ai';
 import { z } from 'zod';
@@ -13,6 +13,8 @@ import {
   WALLY_MODEL,
 } from '@/lib/wally/context';
 import { reserveWallyOrgMessage } from '@/lib/wally/usage';
+import { isScreenshotMode } from '@/lib/screenshot-mode';
+import { streamScreenshotWords } from '@/lib/wally/screenshot-reply';
 
 export const runtime = 'nodejs';
 
@@ -88,6 +90,15 @@ export async function POST(request: Request) {
       { error: 'Validation failed', issues: parsed.error.issues },
       { status: 400 }
     );
+  }
+
+  if (isScreenshotMode()) {
+    return new Response(streamScreenshotWords(), {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
+    });
   }
 
   try {

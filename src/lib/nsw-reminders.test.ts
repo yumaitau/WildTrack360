@@ -25,7 +25,7 @@ const { mockPrisma, mockClerk, mockGetServerJurisdiction, mockSendAdminNotificat
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }));
 vi.mock('@/lib/server-config', () => ({ getServerJurisdiction: mockGetServerJurisdiction }));
 vi.mock('@/lib/email/admin-notifications', () => ({ sendAdminNotification: mockSendAdminNotification }));
-vi.mock('@clerk/nextjs/server', () => ({ clerkClient: vi.fn(async () => mockClerk) }));
+vi.mock('@/lib/clerk-server', () => ({ clerkClient: vi.fn(async () => mockClerk) }));
 
 import {
   countNSWAnimalsMissingRequiredFields,

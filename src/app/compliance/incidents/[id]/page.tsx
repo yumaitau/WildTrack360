@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/clerk-server'
 import { notFound } from "next/navigation";
 import IncidentDetailClient from './incident-detail-client';
 

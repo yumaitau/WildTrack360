@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { SignOutButton } from '@clerk/nextjs';
+import { SignOutButton } from '@/lib/clerk-client';
 import { Button } from '@/components/ui/button';
 import {
   Heart, HeartHandshake, LayoutDashboard, LogOut, Receipt, Ticket, UserCog,

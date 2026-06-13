@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Pen, PlusCircle, Trash, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Asset, AssetStatus } from '@prisma/client';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useUser, useOrganization } from '@/lib/clerk-client';
 
 // Constants for component compatibility
 const assetTypes = ['Equipment', 'Cage', 'Tracker', 'Dataset', 'Other'] as const;

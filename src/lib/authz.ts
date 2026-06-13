@@ -1,6 +1,6 @@
 'server-only'
 
-import { clerkClient } from '@clerk/nextjs/server'
+import { clerkClient } from '@/lib/clerk-server'
 import { getOrgMember } from './rbac'
 
 export async function ensureUserInOrg(userId: string, orgId?: string): Promise<string> {

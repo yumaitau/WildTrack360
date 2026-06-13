@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Calendar, ArrowLeft, Home, MapPin, User, Pencil, Map } from "lucide-react";
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/clerk-server";
 import { prisma } from '@/lib/prisma';
 import { redirect, notFound } from "next/navigation";
 import { CallLogPindropSection } from './pindrop-section';

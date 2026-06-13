@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, FileText, Shield, Users, AlertTriangle, CheckCircle, Home, FileSpreadsheet, FlaskConical } from "lucide-react";
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/clerk-server";
 import { prisma } from '@/lib/prisma';
 import { redirect } from "next/navigation";
 import { getServerJurisdiction, getServerJurisdictionConfig } from '@/lib/server-config';

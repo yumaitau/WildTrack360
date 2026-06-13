@@ -1,4 +1,4 @@
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@/lib/clerk-server";
 import { redirect } from "next/navigation";
 import ComplianceOverviewClient from "./compliance-overview-client";
 

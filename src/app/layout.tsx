@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { ClerkProvider } from '@clerk/nextjs';
+import { ClerkProvider } from '@/lib/clerk-client';
 import { headers } from 'next/headers';
 import { Toaster } from 'sonner';
 import { GoogleMapsProvider } from '@/components/google-maps-provider';

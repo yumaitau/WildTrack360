@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';

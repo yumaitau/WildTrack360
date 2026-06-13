@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
+import { clerkClient } from '@/lib/clerk-server';
 import { prisma } from '@/lib/prisma';
 import { getUserRole, hasPermission } from '@/lib/rbac';
 import { logAudit } from '@/lib/audit';

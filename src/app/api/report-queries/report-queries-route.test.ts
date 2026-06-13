@@ -17,7 +17,7 @@ const { mockAuth, mockPrisma } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@clerk/nextjs/server', () => ({ auth: mockAuth }));
+vi.mock('@/lib/clerk-server', () => ({ auth: mockAuth }));
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }));
 vi.mock('@/lib/audit', () => ({ logAudit: vi.fn() }));
 vi.mock('@/lib/rbac', () => ({
@@ -115,7 +115,7 @@ describe('POST /api/report-queries/preview', () => {
     mockPrisma.incidentReport.findMany.mockResolvedValue([
       { severity: 'HIGH', date: new Date('2026-05-01') },
       { severity: 'LOW', date: new Date('2026-05-02') },
-    ]);
+    ] as any);
 
     const res = await PREVIEW(
       jsonRequest({
@@ -130,7 +130,7 @@ describe('POST /api/report-queries/preview', () => {
     expect(body.results).toHaveLength(1);
     expect(body.results[0].ok).toBe(true);
     // Tenant scoping reached Prisma.
-    const where = mockPrisma.incidentReport.findMany.mock.calls[0][0].where;
+    const where = (mockPrisma.incidentReport.findMany.mock.calls as any)[0]?.[0]?.where;
     expect(where.clerkOrganizationId).toBe(ORG);
   });
 

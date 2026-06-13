@@ -14,7 +14,7 @@ vi.mock('./rbac', () => ({
   getOrgMember: mockGetOrgMember,
 }));
 
-vi.mock('@clerk/nextjs/server', () => ({
+vi.mock('@/lib/clerk-server', () => ({
   clerkClient: vi.fn().mockResolvedValue(mockClerkClient),
 }));
 

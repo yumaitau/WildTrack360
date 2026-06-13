@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/clerk-server";
 import { redirect } from "next/navigation";
 import { getEnrichedCarers } from "@/lib/carer-helpers";
 import { getUserRole, hasPermission } from "@/lib/rbac";

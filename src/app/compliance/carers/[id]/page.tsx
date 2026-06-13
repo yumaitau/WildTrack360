@@ -6,8 +6,8 @@ import { User, Download, ArrowLeft, Award, Shield, Home, Calendar, MapPin } from
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
-import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/clerk-server";
+import { clerkClient } from "@/lib/clerk-server";
 import { Table, TableHead, TableHeader, TableRow, TableCell, TableBody } from "@/components/ui/table";
 import { FileText, XCircle, AlertTriangle, CheckCircle } from "lucide-react";
 import { ensureUserInOrg } from "@/lib/authz";

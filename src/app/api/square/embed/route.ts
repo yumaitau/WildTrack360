@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@/lib/clerk-server';
 import { requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { prisma } from '@/lib/prisma';

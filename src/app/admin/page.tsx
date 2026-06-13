@@ -38,7 +38,7 @@ import { AuditLogViewer } from './audit-log-viewer';
 import { DataExport } from './data-export';
 import { GrowthReferenceManagement } from './growth-reference-management';
 import { OrganisationSettings } from './organisation-settings';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useUser, useOrganization } from '@/lib/clerk-client';
 
 async function apiJson<T>(url: string): Promise<T> {
   const res = await fetch(url);

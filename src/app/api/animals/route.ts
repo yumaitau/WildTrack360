@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAnimal } from '@/lib/database'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { getUserRole, getAuthorisedSpecies, hasPermission } from '@/lib/rbac'

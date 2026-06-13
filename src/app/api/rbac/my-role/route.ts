@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { getOrgMember, getUserRole } from '@/lib/rbac';
 
 // GET /api/rbac/my-role — get the current user's role and species assignments

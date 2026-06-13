@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Pen, PlusCircle, Trash, Save, X, Search, Download, CheckSquare, Square, MinusSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useUser, useOrganization } from '@/lib/clerk-client';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {

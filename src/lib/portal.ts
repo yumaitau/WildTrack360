@@ -1,7 +1,7 @@
 'server-only';
 
 import { prisma } from './prisma';
-import { clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@/lib/clerk-server';
 import type { Member } from '@prisma/client';
 
 export interface PortalSession {

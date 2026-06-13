@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@/lib/clerk-server';
 import type { OrgRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { sendEmail } from './resend';

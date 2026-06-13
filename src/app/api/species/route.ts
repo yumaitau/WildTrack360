@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSpecies, createSpecies } from '@/lib/database'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
 

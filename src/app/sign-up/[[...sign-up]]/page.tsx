@@ -1,6 +1,6 @@
 "use client";
 
-import { SignUp } from "@clerk/nextjs";
+import { SignUp } from "@/lib/clerk-client";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 

@@ -1,5 +1,5 @@
 import 'server-only';
-import { clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@/lib/clerk-server';
 
 // Define jurisdiction configuration type
 type JurisdictionConfig = {

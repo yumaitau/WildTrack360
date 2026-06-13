@@ -76,7 +76,7 @@ import {
 import type { FeedRosterItem } from '@/lib/feed-roster';
 import type { NSWReminderBannerData } from '@/lib/nsw-reminder-types';
 import type { CustomQueryResult } from '@/lib/custom-query/types';
-import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
+import { useUser, useOrganization, useClerk } from '@/lib/clerk-client';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { getJurisdictionFromOrg } from '@/lib/config';

@@ -9,7 +9,7 @@ vi.mock('./prisma', () => ({
 
 const createInvitation = vi.fn();
 const getOrganization = vi.fn();
-vi.mock('@clerk/nextjs/server', () => ({
+vi.mock('@/lib/clerk-server', () => ({
   clerkClient: vi.fn(async () => ({
     invitations: { createInvitation },
     organizations: { getOrganization },

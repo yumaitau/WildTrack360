@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@/lib/clerk-server';
 import { listOrgMembers, setUserRole, requirePermission } from '@/lib/rbac';
 import type { OrgRole } from '@prisma/client';
 import { logAudit } from '@/lib/audit';

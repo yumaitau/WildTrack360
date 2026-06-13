@@ -44,7 +44,7 @@ import { DeleteAnimalDialog } from "@/components/delete-animal-dialog";
 import { AnimalReminderAlert } from "@/components/animal-reminder-alert";
 import { ManageReminders } from "@/components/manage-reminders";
 import type { AnimalReminder } from "@/lib/types";
-import { useOrganization, useUser } from "@clerk/nextjs";
+import { useOrganization, useUser } from "@/lib/clerk-client";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { getPhotoUrl } from "@/lib/photo-url";

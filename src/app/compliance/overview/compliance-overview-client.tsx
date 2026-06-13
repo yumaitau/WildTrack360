@@ -18,7 +18,7 @@ import {
   Home,
   ArrowLeft
 } from "lucide-react";
-import { useOrganization } from '@clerk/nextjs';
+import { useOrganization } from '@/lib/clerk-client';
 import { getJurisdictionConfig, getOrganizationName } from '@/lib/config';
 import { 
   getJurisdictionComplianceConfig, 

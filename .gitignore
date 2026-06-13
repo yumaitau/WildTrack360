@@ -56,3 +56,9 @@ firestore-debug.log
 
 # Local docker overrides
 docker-compose.override.yml
+
+# Marketing video generated artifacts
+/marketing/video/node_modules/
+/marketing/video/out/
+/marketing/video/public/clips/
+/marketing/video/.remotion/

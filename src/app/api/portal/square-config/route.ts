@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { getPortalMember } from '@/lib/portal';
 import { getConnection } from '@/lib/square/oauth';
 

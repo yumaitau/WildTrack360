@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/clerk-server'
 import { randomUUID } from 'crypto'
 import { uploadToS3 } from '@/lib/s3'
 import { logAudit } from '@/lib/audit'

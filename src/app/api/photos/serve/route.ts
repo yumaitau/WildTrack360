@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/clerk-server'
 import { getObjectFromS3, extractOrgIdFromKey } from '@/lib/s3'
 
 /**
