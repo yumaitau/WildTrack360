@@ -90,7 +90,7 @@ export async function composeMemberMessages(
         body: renderedBody,
         sentByClerkUserId: sender.clerkUserId,
         sentByName: sender.name,
-        emailSentAt: input.sendEmail ? new Date() : null,
+        emailSentAt: null,
       },
       select: { id: true },
     });
@@ -106,11 +106,12 @@ export async function composeMemberMessages(
   return created;
 }
 
-export function listMemberMessages(memberId: string, limit = 100) {
+export function listMemberMessages(memberId: string, limit = 100, cursor?: string | null) {
   return prisma.memberMessage.findMany({
     where: { memberId },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: limit,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   });
 }
 

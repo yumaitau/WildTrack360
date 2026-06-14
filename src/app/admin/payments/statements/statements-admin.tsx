@@ -7,10 +7,19 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import { financialYearEndYear, financialYearLabel } from '@/lib/financial-year';
 
@@ -32,22 +41,29 @@ export function StatementsAdmin() {
   const [donors, setDonors] = useState<DonorAggregate[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/admin/eofy?fy=${fy}`);
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load');
-      const data = await res.json();
-      setDonors(data.donors as DonorAggregate[]);
-    } catch (err) {
-      toast.error((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [fy]);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/admin/eofy?fy=${fy}`, { signal });
+        if (!res.ok)
+          throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load');
+        const data = await res.json();
+        if (!signal?.aborted) setDonors(data.donors as DonorAggregate[]);
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
+        toast.error((err as Error).message);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [fy]
+  );
 
   useEffect(() => {
-    load();
+    const controller = new AbortController();
+    load(controller.signal);
+    return () => controller.abort();
   }, [load]);
 
   const grandTotal = donors.reduce((s, d) => s + d.totalCents, 0);
@@ -73,8 +89,8 @@ export function StatementsAdmin() {
             <div>
               <CardTitle>Donors by financial year</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Consolidated tax statements for each donor. Open one to print or save it as a PDF
-                to send to donors who don&apos;t use the member portal.
+                Consolidated tax statements for each donor. Open one to print or save it as a PDF to
+                send to donors who don&apos;t use the member portal.
               </p>
             </div>
             <Select value={String(fy)} onValueChange={(v) => setFy(Number(v))}>
@@ -113,15 +129,21 @@ export function StatementsAdmin() {
                     {donors.map((d) => (
                       <TableRow key={d.donorEmail}>
                         <TableCell className="font-medium">{d.donorName ?? '—'}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{d.donorEmail}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {d.donorEmail}
+                        </TableCell>
                         <TableCell className="text-right">{d.count}</TableCell>
-                        <TableCell className="text-right font-mono">{money(d.totalCents)}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {money(d.totalCents)}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Link
                             href={`/admin/payments/statements/view?fy=${fy}&email=${encodeURIComponent(d.donorEmail)}`}
                             target="_blank"
                           >
-                            <Button variant="outline" size="sm">View</Button>
+                            <Button variant="outline" size="sm">
+                              View
+                            </Button>
                           </Link>
                         </TableCell>
                       </TableRow>
@@ -130,7 +152,9 @@ export function StatementsAdmin() {
                       <TableCell className="font-semibold">Total</TableCell>
                       <TableCell />
                       <TableCell />
-                      <TableCell className="text-right font-mono font-semibold">{money(grandTotal)}</TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        {money(grandTotal)}
+                      </TableCell>
                       <TableCell />
                     </TableRow>
                   </TableBody>

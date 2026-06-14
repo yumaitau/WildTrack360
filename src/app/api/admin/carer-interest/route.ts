@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
-import { requirePermission } from '@/lib/rbac';
+import { isForbiddenError, requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { listCarerInterests, updateCarerInterestStatus } from '@/lib/carer-interest';
@@ -15,8 +15,11 @@ export async function GET() {
   if (gated) return gated;
   try {
     await requirePermission(userId, orgId, 'member:view_all');
-  } catch {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  } catch (error) {
+    if (isForbiddenError(error)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    throw error;
   }
   const interests = await listCarerInterests(orgId);
   return NextResponse.json({ interests });
@@ -29,8 +32,11 @@ export async function PATCH(request: Request) {
   if (gated) return gated;
   try {
     await requirePermission(userId, orgId, 'member:manage');
-  } catch {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  } catch (error) {
+    if (isForbiddenError(error)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    throw error;
   }
 
   try {

@@ -3,7 +3,7 @@
 // HTTP route, then exits. Notification idempotency lives in the DB via
 // MembershipNotification, so re-running is safe.
 import { prisma } from '@/lib/prisma';
-import { runMembershipLifecycle } from '@/lib/membership-lifecycle';
+import { runMembershipLifecycle } from '@/lib/membership-lifecycle-worker';
 
 function log(event: string, payload: Record<string, unknown> = {}) {
   console.log(JSON.stringify({ event, ...payload }));

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@/lib/clerk-server';
-import { requirePermission } from '@/lib/rbac';
+import { isForbiddenError, requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { createNews, listNews } from '@/lib/news';
@@ -14,8 +14,11 @@ export async function GET() {
   if (gated) return gated;
   try {
     await requirePermission(userId, orgId, 'member:manage');
-  } catch {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  } catch (error) {
+    if (isForbiddenError(error)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    throw error;
   }
 
   try {
@@ -36,8 +39,11 @@ export async function POST(request: Request) {
   if (gated) return gated;
   try {
     await requirePermission(userId, orgId, 'member:manage');
-  } catch {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  } catch (error) {
+    if (isForbiddenError(error)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    throw error;
   }
 
   try {

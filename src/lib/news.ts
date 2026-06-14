@@ -61,6 +61,9 @@ export async function updateNews(id: string, orgId: string, body: Record<string,
   const update: Prisma.NewsPostUpdateInput = {};
   if (data.title !== undefined) update.title = data.title;
   if (data.body !== undefined) update.body = data.body;
+  if (Object.keys(update).length === 0) {
+    throw new Error('No updatable fields provided');
+  }
 
   const result = await prisma.newsPost.updateMany({
     where: { id, clerkOrganizationId: orgId },

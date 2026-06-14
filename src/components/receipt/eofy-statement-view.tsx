@@ -61,14 +61,21 @@ export function EofyStatementView({ data }: { data: EofyStatement }) {
           {lines.map((l, i) => (
             <tr key={i}>
               <td>
-                {l.date.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}
+                {l.date.toLocaleDateString('en-AU', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                  timeZone: 'Australia/Sydney',
+                })}
               </td>
               <td className="font-mono">{l.receiptNumber ?? '—'}</td>
               <td className="num font-mono">{formatAmountCents(l.amountCents, currency)}</td>
             </tr>
           ))}
           <tr>
-            <th>Total ({lines.length} {lines.length === 1 ? 'donation' : 'donations'})</th>
+            <th>
+              Total ({lines.length} {lines.length === 1 ? 'donation' : 'donations'})
+            </th>
             <td></td>
             <td className="num font-mono font-bold">{formatAmountCents(totalCents, currency)}</td>
           </tr>
@@ -78,17 +85,16 @@ export function EofyStatementView({ data }: { data: EofyStatement }) {
       <h2>Tax notice</h2>
       {taxDeductible ? (
         <p className="text-sm">
-          The donations listed above are gifts of money of $2 or more to a Deductible Gift
-          Recipient endorsed under Subdivision 30-B of the Income Tax Assessment Act 1997.
-          Total tax-deductible amount for the year:{' '}
-          <strong>{formatAmountCents(totalCents, currency)}</strong>. Please retain this
-          statement for your taxation records.
+          The donations listed above are gifts of money of $2 or more to a Deductible Gift Recipient
+          endorsed under Subdivision 30-B of the Income Tax Assessment Act 1997. Total
+          tax-deductible amount for the year:{' '}
+          <strong>{formatAmountCents(totalCents, currency)}</strong>. Please retain this statement
+          for your taxation records.
         </p>
       ) : (
         <p className="text-sm">
-          This organisation is not endorsed as a Deductible Gift Recipient, so the donations
-          listed above are <strong>not</strong> tax deductible. Retain this statement for your
-          records.
+          This organisation is not endorsed as a Deductible Gift Recipient, so the donations listed
+          above are <strong>not</strong> tax deductible. Retain this statement for your records.
         </p>
       )}
 

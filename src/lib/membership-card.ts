@@ -45,7 +45,7 @@ export async function getMembershipCard(member: Member): Promise<MembershipCard>
     memberNumber: member.memberNumber,
     identifier,
     tierName: effective?.tier.name ?? null,
-    memberStatus: member.status,
+    memberStatus: effective?.status ?? member.status,
     validUntil: effective ? effective.periodEnd.toISOString() : null,
     householdOf: effective?.viaPrimary ? effective.primaryName : null,
     giftedBy: effective?.giftedBy ?? null,

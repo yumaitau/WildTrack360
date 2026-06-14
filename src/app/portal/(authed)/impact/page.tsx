@@ -9,9 +9,7 @@ import { Button } from '@/components/ui/button';
 import { PawPrint, Leaf, Heart, Sprout, HandHeart, HeartHandshake, ArrowRight } from 'lucide-react';
 
 function money(cents: number, currency: string) {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency, maximumFractionDigits: 0 }).format(
-    cents / 100
-  );
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency }).format(cents / 100);
 }
 
 export default async function PortalImpactPage() {
@@ -27,10 +25,22 @@ export default async function PortalImpactPage() {
   });
 
   const stats = [
-    { icon: PawPrint, label: 'Animals cared for', value: impact.org.animalsHelped.toLocaleString('en-AU') },
-    { icon: Sprout, label: 'Returned to the wild', value: impact.org.released.toLocaleString('en-AU') },
+    {
+      icon: PawPrint,
+      label: 'Animals cared for',
+      value: impact.org.animalsHelped.toLocaleString('en-AU'),
+    },
+    {
+      icon: Sprout,
+      label: 'Returned to the wild',
+      value: impact.org.released.toLocaleString('en-AU'),
+    },
     { icon: Leaf, label: 'Species helped', value: impact.org.speciesCount.toLocaleString('en-AU') },
-    { icon: HandHeart, label: 'In care right now', value: impact.org.currentlyInCare.toLocaleString('en-AU') },
+    {
+      icon: HandHeart,
+      label: 'In care right now',
+      value: impact.org.currentlyInCare.toLocaleString('en-AU'),
+    },
   ];
 
   return (
@@ -58,12 +68,15 @@ export default async function PortalImpactPage() {
 
       <Card className="bg-primary/5 border-primary/20">
         <CardContent className="py-6 text-center space-y-1">
-          <p className="text-sm text-muted-foreground">This financial year ({financialYearShort(impact.org.fyEndYear)})</p>
+          <p className="text-sm text-muted-foreground">
+            This financial year ({financialYearShort(impact.org.fyEndYear)})
+          </p>
           <p className="text-xl font-semibold">
             {impact.org.releasedThisFy.toLocaleString('en-AU')} animals released back to the wild
           </p>
           <p className="text-sm text-muted-foreground">
-            with the support of members like you{impact.member.hasActiveMembership ? ' — thank you for being one of them' : ''}.
+            with the support of members like you
+            {impact.member.hasActiveMembership ? ' — thank you for being one of them' : ''}.
           </p>
         </CardContent>
       </Card>
@@ -79,7 +92,9 @@ export default async function PortalImpactPage() {
           </div>
           <div>
             <div className="text-muted-foreground">Total donated</div>
-            <div className="font-medium">{money(impact.member.totalDonatedCents, impact.member.currency)}</div>
+            <div className="font-medium">
+              {money(impact.member.totalDonatedCents, impact.member.currency)}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -118,7 +133,10 @@ export default async function PortalImpactPage() {
                   </div>
                   {a.dateReleased && (
                     <span className="text-xs text-muted-foreground">
-                      {new Date(a.dateReleased).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })}
+                      {new Date(a.dateReleased).toLocaleDateString('en-AU', {
+                        month: 'short',
+                        year: 'numeric',
+                      })}
                     </span>
                   )}
                 </li>

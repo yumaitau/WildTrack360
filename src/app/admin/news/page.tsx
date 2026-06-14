@@ -1,6 +1,6 @@
 import { auth } from '@/lib/clerk-server';
 import { redirect } from 'next/navigation';
-import { requirePermission } from '@/lib/rbac';
+import { isForbiddenError, requirePermission } from '@/lib/rbac';
 import { isFeatureEnabled } from '@/lib/features';
 import { NewsAdmin } from './news-admin';
 
@@ -12,8 +12,9 @@ export default async function NewsAdminPage() {
 
   try {
     await requirePermission(userId, orgId, 'member:manage');
-  } catch {
-    redirect('/');
+  } catch (error) {
+    if (isForbiddenError(error)) redirect('/');
+    throw error;
   }
 
   return <NewsAdmin />;

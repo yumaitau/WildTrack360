@@ -21,7 +21,12 @@ export async function getEffectiveMembership(member: Member): Promise<EffectiveM
   const now = new Date();
 
   const own = await prisma.membership.findFirst({
-    where: { memberId: member.id, status: 'ACTIVE', periodEnd: { gte: now } },
+    where: {
+      clerkOrganizationId: member.clerkOrganizationId,
+      memberId: member.id,
+      status: 'ACTIVE',
+      periodEnd: { gte: now },
+    },
     include: { tier: true },
     orderBy: { periodEnd: 'desc' },
   });
@@ -38,9 +43,16 @@ export async function getEffectiveMembership(member: Member): Promise<EffectiveM
 
   if (member.primaryMemberId) {
     const [primary, primaryMembership] = await Promise.all([
-      prisma.member.findUnique({ where: { id: member.primaryMemberId } }),
+      prisma.member.findFirst({
+        where: { id: member.primaryMemberId, clerkOrganizationId: member.clerkOrganizationId },
+      }),
       prisma.membership.findFirst({
-        where: { memberId: member.primaryMemberId, status: 'ACTIVE', periodEnd: { gte: now } },
+        where: {
+          clerkOrganizationId: member.clerkOrganizationId,
+          memberId: member.primaryMemberId,
+          status: 'ACTIVE',
+          periodEnd: { gte: now },
+        },
         include: { tier: true },
         orderBy: { periodEnd: 'desc' },
       }),
@@ -89,14 +101,16 @@ export async function addHouseholdMember(
   const email = input.email.trim().toLowerCase();
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
-  if (!firstName || !lastName || !email) throw new Error('First name, last name and email are required');
+  if (!firstName || !lastName || !email)
+    throw new Error('First name, last name and email are required');
   if (email === primary.email.toLowerCase()) throw new Error('That email is the primary member');
 
   const count = await prisma.member.count({
     where: { clerkOrganizationId: orgId, primaryMemberId: primary.id, archivedAt: null },
   });
-  if (count >= MAX_HOUSEHOLD_MEMBERS) {
-    throw new Error(`A household can have at most ${MAX_HOUSEHOLD_MEMBERS} additional members`);
+  const maxSecondaryMembers = MAX_HOUSEHOLD_MEMBERS - 1;
+  if (count >= maxSecondaryMembers) {
+    throw new Error(`A household can have at most ${MAX_HOUSEHOLD_MEMBERS} total members`);
   }
 
   const existing = await prisma.member.findFirst({
@@ -107,8 +121,23 @@ export async function addHouseholdMember(
     if (existing.primaryMemberId && existing.primaryMemberId !== primary.id) {
       throw new Error('That person is already in another household');
     }
+    const existingDependants = await prisma.member.count({
+      where: {
+        clerkOrganizationId: orgId,
+        primaryMemberId: existing.id,
+        archivedAt: null,
+      },
+    });
+    if (existingDependants > 0) {
+      throw new Error('That person already manages their own household');
+    }
     const ownActive = await prisma.membership.findFirst({
-      where: { memberId: existing.id, status: 'ACTIVE', periodEnd: { gte: new Date() } },
+      where: {
+        clerkOrganizationId: orgId,
+        memberId: existing.id,
+        status: 'ACTIVE',
+        periodEnd: { gte: new Date() },
+      },
       select: { id: true },
     });
     if (ownActive) throw new Error('That person already has their own active membership');

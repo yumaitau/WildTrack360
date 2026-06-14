@@ -2,17 +2,14 @@ import { auth } from '@/lib/clerk-server';
 import { redirect, notFound } from 'next/navigation';
 import { getPortalMember } from '@/lib/portal';
 import { loadEofyStatement } from '@/lib/eofy';
+import { parseFinancialYearEndYear } from '@/lib/financial-year';
 import { EofyStatementView } from '@/components/receipt/eofy-statement-view';
 import { PrintBar } from '@/app/admin/payments/[id]/receipt/print-bar';
 
-export default async function PortalStatementPage({
-  params,
-}: {
-  params: Promise<{ fy: string }>;
-}) {
+export default async function PortalStatementPage({ params }: { params: Promise<{ fy: string }> }) {
   const { fy } = await params;
-  const fyEndYear = Number.parseInt(fy, 10);
-  if (!Number.isInteger(fyEndYear)) return notFound();
+  const fyEndYear = parseFinancialYearEndYear(fy);
+  if (!fyEndYear) return notFound();
 
   const { userId } = await auth();
   if (!userId) redirect('/portal/sign-in');

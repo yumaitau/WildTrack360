@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
-import { requirePermission } from '@/lib/rbac';
+import { isForbiddenError, requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { prisma } from '@/lib/prisma';
@@ -20,8 +20,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (gated) return gated;
   try {
     await requirePermission(userId, orgId, 'member:manage');
-  } catch {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  } catch (error) {
+    if (isForbiddenError(error)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    throw error;
   }
 
   const body = await request.json().catch(() => ({}));
@@ -30,7 +33,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     if (body?.unpublish) {
       const post = await unpublishNews(id, orgId);
-      logAudit({ userId, orgId, action: 'UPDATE', entity: 'NewsPost', entityId: id, metadata: { unpublished: true } });
+      logAudit({
+        userId,
+        orgId,
+        action: 'UPDATE',
+        entity: 'NewsPost',
+        entityId: id,
+        metadata: { unpublished: true },
+      });
       return NextResponse.json({ post, emailed: 0 });
     }
 
@@ -39,13 +49,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     let emailed = 0;
     // Only broadcast the first time a post is published (emailSentAt unset).
     if (sendEmail && !post.emailSentAt) {
+      const claim = await prisma.newsPost.updateMany({
+        where: { id: post.id, clerkOrganizationId: orgId, emailSentAt: null },
+        data: { emailSentAt: new Date(), recipientCount: 0 },
+      });
+      if (claim.count === 0) {
+        return NextResponse.json({ post, emailed: 0 });
+      }
+
       const org = await getOrgDisplayInfo(orgId);
       const recipients = await prisma.member.findMany({
         where: { clerkOrganizationId: orgId, archivedAt: null, status: 'ACTIVE' },
         select: { email: true, firstName: true },
       });
       emailed = await broadcastNewsPost(recipients, org, { title: post.title, body: post.body });
-      if (emailed > 0) await markNewsEmailed(post.id, emailed);
+      await markNewsEmailed(post.id, emailed);
     }
 
     logAudit({

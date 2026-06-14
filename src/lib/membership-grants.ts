@@ -30,22 +30,35 @@ export async function grantMembership(orgId: string, input: GrantInput) {
   const end = computeMembershipEnd(start, tier.billingInterval);
   const giftedBy = (input.giftedBy?.trim() || 'Complimentary').slice(0, 120);
 
-  const membership = await prisma.membership.create({
-    data: {
-      clerkOrganizationId: orgId,
-      memberId: member.id,
-      tierId: tier.id,
-      periodStart: start,
-      periodEnd: end,
-      status: 'ACTIVE',
-      giftedBy,
-    },
-  });
+  const membership = await prisma.$transaction(async (tx) => {
+    await tx.membership.updateMany({
+      where: {
+        clerkOrganizationId: orgId,
+        memberId: member.id,
+        status: 'ACTIVE',
+      },
+      data: { status: 'CANCELLED', periodEnd: start },
+    });
 
-  // A gift reactivates a lapsed/cancelled member.
-  await prisma.member.updateMany({
-    where: { id: member.id, status: { in: ['LAPSED', 'CANCELLED'] } },
-    data: { status: 'ACTIVE' },
+    const created = await tx.membership.create({
+      data: {
+        clerkOrganizationId: orgId,
+        memberId: member.id,
+        tierId: tier.id,
+        periodStart: start,
+        periodEnd: end,
+        status: 'ACTIVE',
+        giftedBy,
+      },
+    });
+
+    // A gift reactivates a lapsed/cancelled member.
+    await tx.member.updateMany({
+      where: { id: member.id, status: { in: ['LAPSED', 'CANCELLED'] } },
+      data: { status: 'ACTIVE' },
+    });
+
+    return created;
   });
 
   // Best-effort welcome email.
@@ -61,11 +74,13 @@ export async function grantMembership(orgId: string, input: GrantInput) {
         react: MemberBroadcastEmail({
           orgName: org.name,
           eyebrow: 'Membership',
-          heading: isComp ? 'Welcome — your membership is active' : 'Someone gifted you a membership!',
+          heading: isComp
+            ? 'Welcome — your membership is active'
+            : 'Someone gifted you a membership!',
           greeting: member.firstName ? `Hi ${member.firstName},` : null,
           body: isComp
-            ? `You've been given a complimentary ${tier.name} membership with ${org.name}, valid until ${end.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}. Welcome aboard — your support helps wildlife in need.`
-            : `${giftedBy} has gifted you a ${tier.name} membership with ${org.name}, valid until ${end.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}. Welcome — we're so glad to have you.`,
+            ? `You've been given a complimentary ${tier.name} membership with ${org.name}, valid until ${end.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney' })}. Welcome aboard — your support helps wildlife in need.`
+            : `${giftedBy} has gifted you a ${tier.name} membership with ${org.name}, valid until ${end.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney' })}. Welcome — we're so glad to have you.`,
           ctaLabel: 'View your membership',
           ctaUrl: `${APP_URL}/portal/card`,
           contactEmail: org.contactEmail,
@@ -79,5 +94,10 @@ export async function grantMembership(orgId: string, input: GrantInput) {
     }
   }
 
-  return { membershipId: membership.id, memberId: member.id, tierName: tier.name, validUntil: end.toISOString() };
+  return {
+    membershipId: membership.id,
+    memberId: member.id,
+    tierName: tier.name,
+    validUntil: end.toISOString(),
+  };
 }

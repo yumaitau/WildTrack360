@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
-import { requirePermission } from '@/lib/rbac';
+import { isForbiddenError, requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { deleteNews, getNews, updateNews } from '@/lib/news';
@@ -14,8 +14,11 @@ async function authorise(id: string) {
   if (gated) return { error: gated };
   try {
     await requirePermission(userId, orgId, 'member:manage');
-  } catch {
-    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
+  } catch (error) {
+    if (isForbiddenError(error)) {
+      return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
+    }
+    throw error;
   }
   return { userId, orgId, id };
 }
@@ -36,7 +39,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const body = await request.json();
     const post = await updateNews(id, ctx.orgId, body);
-    logAudit({ userId: ctx.userId, orgId: ctx.orgId, action: 'UPDATE', entity: 'NewsPost', entityId: id });
+    logAudit({
+      userId: ctx.userId,
+      orgId: ctx.orgId,
+      action: 'UPDATE',
+      entity: 'NewsPost',
+      entityId: id,
+    });
     return NextResponse.json(post);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update news post';
@@ -51,10 +60,20 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if ('error' in ctx) return ctx.error;
   try {
     await deleteNews(id, ctx.orgId);
-    logAudit({ userId: ctx.userId, orgId: ctx.orgId, action: 'DELETE', entity: 'NewsPost', entityId: id });
+    logAudit({
+      userId: ctx.userId,
+      orgId: ctx.orgId,
+      action: 'DELETE',
+      entity: 'NewsPost',
+      entityId: id,
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to delete news post';
-    return NextResponse.json({ error: message }, { status: 404 });
+    const status = message === 'News post not found' ? 404 : 500;
+    return NextResponse.json(
+      { error: status === 404 ? message : 'Failed to delete news post' },
+      { status }
+    );
   }
 }

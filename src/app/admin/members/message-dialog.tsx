@@ -8,7 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 
 const TOKENS: { token: string; label: string }[] = [
@@ -31,7 +36,9 @@ export function MessageDialog({ open, onOpenChange, memberIds, onSent }: Props) 
   const [body, setBody] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [stats, setStats] = useState<{ animalsHelped: number; animalsReleased: number } | null>(null);
+  const [stats, setStats] = useState<{ animalsHelped: number; animalsReleased: number } | null>(
+    null
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -84,8 +91,9 @@ export function MessageDialog({ open, onOpenChange, memberIds, onSent }: Props) 
             Message {memberIds.length} member{memberIds.length === 1 ? '' : 's'}
           </DialogTitle>
           <DialogDescription>
-            This appears in each member&apos;s portal inbox{sendEmail ? ' and is emailed to them' : ''}.
-            Use the merge tags below to personalise it.
+            This appears in each member&apos;s portal inbox
+            {sendEmail ? ' and is emailed to them' : ''}. Use the merge tags below to personalise
+            it.
           </DialogDescription>
         </DialogHeader>
 
@@ -107,7 +115,9 @@ export function MessageDialog({ open, onOpenChange, memberIds, onSent }: Props) 
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={7}
-              placeholder={'Hi {{firstName}},\n\nThanks so much for your support — together we&apos;ve helped care for {{animalsHelped}} animals.'}
+              placeholder={
+                "Hi {{firstName}},\n\nThanks so much for your support — together we've helped care for {{animalsHelped}} animals."
+              }
             />
             <div className="flex flex-wrap gap-1.5 pt-1">
               {TOKENS.map((t) => (

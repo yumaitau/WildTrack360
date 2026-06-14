@@ -184,6 +184,10 @@ export async function requirePermission(
   return role;
 }
 
+export function isForbiddenError(error: unknown): boolean {
+  return error instanceof Error && error.message === 'Forbidden';
+}
+
 /**
  * Throws if the user's role is below the required minimum.
  */
@@ -221,15 +225,14 @@ export async function getAuthorisedSpecies(
   if (!member) return [];
 
   // Admin / *_ALL roles see everything — null means "no filter"
-  if (member.role === 'ADMIN' || member.role === 'COORDINATOR_ALL' || member.role === 'CARER_ALL') return null;
+  if (member.role === 'ADMIN' || member.role === 'COORDINATOR_ALL' || member.role === 'CARER_ALL')
+    return null;
 
   // Coordinator sees species in their assigned groups
   // Preserve original casing so Prisma queries match DB values
   if (member.role === 'COORDINATOR') {
-    const speciesNames = member.speciesAssignments.flatMap(
-      (a) => a.speciesGroup.speciesNames
-    );
-    return [...new Set(speciesNames.map(s => s.trim()))];
+    const speciesNames = member.speciesAssignments.flatMap((a) => a.speciesGroup.speciesNames);
+    return [...new Set(speciesNames.map((s) => s.trim()))];
   }
 
   // Carer has no species-level access (filtered by assigned animals instead)
@@ -254,13 +257,16 @@ export async function canAccessAnimal(
     return animal.carerId === userId;
   }
 
-  if (member.role === 'ADMIN' || member.role === 'COORDINATOR_ALL' || member.role === 'CARER_ALL') return true;
+  if (member.role === 'ADMIN' || member.role === 'COORDINATOR_ALL' || member.role === 'CARER_ALL')
+    return true;
 
   if (member.role === 'COORDINATOR') {
-    const authorisedSpecies = member.speciesAssignments.flatMap(
-      (a) => a.speciesGroup.speciesNames.map(normaliseSpecies)
+    const authorisedSpecies = member.speciesAssignments.flatMap((a) =>
+      a.speciesGroup.speciesNames.map(normaliseSpecies)
     );
-    return animal.carerId === userId || authorisedSpecies.includes(normaliseSpecies(animal.species));
+    return (
+      animal.carerId === userId || authorisedSpecies.includes(normaliseSpecies(animal.species))
+    );
   }
 
   // CARER
@@ -274,11 +280,7 @@ export async function canAccessAnimal(
  * Prevents demotion of the last ADMIN in an org.
  * Wrapped in an interactive transaction so the read + write are atomic.
  */
-export async function setUserRole(
-  userId: string,
-  orgId: string,
-  role: OrgRole
-) {
+export async function setUserRole(userId: string, orgId: string, role: OrgRole) {
   return prisma.$transaction(async (tx) => {
     // Prevent removing the last ADMIN
     if (role !== 'ADMIN') {

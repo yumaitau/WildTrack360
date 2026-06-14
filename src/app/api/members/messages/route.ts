@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@/lib/clerk-server';
-import { requirePermission } from '@/lib/rbac';
+import { isForbiddenError, requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { composeMemberMessages } from '@/lib/member-messages';
 import { getOrgDisplayInfo } from '@/lib/org-info';
 import { sendMemberMessageEmail } from '@/lib/email/member-broadcast';
+import { prisma } from '@/lib/prisma';
+
+const MAX_EMAIL_RECIPIENTS = 100;
 
 // POST /api/members/messages — send a message to one or more selected members.
 // Body: { memberIds: string[], subject: string, body: string, sendEmail?: boolean }
@@ -19,13 +22,23 @@ export async function POST(request: Request) {
   if (gated) return gated;
   try {
     await requirePermission(userId, orgId, 'member:manage');
-  } catch {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  } catch (error) {
+    if (isForbiddenError(error)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    throw error;
   }
 
   try {
     const body = await request.json();
     const sendEmail = body?.sendEmail !== false; // default true
+    const memberIds = Array.isArray(body?.memberIds) ? body.memberIds : [];
+    if (sendEmail && new Set(memberIds).size > MAX_EMAIL_RECIPIENTS) {
+      return NextResponse.json(
+        { error: `Email broadcasts are limited to ${MAX_EMAIL_RECIPIENTS} recipients at a time` },
+        { status: 400 }
+      );
+    }
 
     const org = await getOrgDisplayInfo(orgId);
 
@@ -42,7 +55,7 @@ export async function POST(request: Request) {
       orgId,
       org.name,
       {
-        memberIds: Array.isArray(body?.memberIds) ? body.memberIds : [],
+        memberIds,
         subject: String(body?.subject ?? ''),
         body: String(body?.body ?? ''),
         sendEmail,
@@ -62,6 +75,17 @@ export async function POST(request: Request) {
         )
       );
       emailed = results.filter((r) => r.status === 'fulfilled' && r.value).length;
+      const emailedIds = results
+        .map((result, index) =>
+          result.status === 'fulfilled' && result.value ? messages[index].messageId : null
+        )
+        .filter((id): id is string => Boolean(id));
+      if (emailedIds.length > 0) {
+        await prisma.memberMessage.updateMany({
+          where: { id: { in: emailedIds }, clerkOrganizationId: orgId },
+          data: { emailSentAt: new Date() },
+        });
+      }
     }
 
     logAudit({

@@ -15,6 +15,9 @@ export const COVER_FEE_BPS = PLATFORM_FEE_BPS + PROCESSING_FEE_BPS;
 export function coverFeesCents(baseCents: number): number {
   if (!Number.isFinite(baseCents) || baseCents <= 0) return 0;
   const rate = COVER_FEE_BPS / 10000;
+  if (rate <= 0 || rate >= 1) {
+    throw new Error('Invalid COVER_FEE_BPS configuration');
+  }
   const gross = Math.round(baseCents / (1 - rate));
   return Math.max(0, gross - baseCents);
 }

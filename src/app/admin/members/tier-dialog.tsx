@@ -8,10 +8,18 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { netAfterFeesCents, COVER_FEE_BPS } from '@/lib/fees';
 
@@ -60,7 +68,11 @@ export function TierDialog({ open, onOpenChange, initial, onSubmit }: Props) {
 
   useEffect(() => {
     if (open) {
-      const merged: TierFormValue = { ...EMPTY, ...(initial ?? {}), benefits: initial?.benefits ?? [] };
+      const merged: TierFormValue = {
+        ...EMPTY,
+        ...(initial ?? {}),
+        benefits: initial?.benefits ?? [],
+      };
       setValues(merged);
       setAmountDisplay((merged.amountCents / 100).toFixed(2));
     }
@@ -109,8 +121,9 @@ export function TierDialog({ open, onOpenChange, initial, onSubmit }: Props) {
 
   const isEdit = Boolean(initial?.id);
   const net = netAfterFeesCents(values.amountCents);
+  const safeCurrency = /^[A-Z]{3}$/.test(values.currency) ? values.currency : 'AUD';
   const fmt = (cents: number) =>
-    new Intl.NumberFormat('en-AU', { style: 'currency', currency: values.currency || 'AUD' }).format(
+    new Intl.NumberFormat('en-AU', { style: 'currency', currency: safeCurrency }).format(
       cents / 100
     );
 
@@ -122,7 +135,9 @@ export function TierDialog({ open, onOpenChange, initial, onSubmit }: Props) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Name <span className="text-destructive">*</span></Label>
+            <Label>
+              Name <span className="text-destructive">*</span>
+            </Label>
             <Input value={values.name} onChange={(e) => set('name', e.target.value)} required />
           </div>
           <div className="space-y-1.5">
@@ -135,7 +150,9 @@ export function TierDialog({ open, onOpenChange, initial, onSubmit }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Amount <span className="text-destructive">*</span></Label>
+              <Label>
+                Amount <span className="text-destructive">*</span>
+              </Label>
               <Input
                 type="number"
                 step="0.01"
@@ -147,7 +164,10 @@ export function TierDialog({ open, onOpenChange, initial, onSubmit }: Props) {
             </div>
             <div className="space-y-1.5">
               <Label>Currency</Label>
-              <Input value={values.currency} onChange={(e) => set('currency', e.target.value.toUpperCase())} />
+              <Input
+                value={values.currency}
+                onChange={(e) => set('currency', e.target.value.toUpperCase())}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Billing</Label>
@@ -155,18 +175,27 @@ export function TierDialog({ open, onOpenChange, initial, onSubmit }: Props) {
                 value={values.billingInterval}
                 onValueChange={(v) => set('billingInterval', v as TierFormValue['billingInterval'])}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {INTERVAL_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label>GST handling</Label>
-              <Select value={values.gstHandling} onValueChange={(v) => set('gstHandling', v as TierFormValue['gstHandling'])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={values.gstHandling}
+                onValueChange={(v) => set('gstHandling', v as TierFormValue['gstHandling'])}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NONE">None</SelectItem>
                   <SelectItem value="INCLUSIVE">GST inclusive</SelectItem>
@@ -196,7 +225,13 @@ export function TierDialog({ open, onOpenChange, initial, onSubmit }: Props) {
                     placeholder="e.g. Quarterly rescue newsletter"
                     onChange={(e) => updateBenefit(i, e.target.value)}
                   />
-                  <Button type="button" variant="ghost" size="icon" onClick={() => removeBenefit(i)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeBenefit(i)}
+                    aria-label={`Remove benefit ${i + 1}`}
+                  >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -213,7 +248,9 @@ export function TierDialog({ open, onOpenChange, initial, onSubmit }: Props) {
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={submitting}>
               {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Create tier'}
             </Button>

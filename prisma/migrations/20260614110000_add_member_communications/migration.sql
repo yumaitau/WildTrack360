@@ -24,6 +24,9 @@ CREATE TABLE "public"."news_posts" (
 CREATE INDEX "news_posts_clerk_organization_id_status_published_at_idx"
   ON "public"."news_posts"("clerk_organization_id", "status", "published_at");
 
+CREATE UNIQUE INDEX "members_id_clerk_organization_id_key"
+  ON "public"."members"("id", "clerk_organization_id");
+
 CREATE TABLE "public"."member_messages" (
   "id" TEXT NOT NULL,
   "clerk_organization_id" TEXT NOT NULL,
@@ -46,4 +49,5 @@ CREATE INDEX "member_messages_member_id_read_at_idx"
 
 ALTER TABLE "public"."member_messages"
   ADD CONSTRAINT "member_messages_member_id_fkey"
-  FOREIGN KEY ("member_id") REFERENCES "public"."members"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  FOREIGN KEY ("member_id", "clerk_organization_id")
+  REFERENCES "public"."members"("id", "clerk_organization_id") ON DELETE CASCADE ON UPDATE CASCADE;

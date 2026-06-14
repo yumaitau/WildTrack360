@@ -11,7 +11,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 
 interface NewsPost {
@@ -86,7 +91,10 @@ export function NewsAdmin() {
     setSaving(true);
     try {
       if (editing) {
-        await apiJson(`/api/news/${editing.id}`, { method: 'PATCH', body: JSON.stringify({ title, body }) });
+        await apiJson(`/api/news/${editing.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ title, body }),
+        });
         toast.success('Post updated');
       } else {
         await apiJson('/api/news', { method: 'POST', body: JSON.stringify({ title, body }) });
@@ -115,7 +123,9 @@ export function NewsAdmin() {
         body: JSON.stringify({ sendEmail: first }),
       });
       toast.success(
-        first ? `Published · emailed ${res.emailed} member${res.emailed === 1 ? '' : 's'}` : 'Published'
+        first
+          ? `Published · emailed ${res.emailed} member${res.emailed === 1 ? '' : 's'}`
+          : 'Published'
       );
       load();
     } catch (err) {
@@ -128,7 +138,10 @@ export function NewsAdmin() {
   async function unpublish(p: NewsPost) {
     setPublishing(p.id);
     try {
-      await apiJson(`/api/news/${p.id}/publish`, { method: 'POST', body: JSON.stringify({ unpublish: true }) });
+      await apiJson(`/api/news/${p.id}/publish`, {
+        method: 'POST',
+        body: JSON.stringify({ unpublish: true }),
+      });
       toast.success('Moved back to draft');
       load();
     } catch (err) {
@@ -186,7 +199,10 @@ export function NewsAdmin() {
               </p>
             ) : (
               posts.map((p) => (
-                <div key={p.id} className="rounded-lg border p-4 flex flex-col sm:flex-row sm:items-start gap-3 sm:justify-between">
+                <div
+                  key={p.id}
+                  className="rounded-lg border p-4 flex flex-col sm:flex-row sm:items-start gap-3 sm:justify-between"
+                >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium">{p.title}</span>
@@ -201,7 +217,9 @@ export function NewsAdmin() {
                         {p.status === 'PUBLISHED' ? 'Published' : 'Draft'}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap">{p.body}</p>
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap">
+                      {p.body}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-2">
                       {p.authorName ? `By ${p.authorName} · ` : ''}
                       {p.publishedAt
@@ -228,10 +246,19 @@ export function NewsAdmin() {
                     ) : (
                       <Button size="sm" disabled={publishing === p.id} onClick={() => publish(p)}>
                         <Send className="h-4 w-4 mr-1" />
-                        {publishing === p.id ? 'Publishing…' : p.emailSentAt ? 'Publish' : 'Publish & email'}
+                        {publishing === p.id
+                          ? 'Publishing…'
+                          : p.emailSentAt
+                            ? 'Publish'
+                            : 'Publish & email'}
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => remove(p)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Delete post ${p.title}`}
+                      onClick={() => remove(p)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -247,13 +274,19 @@ export function NewsAdmin() {
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit post' : 'New post'}</DialogTitle>
             <DialogDescription>
-              Drafts stay private until you publish. Editing a published post does not re-send the email.
+              Drafts stay private until you publish. Editing a published post does not re-send the
+              email.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="news-title">Title</Label>
-              <Input id="news-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Spring rescue update" />
+              <Input
+                id="news-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Spring rescue update"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="news-body">Body</Label>

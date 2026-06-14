@@ -1038,26 +1038,26 @@ model SmsLog {
 // ─── Organisation Settings ─────────────────────────────────────────────────
 
 model OrganisationSettings {
-  id                  String   @id @default(cuid())
-  clerkOrganisationId String   @unique @map("clerk_organisation_id")
+  id                        String   @id @default(cuid())
+  clerkOrganisationId       String   @unique @map("clerk_organisation_id")
   // Public subdomain handle (Clerk publicMetadata.org_url), mirrored here so
   // unauthenticated public donate/join pages can resolve subdomain → org.
-  orgUrl              String?  @unique @map("org_url")
-  orgShortCode        String   @default("ORG") @map("org_short_code")
-  animalIdTemplate    String   @default("{ORG_SHORT}-{YYYY}-{seq:4}") @map("animal_id_template")
-  legalName           String?  @map("legal_name")
-  contactEmail        String?  @map("contact_email")
-  contactPhone        String?  @map("contact_phone")
-  licenseNumber       String?  @map("license_number")
-  abn                 String?
-  dgrEndorsed         Boolean  @default(false) @map("dgr_endorsed")
-  receiptPrefix       String?  @map("receipt_prefix")
+  orgUrl                    String?  @unique @map("org_url")
+  orgShortCode              String   @default("ORG") @map("org_short_code")
+  animalIdTemplate          String   @default("{ORG_SHORT}-{YYYY}-{seq:4}") @map("animal_id_template")
+  legalName                 String?  @map("legal_name")
+  contactEmail              String?  @map("contact_email")
+  contactPhone              String?  @map("contact_phone")
+  licenseNumber             String?  @map("license_number")
+  abn                       String?
+  dgrEndorsed               Boolean  @default(false) @map("dgr_endorsed")
+  receiptPrefix             String?  @map("receipt_prefix")
   // Org-customisable thank-you wording on the receipt email, per payment type.
   // Supports a {name} token replaced with the donor/member name.
-  donationThankYouMessage   String? @map("donation_thank_you_message")
-  membershipThankYouMessage String? @map("membership_thank_you_message")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  donationThankYouMessage   String?  @map("donation_thank_you_message")
+  membershipThankYouMessage String?  @map("membership_thank_you_message")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
   @@map("organisation_settings")
 }
@@ -1281,16 +1281,18 @@ model Member {
   createdAt           DateTime     @default(now()) @map("created_at")
   updatedAt           DateTime     @updatedAt @map("updated_at")
 
-  memberships            Membership[]
-  payments               Payment[]
-  donations              Donation[]
-  recurringSubscriptions RecurringSubscription[]
-  messages               MemberMessage[]
-  carerProfile           CarerProfile?           @relation(fields: [carerProfileId], references: [id])
-  carerInterests         CarerInterest[]
-  primaryMember          Member?                 @relation("Household", fields: [primaryMemberId], references: [id], onDelete: SetNull)
-  householdMembers       Member[]                @relation("Household")
+  memberships             Membership[]
+  payments                Payment[]
+  donations               Donation[]
+  recurringSubscriptions  RecurringSubscription[]
+  messages                MemberMessage[]
+  carerProfile            CarerProfile?            @relation(fields: [carerProfileId], references: [id])
+  carerInterests          CarerInterest[]
+  membershipNotifications MembershipNotification[]
+  primaryMember           Member?                  @relation("Household", fields: [primaryMemberId, clerkOrganizationId], references: [id, clerkOrganizationId], onDelete: NoAction)
+  householdMembers        Member[]                 @relation("Household")
 
+  @@unique([id, clerkOrganizationId])
   @@unique([clerkOrganizationId, email])
   @@unique([clerkOrganizationId, memberNumber])
   @@index([clerkOrganizationId, status])
@@ -1337,11 +1339,12 @@ model Membership {
   giftedBy                String?          @map("gifted_by")
   createdAt               DateTime         @default(now()) @map("created_at")
 
-  member                Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  tier                  MembershipTier         @relation(fields: [tierId], references: [id])
-  recurringSubscription RecurringSubscription? @relation(fields: [recurringSubscriptionId], references: [id])
+  member                Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tier                  MembershipTier           @relation(fields: [tierId], references: [id])
+  recurringSubscription RecurringSubscription?   @relation(fields: [recurringSubscriptionId], references: [id])
   notifications         MembershipNotification[]
 
+  @@unique([id, clerkOrganizationId])
   @@index([clerkOrganizationId, status])
   @@index([memberId, periodEnd])
   @@index([recurringSubscriptionId])
@@ -1368,7 +1371,8 @@ model MembershipNotification {
   kind                MembershipNotificationKind
   sentAt              DateTime                   @default(now()) @map("sent_at")
 
-  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId, clerkOrganizationId], references: [id, clerkOrganizationId], onDelete: Cascade)
+  member     Member     @relation(fields: [memberId, clerkOrganizationId], references: [id, clerkOrganizationId], onDelete: Cascade)
 
   @@unique([membershipId, kind])
   @@index([clerkOrganizationId, sentAt])
@@ -1399,9 +1403,10 @@ model CarerInterest {
   createdAt           DateTime            @default(now()) @map("created_at")
   updatedAt           DateTime            @updatedAt @map("updated_at")
 
-  member Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  member Member? @relation(fields: [memberId, clerkOrganizationId], references: [id, clerkOrganizationId], onDelete: NoAction)
 
   @@index([clerkOrganizationId, status])
+  @@index([clerkOrganizationId, memberId, status])
   @@map("carer_interests")
 }
 
@@ -1625,7 +1630,7 @@ model MemberMessage {
   readAt              DateTime? @map("read_at")
   createdAt           DateTime  @default(now()) @map("created_at")
 
-  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId, clerkOrganizationId], references: [id, clerkOrganizationId], onDelete: Cascade)
 
   @@index([clerkOrganizationId, createdAt])
   @@index([memberId, readAt])

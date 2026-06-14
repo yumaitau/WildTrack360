@@ -7,4 +7,9 @@ CREATE INDEX "members_primary_member_id_idx" ON "public"."members"("primary_memb
 
 ALTER TABLE "public"."members"
   ADD CONSTRAINT "members_primary_member_id_fkey"
-  FOREIGN KEY ("primary_member_id") REFERENCES "public"."members"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  FOREIGN KEY ("primary_member_id", "clerk_organization_id")
+  REFERENCES "public"."members"("id", "clerk_organization_id") ON DELETE NO ACTION ON UPDATE CASCADE;
+
+ALTER TABLE "public"."members"
+  ADD CONSTRAINT "members_primary_member_id_not_self"
+  CHECK ("primary_member_id" IS NULL OR "primary_member_id" <> "id");

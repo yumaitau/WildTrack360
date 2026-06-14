@@ -1,8 +1,8 @@
-'server-only';
+import 'server-only';
 
 import { prisma } from './prisma';
 import { sendAdminNotification } from './email/admin-notifications';
-import type { CarerInterestStatus, Prisma } from '@prisma/client';
+import { Prisma, type CarerInterestStatus } from '@prisma/client';
 
 export interface CarerInterestInput {
   memberId?: string | null;
@@ -28,24 +28,31 @@ export async function getOpenInterest(orgId: string, memberId: string | null, em
 
 export async function createCarerInterest(orgId: string, input: CarerInterestInput) {
   const name = input.name.trim();
-  const email = input.email.trim();
+  const email = input.email.trim().toLowerCase();
   if (!name || !email) throw new Error('Name and email are required');
 
   const existing = await getOpenInterest(orgId, input.memberId ?? null, email);
   if (existing) throw new Error('You already have an application in progress');
 
-  const created = await prisma.carerInterest.create({
-    data: {
-      clerkOrganizationId: orgId,
-      memberId: input.memberId ?? null,
-      name,
-      email,
-      phone: input.phone?.trim() || null,
-      experience: input.experience?.trim() || null,
-      availability: input.availability?.trim() || null,
-      message: input.message?.trim() || null,
-    },
-  });
+  const created = await prisma.carerInterest
+    .create({
+      data: {
+        clerkOrganizationId: orgId,
+        memberId: input.memberId ?? null,
+        name,
+        email,
+        phone: input.phone?.trim() || null,
+        experience: input.experience?.trim() || null,
+        availability: input.availability?.trim() || null,
+        message: input.message?.trim() || null,
+      },
+    })
+    .catch((error) => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new Error('You already have an application in progress');
+      }
+      throw error;
+    });
 
   // Best-effort: alert org admins so a recruiter can follow up.
   try {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
-import { requirePermission } from '@/lib/rbac';
+import { isForbiddenError, requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { grantMembership } from '@/lib/membership-grants';
@@ -17,12 +17,19 @@ export async function POST(request: Request) {
   if (gated) return gated;
   try {
     await requirePermission(userId, orgId, 'membership:configure');
-  } catch {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  } catch (error) {
+    if (isForbiddenError(error)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    throw error;
   }
 
   try {
-    const body = (await request.json()) as { memberId?: string; tierId?: string; giftedBy?: string };
+    const body = (await request.json()) as {
+      memberId?: string;
+      tierId?: string;
+      giftedBy?: string;
+    };
     if (!body.memberId || !body.tierId) {
       return NextResponse.json({ error: 'memberId and tierId are required' }, { status: 400 });
     }
@@ -41,7 +48,14 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to grant membership';
-    return NextResponse.json({ error: message }, { status: 400 });
+    const message = error instanceof Error ? error.message : null;
+    if (
+      message === 'Tier not found' ||
+      message === 'Member not found' ||
+      message === 'memberId and tierId are required'
+    ) {
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Failed to grant membership' }, { status: 500 });
   }
 }

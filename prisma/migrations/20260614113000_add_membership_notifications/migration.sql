@@ -17,6 +17,9 @@ CREATE TABLE "public"."membership_notifications" (
   CONSTRAINT "membership_notifications_pkey" PRIMARY KEY ("id")
 );
 
+CREATE UNIQUE INDEX "memberships_id_clerk_organization_id_key"
+  ON "public"."memberships"("id", "clerk_organization_id");
+
 CREATE UNIQUE INDEX "membership_notifications_membership_id_kind_key"
   ON "public"."membership_notifications"("membership_id", "kind");
 CREATE INDEX "membership_notifications_clerk_organization_id_sent_at_idx"
@@ -24,4 +27,10 @@ CREATE INDEX "membership_notifications_clerk_organization_id_sent_at_idx"
 
 ALTER TABLE "public"."membership_notifications"
   ADD CONSTRAINT "membership_notifications_membership_id_fkey"
-  FOREIGN KEY ("membership_id") REFERENCES "public"."memberships"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  FOREIGN KEY ("membership_id", "clerk_organization_id")
+  REFERENCES "public"."memberships"("id", "clerk_organization_id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "public"."membership_notifications"
+  ADD CONSTRAINT "membership_notifications_member_id_fkey"
+  FOREIGN KEY ("member_id", "clerk_organization_id")
+  REFERENCES "public"."members"("id", "clerk_organization_id") ON DELETE CASCADE ON UPDATE CASCADE;

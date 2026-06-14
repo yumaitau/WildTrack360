@@ -168,8 +168,8 @@ export function DonateForm() {
               className="h-4 w-4 mt-0.5"
             />
             <span>
-              Add <strong>{money(feeCents)}</strong> to cover transaction fees so{' '}
-              <strong>100%</strong> of your {money(amountCents)} reaches the organisation
+              Add <strong>{money(feeCents)}</strong> to help cover transaction fees so more of your{' '}
+              {money(amountCents)} reaches the organisation
               {recurring !== 'NONE' ? ' each time' : ''}.
             </span>
           </label>

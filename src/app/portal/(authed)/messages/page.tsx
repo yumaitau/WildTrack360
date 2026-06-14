@@ -11,8 +11,10 @@ export default async function PortalMessagesPage() {
   const session = await getPortalMember(userId);
   if (!session) redirect('/portal/no-membership');
 
-  const rows = await listMemberMessages(session.member.id);
-  const messages: PortalMessage[] = rows.map((m) => ({
+  const pageSize = 50;
+  const rows = await listMemberMessages(session.member.id, pageSize + 1);
+  const visibleRows = rows.slice(0, pageSize);
+  const messages: PortalMessage[] = visibleRows.map((m) => ({
     id: m.id,
     subject: m.subject,
     body: m.body,
@@ -27,12 +29,15 @@ export default async function PortalMessagesPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Mail className="h-6 w-6 text-primary" /> Messages
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Messages from the team you support.
-        </p>
+        <p className="text-sm text-muted-foreground mt-1">Messages from the team you support.</p>
       </div>
 
-      <MessagesList messages={messages} />
+      <MessagesList
+        messages={messages}
+        nextCursor={
+          rows.length > pageSize ? (visibleRows[visibleRows.length - 1]?.id ?? null) : null
+        }
+      />
     </div>
   );
 }
