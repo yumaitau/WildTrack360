@@ -56,17 +56,21 @@ neither needs to be per-org.
 
 ## Scheduled jobs
 
-Two one-shot CLI scripts (run once, exit) — no Redis, no long-running worker. All billing state
-(`nextChargeAt`, `failedAttempts`/dunning) lives in the DB, so each run just processes what's due:
+One-shot CLI scripts (run once, exit) — no Redis, no long-running worker. Billing and notification
+state lives in the DB, so each run just processes what's due:
 
 - `npm run charge-due` (`src/scripts/charge-due-subscriptions.ts`) — charges every
   `RecurringSubscription` whose `nextChargeAt` has passed; after 4 consecutive failures the sub + its
   memberships cancel. Re-running is safe — each sub advances its own `nextChargeAt`.
+- `npm run membership-reminders` (`src/scripts/membership-reminders.ts`) — expires finished one-off
+  membership periods, lapses uncovered members, and sends idempotent renewal, lapse, and win-back
+  emails via `MembershipNotification`.
 - `npm run refresh-tokens` (`src/scripts/refresh-square-tokens.ts`) — refreshes Square OAuth tokens
   nearing their 30-day expiry.
 
-Both need `DATABASE_URL` + the Square / `ENCRYPTION_KEY` / `RESEND_*` vars (they charge cards and email
-receipts), and run via `tsx` (a production dependency; `src/` + `tsconfig.json` ship in the image).
+They need `DATABASE_URL`; the Square scripts also need the Square / `ENCRYPTION_KEY` vars, and any
+script that sends email needs `RESEND_*`. They run via `tsx` (a production dependency; `src/` +
+`tsconfig.json` ship in the image).
 
 ### Local
 
@@ -79,6 +83,7 @@ The single app image already contains everything. In the Coolify **app** → **S
 | Name | Command | Frequency | Container |
 | --- | --- | --- | --- |
 | Charge due memberships | `npm run charge-due` | `0 2 * * *` | the app container |
+| Membership reminders | `npm run membership-reminders` | `15 2 * * *` | the app container |
 | Refresh Square tokens | `npm run refresh-tokens` | `0 */6 * * *` | the app container |
 
 Bump the task **Timeout** above 300s if a single sweep ever has many same-day renewals (unprocessed

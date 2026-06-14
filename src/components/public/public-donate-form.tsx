@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SquareCheckout } from '@/components/portal/square-checkout';
+import { coverFeesCents } from '@/lib/fees';
 
 const QUICK_AMOUNTS = [25, 50, 100, 250];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 interface Props {
   handle: string;
@@ -26,12 +28,16 @@ export function PublicDonateForm({ handle, applicationId, locationId, orgName }:
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [coverFees, setCoverFees] = useState(true);
   const [showCard, setShowCard] = useState(false);
 
   const amountCents = useMemo(() => {
     const n = Number.parseFloat(amountStr);
     return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
   }, [amountStr]);
+
+  const feeCents = useMemo(() => coverFeesCents(amountCents), [amountCents]);
+  const totalCents = coverFees ? amountCents + feeCents : amountCents;
 
   function toCard() {
     if (amountCents < 200) return toast.error('Minimum donation is $2');
@@ -43,7 +49,10 @@ export function PublicDonateForm({ handle, applicationId, locationId, orgName }:
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Donating <strong>${(amountCents / 100).toFixed(2)} AUD</strong> to {orgName}
+          Donating <strong>{money(totalCents)} AUD</strong> to {orgName}
+          {coverFees && feeCents > 0 && (
+            <> ({money(amountCents)} gift + {money(feeCents)} to cover fees)</>
+          )}
         </p>
         <SquareCheckout
           applicationId={applicationId}
@@ -51,16 +60,16 @@ export function PublicDonateForm({ handle, applicationId, locationId, orgName }:
           endpoint="/api/public/checkout/donation"
           payload={{
             handle,
-            amountCents,
+            amountCents: totalCents,
             donorName: name || null,
             donorEmail: email,
             message: message || null,
             isAnonymous,
           }}
-          amountCents={amountCents}
+          amountCents={totalCents}
           intent="CHARGE"
           buyerEmail={email}
-          submitLabel={`Donate $${(amountCents / 100).toFixed(2)}`}
+          submitLabel={`Donate ${money(totalCents)}`}
           onSuccess={() => router.push('/donate/thank-you')}
           onCancel={() => setShowCard(false)}
         />
@@ -124,6 +133,21 @@ export function PublicDonateForm({ handle, applicationId, locationId, orgName }:
         />
       </div>
 
+      {amountCents >= 200 && feeCents > 0 && (
+        <label className="flex items-start gap-2 text-sm rounded-md border p-3 cursor-pointer hover:bg-accent/50">
+          <input
+            type="checkbox"
+            checked={coverFees}
+            onChange={(e) => setCoverFees(e.target.checked)}
+            className="h-4 w-4 mt-0.5"
+          />
+          <span>
+            Add <strong>{money(feeCents)}</strong> to help cover transaction fees so more of your{' '}
+            {money(amountCents)} reaches {orgName}.
+          </span>
+        </label>
+      )}
+
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -135,7 +159,7 @@ export function PublicDonateForm({ handle, applicationId, locationId, orgName }:
       </label>
 
       <Button className="w-full" onClick={toCard} disabled={amountCents < 200}>
-        Continue to payment · ${(amountCents / 100).toFixed(2)}
+        Continue to payment · {money(totalCents)}
       </Button>
     </div>
   );

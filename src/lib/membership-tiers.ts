@@ -10,7 +10,23 @@ export interface TierInput {
   currency?: string;
   billingInterval: BillingInterval;
   gstHandling?: GstHandling;
+  benefits?: string[];
   active?: boolean;
+}
+
+const VALID_INTERVALS: BillingInterval[] = ['ONE_OFF', 'MONTHLY', 'ANNUAL', 'LIFETIME'];
+const MAX_BENEFITS = 20;
+const MAX_BENEFIT_LEN = 160;
+
+// Normalise a raw benefits payload into a clean string[]: trims, drops blanks,
+// caps line length and count. Defensive against arbitrary JSON from the client.
+function cleanBenefits(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((b): b is string => typeof b === 'string')
+    .map((b) => b.trim().slice(0, MAX_BENEFIT_LEN))
+    .filter((b) => b.length > 0)
+    .slice(0, MAX_BENEFITS);
 }
 
 export async function listTiers(orgId: string, opts: { includeArchived?: boolean } = {}) {
@@ -35,6 +51,7 @@ function pick(body: Record<string, unknown>): Partial<TierInput> {
   if (typeof body.gstHandling === 'string') {
     out.gstHandling = body.gstHandling as GstHandling;
   }
+  if ('benefits' in body) out.benefits = cleanBenefits(body.benefits);
   if (typeof body.active === 'boolean') out.active = body.active;
   return out;
 }
@@ -45,6 +62,8 @@ export async function createTier(orgId: string, body: Record<string, unknown>) {
     throw new Error('name and amountCents are required');
   }
   if (data.amountCents < 0) throw new Error('amountCents must be non-negative');
+  const interval = data.billingInterval ?? 'ANNUAL';
+  if (!VALID_INTERVALS.includes(interval)) throw new Error('Invalid billing interval');
 
   return prisma.membershipTier.create({
     data: {
@@ -53,10 +72,9 @@ export async function createTier(orgId: string, body: Record<string, unknown>) {
       description: data.description ?? null,
       amountCents: data.amountCents,
       currency: data.currency ?? 'AUD',
-      // Memberships are always an annual commitment that auto-renews — the
-      // billing interval is fixed, not chosen per tier.
-      billingInterval: 'ANNUAL',
+      billingInterval: interval,
       gstHandling: data.gstHandling ?? 'NONE',
+      benefitsJson: (data.benefits ?? []) as Prisma.InputJsonValue,
       active: data.active ?? true,
     },
   });
@@ -72,8 +90,12 @@ export async function updateTier(id: string, orgId: string, body: Record<string,
     update.amountCents = data.amountCents;
   }
   if (data.currency !== undefined) update.currency = data.currency;
-  // billingInterval is intentionally not updatable — memberships are always ANNUAL.
+  if (data.billingInterval !== undefined) {
+    if (!VALID_INTERVALS.includes(data.billingInterval)) throw new Error('Invalid billing interval');
+    update.billingInterval = data.billingInterval;
+  }
   if (data.gstHandling !== undefined) update.gstHandling = data.gstHandling;
+  if (data.benefits !== undefined) update.benefitsJson = data.benefits as Prisma.InputJsonValue;
   if (data.active !== undefined) update.active = data.active;
 
   const result = await prisma.membershipTier.updateMany({

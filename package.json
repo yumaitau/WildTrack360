@@ -29,6 +29,7 @@
     "db:seed:screenshots": "tsx prisma/screenshot-seed.ts",
     "record:clips": "tsx scripts/record-product-clips.ts",
     "charge-due": "tsx src/scripts/charge-due-subscriptions.ts",
+    "membership-reminders": "tsx src/scripts/membership-reminders.ts",
     "refresh-tokens": "tsx src/scripts/refresh-square-tokens.ts",
     "prod_start": "npm run db:migrate:prod && npm run start",
     "test": "vitest run",
@@ -95,6 +96,7 @@
     "nprogress": "^0.2.0",
     "patch-package": "^8.0.0",
     "prisma": "^6.14.0",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -114,6 +116,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vitest/coverage-v8": "^4.0.18",

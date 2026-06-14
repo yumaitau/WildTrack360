@@ -3,8 +3,11 @@ import { auth } from '@/lib/clerk-server';
 import { redirect } from 'next/navigation';
 import { getPortalMember } from '@/lib/portal';
 import { prisma } from '@/lib/prisma';
+import { donorFinancialYears } from '@/lib/eofy';
+import { financialYearLabel } from '@/lib/financial-year';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { FileText } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -26,11 +29,14 @@ export default async function PortalPaymentsPage() {
   const session = await getPortalMember(userId);
   if (!session) redirect('/portal/no-membership');
 
-  const payments = await prisma.payment.findMany({
-    where: { memberId: session.member.id, status: 'SUCCEEDED' },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  });
+  const [payments, statementYears] = await Promise.all([
+    prisma.payment.findMany({
+      where: { memberId: session.member.id, status: 'SUCCEEDED' },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    }),
+    donorFinancialYears(session.member.clerkOrganizationId, session.email),
+  ]);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -40,6 +46,27 @@ export default async function PortalPaymentsPage() {
           Your donations and membership payments. Receipts download as printable PDFs.
         </p>
       </div>
+
+      {statementYears.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Annual tax statements</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              A consolidated summary of your donations for each financial year — handy at tax time.
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {statementYears.map((fy) => (
+              <Link key={fy} href={`/portal/payments/statement/${fy}`} target="_blank">
+                <Button variant="outline" size="sm">
+                  <FileText className="h-4 w-4 mr-2" />
+                  {financialYearLabel(fy)}
+                </Button>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader><CardTitle className="text-base">Receipts</CardTitle></CardHeader>

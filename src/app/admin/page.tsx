@@ -20,6 +20,7 @@ import {
   Settings,
   HeartHandshake,
   CreditCard,
+  Megaphone,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -80,6 +81,15 @@ const QUICK_ACTIONS: QuickAction[] = [
     tab: 'payments',
     adminOnly: true,
     href: '/admin/payments',
+    requiresFeature: 'MEMBERSHIP_PLATFORM',
+  },
+  {
+    label: 'News & Announcements',
+    description: 'Publish updates to the member portal and email them to your members and supporters.',
+    icon: <Megaphone className="h-6 w-6" />,
+    tab: 'news',
+    adminOnly: true,
+    href: '/admin/news',
     requiresFeature: 'MEMBERSHIP_PLATFORM',
   },
   {

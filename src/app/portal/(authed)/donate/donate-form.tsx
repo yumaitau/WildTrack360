@@ -9,8 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SquareCheckout } from '@/components/portal/square-checkout';
+import { coverFeesCents } from '@/lib/fees';
 
 const QUICK_AMOUNTS = [25, 50, 100, 250];
+const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 interface SquareConfig {
   applicationId: string;
@@ -22,6 +24,7 @@ export function DonateForm() {
   const [amountStr, setAmountStr] = useState('50');
   const [message, setMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [coverFees, setCoverFees] = useState(true);
   const [recurring, setRecurring] = useState<'NONE' | 'MONTHLY' | 'ANNUAL'>('NONE');
   const [config, setConfig] = useState<SquareConfig | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -30,6 +33,9 @@ export function DonateForm() {
     const n = Number.parseFloat(amountStr);
     return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
   }, [amountStr]);
+
+  const feeCents = useMemo(() => coverFeesCents(amountCents), [amountCents]);
+  const totalCents = coverFees ? amountCents + feeCents : amountCents;
 
   async function startCheckout() {
     if (amountCents < 200) {
@@ -58,16 +64,21 @@ export function DonateForm() {
         : '/api/portal/checkout/recurring-donation';
     const payload =
       recurring === 'NONE'
-        ? { amountCents, message: message || null, isAnonymous }
-        : { amountCents, interval: recurring, isAnonymous };
+        ? { amountCents: totalCents, message: message || null, isAnonymous }
+        : { amountCents: totalCents, interval: recurring, isAnonymous };
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
             {recurring === 'NONE'
-              ? `Donating $${(amountCents / 100).toFixed(2)} AUD`
-              : `${recurring === 'MONTHLY' ? 'Monthly' : 'Annual'} donation of $${(amountCents / 100).toFixed(2)} AUD`}
+              ? `Donating ${money(totalCents)} AUD`
+              : `${recurring === 'MONTHLY' ? 'Monthly' : 'Annual'} donation of ${money(totalCents)} AUD`}
           </CardTitle>
+          {coverFees && feeCents > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {money(amountCents)} gift + {money(feeCents)} to cover fees
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <SquareCheckout
@@ -75,7 +86,7 @@ export function DonateForm() {
             locationId={config.locationId}
             endpoint={endpoint}
             payload={payload}
-            amountCents={amountCents}
+            amountCents={totalCents}
             intent={recurring === 'NONE' ? 'CHARGE' : 'STORE'}
             submitLabel={recurring === 'NONE' ? 'Donate' : 'Start donation'}
             onSuccess={() => router.push('/portal/donate/thank-you')}
@@ -148,6 +159,22 @@ export function DonateForm() {
           </div>
         )}
 
+        {amountCents >= 200 && feeCents > 0 && (
+          <label className="flex items-start gap-2 text-sm rounded-md border p-3 cursor-pointer hover:bg-accent/50">
+            <input
+              type="checkbox"
+              checked={coverFees}
+              onChange={(e) => setCoverFees(e.target.checked)}
+              className="h-4 w-4 mt-0.5"
+            />
+            <span>
+              Add <strong>{money(feeCents)}</strong> to help cover transaction fees so more of your{' '}
+              {money(amountCents)} reaches the organisation
+              {recurring !== 'NONE' ? ' each time' : ''}.
+            </span>
+          </label>
+        )}
+
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -162,7 +189,7 @@ export function DonateForm() {
           <Button onClick={startCheckout} disabled={preparing || amountCents < 200}>
             {preparing
               ? 'Preparing checkout…'
-              : `Continue to payment · $${(amountCents / 100).toFixed(2)}${
+              : `Continue to payment · ${money(totalCents)}${
                   recurring !== 'NONE' ? ` / ${recurring === 'MONTHLY' ? 'mo' : 'yr'}` : ''
                 }`}
           </Button>

@@ -16,15 +16,15 @@ export type Feature = (typeof FEATURES)[number];
 // the cache scope is the React request, not the Node process — flipping a
 // feature in the admin app takes effect on the very next request, not "after
 // the container restarts" (which is what a module-scope Map would mean).
-const lookupFlag = cache(
-  async (orgId: string, feature: Feature): Promise<boolean> => {
-    const row = await prisma.orgFeatureFlag.findUnique({
-      where: { clerkOrganizationId_feature: { clerkOrganizationId: orgId, feature } },
-      select: { enabled: true },
-    });
-    return row?.enabled ?? false;
-  }
-);
+const uncachedLookupFlag = async (orgId: string, feature: Feature): Promise<boolean> => {
+  const row = await prisma.orgFeatureFlag.findUnique({
+    where: { clerkOrganizationId_feature: { clerkOrganizationId: orgId, feature } },
+    select: { enabled: true },
+  });
+  return row?.enabled ?? false;
+};
+
+const lookupFlag = typeof cache === 'function' ? cache(uncachedLookupFlag) : uncachedLookupFlag;
 
 export async function isFeatureEnabled(orgId: string, feature: Feature): Promise<boolean> {
   return lookupFlag(orgId, feature);
@@ -48,10 +48,7 @@ export class FeatureDisabledError extends Error {
 // Used by API routes: returns null when the feature is enabled, or a 404
 // Response when it isn't. We pick 404 (not 403) so disabled orgs can't even
 // probe for the feature's existence — the route looks like it doesn't exist.
-export async function gateFeature(
-  orgId: string,
-  feature: Feature
-): Promise<Response | null> {
+export async function gateFeature(orgId: string, feature: Feature): Promise<Response | null> {
   if (await isFeatureEnabled(orgId, feature)) return null;
   return NextResponse.json({ error: 'Not found' }, { status: 404 });
 }

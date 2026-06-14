@@ -1038,26 +1038,26 @@ model SmsLog {
 // ─── Organisation Settings ─────────────────────────────────────────────────
 
 model OrganisationSettings {
-  id                  String   @id @default(cuid())
-  clerkOrganisationId String   @unique @map("clerk_organisation_id")
+  id                        String   @id @default(cuid())
+  clerkOrganisationId       String   @unique @map("clerk_organisation_id")
   // Public subdomain handle (Clerk publicMetadata.org_url), mirrored here so
   // unauthenticated public donate/join pages can resolve subdomain → org.
-  orgUrl              String?  @unique @map("org_url")
-  orgShortCode        String   @default("ORG") @map("org_short_code")
-  animalIdTemplate    String   @default("{ORG_SHORT}-{YYYY}-{seq:4}") @map("animal_id_template")
-  legalName           String?  @map("legal_name")
-  contactEmail        String?  @map("contact_email")
-  contactPhone        String?  @map("contact_phone")
-  licenseNumber       String?  @map("license_number")
-  abn                 String?
-  dgrEndorsed         Boolean  @default(false) @map("dgr_endorsed")
-  receiptPrefix       String?  @map("receipt_prefix")
+  orgUrl                    String?  @unique @map("org_url")
+  orgShortCode              String   @default("ORG") @map("org_short_code")
+  animalIdTemplate          String   @default("{ORG_SHORT}-{YYYY}-{seq:4}") @map("animal_id_template")
+  legalName                 String?  @map("legal_name")
+  contactEmail              String?  @map("contact_email")
+  contactPhone              String?  @map("contact_phone")
+  licenseNumber             String?  @map("license_number")
+  abn                       String?
+  dgrEndorsed               Boolean  @default(false) @map("dgr_endorsed")
+  receiptPrefix             String?  @map("receipt_prefix")
   // Org-customisable thank-you wording on the receipt email, per payment type.
   // Supports a {name} token replaced with the donor/member name.
-  donationThankYouMessage   String? @map("donation_thank_you_message")
-  membershipThankYouMessage String? @map("membership_thank_you_message")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  donationThankYouMessage   String?  @map("donation_thank_you_message")
+  membershipThankYouMessage String?  @map("membership_thank_you_message")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
   @@map("organisation_settings")
 }
@@ -1273,21 +1273,31 @@ model Member {
   memberNumber        String?      @map("member_number")
   status              MemberStatus @default(ACTIVE)
   joinedAt            DateTime     @default(now()) @map("joined_at")
+  // When set, this member is a secondary member covered by the primary member's
+  // household membership (family membership). Primary members have it null.
+  primaryMemberId     String?      @map("primary_member_id")
   customFieldsJson    Json         @default("{}") @map("custom_fields_json")
   archivedAt          DateTime?    @map("archived_at")
   createdAt           DateTime     @default(now()) @map("created_at")
   updatedAt           DateTime     @updatedAt @map("updated_at")
 
-  memberships            Membership[]
-  payments               Payment[]
-  donations              Donation[]
-  recurringSubscriptions RecurringSubscription[]
-  carerProfile           CarerProfile?           @relation(fields: [carerProfileId], references: [id])
+  memberships             Membership[]
+  payments                Payment[]
+  donations               Donation[]
+  recurringSubscriptions  RecurringSubscription[]
+  messages                MemberMessage[]
+  carerProfile            CarerProfile?            @relation(fields: [carerProfileId], references: [id])
+  carerInterests          CarerInterest[]
+  membershipNotifications MembershipNotification[]
+  primaryMember           Member?                  @relation("Household", fields: [primaryMemberId, clerkOrganizationId], references: [id, clerkOrganizationId], onDelete: NoAction)
+  householdMembers        Member[]                 @relation("Household")
 
+  @@unique([id, clerkOrganizationId])
   @@unique([clerkOrganizationId, email])
   @@unique([clerkOrganizationId, memberNumber])
   @@index([clerkOrganizationId, status])
   @@index([clerkUserId])
+  @@index([primaryMemberId])
   @@map("members")
 }
 
@@ -1300,6 +1310,9 @@ model MembershipTier {
   currency            String          @default("AUD")
   billingInterval     BillingInterval @map("billing_interval")
   gstHandling         GstHandling     @default(NONE) @map("gst_handling")
+  // Ordered list of member-facing benefit lines (string[]), shown on the tier
+  // cards in the join flow and portal.
+  benefitsJson        Json            @default("[]") @map("benefits_json")
   active              Boolean         @default(true)
   archivedAt          DateTime?       @map("archived_at")
   createdAt           DateTime        @default(now()) @map("created_at")
@@ -1321,16 +1334,80 @@ model Membership {
   status                  MembershipStatus
   recurringSubscriptionId String?          @map("recurring_subscription_id")
   paymentId               String?          @map("payment_id")
+  // Set for gifted / complimentary memberships granted without a payment; holds
+  // the giver's name (or "Complimentary") for the recipient's card and emails.
+  giftedBy                String?          @map("gifted_by")
   createdAt               DateTime         @default(now()) @map("created_at")
 
-  member                Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  tier                  MembershipTier         @relation(fields: [tierId], references: [id])
-  recurringSubscription RecurringSubscription? @relation(fields: [recurringSubscriptionId], references: [id])
+  member                Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tier                  MembershipTier           @relation(fields: [tierId], references: [id])
+  recurringSubscription RecurringSubscription?   @relation(fields: [recurringSubscriptionId], references: [id])
+  notifications         MembershipNotification[]
 
+  @@unique([id, clerkOrganizationId])
   @@index([clerkOrganizationId, status])
   @@index([memberId, periodEnd])
   @@index([recurringSubscriptionId])
   @@map("memberships")
+}
+
+// Which lifecycle emails have already gone out for a membership, so the daily
+// sweep is idempotent and never double-sends a reminder. One row per
+// (membership, kind).
+enum MembershipNotificationKind {
+  RENEWAL_30
+  RENEWAL_7
+  RENEWAL_1
+  LAPSED
+  WINBACK_30
+  WINBACK_90
+}
+
+model MembershipNotification {
+  id                  String                     @id @default(cuid())
+  clerkOrganizationId String                     @map("clerk_organization_id")
+  membershipId        String                     @map("membership_id")
+  memberId            String                     @map("member_id")
+  kind                MembershipNotificationKind
+  sentAt              DateTime                   @default(now()) @map("sent_at")
+
+  membership Membership @relation(fields: [membershipId, clerkOrganizationId], references: [id, clerkOrganizationId], onDelete: Cascade)
+  member     Member     @relation(fields: [memberId, clerkOrganizationId], references: [id, clerkOrganizationId], onDelete: Cascade)
+
+  @@unique([membershipId, kind])
+  @@index([clerkOrganizationId, sentAt])
+  @@map("membership_notifications")
+}
+
+// A member (or prospective supporter) expressing interest in becoming a
+// volunteer wildlife carer — the member→carer funnel. Admins triage these and
+// onboard approved applicants into a full CarerProfile via the carer app.
+enum CarerInterestStatus {
+  NEW
+  CONTACTED
+  APPROVED
+  DECLINED
+}
+
+model CarerInterest {
+  id                  String              @id @default(cuid())
+  clerkOrganizationId String              @map("clerk_organization_id")
+  memberId            String?             @map("member_id")
+  name                String
+  email               String
+  phone               String?
+  experience          String?
+  availability        String?
+  message             String?
+  status              CarerInterestStatus @default(NEW)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  member Member? @relation(fields: [memberId, clerkOrganizationId], references: [id, clerkOrganizationId], onDelete: NoAction)
+
+  @@index([clerkOrganizationId, status])
+  @@index([clerkOrganizationId, memberId, status])
+  @@map("carer_interests")
 }
 
 // ─── Square (app-fee / OAuth) ───────────────────────────────────────────────
@@ -1507,4 +1584,55 @@ model ReceiptSequence {
 
   @@id([clerkOrganizationId, year])
   @@map("receipt_sequences")
+}
+
+// ─── Member Communications ──────────────────────────────────────────────────
+
+enum NewsPostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// Org-authored announcement / news item shown in the member portal feed. When
+// published, an email is broadcast to active members (emailSentAt records when
+// that happened so re-publishing doesn't re-spam).
+model NewsPost {
+  id                  String         @id @default(cuid())
+  clerkOrganizationId String         @map("clerk_organization_id")
+  title               String
+  body                String
+  status              NewsPostStatus @default(DRAFT)
+  // Clerk user id of the admin who authored the post (for display/audit only).
+  authorClerkUserId   String?        @map("author_clerk_user_id")
+  authorName          String?        @map("author_name")
+  publishedAt         DateTime?      @map("published_at")
+  emailSentAt         DateTime?      @map("email_sent_at")
+  recipientCount      Int?           @map("recipient_count")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  @@index([clerkOrganizationId, status, publishedAt])
+  @@map("news_posts")
+}
+
+// A direct message from an admin to a single member, shown in the member
+// portal inbox and (optionally) emailed. Body is stored already merge-rendered
+// so the portal and the email show identical text.
+model MemberMessage {
+  id                  String    @id @default(cuid())
+  clerkOrganizationId String    @map("clerk_organization_id")
+  memberId            String    @map("member_id")
+  subject             String
+  body                String
+  sentByClerkUserId   String?   @map("sent_by_clerk_user_id")
+  sentByName          String?   @map("sent_by_name")
+  emailSentAt         DateTime? @map("email_sent_at")
+  readAt              DateTime? @map("read_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  member Member @relation(fields: [memberId, clerkOrganizationId], references: [id, clerkOrganizationId], onDelete: Cascade)
+
+  @@index([clerkOrganizationId, createdAt])
+  @@index([memberId, readAt])
+  @@map("member_messages")
 }

@@ -26,7 +26,7 @@ export default async function JoinPage() {
     );
   }
 
-  const tiers = await prisma.membershipTier.findMany({
+  const tierRows = await prisma.membershipTier.findMany({
     where: { clerkOrganizationId: org.orgId, active: true, archivedAt: null },
     orderBy: { amountCents: 'asc' },
     select: {
@@ -36,8 +36,18 @@ export default async function JoinPage() {
       amountCents: true,
       currency: true,
       billingInterval: true,
+      benefitsJson: true,
     },
   });
+  const tiers = tierRows.map((t) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    amountCents: t.amountCents,
+    currency: t.currency,
+    billingInterval: t.billingInterval,
+    benefits: Array.isArray(t.benefitsJson) ? (t.benefitsJson as string[]) : [],
+  }));
 
   if (tiers.length === 0) {
     return (

@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, ArrowUpDown, ChevronDown, Download, Plus, Search,
+  ArrowLeft, ArrowUpDown, ChevronDown, Download, HeartHandshake, Mail, Plus, Search,
   Settings2, Upload, Users,
 } from 'lucide-react';
 import {
-  ColumnDef, ColumnFiltersState, SortingState, VisibilityState,
+  ColumnDef, ColumnFiltersState, RowSelectionState, SortingState, VisibilityState,
   flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel,
   getSortedRowModel, useReactTable,
 } from '@tanstack/react-table';
@@ -20,6 +20,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -29,7 +30,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MemberDialog, type MemberFormValue } from './member-dialog';
 import { ImportDialog } from './import-dialog';
+import { MessageDialog } from './message-dialog';
+import { GiftDialog } from './gift-dialog';
 import { TiersAdmin } from './tiers-admin';
+import { OnboardingChecklist } from './onboarding-checklist';
+import { useSearchParams } from 'next/navigation';
 
 interface Member {
   id: string;
@@ -78,16 +83,21 @@ async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function MembersAdmin() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams?.get('tab') === 'tiers' ? 'tiers' : 'members';
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [messageOpen, setMessageOpen] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
+  const [giftMember, setGiftMember] = useState<Member | null>(null);
 
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [globalFilter, setGlobalFilter] = useState('');
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -157,6 +167,31 @@ export function MembersAdmin() {
   }
 
   const columns = useMemo<ColumnDef<Member>[]>(() => [
+    {
+      id: 'select',
+      enableHiding: false,
+      enableSorting: false,
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected()
+              ? true
+              : table.getIsSomePageRowsSelected()
+                ? 'indeterminate'
+                : false
+          }
+          onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+          aria-label="Select all on page"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(v) => row.toggleSelected(!!v)}
+          aria-label="Select member"
+        />
+      ),
+    },
     {
       id: 'name',
       accessorFn: (m) => `${m.lastName}, ${m.firstName}`,
@@ -244,6 +279,7 @@ export function MembersAdmin() {
         <div className="text-right space-x-2">
           <Button variant="outline" size="sm" onClick={() => handleEdit(row.original)}>Edit</Button>
           <Button variant="outline" size="sm" onClick={() => handleInvite(row.original)}>Invite</Button>
+          <Button variant="outline" size="sm" onClick={() => setGiftMember(row.original)}>Gift</Button>
           <Button variant="ghost" size="sm" onClick={() => handleArchive(row.original)}>Archive</Button>
         </div>
       ),
@@ -254,10 +290,13 @@ export function MembersAdmin() {
   const table = useReactTable({
     data: members,
     columns,
+    getRowId: (m) => m.id,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
     globalFilterFn: (row, _id, value) => {
       const search = String(value ?? '').trim().toLowerCase();
       if (!search) return true;
@@ -271,8 +310,10 @@ export function MembersAdmin() {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 25 } },
-    state: { sorting, columnFilters, columnVisibility, globalFilter },
+    state: { sorting, columnFilters, columnVisibility, globalFilter, rowSelection },
   });
+
+  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -289,13 +330,14 @@ export function MembersAdmin() {
         </div>
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        <Tabs defaultValue="members">
+        <Tabs defaultValue={initialTab}>
           <TabsList>
             <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="tiers">Membership Tiers</TabsTrigger>
           </TabsList>
 
           <TabsContent value="members" className="space-y-4">
+            <OnboardingChecklist />
             <Card>
               <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -305,9 +347,22 @@ export function MembersAdmin() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={selectedIds.length === 0}
+                    onClick={() => setMessageOpen(true)}
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Message{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
+                  </Button>
                   <Link href="/admin/members/fields">
                     <Button variant="outline">
                       <Settings2 className="h-4 w-4 mr-2" /> Custom fields
+                    </Button>
+                  </Link>
+                  <Link href="/admin/carer-interest">
+                    <Button variant="outline">
+                      <HeartHandshake className="h-4 w-4 mr-2" /> Carer interest
                     </Button>
                   </Link>
                   <Button variant="outline" onClick={() => setImportOpen(true)}>
@@ -438,6 +493,7 @@ export function MembersAdmin() {
                   <div className="text-sm text-muted-foreground">
                     Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1} ·{' '}
                     {table.getFilteredRowModel().rows.length} result(s)
+                    {selectedIds.length > 0 ? ` · ${selectedIds.length} selected` : ''}
                   </div>
                   <div className="flex items-center gap-2">
                     <Select
@@ -480,6 +536,18 @@ export function MembersAdmin() {
           open={importOpen}
           onOpenChange={setImportOpen}
           onImported={load}
+        />
+        <GiftDialog
+          member={giftMember}
+          onOpenChange={(open) => { if (!open) setGiftMember(null); }}
+          onDone={load}
+        />
+
+        <MessageDialog
+          open={messageOpen}
+          onOpenChange={setMessageOpen}
+          memberIds={selectedIds}
+          onSent={() => setRowSelection({})}
         />
       </main>
     </div>
