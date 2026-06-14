@@ -8,7 +8,7 @@ import { countUnreadMessages } from '@/lib/member-messages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { UserCog, Calendar, Mail, Phone, Megaphone, ArrowRight } from 'lucide-react';
+import { UserCog, Calendar, Mail, Phone, Megaphone, ArrowRight, Sparkles, CreditCard } from 'lucide-react';
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: 'Active',
@@ -64,6 +64,37 @@ export default async function PortalDashboardPage() {
           </Card>
         </Link>
       )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link href="/portal/impact">
+          <Card className="h-full transition-colors hover:bg-accent hover:border-primary/40">
+            <CardContent className="py-4 flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 text-primary p-2">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-medium">Your impact</div>
+                <div className="text-xs text-muted-foreground">See the animals your support helps</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/portal/card">
+          <Card className="h-full transition-colors hover:bg-accent hover:border-primary/40">
+            <CardContent className="py-4 flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 text-primary p-2">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-medium">Membership card</div>
+                <div className="text-xs text-muted-foreground">Your digital card &amp; QR for events</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

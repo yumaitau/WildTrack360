@@ -5,11 +5,14 @@ import { usePathname } from 'next/navigation';
 import { SignOutButton } from '@/lib/clerk-client';
 import { Button } from '@/components/ui/button';
 import {
-  Heart, HeartHandshake, LayoutDashboard, LogOut, Mail, Megaphone, Receipt, Ticket, UserCog,
+  CreditCard, Heart, HeartHandshake, LayoutDashboard, LogOut, Mail, Megaphone,
+  Receipt, Sparkles, Ticket, UserCog,
 } from 'lucide-react';
 
 const NAV = [
   { href: '/portal', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/portal/impact', label: 'Impact', icon: Sparkles },
+  { href: '/portal/card', label: 'Card', icon: CreditCard },
   { href: '/portal/news', label: 'News', icon: Megaphone },
   { href: '/portal/messages', label: 'Messages', icon: Mail },
   { href: '/portal/membership', label: 'Membership', icon: Ticket },
