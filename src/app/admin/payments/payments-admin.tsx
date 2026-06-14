@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, CreditCard, Settings, RefreshCw } from 'lucide-react';
+import { ArrowLeft, CreditCard, Settings, RefreshCw, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,6 +70,11 @@ export function PaymentsAdmin() {
             <CreditCard className="h-6 w-6" /> Payments
           </h1>
           <div className="flex gap-2">
+            <Link href="/admin/payments/statements">
+              <Button variant="outline">
+                <FileText className="h-4 w-4 mr-2" /> Tax statements
+              </Button>
+            </Link>
             <Link href="/admin/payments/settings">
               <Button variant="outline">
                 <Settings className="h-4 w-4 mr-2" /> Square settings
