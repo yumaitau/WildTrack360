@@ -1327,11 +1327,39 @@ model Membership {
   member                Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
   tier                  MembershipTier         @relation(fields: [tierId], references: [id])
   recurringSubscription RecurringSubscription? @relation(fields: [recurringSubscriptionId], references: [id])
+  notifications         MembershipNotification[]
 
   @@index([clerkOrganizationId, status])
   @@index([memberId, periodEnd])
   @@index([recurringSubscriptionId])
   @@map("memberships")
+}
+
+// Which lifecycle emails have already gone out for a membership, so the daily
+// sweep is idempotent and never double-sends a reminder. One row per
+// (membership, kind).
+enum MembershipNotificationKind {
+  RENEWAL_30
+  RENEWAL_7
+  RENEWAL_1
+  LAPSED
+  WINBACK_30
+  WINBACK_90
+}
+
+model MembershipNotification {
+  id                  String                     @id @default(cuid())
+  clerkOrganizationId String                     @map("clerk_organization_id")
+  membershipId        String                     @map("membership_id")
+  memberId            String                     @map("member_id")
+  kind                MembershipNotificationKind
+  sentAt              DateTime                   @default(now()) @map("sent_at")
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, kind])
+  @@index([clerkOrganizationId, sentAt])
+  @@map("membership_notifications")
 }
 
 // ─── Square (app-fee / OAuth) ───────────────────────────────────────────────
