@@ -1,7 +1,6 @@
 'server-only';
 
 import { prisma } from './prisma';
-import { clerkClient } from '@/lib/clerk-server';
 
 export interface OrgDisplayInfo {
   name: string;
@@ -22,6 +21,7 @@ export async function getOrgDisplayInfo(orgId: string): Promise<OrgDisplayInfo> 
   let name = settings?.legalName?.trim() ?? '';
   if (!name) {
     try {
+      const { clerkClient } = await import('@/lib/clerk-server');
       const client = await clerkClient();
       const org = await client.organizations.getOrganization({ organizationId: orgId });
       name = org.name ?? '';
