@@ -169,4 +169,36 @@ describe('sendAdminNotification', () => {
 
     errorSpy.mockRestore();
   });
+
+  it('reports retryable Clerk user lookup failures without marking the user missing', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const clerkError = Object.assign(new Error('rate limited'), { status: 429 });
+    mockPrisma.orgMember.findMany.mockResolvedValue([{ userId: 'admin-1' }]);
+    mockClerkManagement.getClerkUser.mockRejectedValue(clerkError);
+
+    const results = await sendAdminNotification({
+      orgId: 'org-1',
+      kind: 'nsw-reminder',
+      title: 'NSW annual return is due',
+      body: 'Generate reports now.',
+      cta: { label: 'Open NSW report', href: '/compliance/nsw-report' },
+      dedupeKey: 'submission-14-day:2026',
+    });
+
+    expect(results).toEqual([
+      {
+        userId: 'admin-1',
+        status: 'failed',
+        reason: 'clerk-user-lookup-failed',
+      },
+    ]);
+    expect(mockSendEmail).not.toHaveBeenCalled();
+    expect(mockPrisma.adminNotificationLog.create).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Failed to resolve admin notification recipient from Clerk:',
+      expect.objectContaining({ error: clerkError, userId: 'admin-1' })
+    );
+
+    errorSpy.mockRestore();
+  });
 });

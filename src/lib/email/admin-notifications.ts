@@ -1,5 +1,3 @@
-'server-only';
-
 import type { OrgRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getClerkOrganization, getClerkUser } from '@/lib/clerk-management';
@@ -22,6 +20,7 @@ type AdminNotificationInput = {
 type SendResult =
   | { userId: string; email: string; status: 'sent'; resendMessageId: string | null }
   | { userId: string; email: string; status: 'sent-unlogged'; resendMessageId: string | null }
+  | { userId: string; status: 'failed'; reason: 'clerk-user-lookup-failed' }
   | {
       userId: string;
       email?: string;
@@ -50,6 +49,12 @@ function toAbsoluteAppUrl(href: string): string {
 
 function tagValue(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 256) || 'unknown';
+}
+
+function clerkErrorStatus(error: unknown): number | null {
+  if (!error || typeof error !== 'object') return null;
+  const status = (error as { status?: unknown }).status;
+  return typeof status === 'number' ? status : null;
 }
 
 export async function sendAdminNotification(input: AdminNotificationInput): Promise<SendResult[]> {
@@ -92,7 +97,28 @@ export async function sendAdminNotification(input: AdminNotificationInput): Prom
       }
     }
 
-    const clerkUser = await getClerkUser(recipient.userId).catch(() => null);
+    let clerkUser: Awaited<ReturnType<typeof getClerkUser>>;
+    try {
+      clerkUser = await getClerkUser(recipient.userId);
+    } catch (error) {
+      if (clerkErrorStatus(error) === 404) {
+        results.push({ userId: recipient.userId, status: 'skipped', reason: 'missing-user' });
+      } else {
+        console.error('Failed to resolve admin notification recipient from Clerk:', {
+          error,
+          orgId: input.orgId,
+          userId: recipient.userId,
+          kind: input.kind,
+        });
+        results.push({
+          userId: recipient.userId,
+          status: 'failed',
+          reason: 'clerk-user-lookup-failed',
+        });
+      }
+      continue;
+    }
+
     if (!clerkUser) {
       results.push({ userId: recipient.userId, status: 'skipped', reason: 'missing-user' });
       continue;

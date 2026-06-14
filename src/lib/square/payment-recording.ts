@@ -8,6 +8,9 @@ import { sendPaymentActivityAdminNotification } from '../email/payment-admin-not
 
 function mapStatus(squareStatus: string | undefined): PaymentStatus {
   switch (squareStatus) {
+    // Square card-not-present donations are expected to auto-capture as
+    // COMPLETED. APPROVED is accepted defensively for edge cases; revisit this
+    // mapping before adding delayed-capture support.
     case 'COMPLETED':
     case 'APPROVED':
       return 'SUCCEEDED';
@@ -32,70 +35,118 @@ export async function recordSuccessfulPayment(args: {
   if (!payment) return { receiptNumber: null, status: 'REQUIRES_ACTION' };
 
   const status = mapStatus(sq.status);
-  const isFirstSuccess = payment.status !== 'SUCCEEDED' && status === 'SUCCEEDED';
-  const receiptNumber =
-    payment.receiptNumber ??
-    (isFirstSuccess ? await nextReceiptNumber(payment.clerkOrganizationId) : null);
+  const paymentUpdateData = {
+    status,
+    squarePaymentId: sq.id ?? payment.squarePaymentId,
+    squareOrderId: sq.orderId ?? payment.squareOrderId,
+    processingFeeCents: processingFeeCents(sq) ?? payment.processingFeeCents,
+    receiptUrl: sq.receiptUrl ?? payment.receiptUrl,
+  };
 
-  const updated = await prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      status,
-      squarePaymentId: sq.id ?? payment.squarePaymentId,
-      squareOrderId: sq.orderId ?? payment.squareOrderId,
-      processingFeeCents: processingFeeCents(sq) ?? payment.processingFeeCents,
-      receiptUrl: sq.receiptUrl ?? payment.receiptUrl,
-      receiptNumber,
-    },
-  });
-
-  if (!isFirstSuccess) return { receiptNumber: updated.receiptNumber, status };
-
-  const meta = (payment.metadata ?? {}) as Record<string, unknown>;
-  const recurringSubscriptionId = (meta.recurringSubscriptionId as string) ?? null;
-
-  if (payment.kind === 'DONATION_ONE_OFF' || payment.kind === 'DONATION_RECURRING') {
-    await prisma.donation.create({
-      data: {
-        clerkOrganizationId: payment.clerkOrganizationId,
-        memberId: payment.memberId,
-        donorEmail: (meta.donorEmail as string) ?? sq.buyerEmailAddress ?? 'unknown@example.com',
-        donorName: (meta.donorName as string) ?? null,
-        amountCents: payment.amountCents,
-        feeCents: payment.applicationFeeCents,
-        currency: payment.currency,
-        isAnonymous: Boolean(meta.isAnonymous),
-        message: (meta.message as string) ?? null,
-        paymentId: payment.id,
-        recurringSubscriptionId,
-      },
+  if (status !== 'SUCCEEDED') {
+    const updated = await prisma.payment.update({
+      where: { id: payment.id },
+      data: paymentUpdateData,
     });
-  } else if (payment.kind === 'MEMBERSHIP_ONE_OFF' || payment.kind === 'MEMBERSHIP_RECURRING') {
-    const tierId = meta.tierId as string | undefined;
-    if (tierId && payment.memberId) {
-      const tier = await prisma.membershipTier.findUnique({ where: { id: tierId } });
-      if (tier) {
-        const start = new Date();
-        const end = computeMembershipEnd(start, tier.billingInterval);
-        await prisma.membership.create({
-          data: {
-            clerkOrganizationId: payment.clerkOrganizationId,
-            memberId: payment.memberId,
-            tierId: tier.id,
-            periodStart: start,
-            periodEnd: end,
-            status: 'ACTIVE',
-            paymentId: payment.id,
-            recurringSubscriptionId,
-          },
+    return { receiptNumber: updated.receiptNumber, status };
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.payment.updateMany({
+      where: { id: payment.id, status: { not: 'SUCCEEDED' } },
+      data: paymentUpdateData,
+    });
+
+    if (claimed.count === 0) {
+      const updated = await tx.payment.update({
+        where: { id: payment.id },
+        data: paymentUpdateData,
+      });
+      return { firstSuccess: false, receiptNumber: updated.receiptNumber, status };
+    }
+
+    const receiptNumber =
+      payment.receiptNumber ?? (await nextReceiptNumberForClient(tx, payment.clerkOrganizationId));
+    const updated = await tx.payment.update({
+      where: { id: payment.id },
+      data: { receiptNumber },
+    });
+
+    const meta = (payment.metadata ?? {}) as Record<string, unknown>;
+    const recurringSubscriptionId = (meta.recurringSubscriptionId as string) ?? null;
+
+    if (payment.kind === 'DONATION_ONE_OFF' || payment.kind === 'DONATION_RECURRING') {
+      await tx.donation.create({
+        data: {
+          clerkOrganizationId: payment.clerkOrganizationId,
+          memberId: payment.memberId,
+          donorEmail: (meta.donorEmail as string) ?? sq.buyerEmailAddress ?? 'unknown@example.com',
+          donorName: (meta.donorName as string) ?? null,
+          amountCents: payment.amountCents,
+          feeCents: payment.applicationFeeCents,
+          currency: payment.currency,
+          isAnonymous: Boolean(meta.isAnonymous),
+          message: (meta.message as string) ?? null,
+          paymentId: payment.id,
+          recurringSubscriptionId,
+        },
+      });
+    } else if (payment.kind === 'MEMBERSHIP_ONE_OFF' || payment.kind === 'MEMBERSHIP_RECURRING') {
+      const tierId = meta.tierId as string | undefined;
+      let missingMembershipInput = false;
+
+      if (!tierId) {
+        missingMembershipInput = true;
+        console.warn('Membership payment succeeded but metadata.tierId is missing', {
+          paymentId: payment.id,
+          orgId: payment.clerkOrganizationId,
         });
       }
+
+      if (!payment.memberId) {
+        missingMembershipInput = true;
+        console.warn('Membership payment succeeded but payment.memberId is missing', {
+          paymentId: payment.id,
+          orgId: payment.clerkOrganizationId,
+          tierId,
+        });
+      }
+
+      if (!missingMembershipInput) {
+        const tier = await tx.membershipTier.findUnique({ where: { id: tierId } });
+        if (!tier) {
+          console.warn('Membership payment succeeded but membership tier was not found', {
+            paymentId: payment.id,
+            orgId: payment.clerkOrganizationId,
+            tierId,
+          });
+        } else {
+          const start = new Date();
+          const end = computeMembershipEnd(start, tier.billingInterval);
+          await tx.membership.create({
+            data: {
+              clerkOrganizationId: payment.clerkOrganizationId,
+              memberId: payment.memberId!,
+              tierId: tier.id,
+              periodStart: start,
+              periodEnd: end,
+              status: 'ACTIVE',
+              paymentId: payment.id,
+              recurringSubscriptionId,
+            },
+          });
+        }
+      }
     }
-  }
+
+    return { firstSuccess: true, receiptNumber: updated.receiptNumber, status };
+  });
+
+  if (!result.firstSuccess) return { receiptNumber: result.receiptNumber, status: result.status };
 
   await writePaymentAuditLog({
     orgId: payment.clerkOrganizationId,
-    paymentId: updated.id,
+    paymentId: payment.id,
     kind: payment.kind,
     amountCents: payment.amountCents,
   });
@@ -116,7 +167,7 @@ export async function recordSuccessfulPayment(args: {
     console.error('Failed to send payment admin notification email:', error);
   }
 
-  return { receiptNumber: updated.receiptNumber, status };
+  return { receiptNumber: result.receiptNumber, status };
 }
 
 async function findLocalPayment(localPaymentId: string | undefined, sq: Square.Payment) {
@@ -162,16 +213,28 @@ async function writePaymentAuditLog({
 // Atomic per-org per-year receipt sequence. Final string is
 // "{prefix}-{YYYY}-{seq:5}" composed here so the prefix can change without
 // backfill. Mirrors the prior Stripe implementation.
-export async function nextReceiptNumber(orgId: string): Promise<string> {
+type ReceiptNumberClient = Pick<
+  Prisma.TransactionClient,
+  'receiptSequence' | 'organisationSettings'
+>;
+
+async function nextReceiptNumberForClient(
+  client: ReceiptNumberClient,
+  orgId: string
+): Promise<string> {
   const year = new Date().getFullYear();
-  const seq = await prisma.receiptSequence.upsert({
+  const seq = await client.receiptSequence.upsert({
     where: { clerkOrganizationId_year: { clerkOrganizationId: orgId, year } },
     create: { clerkOrganizationId: orgId, year, lastNumber: 1 },
     update: { lastNumber: { increment: 1 } },
   });
-  const settings = await prisma.organisationSettings.findUnique({
+  const settings = await client.organisationSettings.findUnique({
     where: { clerkOrganisationId: orgId },
   });
   const prefix = settings?.receiptPrefix?.trim() || 'RCPT';
   return `${prefix}-${year}-${String(seq.lastNumber).padStart(5, '0')}`;
+}
+
+export function nextReceiptNumber(orgId: string): Promise<string> {
+  return nextReceiptNumberForClient(prisma, orgId);
 }

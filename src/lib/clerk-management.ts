@@ -15,6 +15,16 @@ type ClerkUserApiResponse = {
   email_addresses?: { id: string; email_address: string }[];
 };
 
+export class ClerkManagementError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message);
+    this.name = 'ClerkManagementError';
+  }
+}
+
 function clerkSecretKey(): string {
   const key = process.env.CLERK_SECRET_KEY;
   if (!key) throw new Error('CLERK_SECRET_KEY is not configured');
@@ -31,7 +41,10 @@ async function clerkGet<T>(path: string): Promise<T> {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new Error(`Clerk API request failed (${res.status}): ${body || res.statusText}`);
+    throw new ClerkManagementError(
+      `Clerk API request failed (${res.status}): ${body || res.statusText}`,
+      res.status
+    );
   }
 
   return res.json() as Promise<T>;

@@ -1,5 +1,3 @@
-'server-only';
-
 import type { BillingInterval, PaymentKind } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { formatAmountCents, receiptKindLabel } from '@/lib/receipts';
