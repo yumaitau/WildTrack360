@@ -1282,6 +1282,7 @@ model Member {
   payments               Payment[]
   donations              Donation[]
   recurringSubscriptions RecurringSubscription[]
+  messages               MemberMessage[]
   carerProfile           CarerProfile?           @relation(fields: [carerProfileId], references: [id])
 
   @@unique([clerkOrganizationId, email])
@@ -1507,4 +1508,55 @@ model ReceiptSequence {
 
   @@id([clerkOrganizationId, year])
   @@map("receipt_sequences")
+}
+
+// ─── Member Communications ──────────────────────────────────────────────────
+
+enum NewsPostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// Org-authored announcement / news item shown in the member portal feed. When
+// published, an email is broadcast to active members (emailSentAt records when
+// that happened so re-publishing doesn't re-spam).
+model NewsPost {
+  id                  String         @id @default(cuid())
+  clerkOrganizationId String         @map("clerk_organization_id")
+  title               String
+  body                String
+  status              NewsPostStatus @default(DRAFT)
+  // Clerk user id of the admin who authored the post (for display/audit only).
+  authorClerkUserId   String?        @map("author_clerk_user_id")
+  authorName          String?        @map("author_name")
+  publishedAt         DateTime?      @map("published_at")
+  emailSentAt         DateTime?      @map("email_sent_at")
+  recipientCount      Int?           @map("recipient_count")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  @@index([clerkOrganizationId, status, publishedAt])
+  @@map("news_posts")
+}
+
+// A direct message from an admin to a single member, shown in the member
+// portal inbox and (optionally) emailed. Body is stored already merge-rendered
+// so the portal and the email show identical text.
+model MemberMessage {
+  id                  String    @id @default(cuid())
+  clerkOrganizationId String    @map("clerk_organization_id")
+  memberId            String    @map("member_id")
+  subject             String
+  body                String
+  sentByClerkUserId   String?   @map("sent_by_clerk_user_id")
+  sentByName          String?   @map("sent_by_name")
+  emailSentAt         DateTime? @map("email_sent_at")
+  readAt              DateTime? @map("read_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([clerkOrganizationId, createdAt])
+  @@index([memberId, readAt])
+  @@map("member_messages")
 }
