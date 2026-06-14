@@ -4,7 +4,7 @@ import { prisma } from '../prisma';
 import { getSquareClient } from './client';
 import { getValidAccessToken } from './oauth';
 import { centsToMoney } from './money';
-import { recordSuccessfulPayment } from './webhook';
+import { recordSuccessfulPayment } from './payment-recording';
 import {
   DEFAULT_CURRENCY,
   MAX_DONATION_CENTS,
@@ -89,12 +89,16 @@ export async function createDonationPayment(args: CreateDonationArgs): Promise<C
   // this token anyway.)
   let receiptNumber: string | null = null;
   try {
-    const applied = await recordSuccessfulPayment({ localPaymentId: payment.id, squarePayment: sqPayment });
+    const applied = await recordSuccessfulPayment({
+      localPaymentId: payment.id,
+      squarePayment: sqPayment,
+    });
     receiptNumber = applied.receiptNumber;
   } catch (bookkeepingError) {
     console.error('Donation charged but local bookkeeping failed; webhook will reconcile', {
       paymentId: payment.id,
-      error: bookkeepingError instanceof Error ? bookkeepingError.message : String(bookkeepingError),
+      error:
+        bookkeepingError instanceof Error ? bookkeepingError.message : String(bookkeepingError),
     });
   }
   return {

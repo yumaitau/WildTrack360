@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockPrisma, mockClerk, mockSendEmail } = vi.hoisted(() => ({
+const { mockPrisma, mockClerkManagement, mockSendEmail } = vi.hoisted(() => ({
   mockPrisma: {
     orgMember: {
       findMany: vi.fn(),
@@ -10,19 +10,15 @@ const { mockPrisma, mockClerk, mockSendEmail } = vi.hoisted(() => ({
       create: vi.fn(),
     },
   },
-  mockClerk: {
-    organizations: {
-      getOrganization: vi.fn(),
-    },
-    users: {
-      getUser: vi.fn(),
-    },
+  mockClerkManagement: {
+    getClerkOrganization: vi.fn(),
+    getClerkUser: vi.fn(),
   },
   mockSendEmail: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }));
-vi.mock('@/lib/clerk-server', () => ({ clerkClient: vi.fn(async () => mockClerk) }));
+vi.mock('@/lib/clerk-management', () => mockClerkManagement);
 vi.mock('./resend', () => ({ sendEmail: mockSendEmail }));
 
 import { sendAdminNotification } from './admin-notifications';
@@ -30,7 +26,7 @@ import { sendAdminNotification } from './admin-notifications';
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.NEXT_PUBLIC_APP_URL = 'https://app.wildtrack360.test';
-  mockClerk.organizations.getOrganization.mockResolvedValue({ name: 'Wildlife NSW' });
+  mockClerkManagement.getClerkOrganization.mockResolvedValue({ name: 'Wildlife NSW' });
   mockPrisma.adminNotificationLog.findUnique.mockResolvedValue(null);
   mockPrisma.adminNotificationLog.create.mockResolvedValue({});
   mockSendEmail.mockResolvedValue({ id: 'email_123' });
@@ -39,7 +35,7 @@ beforeEach(() => {
 describe('sendAdminNotification', () => {
   it('fans out admin notifications and records each send', async () => {
     mockPrisma.orgMember.findMany.mockResolvedValue([{ userId: 'admin-1' }, { userId: 'coord-1' }]);
-    mockClerk.users.getUser
+    mockClerkManagement.getClerkUser
       .mockResolvedValueOnce({
         primaryEmailAddressId: 'email-1',
         emailAddresses: [{ id: 'email-1', emailAddress: 'admin@example.com' }],
@@ -60,8 +56,18 @@ describe('sendAdminNotification', () => {
     });
 
     expect(results).toEqual([
-      { userId: 'admin-1', email: 'admin@example.com', status: 'sent', resendMessageId: 'email_123' },
-      { userId: 'coord-1', email: 'coord@example.com', status: 'sent', resendMessageId: 'email_123' },
+      {
+        userId: 'admin-1',
+        email: 'admin@example.com',
+        status: 'sent',
+        resendMessageId: 'email_123',
+      },
+      {
+        userId: 'coord-1',
+        email: 'coord@example.com',
+        status: 'sent',
+        resendMessageId: 'email_123',
+      },
     ]);
     expect(mockPrisma.orgMember.findMany).toHaveBeenCalledWith({
       where: { orgId: 'org-1', role: { in: ['ADMIN', 'COORDINATOR_ALL'] } },
@@ -104,7 +110,7 @@ describe('sendAdminNotification', () => {
     });
 
     expect(results).toEqual([{ userId: 'admin-1', status: 'skipped', reason: 'duplicate' }]);
-    expect(mockClerk.users.getUser).not.toHaveBeenCalled();
+    expect(mockClerkManagement.getClerkUser).not.toHaveBeenCalled();
     expect(mockSendEmail).not.toHaveBeenCalled();
     expect(mockPrisma.adminNotificationLog.create).not.toHaveBeenCalled();
   });
@@ -132,7 +138,7 @@ describe('sendAdminNotification', () => {
   it('reports sent-unlogged when the email sends but audit persistence fails', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockPrisma.orgMember.findMany.mockResolvedValue([{ userId: 'admin-1' }]);
-    mockClerk.users.getUser.mockResolvedValue({
+    mockClerkManagement.getClerkUser.mockResolvedValue({
       primaryEmailAddressId: 'email-1',
       emailAddresses: [{ id: 'email-1', emailAddress: 'admin@example.com' }],
     });
@@ -148,7 +154,12 @@ describe('sendAdminNotification', () => {
     });
 
     expect(results).toEqual([
-      { userId: 'admin-1', email: 'admin@example.com', status: 'sent-unlogged', resendMessageId: 'email_123' },
+      {
+        userId: 'admin-1',
+        email: 'admin@example.com',
+        status: 'sent-unlogged',
+        resendMessageId: 'email_123',
+      },
     ]);
     expect(mockSendEmail).toHaveBeenCalledTimes(1);
     expect(errorSpy).toHaveBeenCalledWith(

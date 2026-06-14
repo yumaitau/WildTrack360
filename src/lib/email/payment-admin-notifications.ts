@@ -1,4 +1,4 @@
-import 'server-only';
+'server-only';
 
 import type { BillingInterval, PaymentKind } from '@prisma/client';
 import { prisma } from '@/lib/prisma';

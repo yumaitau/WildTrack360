@@ -1,8 +1,8 @@
-import 'server-only';
+'server-only';
 
-import { clerkClient } from '@/lib/clerk-server';
 import type { OrgRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { getClerkOrganization, getClerkUser } from '@/lib/clerk-management';
 import { sendEmail } from './resend';
 import { AdminNotificationEmail } from './templates/admin-notification';
 
@@ -53,12 +53,11 @@ function tagValue(value: string): string {
 }
 
 export async function sendAdminNotification(input: AdminNotificationInput): Promise<SendResult[]> {
-  const client = await clerkClient();
   const recipientRoles = input.recipientRoles?.length
     ? input.recipientRoles
     : DEFAULT_RECIPIENT_ROLES;
   const [org, recipients] = await Promise.all([
-    client.organizations.getOrganization({ organizationId: input.orgId }),
+    getClerkOrganization(input.orgId),
     prisma.orgMember.findMany({
       where: {
         orgId: input.orgId,
@@ -93,7 +92,7 @@ export async function sendAdminNotification(input: AdminNotificationInput): Prom
       }
     }
 
-    const clerkUser = await client.users.getUser(recipient.userId).catch(() => null);
+    const clerkUser = await getClerkUser(recipient.userId).catch(() => null);
     if (!clerkUser) {
       results.push({ userId: recipient.userId, status: 'skipped', reason: 'missing-user' });
       continue;
