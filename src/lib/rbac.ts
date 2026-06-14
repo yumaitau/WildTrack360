@@ -239,7 +239,8 @@ export async function getAuthorisedSpecies(
 /**
  * Check whether a user can access a specific animal based on their role:
  * - ADMIN: always
- * - COORDINATOR: if the animal's species is in one of their assigned species groups (case-insensitive)
+ * - COORDINATOR: if the animal's species is in one of their assigned species groups
+ *   (case-insensitive), or if the animal is directly assigned to them
  * - CARER: only if the animal is assigned to them
  */
 export async function canAccessAnimal(
@@ -259,7 +260,7 @@ export async function canAccessAnimal(
     const authorisedSpecies = member.speciesAssignments.flatMap(
       (a) => a.speciesGroup.speciesNames.map(normaliseSpecies)
     );
-    return authorisedSpecies.includes(normaliseSpecies(animal.species));
+    return animal.carerId === userId || authorisedSpecies.includes(normaliseSpecies(animal.species));
   }
 
   // CARER
