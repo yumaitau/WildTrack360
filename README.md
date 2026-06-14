@@ -6,7 +6,7 @@ WildTrack360 is a comprehensive wildlife conservation management application des
 
 - **Animal Lifecycle Management**: Track animals from admission through in-care, ready-for-release, released, deceased, transferred, or permanent-care statuses
 - **Multi-tenant Architecture**: Organisation-level data isolation with subdomain routing
-- **Role-Based Access Control (RBAC)**: Five-tier role hierarchy with 25 granular permissions
+- **Role-Based Access Control (RBAC)**: Five-tier role hierarchy with 29 granular permissions
 - **Species-Based Access Control (SBAC)**: Coordinators scoped to assigned species groups
 - **Compliance & Regulatory**: Release checklists, hygiene logs, incident reports, transfers, permanent care applications, post-release monitoring, and preserved specimen tracking
 - **NSW Annual Reporting**: Auto-generate compliance reports with data snapshots
@@ -16,10 +16,13 @@ WildTrack360 is a comprehensive wildlife conservation management application des
 - **Asset Management**: Equipment tracking with status lifecycle
 - **Audit Logging**: Immutable trail of all system actions
 - **Growth Calculator**: Birth date estimation, growth charts with predicted vs actual weight curves, and weight-for-age tracking. Reference data for macropods, possums, and flying foxes from published scientific sources
-- **Reporting & Export**: Dashboard analytics, Recharts visualisations, Excel and PDF export
+- **Reporting & Export**: Dashboard analytics, custom report queries, Recharts visualisations, Excel and PDF export
 - **SMS Notifications**: AWS SNS integration for carer notifications
+- **Membership & Payments**: Member management, public join/donate flows, Square payments, receipts, and recurring subscriptions
+- **Wally AI Assistant**: AWS Bedrock-backed workspace assistant grounded in product docs and organisation context
+- **Email Notifications**: Resend-backed admin alerts and payment receipts
 - **Error Monitoring**: Sentry integration for production error tracking
-- **Maps**: Google Maps integration for location services
+- **Maps & Weather**: Google Maps/Places, OpenStreetMap/Nominatim reverse geocoding, and Google Weather integration
 - **Mobile Responsive**: Works on desktop, tablet, and mobile with dark/light theme support
 
 ## Architecture
@@ -36,16 +39,23 @@ WildTrack360 is a comprehensive wildlife conservation management application des
 | **Charts** | Recharts |
 | **File Storage** | AWS S3 |
 | **SMS** | AWS SNS |
+| **Email** | Resend |
+| **Payments** | Square |
+| **AI Assistant** | Vercel AI SDK with AWS Bedrock |
 | **Monitoring** | Sentry |
+| **Maps & Weather** | Google Maps/Places, OpenStreetMap/Nominatim, Google Weather API |
 | **Export** | ExcelJS (spreadsheets), jsPDF (PDF) |
 | **Testing** | Vitest |
 
 ## Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 18.18+ and npm
 - PostgreSQL database (local, Docker, or cloud)
 - Clerk account for authentication
-- AWS account (optional, for photo storage and SMS)
+- AWS account (optional, for S3 photo storage, SNS SMS, and Bedrock-powered Wally)
+- Google Maps and Google Weather API keys (optional, for map/geocoding and weather features)
+- Square developer account (optional, for memberships, donations, and payments)
+- Resend account (optional, for transactional email)
 
 ## Quick Start
 
@@ -72,6 +82,7 @@ docker-compose up -d
 
 # The database will be available at localhost:5432
 # pgAdmin will be available at http://localhost:8080
+# If docker-compose.override.yml is active, use the ports defined there instead.
 ```
 
 #### Option B: Local PostgreSQL
@@ -99,26 +110,71 @@ cp env.example .env.local
 Key variables to configure:
 
 ```env
+# App and tenant routing
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000
+
+# Organisation defaults
+NEXT_PUBLIC_JURISDICTION=ACT
+NEXT_PUBLIC_ORGANIZATION_NAME=WildTrack360
+NEXT_PUBLIC_ORGANIZATION_CONTACT=contact@wildtrack360.com.au
+NEXT_PUBLIC_ORGANIZATION_LOGO=/act-logo.png
+
 # Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
 
 # Database
-DATABASE_URL=postgresql://user:pass@localhost:5432/wildtrack360
+DATABASE_URL=postgresql://postgres:password@localhost:5432/wildtrack360?schema=public
 
-# Optional: AWS (photos & SMS)
+# Optional: S3 photo/document storage
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+S3_REGION=ap-southeast-2
+S3_BUCKET_NAME=wildtrack360
+
+# Optional: AWS SNS SMS
+AWS_SNS_REGION=ap-southeast-2
+AWS_SNS_ACCESS_KEY_ID=...
+AWS_SNS_SECRET_ACCESS_KEY=...
+SMS_SENDER_ID=WildTrack
+
+# Optional: AWS Bedrock (Wally)
+AWS_REGION=ap-southeast-2
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
-AWS_REGION=...
-AWS_S3_BUCKET=...
+BEDROCK_MODEL_ID=au.anthropic.claude-haiku-4-5-20251001-v1:0
+
+# Optional: Maps and weather
+NEXT_PUBLIC_GOOGLE_MAPS_KEY=...
+GOOGLE_WEATHER_API_KEY=...
+
+# Optional: Email
+RESEND_API_KEY=...
+RESEND_FROM_EMAIL="WildTrack360 <notifications@your-domain.example>"
+ADMIN_NOTIFICATION_UNSUBSCRIBE_URL=https://your-domain.example/admin/notifications
+
+# Optional: Square payments
+SQUARE_ENVIRONMENT=sandbox
+SQUARE_APPLICATION_ID=...
+NEXT_PUBLIC_SQUARE_APPLICATION_ID=...
+SQUARE_APPLICATION_SECRET=...
+SQUARE_WEBHOOK_SIGNATURE_KEY=...
+SQUARE_WEBHOOK_NOTIFICATION_URL=https://your-domain.example/api/square/webhook
+SQUARE_OAUTH_REDIRECT_URL=https://your-domain.example/api/square/oauth/callback
+ENCRYPTION_KEY=...
 
 # Optional: Sentry
 NEXT_PUBLIC_SENTRY_DSN=...
+NEXT_PUBLIC_SENTRY_ORG=...
+NEXT_PUBLIC_SENTRY_PROJECT=...
 
-# Optional: Multi-tenancy
-NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000
+# Optional: scheduled jobs
+CRON_SECRET=...
 ```
 
 ### 5. Set Up Clerk Authentication
@@ -134,8 +190,8 @@ NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000
 # Generate Prisma client
 npx prisma generate
 
-# Create and apply migrations
-npx prisma migrate dev --name init
+# Apply existing migrations
+npm run db:migrate
 
 # (Optional) Seed sample data
 npm run db:seed
@@ -173,11 +229,17 @@ npm run test:watch       # Run tests in watch mode
 
 # Database
 npm run db:generate      # Generate Prisma client
-npm run db:migrate       # Create development migration
+npm run db:migrate       # Apply/create development migrations
 npm run db:migrate:prod  # Deploy migrations to production
 npm run db:seed          # Seed sample data
 npm run db:studio        # Open Prisma Studio
 npm run db:reset         # Reset database (destructive)
+
+# Demo, media, and payment maintenance
+npm run db:seed:screenshots  # Seed deterministic screenshot/demo data
+npm run record:clips         # Record product clips for marketing videos
+npm run charge-due           # Charge due recurring subscriptions
+npm run refresh-tokens       # Refresh Square OAuth tokens
 ```
 
 ## Database Schema
@@ -189,6 +251,7 @@ WildTrack360 uses a comprehensive database schema with the following key models:
 - **Record**: Activity logs (feeding, medical, behaviour, weight, release, etc.)
 - **Photo**: Image documentation with S3 URLs
 - **Species**: Species catalogue with care requirements
+- **AnimalReminder**: Per-animal reminders and due dates
 
 **People & Roles:**
 - **CarerProfile**: Carer information, licences, specialties
@@ -209,7 +272,7 @@ WildTrack360 uses a comprehensive database schema with the following key models:
 **Helpdesk:**
 - **CallLog**: Incoming call records with status tracking
 - **PindropSession**: Secure one-time SMS links for location/photo sharing
-- **CallLogReason, Referrer, Action, Outcome**: Organisation-configurable lookups
+- **CallLogReason, CallLogReferrer, CallLogAction, CallLogOutcome**: Organisation-configurable lookups
 
 **Growth:**
 - **SpeciesGrowthReference**: Expected weight and body measurements by age, per species and sex. Sourced from published scientific data
@@ -219,6 +282,16 @@ WildTrack360 uses a comprehensive database schema with the following key models:
 - **Asset**: Equipment tracking with status lifecycle
 - **AuditLog**: Immutable action trail
 - **NSWReportMetadata**: Annual report snapshots
+- **SavedReportQuery**: Validated custom report queries and dashboard widgets
+- **AdminNotificationLog / AdminNotificationDismissal**: Admin alert delivery and dismissal state
+- **WallyUsageSummary**: Daily AI assistant usage counts
+
+**Membership & Payments:**
+- **Member / MembershipTier / Membership**: Member profiles, tier configuration, and active membership periods
+- **Payment / Donation / RecurringSubscription**: Square-backed payments, donations, and recurring billing
+- **SquareConnection / SquareEvent / SquareOAuthState**: Per-organisation Square OAuth, webhook idempotency, and OAuth state
+- **FormTemplate**: Custom member fields
+- **OrgFeatureFlag**: Per-organisation feature rollout switches
 
 All data is isolated by organisation for security and privacy.
 
@@ -265,6 +338,10 @@ WildTrack360 uses a custom five-tier RBAC system that mirrors the real-world str
 | `compliance:override_validation` | Yes | | | | |
 | `compliance:export_registers` | Yes | | | | |
 | `compliance:manage_post_release` | Yes | Yes | Yes | | |
+| `member:view_all` | Yes | Yes | | | |
+| `member:manage` | Yes | | | | |
+| `membership:configure` | Yes | | | | |
+| `donation:view` | Yes | Yes | | | |
 
 ### How to Configure Roles
 
@@ -356,7 +433,7 @@ npm run test:watch
 
 Tests cover the following areas:
 
-- **RBAC permission matrix** -- all 25 permissions across all 5 roles
+- **RBAC permission matrix** -- role permissions across all 5 roles
 - **Role hierarchy** -- `hasMinimumRole` checks (ADMIN > COORDINATOR_ALL = COORDINATOR > CARER_ALL = CARER)
 - **`getUserRole`** -- returns role from OrgMember or falls back to CARER
 - **`requirePermission` / `requireMinimumRole`** -- throws `Forbidden` when unauthorised
@@ -373,7 +450,7 @@ Tests cover the following areas:
 
 - **Clerk Integration**: Authentication with organisation and multi-tenant support
 - **Multi-tenant**: All database operations scoped by organisation ID
-- **Custom RBAC**: Five-tier role system with 25 granular permissions
+- **Custom RBAC**: Five-tier role system with 29 granular permissions
 - **SBAC**: Species-scoped access for coordinators
 - **Field Allowlisting**: Mass assignment protection on animal and species group mutations
 - **Cross-tenant Guards**: All update/delete operations verify org ownership
@@ -406,6 +483,7 @@ docker run -p 3000:3000 wildtrack360
 - [Database Setup Guide](DATABASE_SETUP.md)
 - [Clerk Authentication Setup](CLERK_SETUP.md)
 - [RBAC & Species Access Admin Guide](docs/admin-guide-rbac-and-species-access.md)
+- [Square Payments Guide](docs/square-payments.md)
 - [Project Blueprint](docs/blueprint.md)
 
 ## Contributing
