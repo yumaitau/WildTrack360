@@ -1301,6 +1301,9 @@ model MembershipTier {
   currency            String          @default("AUD")
   billingInterval     BillingInterval @map("billing_interval")
   gstHandling         GstHandling     @default(NONE) @map("gst_handling")
+  // Ordered list of member-facing benefit lines (string[]), shown on the tier
+  // cards in the join flow and portal.
+  benefitsJson        Json            @default("[]") @map("benefits_json")
   active              Boolean         @default(true)
   archivedAt          DateTime?       @map("archived_at")
   createdAt           DateTime        @default(now()) @map("created_at")

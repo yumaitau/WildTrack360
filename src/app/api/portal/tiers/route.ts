@@ -28,6 +28,7 @@ export async function GET() {
       amountCents: t.amountCents,
       currency: t.currency,
       billingInterval: t.billingInterval,
+      benefits: Array.isArray(t.benefitsJson) ? t.benefitsJson : [],
     }))
   );
 }

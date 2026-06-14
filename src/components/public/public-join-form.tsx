@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ export interface PublicTier {
   amountCents: number;
   currency: string;
   billingInterval: 'ONE_OFF' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
+  benefits: string[];
 }
 
 interface Props {
@@ -43,7 +45,7 @@ function formatAmount(cents: number, currency: string) {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency }).format(cents / 100);
 }
 
-export function PublicJoinForm({ handle, applicationId, locationId, orgName, tiers, templateFields }: Props) {
+export function PublicJoinForm({ handle, applicationId, locationId, tiers, templateFields }: Props) {
   const router = useRouter();
   const [tierId, setTierId] = useState<string>(tiers[0]?.id ?? '');
   const [firstName, setFirstName] = useState('');
@@ -129,6 +131,16 @@ export function PublicJoinForm({ handle, applicationId, locationId, orgName, tie
                 {formatAmount(t.amountCents, t.currency)}
                 {t.description ? ` · ${t.description}` : ''}
               </div>
+              {t.benefits.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {t.benefits.map((b, i) => (
+                    <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                      <Check className="h-3.5 w-3.5 mt-0.5 text-[#3e6f4f] shrink-0" />
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </button>
           ))}
         </div>

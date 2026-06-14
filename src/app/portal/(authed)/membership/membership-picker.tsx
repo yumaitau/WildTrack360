@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,7 @@ interface Tier {
   amountCents: number;
   currency: string;
   billingInterval: 'ONE_OFF' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
+  benefits: string[];
 }
 
 interface SquareConfig {
@@ -129,7 +131,17 @@ export function MembershipPicker() {
             <p className="text-2xl font-bold mt-2">{formatAmount(t.amountCents, t.currency)}</p>
             {t.description && <p className="text-sm text-muted-foreground mt-1">{t.description}</p>}
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {t.benefits.length > 0 && (
+              <ul className="space-y-1">
+                {t.benefits.map((b, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                    <span>{b}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <Button className="w-full" onClick={() => pick(t)} disabled={preparing !== null}>
               {preparing === t.id ? 'Loading…' : 'Choose this tier'}
             </Button>

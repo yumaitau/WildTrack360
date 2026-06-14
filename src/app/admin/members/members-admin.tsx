@@ -32,6 +32,8 @@ import { MemberDialog, type MemberFormValue } from './member-dialog';
 import { ImportDialog } from './import-dialog';
 import { MessageDialog } from './message-dialog';
 import { TiersAdmin } from './tiers-admin';
+import { OnboardingChecklist } from './onboarding-checklist';
+import { useSearchParams } from 'next/navigation';
 
 interface Member {
   id: string;
@@ -80,6 +82,8 @@ async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function MembersAdmin() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams?.get('tab') === 'tiers' ? 'tiers' : 'members';
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -323,13 +327,14 @@ export function MembersAdmin() {
         </div>
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        <Tabs defaultValue="members">
+        <Tabs defaultValue={initialTab}>
           <TabsList>
             <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="tiers">Membership Tiers</TabsTrigger>
           </TabsList>
 
           <TabsContent value="members" className="space-y-4">
+            <OnboardingChecklist />
             <Card>
               <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>

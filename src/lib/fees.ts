@@ -23,3 +23,11 @@ export function coverFeesCents(baseCents: number): number {
 export function totalWithCoveredFees(baseCents: number): number {
   return baseCents + coverFeesCents(baseCents);
 }
+
+// Estimated amount the organisation nets from a charge of `grossCents`, after
+// the platform app-fee + estimated processing fee. For admin fee transparency.
+export function netAfterFeesCents(grossCents: number): number {
+  if (!Number.isFinite(grossCents) || grossCents <= 0) return 0;
+  const fees = Math.round((grossCents * COVER_FEE_BPS) / 10000);
+  return Math.max(0, grossCents - fees);
+}
