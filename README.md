@@ -52,7 +52,7 @@ WildTrack360 is a comprehensive wildlife conservation management application des
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yumaitau/WildHub.git
+git clone https://github.com/yumaitau/WildTrack360.git
 cd WildTrack360
 ```
 

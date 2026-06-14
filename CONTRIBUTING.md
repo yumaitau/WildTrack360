@@ -7,8 +7,8 @@ Thank you for your interest in contributing to WildTrack360! This guide will hel
 1. **Fork** the repository on GitHub
 2. **Clone** your fork locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/WildHub.git
-   cd WildHub
+   git clone https://github.com/YOUR_USERNAME/WildTrack360.git
+   cd WildTrack360
    ```
 3. **Install dependencies**:
    ```bash
@@ -70,7 +70,7 @@ Thank you for your interest in contributing to WildTrack360! This guide will hel
 
 ## Reporting Bugs
 
-Use the [GitHub Issues](https://github.com/yumaitau/WildHub/issues) page with the bug report template. Include:
+Use the [GitHub Issues](https://github.com/yumaitau/WildTrack360/issues) page with the bug report template. Include:
 
 - Steps to reproduce the issue
 - Expected vs actual behavior
@@ -79,7 +79,7 @@ Use the [GitHub Issues](https://github.com/yumaitau/WildHub/issues) page with th
 
 ## Requesting Features
 
-Use the [GitHub Issues](https://github.com/yumaitau/WildHub/issues) page with the feature request template. Describe:
+Use the [GitHub Issues](https://github.com/yumaitau/WildTrack360/issues) page with the feature request template. Describe:
 
 - The problem you're trying to solve
 - Your proposed solution

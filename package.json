@@ -5,11 +5,11 @@
   "license": "MPL-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yumaitau/WildHub.git"
+    "url": "https://github.com/yumaitau/WildTrack360.git"
   },
-  "homepage": "https://github.com/yumaitau/WildHub",
+  "homepage": "https://github.com/yumaitau/WildTrack360",
   "bugs": {
-    "url": "https://github.com/yumaitau/WildHub/issues"
+    "url": "https://github.com/yumaitau/WildTrack360/issues"
   },
   "scripts": {
     "dev": "next dev",
