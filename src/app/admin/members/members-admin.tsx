@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, ArrowUpDown, ChevronDown, Download, Mail, Plus, Search,
+  ArrowLeft, ArrowUpDown, ChevronDown, Download, HeartHandshake, Mail, Plus, Search,
   Settings2, Upload, Users,
 } from 'lucide-react';
 import {
@@ -31,6 +31,7 @@ import {
 import { MemberDialog, type MemberFormValue } from './member-dialog';
 import { ImportDialog } from './import-dialog';
 import { MessageDialog } from './message-dialog';
+import { GiftDialog } from './gift-dialog';
 import { TiersAdmin } from './tiers-admin';
 import { OnboardingChecklist } from './onboarding-checklist';
 import { useSearchParams } from 'next/navigation';
@@ -90,6 +91,7 @@ export function MembersAdmin() {
   const [importOpen, setImportOpen] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
+  const [giftMember, setGiftMember] = useState<Member | null>(null);
 
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -277,6 +279,7 @@ export function MembersAdmin() {
         <div className="text-right space-x-2">
           <Button variant="outline" size="sm" onClick={() => handleEdit(row.original)}>Edit</Button>
           <Button variant="outline" size="sm" onClick={() => handleInvite(row.original)}>Invite</Button>
+          <Button variant="outline" size="sm" onClick={() => setGiftMember(row.original)}>Gift</Button>
           <Button variant="ghost" size="sm" onClick={() => handleArchive(row.original)}>Archive</Button>
         </div>
       ),
@@ -355,6 +358,11 @@ export function MembersAdmin() {
                   <Link href="/admin/members/fields">
                     <Button variant="outline">
                       <Settings2 className="h-4 w-4 mr-2" /> Custom fields
+                    </Button>
+                  </Link>
+                  <Link href="/admin/carer-interest">
+                    <Button variant="outline">
+                      <HeartHandshake className="h-4 w-4 mr-2" /> Carer interest
                     </Button>
                   </Link>
                   <Button variant="outline" onClick={() => setImportOpen(true)}>
@@ -529,6 +537,12 @@ export function MembersAdmin() {
           onOpenChange={setImportOpen}
           onImported={load}
         />
+        <GiftDialog
+          member={giftMember}
+          onOpenChange={(open) => { if (!open) setGiftMember(null); }}
+          onDone={load}
+        />
+
         <MessageDialog
           open={messageOpen}
           onOpenChange={setMessageOpen}

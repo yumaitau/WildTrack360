@@ -2,6 +2,7 @@
 
 import { prisma } from './prisma';
 import { financialYearEndYear, financialYearRange } from './financial-year';
+import { getEffectiveMembership } from './household';
 import type { Member } from '@prisma/client';
 
 export interface RecentRelease {
@@ -47,7 +48,7 @@ export async function getMemberImpact(orgId: string, member: Member): Promise<Me
     speciesGroups,
     currentlyInCare,
     donationAgg,
-    activeMembership,
+    effectiveMembership,
     recent,
   ] = await Promise.all([
     prisma.animal.count({ where: { clerkOrganizationId: orgId } }),
@@ -69,10 +70,7 @@ export async function getMemberImpact(orgId: string, member: Member): Promise<Me
         kind: { in: ['DONATION_ONE_OFF', 'DONATION_RECURRING'] },
       },
     }),
-    prisma.membership.findFirst({
-      where: { memberId: member.id, status: 'ACTIVE', periodEnd: { gte: now } },
-      select: { id: true },
-    }),
+    getEffectiveMembership(member),
     prisma.animal.findMany({
       where: { clerkOrganizationId: orgId, status: 'RELEASED', dateReleased: { not: null } },
       orderBy: { dateReleased: 'desc' },
@@ -94,7 +92,7 @@ export async function getMemberImpact(orgId: string, member: Member): Promise<Me
       totalDonatedCents: donationAgg._sum.amountCents ?? 0,
       currency: 'AUD',
       memberSince: member.joinedAt.toISOString(),
-      hasActiveMembership: Boolean(activeMembership),
+      hasActiveMembership: Boolean(effectiveMembership),
     },
     recentReleases: recent.map((a) => ({
       id: a.id,

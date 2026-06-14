@@ -54,6 +54,12 @@ export default async function PortalCardPage() {
           <div className="min-w-0">
             <div className="text-xl font-bold truncate">{card.memberName}</div>
             {card.tierName && <div className="text-sm text-white/80">{card.tierName}</div>}
+            {card.householdOf && (
+              <div className="text-xs text-white/70 mt-1">Household of {card.householdOf}</div>
+            )}
+            {card.giftedBy && (
+              <div className="text-xs text-white/70 mt-1">A gift from {card.giftedBy}</div>
+            )}
             {card.memberNumber && (
               <div className="text-xs font-mono text-white/70 mt-1">No. {card.memberNumber}</div>
             )}

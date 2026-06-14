@@ -3,8 +3,10 @@ import { redirect } from 'next/navigation';
 import { getPortalMember } from '@/lib/portal';
 import { getMemberImpact } from '@/lib/impact';
 import { financialYearShort } from '@/lib/financial-year';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PawPrint, Leaf, Heart, Sprout, HandHeart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { PawPrint, Leaf, Heart, Sprout, HandHeart, HeartHandshake, ArrowRight } from 'lucide-react';
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency, maximumFractionDigits: 0 }).format(
@@ -79,6 +81,24 @@ export default async function PortalImpactPage() {
             <div className="text-muted-foreground">Total donated</div>
             <div className="font-medium">{money(impact.member.totalDonatedCents, impact.member.currency)}</div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/20">
+        <CardContent className="py-5 flex flex-col sm:flex-row sm:items-center gap-4">
+          <HeartHandshake className="h-8 w-8 text-primary shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium">Want to do even more?</p>
+            <p className="text-sm text-muted-foreground">
+              Our volunteer carers rescue and rehabilitate the animals above. Register your interest
+              to become one.
+            </p>
+          </div>
+          <Link href="/portal/carer">
+            <Button variant="outline">
+              Become a carer <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </Link>
         </CardContent>
       </Card>
 

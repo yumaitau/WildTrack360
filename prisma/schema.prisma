@@ -1273,6 +1273,9 @@ model Member {
   memberNumber        String?      @map("member_number")
   status              MemberStatus @default(ACTIVE)
   joinedAt            DateTime     @default(now()) @map("joined_at")
+  // When set, this member is a secondary member covered by the primary member's
+  // household membership (family membership). Primary members have it null.
+  primaryMemberId     String?      @map("primary_member_id")
   customFieldsJson    Json         @default("{}") @map("custom_fields_json")
   archivedAt          DateTime?    @map("archived_at")
   createdAt           DateTime     @default(now()) @map("created_at")
@@ -1284,11 +1287,15 @@ model Member {
   recurringSubscriptions RecurringSubscription[]
   messages               MemberMessage[]
   carerProfile           CarerProfile?           @relation(fields: [carerProfileId], references: [id])
+  carerInterests         CarerInterest[]
+  primaryMember          Member?                 @relation("Household", fields: [primaryMemberId], references: [id], onDelete: SetNull)
+  householdMembers       Member[]                @relation("Household")
 
   @@unique([clerkOrganizationId, email])
   @@unique([clerkOrganizationId, memberNumber])
   @@index([clerkOrganizationId, status])
   @@index([clerkUserId])
+  @@index([primaryMemberId])
   @@map("members")
 }
 
@@ -1325,6 +1332,9 @@ model Membership {
   status                  MembershipStatus
   recurringSubscriptionId String?          @map("recurring_subscription_id")
   paymentId               String?          @map("payment_id")
+  // Set for gifted / complimentary memberships granted without a payment; holds
+  // the giver's name (or "Complimentary") for the recipient's card and emails.
+  giftedBy                String?          @map("gifted_by")
   createdAt               DateTime         @default(now()) @map("created_at")
 
   member                Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -1363,6 +1373,36 @@ model MembershipNotification {
   @@unique([membershipId, kind])
   @@index([clerkOrganizationId, sentAt])
   @@map("membership_notifications")
+}
+
+// A member (or prospective supporter) expressing interest in becoming a
+// volunteer wildlife carer — the member→carer funnel. Admins triage these and
+// onboard approved applicants into a full CarerProfile via the carer app.
+enum CarerInterestStatus {
+  NEW
+  CONTACTED
+  APPROVED
+  DECLINED
+}
+
+model CarerInterest {
+  id                  String              @id @default(cuid())
+  clerkOrganizationId String              @map("clerk_organization_id")
+  memberId            String?             @map("member_id")
+  name                String
+  email               String
+  phone               String?
+  experience          String?
+  availability        String?
+  message             String?
+  status              CarerInterestStatus @default(NEW)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  member Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  @@index([clerkOrganizationId, status])
+  @@map("carer_interests")
 }
 
 // ─── Square (app-fee / OAuth) ───────────────────────────────────────────────
