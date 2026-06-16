@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { deleteObjectFromS3 } from '@/lib/s3'
 import { getUserRole, hasPermission, canAccessAnimal } from '@/lib/rbac'

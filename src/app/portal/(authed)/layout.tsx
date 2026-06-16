@@ -1,7 +1,8 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { redirect } from 'next/navigation';
 import { getPortalMember } from '@/lib/portal';
 import { isFeatureEnabled } from '@/lib/features';
+import { countUnreadMessages } from '@/lib/member-messages';
 import { PortalShell } from './portal-shell';
 
 export default async function AuthedPortalLayout({
@@ -23,8 +24,13 @@ export default async function AuthedPortalLayout({
     redirect('/portal/no-membership');
   }
 
+  const unreadCount = await countUnreadMessages(session.member.id);
+
   return (
-    <PortalShell memberName={`${session.member.firstName} ${session.member.lastName}`}>
+    <PortalShell
+      memberName={`${session.member.firstName} ${session.member.lastName}`}
+      unreadCount={unreadCount}
+    >
       {children}
     </PortalShell>
   );

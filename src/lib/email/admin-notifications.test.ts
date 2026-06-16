@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockPrisma, mockClerk, mockSendEmail, mockEmailTemplate } = vi.hoisted(() => ({
+const { mockPrisma, mockClerkManagement, mockSendEmail, mockEmailTemplate } = vi.hoisted(() => ({
   mockPrisma: {
     orgMember: {
       findMany: vi.fn(),
@@ -10,20 +10,16 @@ const { mockPrisma, mockClerk, mockSendEmail, mockEmailTemplate } = vi.hoisted((
       create: vi.fn(),
     },
   },
-  mockClerk: {
-    organizations: {
-      getOrganization: vi.fn(),
-    },
-    users: {
-      getUser: vi.fn(),
-    },
+  mockClerkManagement: {
+    getClerkOrganization: vi.fn(),
+    getClerkUser: vi.fn(),
   },
   mockSendEmail: vi.fn(),
   mockEmailTemplate: vi.fn(() => null),
 }));
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }));
-vi.mock('@clerk/nextjs/server', () => ({ clerkClient: vi.fn(async () => mockClerk) }));
+vi.mock('@/lib/clerk-management', () => mockClerkManagement);
 vi.mock('./resend', () => ({ sendEmail: mockSendEmail }));
 vi.mock('./templates/admin-notification', () => ({ AdminNotificationEmail: mockEmailTemplate }));
 
@@ -32,9 +28,9 @@ import { sendAdminNotification } from './admin-notifications';
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'wildtrack360.com.au';
-  mockClerk.organizations.getOrganization.mockResolvedValue({
+  mockClerkManagement.getClerkOrganization.mockResolvedValue({
     name: 'Wildlife NSW',
-    publicMetadata: { org_url: 'wildlife-nsw' },
+    public_metadata: { org_url: 'wildlife-nsw' },
   });
   mockPrisma.adminNotificationLog.findUnique.mockResolvedValue(null);
   mockPrisma.adminNotificationLog.create.mockResolvedValue({});
@@ -44,7 +40,7 @@ beforeEach(() => {
 describe('sendAdminNotification', () => {
   it('fans out admin notifications and records each send', async () => {
     mockPrisma.orgMember.findMany.mockResolvedValue([{ userId: 'admin-1' }, { userId: 'coord-1' }]);
-    mockClerk.users.getUser
+    mockClerkManagement.getClerkUser
       .mockResolvedValueOnce({
         primaryEmailAddressId: 'email-1',
         emailAddresses: [{ id: 'email-1', emailAddress: 'admin@example.com' }],
@@ -65,8 +61,18 @@ describe('sendAdminNotification', () => {
     });
 
     expect(results).toEqual([
-      { userId: 'admin-1', email: 'admin@example.com', status: 'sent', resendMessageId: 'email_123' },
-      { userId: 'coord-1', email: 'coord@example.com', status: 'sent', resendMessageId: 'email_123' },
+      {
+        userId: 'admin-1',
+        email: 'admin@example.com',
+        status: 'sent',
+        resendMessageId: 'email_123',
+      },
+      {
+        userId: 'coord-1',
+        email: 'coord@example.com',
+        status: 'sent',
+        resendMessageId: 'email_123',
+      },
     ]);
     expect(mockPrisma.orgMember.findMany).toHaveBeenCalledWith({
       where: { orgId: 'org-1', role: { in: ['ADMIN', 'COORDINATOR_ALL'] } },
@@ -119,15 +125,35 @@ describe('sendAdminNotification', () => {
     });
 
     expect(results).toEqual([{ userId: 'admin-1', status: 'skipped', reason: 'duplicate' }]);
-    expect(mockClerk.users.getUser).not.toHaveBeenCalled();
+    expect(mockClerkManagement.getClerkUser).not.toHaveBeenCalled();
     expect(mockSendEmail).not.toHaveBeenCalled();
     expect(mockPrisma.adminNotificationLog.create).not.toHaveBeenCalled();
+  });
+
+  it('can restrict notifications to specific organisation roles', async () => {
+    mockPrisma.orgMember.findMany.mockResolvedValue([]);
+
+    await sendAdminNotification({
+      orgId: 'org-1',
+      kind: 'payment.donation',
+      title: 'New donation',
+      body: 'A donation was received.',
+      cta: { label: 'Review payment', href: '/admin/payments' },
+      dedupeKey: 'payment:pay-1',
+      recipientRoles: ['ADMIN'],
+    });
+
+    expect(mockPrisma.orgMember.findMany).toHaveBeenCalledWith({
+      where: { orgId: 'org-1', role: { in: ['ADMIN'] } },
+      select: { userId: true },
+      orderBy: { userId: 'asc' },
+    });
   });
 
   it('reports sent-unlogged when the email sends but audit persistence fails', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockPrisma.orgMember.findMany.mockResolvedValue([{ userId: 'admin-1' }]);
-    mockClerk.users.getUser.mockResolvedValue({
+    mockClerkManagement.getClerkUser.mockResolvedValue({
       primaryEmailAddressId: 'email-1',
       emailAddresses: [{ id: 'email-1', emailAddress: 'admin@example.com' }],
     });
@@ -143,12 +169,49 @@ describe('sendAdminNotification', () => {
     });
 
     expect(results).toEqual([
-      { userId: 'admin-1', email: 'admin@example.com', status: 'sent-unlogged', resendMessageId: 'email_123' },
+      {
+        userId: 'admin-1',
+        email: 'admin@example.com',
+        status: 'sent-unlogged',
+        resendMessageId: 'email_123',
+      },
     ]);
     expect(mockSendEmail).toHaveBeenCalledTimes(1);
     expect(errorSpy).toHaveBeenCalledWith(
       'Failed to log admin notification after email send:',
       expect.objectContaining({ resendMessageId: 'email_123' })
+    );
+
+    errorSpy.mockRestore();
+  });
+
+  it('reports retryable Clerk user lookup failures without marking the user missing', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const clerkError = Object.assign(new Error('rate limited'), { status: 429 });
+    mockPrisma.orgMember.findMany.mockResolvedValue([{ userId: 'admin-1' }]);
+    mockClerkManagement.getClerkUser.mockRejectedValue(clerkError);
+
+    const results = await sendAdminNotification({
+      orgId: 'org-1',
+      kind: 'nsw-reminder',
+      title: 'NSW annual return is due',
+      body: 'Generate reports now.',
+      cta: { label: 'Open NSW report', href: '/compliance/nsw-report' },
+      dedupeKey: 'submission-14-day:2026',
+    });
+
+    expect(results).toEqual([
+      {
+        userId: 'admin-1',
+        status: 'failed',
+        reason: 'clerk-user-lookup-failed',
+      },
+    ]);
+    expect(mockSendEmail).not.toHaveBeenCalled();
+    expect(mockPrisma.adminNotificationLog.create).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Failed to resolve admin notification recipient from Clerk:',
+      expect.objectContaining({ error: clerkError, userId: 'admin-1' })
     );
 
     errorSpy.mockRestore();

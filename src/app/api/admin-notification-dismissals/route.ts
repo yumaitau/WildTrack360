@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { dismissNSWReminder } from '@/lib/nsw-reminders';
 import type { NSWReminderKey } from '@/lib/nsw-reminder-types';
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { SignOutButton } from "@clerk/nextjs";
+import { SignOutButton } from "@/lib/clerk-client";
 
 export default function UnauthorizedPage() {
   return (

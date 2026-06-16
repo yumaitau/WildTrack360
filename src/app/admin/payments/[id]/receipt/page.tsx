@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { redirect, notFound } from 'next/navigation';
 import { requirePermission } from '@/lib/rbac';
 import { loadReceiptData } from '@/lib/receipts';

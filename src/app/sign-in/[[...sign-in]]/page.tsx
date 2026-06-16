@@ -1,6 +1,6 @@
 "use client";
 
-import { SignIn, SignInButton } from "@clerk/nextjs";
+import { SignIn, SignInButton } from "@/lib/clerk-client";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";

@@ -20,6 +20,7 @@ import {
   Settings,
   HeartHandshake,
   CreditCard,
+  Megaphone,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,7 +39,7 @@ import { AuditLogViewer } from './audit-log-viewer';
 import { DataExport } from './data-export';
 import { GrowthReferenceManagement } from './growth-reference-management';
 import { OrganisationSettings } from './organisation-settings';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useUser, useOrganization } from '@/lib/clerk-client';
 
 async function apiJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -80,6 +81,15 @@ const QUICK_ACTIONS: QuickAction[] = [
     tab: 'payments',
     adminOnly: true,
     href: '/admin/payments',
+    requiresFeature: 'MEMBERSHIP_PLATFORM',
+  },
+  {
+    label: 'News & Announcements',
+    description: 'Publish updates to the member portal and email them to your members and supporters.',
+    icon: <Megaphone className="h-6 w-6" />,
+    tab: 'news',
+    adminOnly: true,
+    href: '/admin/news',
     requiresFeature: 'MEMBERSHIP_PLATFORM',
   },
   {

@@ -1,12 +1,14 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getPortalMember } from '@/lib/portal';
 import { prisma } from '@/lib/prisma';
+import { listPublishedNews } from '@/lib/news';
+import { countUnreadMessages } from '@/lib/member-messages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { UserCog, Calendar, Mail, Phone } from 'lucide-react';
+import { UserCog, Calendar, Mail, Phone, Megaphone, ArrowRight, Sparkles, CreditCard } from 'lucide-react';
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: 'Active',
@@ -28,6 +30,11 @@ export default async function PortalDashboardPage() {
     orderBy: { periodEnd: 'desc' },
   });
 
+  const [latestNews, unreadCount] = await Promise.all([
+    listPublishedNews(member.clerkOrganizationId, 3),
+    countUnreadMessages(member.id),
+  ]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -35,6 +42,58 @@ export default async function PortalDashboardPage() {
         <p className="text-sm text-muted-foreground mt-1">
           Manage your membership, profile, and giving.
         </p>
+      </div>
+
+      {unreadCount > 0 && (
+        <Link href="/portal/messages">
+          <Card className="border-primary/40 transition-colors hover:bg-accent">
+            <CardContent className="py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 text-primary p-2">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div className="text-sm">
+                  You have{' '}
+                  <span className="font-semibold">
+                    {unreadCount} new message{unreadCount === 1 ? '' : 's'}
+                  </span>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link href="/portal/impact">
+          <Card className="h-full transition-colors hover:bg-accent hover:border-primary/40">
+            <CardContent className="py-4 flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 text-primary p-2">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-medium">Your impact</div>
+                <div className="text-xs text-muted-foreground">See the animals your support helps</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/portal/card">
+          <Card className="h-full transition-colors hover:bg-accent hover:border-primary/40">
+            <CardContent className="py-4 flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 text-primary p-2">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-medium">Membership card</div>
+                <div className="text-xs text-muted-foreground">Your digital card &amp; QR for events</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -88,6 +147,40 @@ export default async function PortalDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {latestNews.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Megaphone className="h-4 w-4 text-primary" /> Latest news
+            </CardTitle>
+            <Link href="/portal/news">
+              <Button variant="ghost" size="sm">
+                View all <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {latestNews.map((p) => (
+              <Link key={p.id} href="/portal/news" className="block group">
+                <div className="rounded-md border p-3 transition-colors group-hover:bg-accent">
+                  <div className="font-medium text-sm">{p.title}</div>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap">
+                    {p.body}
+                  </p>
+                  {p.publishedAt && (
+                    <p className="text-[11px] text-muted-foreground mt-1.5">
+                      {new Date(p.publishedAt).toLocaleDateString('en-AU', {
+                        day: 'numeric', month: 'long', year: 'numeric',
+                      })}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

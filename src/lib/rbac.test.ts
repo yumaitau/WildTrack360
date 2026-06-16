@@ -181,7 +181,7 @@ describe('getAuthorisedSpecies', () => {
     expect(result).toBeNull();
   });
 
-  it('returns normalised species list for COORDINATOR', async () => {
+  it('returns trimmed, case-preserving species list for COORDINATOR', async () => {
     mockPrisma.orgMember.findUnique.mockResolvedValue({
       role: 'COORDINATOR',
       speciesAssignments: [
@@ -190,7 +190,7 @@ describe('getAuthorisedSpecies', () => {
       ],
     });
     const result = await getAuthorisedSpecies('coord1', 'org1');
-    expect(result).toEqual(['eastern grey kangaroo', 'red kangaroo', 'wallaroo']);
+    expect(result).toEqual(['Eastern Grey Kangaroo', 'Red Kangaroo', 'Wallaroo']);
   });
 
   it('deduplicates species names', async () => {
@@ -202,7 +202,7 @@ describe('getAuthorisedSpecies', () => {
       ],
     });
     const result = await getAuthorisedSpecies('coord1', 'org1');
-    expect(result).toEqual(['koala', 'wombat']);
+    expect(result).toEqual(['Koala', 'Wombat']);
   });
 
   it('returns empty array for CARER', async () => {

@@ -9,7 +9,7 @@
 //   * Edit / delete / dashboard toggle → the query's creator, or any
 //     COORDINATOR-or-above (coordinator/admin equivalent).
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { getUserRole, hasPermission, hasMinimumRole } from '@/lib/rbac';
 import type { OrgRole } from '@prisma/client';
 

@@ -1,4 +1,6 @@
 // Define the JurisdictionConfig type locally since it's not exported from @prisma/client
+import { isClientScreenshotMode } from '@/lib/screenshot-mode';
+
 type JurisdictionConfig = {
   enabledForms: string[];
   templates: string[];
@@ -101,6 +103,10 @@ export const getCurrentJurisdiction = (): string => {
     }
   } catch {}
 
+  if (isClientScreenshotMode()) {
+    return 'NSW';
+  }
+
   // Default if not present on organization metadata
   console.warn('Jurisdiction not set on Clerk organization publicMetadata. Defaulting to ACT.');
   return 'ACT';
@@ -146,4 +152,4 @@ export const getOrganizationLogo = (): string => {
 // Get all available jurisdictions
 export const getAvailableJurisdictions = (): string[] => {
   return Object.keys(DEFAULT_JURISDICTION_CONFIGS);
-}; 
+};

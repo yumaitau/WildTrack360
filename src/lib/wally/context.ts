@@ -388,10 +388,13 @@ function animalScopeFor(
   }
 
   if (role === 'COORDINATOR') {
-    if (!authorisedSpecies?.length) {
-      return { ...base, id: '__none__' };
-    }
-    return { ...base, species: { in: authorisedSpecies } };
+    return {
+      ...base,
+      OR: [
+        ...(authorisedSpecies?.length ? [{ species: { in: authorisedSpecies } }] : []),
+        { carerId: userId },
+      ],
+    };
   }
 
   return { ...base, carerId: userId };
@@ -557,7 +560,7 @@ export async function buildWallyOperationalContext({
 
   const scope =
     role === 'COORDINATOR' && authorisedSpecies?.length
-      ? `assigned species only: ${authorisedSpecies.join(', ')}`
+      ? `assigned species plus animals assigned to this user: ${authorisedSpecies.join(', ')}`
       : isOrgWide(role)
         ? 'organisation-wide'
         : 'animals and work assigned to this user';

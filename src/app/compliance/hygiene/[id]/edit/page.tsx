@@ -13,7 +13,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Shield, ArrowLeft, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { useOrganization } from '@clerk/nextjs';
+import { useOrganization } from '@/lib/clerk-client';
 import { useToast } from "@/hooks/use-toast";
 import { use } from 'react';
 

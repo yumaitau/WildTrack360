@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { getPortalMember } from '@/lib/portal';
 import { gateFeature } from '@/lib/features';
 import { createRecurringSubscription } from '@/lib/square/subscriptions';

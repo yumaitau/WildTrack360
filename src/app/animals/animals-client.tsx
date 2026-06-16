@@ -8,7 +8,7 @@ import { AnimalTable } from '@/components/animal-table';
 import { useState, useEffect } from 'react';
 import { AddAnimalDialog } from '@/components/add-animal-dialog';
 import AnimalCard from '@/components/animal-card';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useUser, useOrganization } from '@/lib/clerk-client';
 
 interface AnimalsClientProps {
   initialAnimals: Animal[];

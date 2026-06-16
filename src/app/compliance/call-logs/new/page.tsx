@@ -15,7 +15,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Phone, ArrowLeft, Home, Check, ChevronsUpDown, Send, MapPin, Loader2, CheckCircle, Clock, MessageSquare, AlertTriangle, Lock, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { useOrganization } from '@clerk/nextjs';
+import { useOrganization } from '@/lib/clerk-client';
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleMaps } from '@/components/google-maps-provider';
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';

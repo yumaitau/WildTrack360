@@ -2,14 +2,19 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { SignOutButton } from '@clerk/nextjs';
+import { SignOutButton } from '@/lib/clerk-client';
 import { Button } from '@/components/ui/button';
 import {
-  Heart, HeartHandshake, LayoutDashboard, LogOut, Receipt, Ticket, UserCog,
+  CreditCard, Heart, HeartHandshake, LayoutDashboard, LogOut, Mail, Megaphone,
+  Receipt, Sparkles, Ticket, UserCog,
 } from 'lucide-react';
 
 const NAV = [
   { href: '/portal', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/portal/impact', label: 'Impact', icon: Sparkles },
+  { href: '/portal/card', label: 'Card', icon: CreditCard },
+  { href: '/portal/news', label: 'News', icon: Megaphone },
+  { href: '/portal/messages', label: 'Messages', icon: Mail },
   { href: '/portal/membership', label: 'Membership', icon: Ticket },
   { href: '/portal/donate', label: 'Donate', icon: Heart },
   { href: '/portal/payments', label: 'Receipts', icon: Receipt },
@@ -19,9 +24,11 @@ const NAV = [
 export function PortalShell({
   children,
   memberName,
+  unreadCount = 0,
 }: {
   children: React.ReactNode;
   memberName: string;
+  unreadCount?: number;
 }) {
   const pathname = usePathname();
 
@@ -47,6 +54,7 @@ export function PortalShell({
         <nav className="container mx-auto px-4 sm:px-6 lg:px-8 pb-2 flex gap-1">
           {NAV.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
+            const showBadge = href === '/portal/messages' && unreadCount > 0;
             return (
               <Link
                 key={href}
@@ -57,6 +65,11 @@ export function PortalShell({
                 }
               >
                 <Icon className="h-4 w-4" /> {label}
+                {showBadge && (
+                  <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}

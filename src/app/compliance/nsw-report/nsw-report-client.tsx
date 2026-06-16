@@ -23,7 +23,7 @@ import {
   nswExclusionReason,
   NSW_EXCLUSION_REASON_LABELS,
 } from '@/lib/nsw-detailed-report-generator';
-import { useOrganization, useUser } from '@clerk/nextjs';
+import { useOrganization, useUser } from '@/lib/clerk-client';
 
 // NSW annual reports run on the Australian financial year (1 July → 30 June).
 // Months are 0-indexed, so July is month 6. If today is in July or later the

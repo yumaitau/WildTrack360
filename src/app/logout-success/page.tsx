@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PawPrint, CheckCircle, ArrowLeft, Home } from "lucide-react";
-import { SignInButton } from "@clerk/nextjs";
+import { SignInButton } from "@/lib/clerk-client";
 
 export default function LogoutSuccessPage() {
   const router = useRouter();

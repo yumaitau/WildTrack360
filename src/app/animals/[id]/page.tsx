@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import AnimalDetailClient from "./animal-detail-client";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/clerk-server";
 import { isOrgAdmin } from "@/lib/authz";
 import { getUserRole, hasPermission, canAccessAnimal } from "@/lib/rbac";
 
@@ -64,7 +64,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
   const uniqueUserIds = [...new Set(records.map((r) => r.clerkUserId).filter(Boolean))];
   const userMap: Record<string, string> = {};
   if (uniqueUserIds.length > 0) {
-    const { clerkClient } = await import("@clerk/nextjs/server");
+    const { clerkClient } = await import("@/lib/clerk-server");
     const client = await clerkClient();
     await Promise.all(
       uniqueUserIds.map(async (uid) => {

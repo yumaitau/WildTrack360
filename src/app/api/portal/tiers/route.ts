@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { prisma } from '@/lib/prisma';
 import { getPortalMember } from '@/lib/portal';
 import { gateFeature } from '@/lib/features';
@@ -28,6 +28,7 @@ export async function GET() {
       amountCents: t.amountCents,
       currency: t.currency,
       billingInterval: t.billingInterval,
+      benefits: Array.isArray(t.benefitsJson) ? t.benefitsJson : [],
     }))
   );
 }

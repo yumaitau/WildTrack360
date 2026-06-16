@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { extractSubdomain } from "@/lib/subdomain";
+import { assertScreenshotModeSafe, isScreenshotMode } from "@/lib/screenshot-mode";
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
 
@@ -34,7 +35,12 @@ const isPublicRoute = createRouteMatcher([
   "/api/square/oauth/callback(.*)",
 ]);
 
-export default clerkMiddleware(async (auth, request) => {
+function screenshotMiddleware() {
+  assertScreenshotModeSafe();
+  return NextResponse.next();
+}
+
+export default isScreenshotMode() ? screenshotMiddleware : clerkMiddleware(async (auth, request) => {
   const host = request.headers.get("host") ?? "";
   const subdomain = extractSubdomain(host, ROOT_DOMAIN);
 

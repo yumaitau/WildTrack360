@@ -1,5 +1,5 @@
-import { auth } from '@clerk/nextjs/server';
-import { clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
+import { clerkClient } from '@/lib/clerk-server';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import SetupRoleClient from './setup-role-client';

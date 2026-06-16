@@ -1,4 +1,4 @@
--- Database Update Script for WildHub
+-- Database Update Script for WildTrack360
 -- Run this script to add missing fields and tables
 
 -- 1. Add type field to species table if it doesn't exist

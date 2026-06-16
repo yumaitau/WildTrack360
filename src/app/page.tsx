@@ -1,4 +1,4 @@
-import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
+import { auth, currentUser, clerkClient } from "@/lib/clerk-server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import HomeClient from "./home-client";
@@ -10,6 +10,7 @@ import { getUserRole, getAuthorisedSpecies, getOrgMember } from "@/lib/rbac";
 import { fetchFeedRosterItems } from "@/lib/feed-roster";
 import { extractSubdomain } from "@/lib/subdomain";
 import { getNSWReminderBannerForUser } from "@/lib/nsw-reminders";
+import { isScreenshotMode } from "@/lib/screenshot-mode";
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
 
@@ -26,7 +27,7 @@ export default async function Home() {
   const host = headersList.get("host") ?? "";
   const subdomain = extractSubdomain(host, ROOT_DOMAIN);
 
-  if (!subdomain && orgId) {
+  if (!isScreenshotMode() && !subdomain && orgId) {
     try {
       const clerk = await clerkClient();
       const org = await clerk.organizations.getOrganization({ organizationId: orgId });

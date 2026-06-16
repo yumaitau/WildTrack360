@@ -1,10 +1,11 @@
-import 'server-only';
-
-import { clerkClient } from '@clerk/nextjs/server';
+import type { OrgRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { getClerkOrganization, getClerkUser } from '@/lib/clerk-management';
 import { tenantBaseUrlFromSlug } from '@/lib/tenant-url';
 import { sendEmail } from './resend';
 import { AdminNotificationEmail } from './templates/admin-notification';
+
+const DEFAULT_RECIPIENT_ROLES: OrgRole[] = ['ADMIN', 'COORDINATOR_ALL'];
 
 type AdminNotificationInput = {
   orgId: string;
@@ -13,13 +14,20 @@ type AdminNotificationInput = {
   body: string;
   cta: { label: string; href: string };
   info?: { label: string; value: string }[];
+  recipientRoles?: OrgRole[];
   dedupeKey: string;
 };
 
 type SendResult =
   | { userId: string; email: string; status: 'sent'; resendMessageId: string | null }
   | { userId: string; email: string; status: 'sent-unlogged'; resendMessageId: string | null }
-  | { userId: string; email?: string; status: 'skipped'; reason: 'duplicate' | 'missing-email' | 'missing-user' };
+  | { userId: string; status: 'failed'; reason: 'clerk-user-lookup-failed' }
+  | {
+      userId: string;
+      email?: string;
+      status: 'skipped';
+      reason: 'duplicate' | 'missing-email' | 'missing-user';
+    };
 
 type ClerkUserWithEmailAddresses = {
   primaryEmailAddressId?: string | null;
@@ -44,14 +52,22 @@ function tagValue(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 256) || 'unknown';
 }
 
+function clerkErrorStatus(error: unknown): number | null {
+  if (!error || typeof error !== 'object') return null;
+  const status = (error as { status?: unknown }).status;
+  return typeof status === 'number' ? status : null;
+}
+
 export async function sendAdminNotification(input: AdminNotificationInput): Promise<SendResult[]> {
-  const client = await clerkClient();
+  const recipientRoles = input.recipientRoles?.length
+    ? input.recipientRoles
+    : DEFAULT_RECIPIENT_ROLES;
   const [org, recipients] = await Promise.all([
-    client.organizations.getOrganization({ organizationId: input.orgId }),
+    getClerkOrganization(input.orgId),
     prisma.orgMember.findMany({
       where: {
         orgId: input.orgId,
-        role: { in: ['ADMIN', 'COORDINATOR_ALL'] },
+        role: { in: recipientRoles },
       },
       select: { userId: true },
       orderBy: { userId: 'asc' },
@@ -59,9 +75,7 @@ export async function sendAdminNotification(input: AdminNotificationInput): Prom
   ]);
 
   const dedupeKey = input.dedupeKey.trim();
-  const base = tenantBaseUrlFromSlug(
-    (org.publicMetadata as Record<string, unknown> | null)?.org_url as string | undefined
-  );
+  const base = tenantBaseUrlFromSlug(org.public_metadata?.org_url as string | undefined);
   const cta = { ...input.cta, href: toAbsoluteAppUrl(input.cta.href, base) };
   const manageNotificationsHref = toAbsoluteAppUrl('/admin', base);
   const results: SendResult[] = [];
@@ -85,7 +99,28 @@ export async function sendAdminNotification(input: AdminNotificationInput): Prom
       }
     }
 
-    const clerkUser = await client.users.getUser(recipient.userId).catch(() => null);
+    let clerkUser: Awaited<ReturnType<typeof getClerkUser>>;
+    try {
+      clerkUser = await getClerkUser(recipient.userId);
+    } catch (error) {
+      if (clerkErrorStatus(error) === 404) {
+        results.push({ userId: recipient.userId, status: 'skipped', reason: 'missing-user' });
+      } else {
+        console.error('Failed to resolve admin notification recipient from Clerk:', {
+          error,
+          orgId: input.orgId,
+          userId: recipient.userId,
+          kind: input.kind,
+        });
+        results.push({
+          userId: recipient.userId,
+          status: 'failed',
+          reason: 'clerk-user-lookup-failed',
+        });
+      }
+      continue;
+    }
+
     if (!clerkUser) {
       results.push({ userId: recipient.userId, status: 'skipped', reason: 'missing-user' });
       continue;

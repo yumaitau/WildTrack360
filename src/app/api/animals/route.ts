@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAnimal } from '@/lib/database'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { getUserRole, getAuthorisedSpecies, hasPermission } from '@/lib/rbac'
@@ -30,15 +30,18 @@ export async function GET(request: Request) {
 			return NextResponse.json(animals)
 		}
 
-		// COORDINATOR: sees all animals whose species is in their assigned species groups
+		// COORDINATOR: sees animals in assigned species groups plus animals assigned to them
 		if (role === 'COORDINATOR') {
 			const authorisedSpecies = await getAuthorisedSpecies(userId, requestedOrgId)
 			const animals = await prisma.animal.findMany({
 				where: {
 					clerkOrganizationId: requestedOrgId,
-					...(authorisedSpecies && authorisedSpecies.length > 0
-						? { species: { in: authorisedSpecies } }
-						: { id: '__none__' }), // no species assignments → no animals
+					OR: [
+						...(authorisedSpecies && authorisedSpecies.length > 0
+							? [{ species: { in: authorisedSpecies } }]
+							: []),
+						{ carerId: userId },
+					],
 				},
 				include: { carer: true, records: true, photos: true },
 				orderBy: { dateFound: 'desc' },

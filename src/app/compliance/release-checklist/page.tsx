@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle, MapPin, Calendar, Plus, AlertTriangle, ArrowLeft, Home } from "lucide-react";
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/clerk-server";
 import { prisma } from '@/lib/prisma';
 import { redirect } from "next/navigation";
 import { ExportPDFButton } from "@/components/export-pdf-button";

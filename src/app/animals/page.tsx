@@ -1,7 +1,7 @@
 import AnimalsClient from './animals-client';
 import { Suspense } from 'react';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/clerk-server';
 import { redirect } from 'next/navigation';
 import { getEnrichedCarers } from '@/lib/carer-helpers';
 

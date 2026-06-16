@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { AlertCircle, Clock, Calendar, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { format, isAfter, isBefore, addDays } from 'date-fns';
-import { useOrganization } from '@clerk/nextjs';
+import { useOrganization } from '@/lib/clerk-client';
 
 interface Training {
   id: string;

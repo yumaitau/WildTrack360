@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/clerk-server'
 import { getEnrichedCarers } from '@/lib/carer-helpers'
 import { prisma } from '@/lib/prisma'
 

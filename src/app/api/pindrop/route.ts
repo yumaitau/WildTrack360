@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@/lib/clerk-server';
 import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
 import { sendSms } from '@/lib/sms';

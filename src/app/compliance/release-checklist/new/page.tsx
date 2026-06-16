@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Save, MapPin, Calendar, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { useOrganization } from '@clerk/nextjs';
+import { useOrganization } from '@/lib/clerk-client';
 import { getCurrentJurisdiction } from '@/lib/config';
 import { getJurisdictionComplianceConfig, isFormRequired } from '@/lib/compliance-rules';
 import { LocationPicker } from '@/components/location-picker';

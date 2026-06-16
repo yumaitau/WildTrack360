@@ -3,7 +3,7 @@
 import { prisma } from './prisma';
 import type { AuditAction } from '@prisma/client';
 import { Prisma } from '@prisma/client';
-import { clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@/lib/clerk-server';
 
 interface AuditLogParams {
   userId: string;

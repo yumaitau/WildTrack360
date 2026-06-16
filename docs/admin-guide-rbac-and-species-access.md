@@ -79,12 +79,12 @@ Species Groups are the building blocks of species-based access. A species group 
 | Role | What they can see |
 |------|------------------|
 | **ADMIN** | All animals in the organisation (no species filtering) |
-| **COORDINATOR** | Only animals whose species appears in one of their assigned species groups |
+| **COORDINATOR** | Animals whose species appears in one of their assigned species groups, plus animals directly assigned to them |
 | **CARER** | Only animals explicitly assigned to them (via the `carerId` field on the animal) |
 
 **Important rules:**
 
-- A **Coordinator with no species group assignments sees no animals**. They must be assigned to at least one species group.
+- A **Coordinator with no species group assignments only sees animals directly assigned to them**. Assign them to species groups to give them species-scoped visibility.
 - A **Carer with no species group assignments is not eligible** to receive animals. They must be assigned to at least one species group to appear in the carer dropdown.
 - Species matching is **case-preserving** — the species names in the group must match how they appear on the animal records (e.g., "Koala" not "koala").
 

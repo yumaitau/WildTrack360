@@ -1,6 +1,6 @@
 'server-only';
 
-import { clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@/lib/clerk-server';
 import { prisma } from './prisma';
 import { tenantBaseUrl } from './tenant-url';
 

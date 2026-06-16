@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Phone, Calendar, Plus, ArrowLeft, Home, MapPin, User, Settings } from "lucide-react";
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/clerk-server";
 import { prisma } from '@/lib/prisma';
 import { redirect } from "next/navigation";
 import { ViewButton } from "@/components/view-button";
