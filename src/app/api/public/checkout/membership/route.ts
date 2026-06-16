@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { resolvePublicOrg } from '@/lib/public-org';
 import { findOrCreateMember } from '@/lib/members';
 import { createRecurringSubscription } from '@/lib/square/subscriptions';
+import { totalWithCoveredFees } from '@/lib/fees';
 import { invitePortalMember } from '@/lib/portal-invite';
 import { sanitizePlainText } from '@/lib/sanitize';
 
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       handle?: string;
       tierId?: string;
+      coverFees?: boolean;
       sourceId?: string;
       verificationToken?: string | null;
       member?: MemberFields;
@@ -79,6 +81,14 @@ export async function POST(request: Request) {
 
     const donorName = `${member.firstName} ${member.lastName}`.trim();
 
+    // When the member opts to cover fees, gross up the trusted tier price so the
+    // org nets the full tier amount after the 5% platform + ~2.2% Square fees.
+    // Derived server-side from tier.amountCents — never from a client value — and
+    // stored as the subscription amount so every annual renewal covers fees too.
+    const amountCents = body.coverFees
+      ? totalWithCoveredFees(tier.amountCents)
+      : tier.amountCents;
+
     // Memberships are always an annual auto-renewing commitment.
     const result = await createRecurringSubscription({
       orgId: org.orgId,
@@ -87,7 +97,7 @@ export async function POST(request: Request) {
       tierId: tier.id,
       donorEmail: member.email,
       donorName,
-      amountCents: tier.amountCents,
+      amountCents,
       currency: tier.currency,
       interval: 'ANNUAL',
       sourceId: body.sourceId,

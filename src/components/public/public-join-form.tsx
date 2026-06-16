@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { AddressAutocomplete, type AddressDetails } from '@/components/address-autocomplete';
 import { DynamicFormFields } from '@/components/forms/dynamic-form-fields';
 import { SquareCheckout } from '@/components/portal/square-checkout';
+import { coverFeesCents } from '@/lib/fees';
 import type { FormField } from '@/lib/forms/form-templates';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -62,6 +63,7 @@ export function PublicJoinForm({ handle, applicationId, locationId, tiers, templ
     country: 'AU',
   });
   const [customFields, setCustomFields] = useState<Record<string, unknown>>({});
+  const [coverFees, setCoverFees] = useState(true);
   const [showCard, setShowCard] = useState(false);
 
   const tier = tiers.find((t) => t.id === tierId) ?? null;
@@ -75,12 +77,35 @@ export function PublicJoinForm({ handle, applicationId, locationId, tiers, templ
   }
 
   if (showCard && tier) {
+    const feeCents = coverFeesCents(tier.amountCents);
+    const totalCents = coverFees ? tier.amountCents + feeCents : tier.amountCents;
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Joining <strong>{tier.name}</strong> · {formatAmount(tier.amountCents, tier.currency)}{' '}
+          Joining <strong>{tier.name}</strong> · {formatAmount(totalCents, tier.currency)}{' '}
           {INTERVAL_LABEL[tier.billingInterval]}
+          {coverFees && feeCents > 0 && (
+            <span className="block text-xs">
+              {formatAmount(tier.amountCents, tier.currency)} membership +{' '}
+              {formatAmount(feeCents, tier.currency)} to cover fees
+            </span>
+          )}
         </p>
+        {feeCents > 0 && (
+          <label className="flex items-start gap-2 text-sm rounded-md border p-3 cursor-pointer hover:bg-accent/50">
+            <input
+              type="checkbox"
+              checked={coverFees}
+              onChange={(e) => setCoverFees(e.target.checked)}
+              className="h-4 w-4 mt-0.5"
+            />
+            <span>
+              Add <strong>{formatAmount(feeCents, tier.currency)}</strong> to help cover transaction
+              fees so your full membership reaches the organisation
+              {isRecurring ? ' each renewal' : ''}.
+            </span>
+          </label>
+        )}
         <SquareCheckout
           applicationId={applicationId}
           locationId={locationId}
@@ -88,6 +113,7 @@ export function PublicJoinForm({ handle, applicationId, locationId, tiers, templ
           payload={{
             handle,
             tierId: tier.id,
+            coverFees,
             member: {
               firstName: firstName.trim(),
               lastName: lastName.trim(),
@@ -97,11 +123,11 @@ export function PublicJoinForm({ handle, applicationId, locationId, tiers, templ
               customFields,
             },
           }}
-          amountCents={tier.amountCents}
+          amountCents={totalCents}
           currency={tier.currency}
           intent={isRecurring ? 'STORE' : 'CHARGE'}
           buyerEmail={email}
-          submitLabel={`Join · ${formatAmount(tier.amountCents, tier.currency)}`}
+          submitLabel={`Join · ${formatAmount(totalCents, tier.currency)}`}
           onSuccess={() => router.push('/join/thank-you')}
           onCancel={() => setShowCard(false)}
         />

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SquareCheckout } from '@/components/portal/square-checkout';
+import { coverFeesCents } from '@/lib/fees';
 
 interface Tier {
   id: string;
@@ -41,6 +42,7 @@ export function MembershipPicker() {
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<SquareConfig | null>(null);
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
+  const [coverFees, setCoverFees] = useState(true);
   const [preparing, setPreparing] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -79,21 +81,44 @@ export function MembershipPicker() {
   if (config && selectedTier) {
     const isRecurring =
       selectedTier.billingInterval === 'MONTHLY' || selectedTier.billingInterval === 'ANNUAL';
+    const feeCents = coverFeesCents(selectedTier.amountCents);
+    const totalCents = coverFees ? selectedTier.amountCents + feeCents : selectedTier.amountCents;
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            {selectedTier.name} · {formatAmount(selectedTier.amountCents, selectedTier.currency)}{' '}
+            {selectedTier.name} · {formatAmount(totalCents, selectedTier.currency)}{' '}
             {INTERVAL_LABEL[selectedTier.billingInterval]}
           </CardTitle>
+          {coverFees && feeCents > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {formatAmount(selectedTier.amountCents, selectedTier.currency)} membership +{' '}
+              {formatAmount(feeCents, selectedTier.currency)} to cover fees
+            </p>
+          )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {feeCents > 0 && (
+            <label className="flex items-start gap-2 text-sm rounded-md border p-3 cursor-pointer hover:bg-accent/50">
+              <input
+                type="checkbox"
+                checked={coverFees}
+                onChange={(e) => setCoverFees(e.target.checked)}
+                className="h-4 w-4 mt-0.5"
+              />
+              <span>
+                Add <strong>{formatAmount(feeCents, selectedTier.currency)}</strong> to help cover
+                transaction fees so your full membership reaches the organisation
+                {isRecurring ? ' each renewal' : ''}.
+              </span>
+            </label>
+          )}
           <SquareCheckout
             applicationId={config.applicationId}
             locationId={config.locationId}
             endpoint="/api/portal/checkout/membership"
-            payload={{ tierId: selectedTier.id }}
-            amountCents={selectedTier.amountCents}
+            payload={{ tierId: selectedTier.id, coverFees }}
+            amountCents={totalCents}
             currency={selectedTier.currency}
             intent={isRecurring ? 'STORE' : 'CHARGE'}
             submitLabel="Join"
