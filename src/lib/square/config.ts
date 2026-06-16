@@ -14,11 +14,3 @@ export const DEFAULT_CURRENCY: (typeof SUPPORTED_CURRENCIES)[number] = 'AUD';
 
 export const MIN_DONATION_CENTS = 200; // AU$2 minimum to keep fees economical.
 export const MAX_DONATION_CENTS = 1_000_000; // AU$10,000 cap per single charge.
-
-export function resolveBaseUrl(): string {
-  // VERCEL_URL is a bare host (no scheme); NEXT_PUBLIC_APP_URL carries its own.
-  const raw =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-  return raw.replace(/\/$/, '');
-}

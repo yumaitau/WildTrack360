@@ -10,17 +10,17 @@ type AdminNotificationEmailProps = {
   manageNotificationsHref?: string;
 };
 
-const baseUrl = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_BASE_URL ?? '';
+// Brand asset lives on the marketing site, not a tenant subdomain (matches the
+// payment-receipt template).
+const LOGO_URL = 'https://www.wildtrack360.com.au/Brandmark-Text-Vert.svg';
 
+// Hrefs arrive already absolute (resolved against the org's tenant subdomain by
+// the caller) — the template has no request/org context to resolve relatives.
 function resolveEmailHref(href: string): string {
   if (!href || /^mailto:/i.test(href)) return href;
 
   try {
-    if (/^https?:\/\//i.test(href) || !baseUrl) {
-      return new URL(href).toString();
-    }
-
-    return new URL(href, baseUrl).toString();
+    return new URL(href).toString();
   } catch {
     return href;
   }
@@ -124,7 +124,7 @@ export function AdminNotificationEmail({
   info,
   manageNotificationsHref,
 }: AdminNotificationEmailProps) {
-  const logoSrc = baseUrl ? `${baseUrl.replace(/\/$/, '')}/Brandmark-Text-Vert.svg` : null;
+  const logoSrc = LOGO_URL;
   const ctaHref = resolveEmailHref(cta.href);
   const manageHref = manageNotificationsHref ? resolveEmailHref(manageNotificationsHref) : null;
   const paragraphs = body.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockPrisma, mockClerk, mockSendEmail } = vi.hoisted(() => ({
+const { mockPrisma, mockClerk, mockSendEmail, mockEmailTemplate } = vi.hoisted(() => ({
   mockPrisma: {
     orgMember: {
       findMany: vi.fn(),
@@ -19,18 +19,23 @@ const { mockPrisma, mockClerk, mockSendEmail } = vi.hoisted(() => ({
     },
   },
   mockSendEmail: vi.fn(),
+  mockEmailTemplate: vi.fn(() => null),
 }));
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }));
 vi.mock('@clerk/nextjs/server', () => ({ clerkClient: vi.fn(async () => mockClerk) }));
 vi.mock('./resend', () => ({ sendEmail: mockSendEmail }));
+vi.mock('./templates/admin-notification', () => ({ AdminNotificationEmail: mockEmailTemplate }));
 
 import { sendAdminNotification } from './admin-notifications';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.NEXT_PUBLIC_APP_URL = 'https://app.wildtrack360.test';
-  mockClerk.organizations.getOrganization.mockResolvedValue({ name: 'Wildlife NSW' });
+  process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'wildtrack360.com.au';
+  mockClerk.organizations.getOrganization.mockResolvedValue({
+    name: 'Wildlife NSW',
+    publicMetadata: { org_url: 'wildlife-nsw' },
+  });
   mockPrisma.adminNotificationLog.findUnique.mockResolvedValue(null);
   mockPrisma.adminNotificationLog.create.mockResolvedValue({});
   mockSendEmail.mockResolvedValue({ id: 'email_123' });
@@ -77,6 +82,16 @@ describe('sendAdminNotification', () => {
           { name: 'kind', value: 'admin-notification' },
           { name: 'feature', value: 'nsw-reminder' },
         ],
+      })
+    );
+    // Email links resolve against the org's OWN tenant subdomain, not a
+    // baked-in site URL.
+    expect(mockEmailTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cta: expect.objectContaining({
+          href: 'https://wildlife-nsw.wildtrack360.com.au/compliance/nsw-report',
+        }),
+        manageNotificationsHref: 'https://wildlife-nsw.wildtrack360.com.au/admin',
       })
     );
     expect(mockPrisma.adminNotificationLog.create).toHaveBeenCalledWith({
