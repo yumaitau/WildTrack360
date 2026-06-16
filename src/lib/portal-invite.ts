@@ -2,29 +2,12 @@
 
 import { clerkClient } from '@/lib/clerk-server';
 import { prisma } from './prisma';
-
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
-
-type Clerk = Awaited<ReturnType<typeof clerkClient>>;
+import { tenantBaseUrl } from './tenant-url';
 
 export type InviteReason = 'already-active' | 'payment-required' | 'not-found' | 'error';
 export interface InviteResult {
   sent: boolean;
   reason?: InviteReason;
-}
-
-async function portalBaseUrl(clerk: Clerk, orgId: string): Promise<string> {
-  const protocol = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
-  try {
-    const org = await clerk.organizations.getOrganization({ organizationId: orgId });
-    const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
-    if (orgUrl && /^[a-zA-Z0-9-]+$/.test(orgUrl)) {
-      return `${protocol}://${orgUrl}.${ROOT_DOMAIN}`;
-    }
-  } catch {
-    // fall through to the root domain
-  }
-  return `${protocol}://${ROOT_DOMAIN}`;
 }
 
 // Provision a member's portal login via an application-level Clerk invitation —
@@ -56,7 +39,7 @@ export async function invitePortalMember(memberId: string, orgId: string): Promi
 
   try {
     const clerk = await clerkClient();
-    const base = await portalBaseUrl(clerk, orgId);
+    const base = await tenantBaseUrl(orgId, clerk);
     const invitation = await clerk.invitations.createInvitation({
       emailAddress: member.email,
       redirectUrl: `${base}/portal/sign-up`,

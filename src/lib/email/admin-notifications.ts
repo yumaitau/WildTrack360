@@ -1,6 +1,7 @@
 import type { OrgRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getClerkOrganization, getClerkUser } from '@/lib/clerk-management';
+import { tenantBaseUrlFromSlug } from '@/lib/tenant-url';
 import { sendEmail } from './resend';
 import { AdminNotificationEmail } from './templates/admin-notification';
 
@@ -38,13 +39,13 @@ function primaryEmailForUser(user: ClerkUserWithEmailAddresses): string | null {
   return primary?.emailAddress ?? user.emailAddresses?.[0]?.emailAddress ?? null;
 }
 
-function toAbsoluteAppUrl(href: string): string {
+// Make a relative href absolute against the recipient org's own tenant
+// subdomain. Email links can't use the request origin (sent from a cron job,
+// no request) nor a baked-in site URL (wrong for a multi-tenant app), so we
+// resolve against the org's subdomain.
+function toAbsoluteAppUrl(href: string, base: string): string {
   if (/^https?:\/\//i.test(href)) return href;
-
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_BASE_URL;
-  if (!baseUrl) return href;
-
-  return `${baseUrl.replace(/\/$/, '')}${href.startsWith('/') ? href : `/${href}`}`;
+  return `${base}${href.startsWith('/') ? href : `/${href}`}`;
 }
 
 function tagValue(value: string): string {
@@ -74,8 +75,9 @@ export async function sendAdminNotification(input: AdminNotificationInput): Prom
   ]);
 
   const dedupeKey = input.dedupeKey.trim();
-  const cta = { ...input.cta, href: toAbsoluteAppUrl(input.cta.href) };
-  const manageNotificationsHref = toAbsoluteAppUrl('/admin');
+  const base = tenantBaseUrlFromSlug(org.public_metadata?.org_url as string | undefined);
+  const cta = { ...input.cta, href: toAbsoluteAppUrl(input.cta.href, base) };
+  const manageNotificationsHref = toAbsoluteAppUrl('/admin', base);
   const results: SendResult[] = [];
 
   for (const recipient of recipients) {

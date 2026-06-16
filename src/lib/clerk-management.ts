@@ -1,6 +1,8 @@
 type ClerkOrganization = {
   id?: string;
   name: string;
+  // Clerk's Backend REST API returns metadata snake-cased (unlike the SDK).
+  public_metadata?: Record<string, unknown> | null;
 };
 
 type ClerkUser = {
