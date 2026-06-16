@@ -20,6 +20,13 @@ function protocolFor(host: string): 'http' | 'https' {
   return host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
 }
 
+// Only the root domain itself or one of its subdomains is a host we'd ever
+// redirect to. Anything else in a forwarded header is treated as spoofed.
+function isTrustedHost(host: string): boolean {
+  const root = rootDomain();
+  return host === root || host.endsWith(`.${root}`);
+}
+
 // Build a tenant base origin from an already-known org slug. Falls back to the
 // bare root domain when the slug is missing/invalid so callers always get an
 // absolute, non-localhost URL in prod.
@@ -54,7 +61,16 @@ export async function tenantBaseUrl(orgId: string, clerk?: Clerk): Promise<strin
 // instead of a baked-in URL.
 export function requestOrigin(request: Request): string {
   const url = new URL(request.url);
-  const host = request.headers.get('x-forwarded-host') ?? url.host;
-  const proto = request.headers.get('x-forwarded-proto') ?? protocolFor(host);
+
+  // x-forwarded-* are attacker-controllable unless the proxy overwrites them,
+  // and this origin feeds a redirect Location — so sanitise before trusting.
+  // Take only the first hop, and only accept a host under our root domain;
+  // otherwise fall back to the host the server itself received.
+  const fwdHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const host = fwdHost && isTrustedHost(fwdHost) ? fwdHost : url.host;
+
+  const fwdProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
+  const proto = fwdProto === 'http' || fwdProto === 'https' ? fwdProto : protocolFor(host);
+
   return `${proto}://${host}`;
 }
