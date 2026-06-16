@@ -49,8 +49,10 @@ ENV NEXT_PUBLIC_SENTRY_PROJECT=$NEXT_PUBLIC_SENTRY_PROJECT
 
 # Build the application. Raise Node's heap — `next build` exceeds the default
 # ~2GB old-space limit on this codebase and OOMs (exit 134) otherwise.
+# Drop .next/cache after the build — it's webpack/Sentry build cache (multi-GB)
+# that has no value at runtime and otherwise gets baked into the final image.
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN npm run build
+RUN npm run build && rm -rf .next/cache
 
 # ============================================
 # Stage 2: Run Next.js application
@@ -64,11 +66,18 @@ RUN apt-get update -y && apt-get install -y openssl
 # Set working directory
 WORKDIR /usr/src/app
 
-# Copy built assets and necessary files from the build stage
-COPY --from=build-stage --chown=node:node /usr/src/app/.next ./.next
-COPY --from=build-stage --chown=node:node /usr/src/app/node_modules ./node_modules
+# Install production-only dependencies fresh instead of copying the build
+# stage's node_modules (which carries all devDependencies + their trees).
+# package*.json + prisma schema must land first so the postinstall
+# `prisma generate` hook can find the schema. tsx, prisma and @prisma/client
+# are all prod deps, so the runtime cron scripts still work; only typescript
+# and other dev-only tooling are dropped.
 COPY --from=build-stage --chown=node:node /usr/src/app/package*.json ./
 COPY --from=build-stage --chown=node:node /usr/src/app/prisma ./prisma
+RUN npm ci --omit=dev
+
+# Copy built assets and necessary files from the build stage
+COPY --from=build-stage --chown=node:node /usr/src/app/.next ./.next
 COPY --from=build-stage --chown=node:node /usr/src/app/public ./public
 
 # The scheduled jobs (`npm run charge-due`, `npm run refresh-tokens`) run the
