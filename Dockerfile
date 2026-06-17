@@ -82,10 +82,12 @@ COPY --from=build-stage --chown=node:node /usr/src/app/public ./public
 
 # The scheduled jobs (`npm run charge-due`, `npm run refresh-tokens`) run the
 # TypeScript source directly via tsx, so the runtime image needs src/ +
-# tsconfig.json (for the @/ path alias). Coolify Scheduled Tasks exec these
-# commands inside this container on a cron.
+# tsconfig.json (for the @/ path alias) + tsconfig.scripts.json (which aliases
+# the `server-only` marker to a no-op so these standalone tsx runs don't throw).
+# Coolify Scheduled Tasks exec these commands inside this container on a cron.
 COPY --from=build-stage --chown=node:node /usr/src/app/src ./src
 COPY --from=build-stage --chown=node:node /usr/src/app/tsconfig.json ./tsconfig.json
+COPY --from=build-stage --chown=node:node /usr/src/app/tsconfig.scripts.json ./tsconfig.scripts.json
 
 # Switch to non-root user for security best practices
 USER node
