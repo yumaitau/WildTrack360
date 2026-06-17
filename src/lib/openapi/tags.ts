@@ -1,0 +1,38 @@
+/** Domain tag list - single source of truth for grouping in the rendered docs. */
+
+export const TAGS = [
+  { name: 'Animals', description: 'Animal lifecycle management' },
+  { name: 'Growth & References', description: 'Growth measurements, reminders, and growth reference data' },
+  { name: 'Carers', description: 'Carer management and SBAC species assignments' },
+  { name: 'Carer Training', description: 'Training log for carers' },
+  { name: 'Species', description: 'Species reference data and seed operations' },
+  { name: 'Incidents', description: 'Incident records' },
+  { name: 'Transfers', description: 'Animal transfer records' },
+  { name: 'Releases & Post-Release', description: 'Release checklists and post-release monitoring' },
+  { name: 'Hygiene', description: 'Hygiene records' },
+  { name: 'Records', description: 'General animal records' },
+  { name: 'Members', description: 'Wildlife organisation membership management' },
+  { name: 'Membership Tiers & Grants', description: 'Membership tier and grant configuration' },
+  { name: 'Permanent Care', description: 'Permanent care applications and approvals' },
+  { name: 'Portal', description: 'Member self-service portal (not Clerk-org authenticated)' },
+  { name: 'Public Checkout', description: 'Unauthenticated public donation and membership checkout' },
+  { name: 'Payments & Square', description: 'Square payment integration, OAuth, and webhooks' },
+  { name: 'RBAC', description: 'Role-based access control and species-based access control' },
+  { name: 'Reports', description: 'Carer contact reports and mapping' },
+  { name: 'Report Queries', description: 'Custom report query management and execution' },
+  { name: 'Admin', description: 'Organisation administration - exports, users, settings, EOFY' },
+  { name: 'Audit', description: 'Audit log' },
+  { name: 'Uploads & Photos', description: 'Binary media upload and photo serving' },
+  { name: 'Forms', description: 'Dynamic form template retrieval' },
+  { name: 'PIN', description: 'PIN-access routes (public, no Clerk session)' },
+  { name: 'Pindrop', description: 'Pindrop animal record lookup via SMS' },
+  { name: 'Call Logs', description: 'Call log management and lookup defaults' },
+  { name: 'Assets', description: 'Shared media asset management' },
+  { name: 'Weather', description: 'Weather data proxy' },
+  { name: 'Wally', description: 'AI assistant (Wally) conversation API' },
+  { name: 'Features', description: 'Organisation feature-flag query' },
+  { name: 'News', description: 'News posts for members' },
+  { name: 'Internal & Cron', description: 'Internal cron jobs and health endpoints (Bearer CRON_SECRET)' },
+] as const;
+
+export type TagName = (typeof TAGS)[number]['name'];

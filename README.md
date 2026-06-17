@@ -361,6 +361,8 @@ WildTrack360 uses a custom five-tier RBAC system that mirrors the real-world str
 | POST | `/api/rbac/roles` | `user:manage` | Assign a role: `{ targetUserId, role }` |
 | POST | `/api/rbac/provision` | Clerk org:admin only | Self-provision during migration |
 
+**Full API reference:** [`docs/api/index.html`](docs/api/index.html) (OpenAPI 3.1, offline Redoc — all 116 routes with status codes, schemas, and security schemes).
+
 ## Species-Based Access Control (SBAC)
 
 SBAC extends RBAC by scoping **COORDINATOR** access to specific species. Instead of seeing all animals, coordinators only see animals whose species falls within their assigned species groups.

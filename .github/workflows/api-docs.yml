@@ -1,0 +1,49 @@
+name: API Docs
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/app/api/**'
+      - 'src/lib/openapi/**'
+      - 'scripts/generate-openapi.ts'
+      - 'scripts/check-openapi-drift.ts'
+      - 'scripts/inline-redoc.ts'
+      - 'docs/api/**'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'src/app/api/**'
+      - 'src/lib/openapi/**'
+      - 'scripts/generate-openapi.ts'
+      - 'scripts/check-openapi-drift.ts'
+      - 'scripts/inline-redoc.ts'
+      - 'docs/api/**'
+
+jobs:
+  api-docs:
+    name: Route map & drift guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Extractor tests: structural guard + per-method status extraction invariants.
+      # Route-surface tests are always GREEN (they validate the extractor, not coverage).
+      # coverage.test.ts is excluded here; it becomes a required CI gate in Task 11
+      # once all 116 routes are documented.
+      - name: Run extractor tests
+        run: npx vitest run src/lib/openapi/route-surface.test.ts
+
+      # Regenerate openapi.json and assert it matches the committed file.
+      # Fails if a route was added/removed or a handler changed and the spec wasn't updated.
+      - name: Check OpenAPI drift
+        run: npm run docs:api:check
