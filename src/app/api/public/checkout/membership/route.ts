@@ -6,6 +6,8 @@ import { createRecurringSubscription } from '@/lib/square/subscriptions';
 import { totalWithCoveredFees } from '@/lib/fees';
 import { invitePortalMember } from '@/lib/portal-invite';
 import { sanitizePlainText } from '@/lib/sanitize';
+import { route } from '@/lib/openapi/route';
+import { publicCheckoutMembershipContract } from '../openapi';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -31,7 +33,7 @@ const cleanOpt = (v: string | null | undefined) =>
 // Square app-fee path, and (on success) sends a portal invitation so the new
 // member can activate their login. A failed charge throws before any invite —
 // the Membership row itself is only created by recordSuccessfulPayment.
-export async function POST(request: Request) {
+export const POST = route(publicCheckoutMembershipContract, async ({ request }) => {
   try {
     const body = (await request.json()) as {
       handle?: string;
@@ -123,4 +125,4 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : 'Failed to process membership';
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

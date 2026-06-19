@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server';
 import { resolvePublicOrg } from '@/lib/public-org';
 import { createDonationPayment } from '@/lib/square/checkout';
 import { sanitizePlainText } from '@/lib/sanitize';
+import { route } from '@/lib/openapi/route';
+import { publicCheckoutDonationContract } from '../openapi';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Public, unauthenticated one-off donation. The org is resolved from the
 // subdomain handle (never a client-supplied org id), the donor is anonymous (no
 // Member), and the existing Square app-fee charge path is reused.
-export async function POST(request: Request) {
+export const POST = route(publicCheckoutDonationContract, async ({ request }) => {
   try {
     const body = (await request.json()) as {
       handle?: string;
@@ -51,4 +53,4 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : 'Failed to process donation';
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

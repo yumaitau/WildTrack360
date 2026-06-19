@@ -1,23 +1,10 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/clerk-server'
 import { getObjectFromS3, extractOrgIdFromKey } from '@/lib/s3'
+import { route } from '@/lib/openapi/route'
+import { servePhotoContract } from '../openapi'
 
-/**
- * Authenticated photo proxy.
- *
- * Usage: GET /api/photos/serve?key=orgs/{orgId}/animals/{animalId}/{file}
- *
- * This route:
- *  1. Authenticates the requesting user via Clerk
- *  2. Extracts the orgId embedded in the S3 key
- *  3. Verifies the user belongs to that org
- *  4. Returns the image from S3 with appropriate cache headers
- *
- * If any check fails the request is rejected — photos are NEVER
- * accessible outside their owning organisation.
- */
-export async function GET(request: Request) {
-  // 1. Authenticate
+export const GET = route(servePhotoContract, async ({ query }) => {
   const { userId, orgId } = await auth()
 
   if (!userId) {
@@ -27,14 +14,8 @@ export async function GET(request: Request) {
     return new NextResponse('No active organization', { status: 403 })
   }
 
-  // 2. Get the S3 key from the query parameter
-  const { searchParams } = new URL(request.url)
-  const s3Key = searchParams.get('key')
-  if (!s3Key) {
-    return new NextResponse('Missing key parameter', { status: 400 })
-  }
+  const s3Key = query.key
 
-  // 3. Extract the orgId from the key and validate ownership
   const keyOrgId = extractOrgIdFromKey(s3Key)
   if (!keyOrgId) {
     return new NextResponse('Invalid photo key', { status: 400 })
@@ -43,7 +24,6 @@ export async function GET(request: Request) {
     return new NextResponse('Forbidden', { status: 403 })
   }
 
-  // 4. Fetch from S3 and return
   try {
     const { body, contentType } = await getObjectFromS3(s3Key)
 
@@ -56,9 +36,10 @@ export async function GET(request: Request) {
         'X-Content-Type-Options': 'nosniff',
       },
     })
-  } catch (error: any) {
-    const statusCode = error?.$metadata?.httpStatusCode
-    const errorCode = error?.Code || error?.name
+  } catch (error: unknown) {
+    const err = error as { $metadata?: { httpStatusCode?: number }; Code?: string; name?: string }
+    const statusCode = err?.$metadata?.httpStatusCode
+    const errorCode = err?.Code || err?.name
     console.error('Photo proxy error:', { s3Key, errorCode, statusCode })
 
     if (errorCode === 'NoSuchKey' || statusCode === 404) {
@@ -69,4 +50,4 @@ export async function GET(request: Request) {
     }
     return new NextResponse('Failed to retrieve photo', { status: 500 })
   }
-}
+})

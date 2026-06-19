@@ -4,34 +4,22 @@ import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
 import { sendSms } from '@/lib/sms';
 import { nanoid } from 'nanoid';
+import { route } from '@/lib/openapi/route';
+import { createPindropContract } from './openapi';
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
-export async function POST(request: Request) {
+export const POST = route(createPindropContract, async ({ body }) => {
   const { userId, orgId } = await auth();
-  if (!userId || !orgId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-  }
-  const { callerPhone, callerName, callLogId } = body as { callerPhone?: string; callerName?: string; callLogId?: string };
+  const { callerPhone, callerName, callLogId } = body;
 
-  if (!callerPhone) {
-    return NextResponse.json({ error: 'Caller phone is required' }, { status: 400 });
-  }
+  if (!callerPhone) return NextResponse.json({ error: 'Caller phone is required' }, { status: 400 });
 
   if (callLogId) {
-    const callLog = await prisma.callLog.findFirst({
-      where: { id: callLogId, clerkOrganizationId: orgId },
-    });
-    if (!callLog) {
-      return NextResponse.json({ error: 'Call log not found' }, { status: 404 });
-    }
+    const callLog = await prisma.callLog.findFirst({ where: { id: callLogId, clerkOrganizationId: orgId } });
+    if (!callLog) return NextResponse.json({ error: 'Call log not found' }, { status: 404 });
   }
 
   const session = await prisma.pindropSession.create({
@@ -45,7 +33,6 @@ export async function POST(request: Request) {
     },
   });
 
-  // Build the URL using the org's subdomain from Clerk publicMetadata
   const clerk = await clerkClient();
   const org = await clerk.organizations.getOrganization({ organizationId: orgId });
   const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
@@ -71,14 +58,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: smsResult.reason || 'Failed to send SMS.' }, { status: smsResult.blocked ? 422 : 500 });
   }
 
-  logAudit({
-    userId,
-    orgId,
-    action: 'CREATE',
-    entity: 'PindropSession',
-    entityId: session.id,
-    metadata: { callLogId },
-  });
-
-  return NextResponse.json({ id: session.id, url: pinUrl }, { status: 201 });
-}
+  logAudit({ userId, orgId, action: 'CREATE', entity: 'PindropSession', entityId: session.id, metadata: { callLogId } });
+  return { data: { id: session.id, url: pinUrl }, status: 201 as const };
+});

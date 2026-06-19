@@ -1,4 +1,6 @@
-import { requireAdmin } from '@/lib/openapi-server/admin-guard';
+import { requireDocsAccess } from '@/lib/openapi-server/docs-access';
+import { route } from '@/lib/openapi/route';
+import { apiDocsContract } from './openapi';
 
 // SHORTCUT: Scalar loaded from CDN; self-host the bundle if offline/CSP-restricted docs are needed.
 const SCALAR_HTML = `<!doctype html>
@@ -17,11 +19,12 @@ const SCALAR_HTML = `<!doctype html>
   </body>
 </html>`;
 
-// Admin-only Scalar API reference UI, rendering the spec served at /api/openapi.
-export async function GET() {
-  const denied = await requireAdmin();
+// Scalar API reference UI, rendering the spec served at /api/openapi.
+// Open in dev; any authenticated user in production (see requireDocsAccess).
+export const GET = route(apiDocsContract, async () => {
+  const denied = await requireDocsAccess();
   if (denied) return denied;
   return new Response(SCALAR_HTML, {
     headers: { 'content-type': 'text/html; charset=utf-8' },
   });
-}
+});

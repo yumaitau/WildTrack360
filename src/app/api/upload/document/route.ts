@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/clerk-server'
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import { uploadToS3 } from '@/lib/s3'
 import { getUserRole, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { uploadDocumentContract } from '../openapi'
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
 const PDF_MAGIC = '%PDF-'
 
-/**
- * Document upload endpoint — uploads a PDF to S3 and returns the S3 key.
- * Used for vet reports and other compliance documents.
- */
-export async function POST(request: Request) {
+export const POST = route(uploadDocumentContract, async ({ request }) => {
   const { userId, orgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
@@ -34,7 +32,6 @@ export async function POST(request: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // Validate PDF magic bytes (more reliable than client-supplied MIME type)
     const header = buffer.subarray(0, 5).toString('ascii')
     if (header !== PDF_MAGIC) {
       return NextResponse.json({ error: 'Invalid file. Only PDF files are allowed.' }, { status: 400 })
@@ -46,19 +43,9 @@ export async function POST(request: Request) {
 
     const s3Key = await uploadToS3(buffer, key, 'application/pdf')
 
-    logAudit({
-      userId,
-      orgId,
-      action: 'CREATE',
-      entity: 'Document',
-      entityId: null,
-      metadata: { s3Key, fileName: file.name },
-    })
-
-    return NextResponse.json({ key: s3Key, fileName: file.name }, { status: 201 })
-  } catch (error: any) {
-    console.error('Document upload error:', error)
-    const message = 'Upload failed. Please try again.'
-    return NextResponse.json({ error: message }, { status: 500 })
+    logAudit({ userId, orgId, action: 'CREATE', entity: 'Document', entityId: null, metadata: { s3Key, fileName: file.name } })
+    return { data: { key: s3Key, fileName: file.name }, status: 201 as const }
+  } catch {
+    return NextResponse.json({ error: 'Upload failed. Please try again.' }, { status: 500 })
   }
-}
+})

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
 import { dismissNSWReminder } from '@/lib/nsw-reminders';
 import type { NSWReminderKey } from '@/lib/nsw-reminder-types';
+import { route } from '@/lib/openapi/route';
+import { dismissNotificationContract } from './openapi';
 
 const NSW_REMINDER_KEYS = new Set<NSWReminderKey>([
   'eofy-30-day',
@@ -10,28 +12,20 @@ const NSW_REMINDER_KEYS = new Set<NSWReminderKey>([
   'submission-14-day',
 ]);
 
-export async function POST(request: Request) {
+export const POST = route(dismissNotificationContract, async ({ body }) => {
   const { userId, orgId } = await auth();
-  if (!userId || !orgId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json().catch(() => null);
   if (
     !body ||
-    body.kind !== 'nsw-reminder' ||
-    !NSW_REMINDER_KEYS.has(body.reminderKey) ||
-    !Number.isInteger(body.year)
+    (body as Record<string, unknown>).kind !== 'nsw-reminder' ||
+    !NSW_REMINDER_KEYS.has((body as Record<string, unknown>).reminderKey as NSWReminderKey) ||
+    !Number.isInteger((body as Record<string, unknown>).year)
   ) {
     return NextResponse.json({ error: 'Invalid dismissal payload' }, { status: 400 });
   }
 
-  await dismissNSWReminder({
-    userId,
-    orgId,
-    reminderKey: body.reminderKey,
-    year: body.year,
-  });
-
-  return NextResponse.json({ ok: true });
-}
+  const b = body as { kind: string; reminderKey: NSWReminderKey; year: number };
+  await dismissNSWReminder({ userId, orgId, reminderKey: b.reminderKey, year: b.year });
+  return { data: { ok: true } };
+});

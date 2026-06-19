@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/clerk-server'
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import { uploadToS3 } from '@/lib/s3'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { uploadImageContract } from '../openapi'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
-/**
- * Simple image upload endpoint — uploads a file to S3 and returns the S3 key.
- * No database record is created. Used for the Animal.photo (primary photo) field.
- * The key is served via the authenticated proxy at /api/photos/[...key].
- */
-export async function POST(request: Request) {
+export const POST = route(uploadImageContract, async ({ request }) => {
   const { userId, orgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
@@ -36,22 +33,12 @@ export async function POST(request: Request) {
     const key = `orgs/${orgId}/animal-photos/${uuid}-${sanitizedName}`
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    // Returns the S3 key (NOT a public URL) — objects are private
+    // Returns the S3 key (NOT a public URL) - objects are private
     const s3Key = await uploadToS3(buffer, key, file.type)
 
-    logAudit({
-      userId,
-      orgId,
-      action: 'CREATE',
-      entity: 'AnimalPhoto',
-      entityId: null,
-      metadata: { s3Key, fileName: file.name },
-    })
-
-    return NextResponse.json({ url: s3Key }, { status: 201 })
-  } catch (error: any) {
-    console.error('Image upload error:', error)
-    const message = 'Upload failed. Please try again.'
-    return NextResponse.json({ error: message }, { status: 500 })
+    logAudit({ userId, orgId, action: 'CREATE', entity: 'AnimalPhoto', entityId: null, metadata: { s3Key, fileName: file.name } })
+    return { data: { url: s3Key }, status: 201 as const }
+  } catch {
+    return NextResponse.json({ error: 'Upload failed. Please try again.' }, { status: 500 })
   }
-}
+})

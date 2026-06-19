@@ -3,77 +3,42 @@ import { auth } from '@/lib/clerk-server';
 import { getEnrichedCarer, upsertCarerProfile } from '@/lib/carer-helpers';
 import { ensureUserInOrg, isOrgAdmin } from '@/lib/authz';
 import { logAudit } from '@/lib/audit';
+import { route } from '@/lib/openapi/route';
+import { getCarerContract, updateCarerContract } from '../openapi';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export const GET = route(getCarerContract, async ({ params }) => {
+  const { id } = params;
   const { userId, orgId } = await auth();
-  if (!userId || !orgId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     await ensureUserInOrg(userId, orgId);
-
-    // Only org admins or the target user themselves can view a profile
     const admin = await isOrgAdmin(userId, orgId);
-    if (!admin && userId !== id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
+    if (!admin && userId !== id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     const carer = await getEnrichedCarer(id, orgId);
-    if (!carer) {
-      return NextResponse.json({ error: 'Carer not found' }, { status: 404 });
-    }
-    return NextResponse.json(carer);
+    if (!carer) return NextResponse.json({ error: 'Carer not found' }, { status: 404 });
+    return { data: carer };
   } catch (error) {
     console.error('Error fetching carer:', error);
     return NextResponse.json({ error: 'Failed to fetch carer' }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export const PATCH = route(updateCarerContract, async ({ params, body }) => {
+  const { id } = params;
   const { userId, orgId } = await auth();
-  if (!userId || !orgId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     await ensureUserInOrg(userId, orgId);
-
-    // Only org admins or the target user themselves can update a profile
     const admin = await isOrgAdmin(userId, orgId);
-    if (!admin && userId !== id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const body = await request.json();
-
-    // Strip fields that should not be updated via this endpoint
-    const {
-      id: _id,
-      name: _name,
-      email: _email,
-      imageUrl: _imageUrl,
-      hasProfile: _hasProfile,
-      createdAt: _createdAt,
-      updatedAt: _updatedAt,
-      clerkOrganizationId: _orgId,
-      trainings: _trainings,
-      ...profileData
-    } = body;
-
+    if (!admin && userId !== id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const { id: _id, name: _name, email: _email, imageUrl: _imageUrl, hasProfile: _hasProfile,
+      createdAt: _createdAt, updatedAt: _updatedAt, clerkOrganizationId: _orgId,
+      trainings: _trainings, ...profileData } = body as Record<string, unknown>;
     const profile = await upsertCarerProfile(id, orgId, profileData);
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'CarerProfile', entityId: id, metadata: { fields: Object.keys(profileData) } });
-    return NextResponse.json(profile);
+    return { data: profile };
   } catch (error) {
     console.error('Error updating carer profile:', error);
     return NextResponse.json({ error: 'Failed to update carer profile' }, { status: 500 });
   }
-}
+});

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { runMembershipLifecycle } from '@/lib/membership-lifecycle';
+import { route } from '@/lib/openapi/route';
+import { membershipLifecycleGetContract, membershipLifecyclePostContract } from '../openapi';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,18 +11,18 @@ function authorised(request: Request): boolean {
   return request.headers.get('authorization') === `Bearer ${secret}`;
 }
 
-async function run(request: Request) {
+export const GET = route(membershipLifecycleGetContract, async ({ request }) => {
   if (!authorised(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const result = await runMembershipLifecycle();
-  return NextResponse.json(result);
-}
+  return { data: result };
+});
 
-export async function GET(request: Request) {
-  return run(request);
-}
-
-export async function POST(request: Request) {
-  return run(request);
-}
+export const POST = route(membershipLifecyclePostContract, async ({ request }) => {
+  if (!authorised(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const result = await runMembershipLifecycle();
+  return { data: result };
+});

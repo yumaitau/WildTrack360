@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { route } from '@/lib/openapi/route';
+import { internalPingContract } from '../openapi';
 
-export async function GET() {
-  return NextResponse.json({ status: "ok" }, { status: 200 });
-}
+export const GET = route(internalPingContract, async () => {
+  return { data: { status: 'ok' } };
+});

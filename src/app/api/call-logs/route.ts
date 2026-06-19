@@ -3,36 +3,28 @@ import { auth } from '@/lib/clerk-server'
 import { clerkClient } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { listCallLogsContract, createCallLogContract } from './openapi'
 
-export async function GET(request: Request) {
+export const GET = route(listCallLogsContract, async () => {
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
   try {
     const callLogs = await prisma.callLog.findMany({
       where: { clerkOrganizationId: orgId },
       include: { animal: { select: { id: true, name: true, species: true } } },
       orderBy: { dateTime: 'desc' },
     })
-    return NextResponse.json(callLogs)
-  } catch (error) {
-    console.error('Error fetching call logs:', error)
+    return { data: callLogs }
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch call logs' }, { status: 500 })
   }
-}
+})
 
-export async function POST(request: Request) {
+export const POST = route(createCallLogContract, async ({ body }) => {
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: any
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
-
-  // Resolve the current user's name for takenByUserName
   let userName: string | null = null
   try {
     const client = await clerkClient()
@@ -43,22 +35,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Verify the target animal belongs to this org
     if (body.animalId) {
-      const animal = await prisma.animal.findFirst({
-        where: { id: body.animalId, clerkOrganizationId: orgId },
-      })
-      if (!animal) {
-        return NextResponse.json({ error: 'Animal not found in this organization' }, { status: 400 })
-      }
+      const animal = await prisma.animal.findFirst({ where: { id: body.animalId, clerkOrganizationId: orgId } })
+      if (!animal) return NextResponse.json({ error: 'Animal not found in this organization' }, { status: 400 })
     }
 
     const created = await prisma.$transaction(async (tx) => {
       const callLog = await tx.callLog.create({
         data: {
           dateTime: body.dateTime ? new Date(body.dateTime) : new Date(),
-          status: body.status || 'OPEN',
-          callerName: body.callerName,
+          status: body.status ?? 'OPEN',
+          callerName: body.callerName ?? null,
           callerPhone: body.callerPhone ?? null,
           callerEmail: body.callerEmail ?? null,
           species: body.species ?? null,
@@ -80,7 +67,6 @@ export async function POST(request: Request) {
         },
       })
 
-      // If linked to an animal, create a record on the animal's timeline
       if (callLog.animalId) {
         const parts = [
           `Call from ${callLog.callerName}`,
@@ -89,7 +75,6 @@ export async function POST(request: Request) {
           callLog.outcome ? `Outcome: ${callLog.outcome}` : null,
           callLog.referrer ? `Referred by: ${callLog.referrer}` : null,
         ].filter(Boolean)
-
         await tx.record.create({
           data: {
             type: 'OTHER',
@@ -104,18 +89,13 @@ export async function POST(request: Request) {
         })
       }
 
-      // Link any pindrop session created during the call (best-effort — don't fail the call log)
       if (body.pindropSessionId) {
         const linked = await tx.pindropSession.updateMany({
-          where: {
-            id: body.pindropSessionId,
-            clerkOrganizationId: orgId,
-            callLogId: null,
-          },
+          where: { id: body.pindropSessionId, clerkOrganizationId: orgId, callLogId: null },
           data: { callLogId: callLog.id },
         })
         if (linked.count === 0) {
-          console.warn(`[CallLog] Pindrop session ${body.pindropSessionId} could not be linked to call log ${callLog.id} — already used or not found`)
+          console.warn(`[CallLog] Pindrop session ${body.pindropSessionId} could not be linked to call log ${callLog.id} - already used or not found`)
         }
       }
 
@@ -123,10 +103,8 @@ export async function POST(request: Request) {
     })
 
     logAudit({ userId, orgId, action: 'CREATE', entity: 'CallLog', entityId: created.id, metadata: { callerName: body.callerName, reason: body.reason } })
-
-    return NextResponse.json(created, { status: 201 })
-  } catch (error) {
-    console.error('Error creating call log:', error)
+    return { data: created, status: 201 as const }
+  } catch {
     return NextResponse.json({ error: 'Failed to create call log' }, { status: 500 })
   }
-}
+})

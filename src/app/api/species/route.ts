@@ -3,83 +3,68 @@ import { getSpecies, createSpecies } from '@/lib/database'
 import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { listSpeciesContract, createSpeciesContract, renameSpeciesContract, deleteSpeciesByNameContract } from './openapi'
 
-export async function GET(request: Request) {
-	const { userId, orgId: activeOrgId } = await auth()
-	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	const orgId = activeOrgId
-	try {
-		if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
-		const species = await getSpecies(orgId)
-		return NextResponse.json(species)
-	} catch (err) {
-		const message = err instanceof Error ? err.message : ''
-		if (message === 'Forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-		if (message === 'Organization ID is required') return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
-		console.error('Error fetching species:', err)
-		return NextResponse.json({ error: 'Failed to fetch species' }, { status: 500 })
-	}
-}
+export const GET = route(listSpeciesContract, async () => {
+  const { userId, orgId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
+  try {
+    const species = await getSpecies(orgId)
+    return { data: species }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : ''
+    if (message === 'Forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (message === 'Organization ID is required') return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Failed to fetch species' }, { status: 500 })
+  }
+})
 
-export async function POST(request: Request) {
-	const { userId, orgId: activeOrgId } = await auth()
-	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	const body = await request.json()
-	const orgId = activeOrgId
-	if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
-	try {
-		if (!body.name) {
-			return NextResponse.json({ error: 'Species name is required' }, { status: 400 })
-		}
-		const speciesData: any = {
-			name: body.name,
-			scientificName: body.scientificName || null,
-			type: body.type || null,
-			description: body.description || null,
-			careRequirements: body.careRequirements || null,
-			clerkUserId: userId,
-			clerkOrganizationId: orgId
-		}
-		const created = await createSpecies(speciesData)
-		logAudit({ userId, orgId, action: 'CREATE', entity: 'Species', entityId: created.id, metadata: { name: body.name } })
-		return NextResponse.json(created, { status: 201 })
-	} catch (error) {
-		console.error('Error creating species:', error)
-		return NextResponse.json({ error: 'Failed to create species' }, { status: 500 })
-	}
-}
+export const POST = route(createSpeciesContract, async ({ body }) => {
+  const { userId, orgId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
+  try {
+    const created = await createSpecies({
+      name: body.name,
+      scientificName: body.scientificName ?? null,
+      type: body.type ?? null,
+      description: body.description ?? null,
+      careRequirements: body.careRequirements ?? null,
+      clerkUserId: userId,
+      clerkOrganizationId: orgId,
+    })
+    logAudit({ userId, orgId, action: 'CREATE', entity: 'Species', entityId: created.id, metadata: { name: body.name } })
+    return { data: created, status: 201 as const }
+  } catch {
+    return NextResponse.json({ error: 'Failed to create species' }, { status: 500 })
+  }
+})
 
-export async function PATCH(request: Request) {
-	const { userId, orgId } = await auth()
-	if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	const { oldName, newName } = await request.json()
-	try {
-		const updated = await prisma.species.updateMany({
-			where: { name: oldName, clerkOrganizationId: orgId },
-			data: { name: newName }
-		})
-		if (updated.count > 0) {
-			logAudit({ userId, orgId, action: 'UPDATE', entity: 'Species', metadata: { oldName, newName } })
-		}
-		return NextResponse.json({ count: updated.count })
-	} catch {
-		return NextResponse.json({ error: 'Failed to update species' }, { status: 500 })
-	}
-}
+export const PATCH = route(renameSpeciesContract, async ({ body }) => {
+  const { userId, orgId } = await auth()
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const updated = await prisma.species.updateMany({
+      where: { name: body.oldName, clerkOrganizationId: orgId },
+      data: { name: body.newName },
+    })
+    if (updated.count > 0) logAudit({ userId, orgId, action: 'UPDATE', entity: 'Species', metadata: { oldName: body.oldName, newName: body.newName } })
+    return { data: { count: updated.count } }
+  } catch {
+    return NextResponse.json({ error: 'Failed to update species' }, { status: 500 })
+  }
+})
 
-export async function DELETE(request: Request) {
-	const { userId, orgId } = await auth()
-	if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	const { name } = await request.json()
-	try {
-		const deleted = await prisma.species.deleteMany({
-			where: { name, clerkOrganizationId: orgId }
-		})
-		if (deleted.count > 0) {
-			logAudit({ userId, orgId, action: 'DELETE', entity: 'Species', metadata: { name } })
-		}
-		return NextResponse.json({ count: deleted.count })
-	} catch {
-		return NextResponse.json({ error: 'Failed to delete species' }, { status: 500 })
-	}
-}
+export const DELETE = route(deleteSpeciesByNameContract, async ({ body }) => {
+  const { userId, orgId } = await auth()
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const deleted = await prisma.species.deleteMany({ where: { name: body.name, clerkOrganizationId: orgId } })
+    if (deleted.count > 0) logAudit({ userId, orgId, action: 'DELETE', entity: 'Species', metadata: { name: body.name } })
+    return { data: { count: deleted.count } }
+  } catch {
+    return NextResponse.json({ error: 'Failed to delete species' }, { status: 500 })
+  }
+})

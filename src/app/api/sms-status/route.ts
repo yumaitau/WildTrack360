@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
 import { prisma } from '@/lib/prisma';
+import { route } from '@/lib/openapi/route';
+import { smsStatusContract } from './openapi';
 
-export async function GET() {
+export const GET = route(smsStatusContract, async () => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -13,7 +15,5 @@ export async function GET() {
     select: { tier: true },
   });
 
-  return NextResponse.json({
-    enabled: !!subscription && subscription.tier !== 'NONE',
-  });
-}
+  return { data: { enabled: !!subscription && subscription.tier !== 'NONE' } };
+});
