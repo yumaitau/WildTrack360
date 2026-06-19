@@ -1,0 +1,1412 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "WildTrack360 API",
+    "version": "1.0.0",
+    "description": "Internal API reference for WildTrack360. Generated from per-route Zod contracts."
+  },
+  "components": {
+    "securitySchemes": {
+      "clerkSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Clerk session auth. In the browser the `__session` cookie is sent automatically; for the try-it client paste a session JWT as a bearer token."
+      },
+      "internalSecret": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-internal-secret",
+        "description": "Shared secret for internal / scheduled (cron) endpoints."
+      },
+      "squareSignature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-square-hmacsha256-signature",
+        "description": "Square webhook HMAC-SHA256 signature."
+      }
+    },
+    "schemas": {
+      "AnimalStatus": {
+        "type": "string",
+        "enum": [
+          "ADMITTED",
+          "IN_CARE",
+          "READY_FOR_RELEASE",
+          "RELEASED",
+          "DECEASED",
+          "TRANSFERRED",
+          "PERMANENT_CARE"
+        ]
+      },
+      "CarerLite": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "licenseNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "jurisdiction": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "specialties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clerkOrganizationId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "licenseNumber",
+          "jurisdiction",
+          "specialties",
+          "active",
+          "createdAt",
+          "updatedAt",
+          "clerkOrganizationId"
+        ]
+      },
+      "Record": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "FEEDING",
+              "MEDICAL",
+              "BEHAVIOR",
+              "LOCATION",
+              "WEIGHT",
+              "RELEASE",
+              "OTHER"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clerkUserId": {
+            "type": "string"
+          },
+          "clerkOrganizationId": {
+            "type": "string"
+          },
+          "animalId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "date",
+          "description",
+          "location",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "clerkUserId",
+          "clerkOrganizationId",
+          "animalId"
+        ]
+      },
+      "Photo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clerkUserId": {
+            "type": "string"
+          },
+          "clerkOrganizationId": {
+            "type": "string"
+          },
+          "animalId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "description",
+          "date",
+          "createdAt",
+          "updatedAt",
+          "clerkUserId",
+          "clerkOrganizationId",
+          "animalId"
+        ]
+      },
+      "Animal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "species": {
+            "type": "string"
+          },
+          "sex": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ageClass": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "age": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dateOfBirth": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AnimalStatus"
+          },
+          "dateFound": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dateReleased": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "outcomeDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "outcome": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rescueLocation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rescueCoordinates": {},
+          "rescueAddress": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rescueSuburb": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rescuePostcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "releaseLocation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "releaseCoordinates": {},
+          "releaseNotes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "releaseAddress": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "releaseSuburb": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "releasePostcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "encounterType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "initialWeightGrams": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "weightUnit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "animalCondition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pouchCondition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagBandColourNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "microchipNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lifeStage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dateAdmitted": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "orgAnimalId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcomeReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceOrgAnimalId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "interOrgTransferReceived": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clerkUserId": {
+            "type": "string"
+          },
+          "clerkOrganizationId": {
+            "type": "string"
+          },
+          "carerId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "species",
+          "sex",
+          "ageClass",
+          "age",
+          "dateOfBirth",
+          "status",
+          "dateFound",
+          "dateReleased",
+          "outcomeDate",
+          "outcome",
+          "photo",
+          "notes",
+          "rescueLocation",
+          "rescueAddress",
+          "rescueSuburb",
+          "rescuePostcode",
+          "releaseLocation",
+          "releaseNotes",
+          "releaseAddress",
+          "releaseSuburb",
+          "releasePostcode",
+          "encounterType",
+          "initialWeightGrams",
+          "weightUnit",
+          "animalCondition",
+          "pouchCondition",
+          "fate",
+          "tagBandColourNumber",
+          "microchipNumber",
+          "lifeStage",
+          "dateAdmitted",
+          "orgAnimalId",
+          "outcomeReason",
+          "sourceOrgAnimalId",
+          "interOrgTransferReceived",
+          "createdAt",
+          "updatedAt",
+          "clerkUserId",
+          "clerkOrganizationId",
+          "carerId"
+        ]
+      },
+      "AnimalWithRelations": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Animal"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "carer": {
+                "$ref": "#/components/schemas/CarerLite"
+              },
+              "records": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Record"
+                }
+              },
+              "photos": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Photo"
+                }
+              }
+            },
+            "required": [
+              "carer",
+              "records",
+              "photos"
+            ]
+          }
+        ]
+      },
+      "AnimalCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "species": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/AnimalStatus"
+          },
+          "dateFound": {
+            "type": "string",
+            "minLength": 1,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "name",
+          "species",
+          "status",
+          "dateFound"
+        ]
+      },
+      "AnimalUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "species": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/AnimalStatus"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "orgAnimalId": {
+            "type": "string"
+          }
+        }
+      },
+      "GrowthMeasurement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "animalId": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "weightGrams": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "headLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "earLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "armLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "legLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "footLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tailLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "bodyLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "wingLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clerkUserId": {
+            "type": "string"
+          },
+          "clerkOrganizationId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "animalId",
+          "date",
+          "weightGrams",
+          "headLengthMm",
+          "earLengthMm",
+          "armLengthMm",
+          "legLengthMm",
+          "footLengthMm",
+          "tailLengthMm",
+          "bodyLengthMm",
+          "wingLengthMm",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "clerkUserId",
+          "clerkOrganizationId"
+        ]
+      },
+      "GrowthMeasurementCreate": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "minLength": 1,
+            "format": "date-time"
+          },
+          "weightGrams": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "headLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "earLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "armLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "legLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "footLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tailLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "bodyLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "wingLengthMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "date"
+        ]
+      },
+      "AnimalReminder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "animalId": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdByUserId": {
+            "type": "string"
+          },
+          "createdByName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clerkOrganizationId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "animalId",
+          "message",
+          "isActive",
+          "expiresAt",
+          "createdByUserId",
+          "createdByName",
+          "createdAt",
+          "updatedAt",
+          "clerkOrganizationId"
+        ]
+      },
+      "AnimalReminderCreate": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/api/animals": {
+      "get": {
+        "summary": "List animals for the organisation (role-scoped)",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "orgId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Animals with carer, records and photos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AnimalWithRelations"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Organization ID is required"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an animal",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnimalCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created animal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Animal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body / organization required"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "orgAnimalId already in use"
+          }
+        }
+      }
+    },
+    "/api/animals/peek-id": {
+      "get": {
+        "summary": "Preview the next generated animal ID",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "species",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "intakeDate",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Preview of the next animal ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preview": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "preview"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/animals/{id}": {
+      "patch": {
+        "summary": "Update an animal",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnimalUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated animal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Animal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Animal not found"
+          },
+          "422": {
+            "description": "Invalid status transition or duplicate orgAnimalId"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an animal (admin only)",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Animal not found"
+          }
+        }
+      }
+    },
+    "/api/animals/{id}/growth": {
+      "get": {
+        "summary": "List growth measurements for an animal",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Growth measurements (oldest first)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrowthMeasurement"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Animal not found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a growth measurement",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrowthMeasurementCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created measurement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrowthMeasurement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Animal not found"
+          }
+        }
+      }
+    },
+    "/api/animals/{id}/growth/{measurementId}": {
+      "delete": {
+        "summary": "Delete a growth measurement",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "measurementId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Animal or measurement not found"
+          }
+        }
+      }
+    },
+    "/api/animals/{id}/reminders": {
+      "get": {
+        "summary": "List active reminders for an animal",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active, non-expired reminders (newest first)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AnimalReminder"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a reminder for an animal",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnimalReminderCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created reminder",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnimalReminder"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Animal not found"
+          }
+        }
+      }
+    },
+    "/api/animals/{id}/reminders/{reminderId}": {
+      "delete": {
+        "summary": "Delete a reminder",
+        "tags": [
+          "Animals"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "reminderId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Animal or reminder not found"
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

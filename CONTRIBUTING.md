@@ -97,6 +97,39 @@ src/
 └── middleware.ts   # Clerk auth middleware
 ```
 
+## API Documentation
+
+The API is documented with an OpenAPI 3.1 spec generated from per-route Zod
+contracts and rendered with [Scalar](https://scalar.com).
+
+- **Browse it:** sign in as an **ADMIN** and open `/api/docs` (the raw spec is at
+  `/api/openapi`). Both routes are admin-only.
+- **Source of truth:** each route's request/response schemas live in a co-located
+  `openapi.ts` beside its `route.ts`. The same schemas drive runtime validation,
+  so the docs cannot drift from behaviour.
+
+### Documenting a route
+
+1. Create `openapi.ts` next to the `route.ts`. Import `z` from
+   `@/lib/openapi/registry` (never `'zod'` directly) and `defineContract` from
+   `@/lib/openapi/contract`. Define request (`params`/`query`/`body`) and
+   `responses` schemas, then export a `defineContract({...})` per method. Keep
+   this file pure — import only `zod` and the registry (no `server-only`, Clerk,
+   Prisma, or `admin-guard`), or the CI generator will fail.
+2. In `route.ts`, wrap each handler: `export const GET = route(contract, async ({ params, query, body }) => { ... })`.
+   The wrapper validates the request (400 on bad input) and the response. Return
+   `{ data, status? }` on success, or a raw `NextResponse` for early/auth returns.
+3. Add a side-effect import of the new `openapi.ts` to `src/lib/openapi/manifest.ts`.
+4. Run `npm run openapi:check -- --init` (drop the migrated routes from the
+   allowlist) then `npm run openapi:generate` (refresh `public/openapi.json`).
+
+### Drift gate
+
+`npm run openapi:check` (run in CI) fails if any route lacks a contract and isn't
+in `src/lib/openapi/route-allowlist.ts`, if a contract isn't wired into the
+manifest, or if `public/openapi.json` is stale. The allowlist holds the routes
+not yet migrated and shrinks to empty as more domains are documented.
+
 ## License
 
 By contributing to WildTrack360, you agree that your contributions will be licensed under the [MPL-2.0 License](LICENSE).

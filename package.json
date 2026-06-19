@@ -19,6 +19,8 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
     "typecheck": "tsc --noEmit",
+    "openapi:generate": "tsx --tsconfig tsconfig.scripts.json scripts/openapi-coverage.ts --write",
+    "openapi:check": "tsx --tsconfig tsconfig.scripts.json scripts/openapi-coverage.ts",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -37,6 +39,7 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^4.0.111",
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@aws-sdk/client-s3": "^3.1053.0",
     "@aws-sdk/client-sns": "^3.1053.0",
     "@clerk/nextjs": "^6.39.3",

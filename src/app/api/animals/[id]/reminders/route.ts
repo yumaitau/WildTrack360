@@ -1,15 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
 import { clerkClient } from '@/lib/clerk-server';
 import { prisma } from '@/lib/prisma';
 import { getUserRole, hasPermission } from '@/lib/rbac';
 import { logAudit } from '@/lib/audit';
+import { route } from '@/lib/openapi/route';
+import { listRemindersContract, createReminderContract } from './openapi';
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id: animalId } = await params;
+export const GET = route(listRemindersContract, async ({ params }) => {
+  const { id: animalId } = params;
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,26 +20,20 @@ export async function GET(
         animalId,
         clerkOrganizationId: orgId,
         isActive: true,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
-        ],
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json(reminders);
+    return { data: reminders };
   } catch (error) {
     console.error('Failed to fetch reminders:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id: animalId } = await params;
+export const POST = route(createReminderContract, async ({ params, body }) => {
+  const { id: animalId } = params;
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -51,18 +44,8 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
-
-  const { message, expiresAt } = body;
-
-  if (!message || typeof message !== 'string' || message.trim().length === 0) {
-    return NextResponse.json({ error: 'Message is required' }, { status: 400 });
-  }
+  const message = body.message;
+  const expiresAt = body.expiresAt;
 
   if (expiresAt !== undefined && expiresAt !== null) {
     const parsed = new Date(expiresAt);
@@ -110,9 +93,9 @@ export async function POST(
       metadata: { animalId, reminderId: reminder.id, messageLength: message.trim().length },
     });
 
-    return NextResponse.json(reminder, { status: 201 });
+    return { data: reminder, status: 201 };
   } catch (error) {
     console.error('Failed to create reminder:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

@@ -2,15 +2,17 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/clerk-server'
 import { updateAnimal, deleteAnimal } from '@/lib/database'
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import { Prisma, type AnimalStatus } from '@prisma/client'
 import { canAccessAnimal, getUserRole, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { updateAnimalContract, deleteAnimalContract } from './openapi'
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = route(updateAnimalContract, async ({ params, body }) => {
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
-  const body = await request.json()
+  const { id } = params
+  const data = { ...(body as Record<string, unknown>) }
 
   try {
     // Fetch the animal to check access
@@ -34,64 +36,64 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
     } else if (role === 'ADMIN' || role === 'COORDINATOR_ALL' || role === 'CARER_ALL') {
-      // Can always edit — no additional check needed
+      // Can always edit - no additional check needed
     } else {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // Compliance guardrails: validate status transitions
-    if (body.status && body.status !== animal.status) {
+    if (data.status && data.status !== animal.status) {
       const { validateStatusTransition } = await import('@/lib/compliance-guardrails')
-      const result = await validateStatusTransition(id, orgId, body.status)
+      const result = await validateStatusTransition(id, orgId, data.status as AnimalStatus)
       if (!result.allowed) {
         // Allow admin override if explicitly requested
-        if (!(body._overrideValidation && hasPermission(role, 'compliance:override_validation'))) {
+        if (!(data._overrideValidation && hasPermission(role, 'compliance:override_validation'))) {
           return NextResponse.json({ error: result.reason }, { status: 422 })
         }
         // Log the override
-        logAudit({ userId, orgId, action: 'UPDATE', entity: 'Animal', entityId: id, metadata: { overrideReason: result.reason, newStatus: body.status } })
+        logAudit({ userId, orgId, action: 'UPDATE', entity: 'Animal', entityId: id, metadata: { overrideReason: result.reason, newStatus: data.status } })
       }
     }
 
     // Remove internal flags before saving
-    delete body._overrideValidation
-    delete body._autoGenerateOrgAnimalId
+    delete data._overrideValidation
+    delete data._autoGenerateOrgAnimalId
 
     // Validate orgAnimalId uniqueness within org if it changed
-    if (body.orgAnimalId && body.orgAnimalId !== animal.orgAnimalId) {
+    if (data.orgAnimalId && data.orgAnimalId !== animal.orgAnimalId) {
       const existing = await prisma.animal.findFirst({
         where: {
           clerkOrganizationId: orgId,
-          orgAnimalId: body.orgAnimalId,
+          orgAnimalId: data.orgAnimalId as string,
           id: { not: id },
         },
       })
       if (existing) {
         return NextResponse.json(
-          { error: `Animal ID "${body.orgAnimalId}" is already in use by another animal in this organisation.` },
+          { error: `Animal ID "${data.orgAnimalId}" is already in use by another animal in this organisation.` },
           { status: 422 }
         )
       }
     }
 
-    const updated = await updateAnimal(id, body)
-    logAudit({ userId, orgId, action: 'UPDATE', entity: 'Animal', entityId: id, metadata: { fields: Object.keys(body) } })
-    return NextResponse.json(updated)
+    const updated = await updateAnimal(id, data)
+    logAudit({ userId, orgId, action: 'UPDATE', entity: 'Animal', entityId: id, metadata: { fields: Object.keys(data) } })
+    return { data: updated }
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       return NextResponse.json(
-        { error: `Animal ID "${body.orgAnimalId}" is already in use by another animal in this organisation.` },
+        { error: `Animal ID "${data.orgAnimalId}" is already in use by another animal in this organisation.` },
         { status: 422 }
       )
     }
     return NextResponse.json({ error: 'Failed to update animal' }, { status: 500 })
   }
-}
+})
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = route(deleteAnimalContract, async ({ params }) => {
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
+  const { id } = params
 
   try {
     // Only ADMIN can delete animals
@@ -102,7 +104,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
     await deleteAnimal(id, orgId)
     logAudit({ userId, orgId, action: 'DELETE', entity: 'Animal', entityId: id })
-    return NextResponse.json({ ok: true })
+    return { data: { ok: true } }
   } catch (e) {
     const message = e instanceof Error ? e.message : ''
     if (message === 'Animal not found') {
@@ -110,4 +112,4 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     }
     return NextResponse.json({ error: 'Failed to delete animal' }, { status: 500 })
   }
-}
+})
