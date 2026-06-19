@@ -3,10 +3,12 @@ import { auth } from '@/lib/clerk-server';
 import { requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { getImpactStats } from '@/lib/org-info';
+import { route } from '@/lib/openapi/route';
+import { impactStatsContract } from './openapi';
 
-// GET /api/members/impact-stats — org-wide care impact used to preview merge
+// GET /api/members/impact-stats - org-wide care impact used to preview merge
 // tokens ({{animalsHelped}}, {{animalsReleased}}) in the message composer.
-export async function GET() {
+export const GET = route(impactStatsContract, async () => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,5 +22,5 @@ export async function GET() {
   }
 
   const stats = await getImpactStats(orgId);
-  return NextResponse.json(stats);
-}
+  return { data: stats };
+});

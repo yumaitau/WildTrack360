@@ -72,8 +72,17 @@ export function route<C extends ContractConfig>(
     if (result instanceof Response) {
       // A 2xx Response from the success path bypasses response validation. Warn in
       // dev/test so accidental leaks surface during migration; 4xx early/auth
-      // returns are expected and stay quiet.
-      if (process.env.NODE_ENV !== 'production' && result.status >= 200 && result.status < 300) {
+      // returns are expected and stay quiet. Suppress the warn when the contract
+      // declares a non-JSON content type (e.g. text/csv) - the raw Response is
+      // the contractually expected form.
+      const declaredContent = contract.responses[result.status]?.content;
+      const isNonJson = declaredContent != null && declaredContent !== 'application/json';
+      if (
+        process.env.NODE_ENV !== 'production' &&
+        result.status >= 200 &&
+        result.status < 300 &&
+        !isNonJson
+      ) {
         console.warn(
           'route(): handler returned a 2xx Response directly - response schema was NOT validated',
         );

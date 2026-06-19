@@ -1,5 +1,5 @@
 import type { ZodTypeAny } from 'zod';
-import { registry } from '@/lib/openapi/registry';
+import { z, registry } from '@/lib/openapi/registry';
 
 export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 export type SecurityName = 'clerkSession' | 'internalSecret' | 'squareSignature' | 'public';
@@ -7,6 +7,8 @@ export type SecurityName = 'clerkSession' | 'internalSecret' | 'squareSignature'
 export interface ResponseDef {
   description: string;
   schema?: ZodTypeAny;
+  /** For non-JSON responses (e.g. 'text/csv'). No schema validation occurs. */
+  content?: string;
 }
 
 export interface ContractConfig<
@@ -46,8 +48,10 @@ export function defineContract<
   const responses: RegisterPathArg['responses'] = {};
   for (const [status, def] of Object.entries(config.responses)) {
     responses[Number(status)] = def.schema
-      ? { description: def.description, content: { 'application/json': { schema: def.schema } } }
-      : { description: def.description };
+      ? { description: def.description, content: { [def.content ?? 'application/json']: { schema: def.schema } } }
+      : def.content
+        ? { description: def.description, content: { [def.content]: { schema: z.string() } } }
+        : { description: def.description };
   }
 
   const request: RequestArg = {};

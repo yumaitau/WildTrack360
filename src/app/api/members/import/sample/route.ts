@@ -4,6 +4,8 @@ import { requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { getActiveTemplate } from '@/lib/forms/form-template-service';
 import { toCsv } from '@/lib/csv';
+import { route } from '@/lib/openapi/route';
+import { sampleImportTemplateContract } from './openapi';
 
 const STANDARD_HEADERS = [
   'email',
@@ -37,7 +39,7 @@ const SAMPLE_ROW = [
   '2024-03-15',
 ];
 
-export async function GET() {
+export const GET = route(sampleImportTemplateContract, async () => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -85,4 +87,4 @@ export async function GET() {
       'Content-Disposition': `attachment; filename="members-sample.csv"`,
     },
   });
-}
+});

@@ -13,4 +13,14 @@ import '@/app/api/animals/[id]/growth/[measurementId]/openapi';
 import '@/app/api/animals/[id]/reminders/openapi';
 import '@/app/api/animals/[id]/reminders/[reminderId]/openapi';
 
+// Members domain
+import '@/app/api/members/openapi';
+import '@/app/api/members/[id]/openapi';
+import '@/app/api/members/[id]/invite/openapi';
+import '@/app/api/members/export/openapi';
+import '@/app/api/members/impact-stats/openapi';
+import '@/app/api/members/import/openapi';
+import '@/app/api/members/import/sample/openapi';
+import '@/app/api/members/messages/openapi';
+
 export {};

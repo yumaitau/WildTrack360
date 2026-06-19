@@ -7,19 +7,22 @@ import { composeMemberMessages } from '@/lib/member-messages';
 import { getOrgDisplayInfo } from '@/lib/org-info';
 import { sendMemberMessageEmail } from '@/lib/email/member-broadcast';
 import { prisma } from '@/lib/prisma';
+import { route } from '@/lib/openapi/route';
+import { sendMemberMessagesContract } from './openapi';
 
 const MAX_EMAIL_RECIPIENTS = 100;
 
-// POST /api/members/messages — send a message to one or more selected members.
-// Body: { memberIds: string[], subject: string, body: string, sendEmail?: boolean }
-// Supports merge tokens ({{firstName}}, {{animalsHelped}}, …) rendered per member.
-export async function POST(request: Request) {
+// POST /api/members/messages - send a message to one or more selected members.
+// Supports merge tokens ({{firstName}}, {{animalsHelped}}, ...) rendered per member.
+export const POST = route(sendMemberMessagesContract, async ({ body }) => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const gated = await gateFeature(orgId, 'MEMBERSHIP_PLATFORM');
   if (gated) return gated;
+  // Preserve the isForbiddenError rethrow: non-forbidden permission errors
+  // propagate to Next.js as 500s (same as before wrapping).
   try {
     await requirePermission(userId, orgId, 'member:manage');
   } catch (error) {
@@ -30,9 +33,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
-    const sendEmail = body?.sendEmail !== false; // default true
-    const memberIds = Array.isArray(body?.memberIds) ? body.memberIds : [];
+    const { memberIds, subject, body: msgBody, sendEmail = true } = body;
     if (sendEmail && new Set(memberIds).size > MAX_EMAIL_RECIPIENTS) {
       return NextResponse.json(
         { error: `Email broadcasts are limited to ${MAX_EMAIL_RECIPIENTS} recipients at a time` },
@@ -54,12 +55,7 @@ export async function POST(request: Request) {
     const messages = await composeMemberMessages(
       orgId,
       org.name,
-      {
-        memberIds,
-        subject: String(body?.subject ?? ''),
-        body: String(body?.body ?? ''),
-        sendEmail,
-      },
+      { memberIds, subject, body: msgBody, sendEmail },
       { clerkUserId: userId, name: senderName }
     );
 
@@ -96,9 +92,9 @@ export async function POST(request: Request) {
       metadata: { recipients: messages.length, emailed },
     });
 
-    return NextResponse.json({ created: messages.length, emailed });
+    return { data: { created: messages.length, emailed } };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to send message';
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

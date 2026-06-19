@@ -9,6 +9,8 @@ import { getActiveTemplate } from '@/lib/forms/form-template-service';
 import { parseCsvObjects } from '@/lib/csv';
 import type { FormField } from '@/lib/forms/form-templates';
 import type { MemberStatus } from '@prisma/client';
+import { route } from '@/lib/openapi/route';
+import { importMembersContract } from './openapi';
 
 const STATUS_VALUES: MemberStatus[] = ['ACTIVE', 'LAPSED', 'CANCELLED', 'DECEASED'];
 
@@ -60,7 +62,7 @@ interface RowResult {
   reason?: string;
 }
 
-export async function POST(request: Request) {
+export const POST = route(importMembersContract, async ({ request }) => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -178,5 +180,5 @@ export async function POST(request: Request) {
     metadata: { import: true, created, skipped, failed, total: rows.length },
   });
 
-  return NextResponse.json({ total: rows.length, created, skipped, failed, results });
-}
+  return { data: { total: rows.length, created, skipped, failed, results } };
+});
