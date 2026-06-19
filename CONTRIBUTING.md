@@ -102,8 +102,9 @@ src/
 The API is documented with an OpenAPI 3.1 spec generated from per-route Zod
 contracts and rendered with [Scalar](https://scalar.com).
 
-- **Browse it:** sign in as an **ADMIN** and open `/api/docs` (the raw spec is at
-  `/api/openapi`). Both routes are admin-only.
+- **Browse it:** open `/api/docs` (the raw spec is at `/api/openapi`). Both routes
+  are **open in development** and require **any authenticated session in production**
+  (no admin role needed) — see `requireDocsAccess` in `src/lib/openapi-server/`.
 - **Source of truth:** each route's request/response schemas live in a co-located
   `openapi.ts` beside its `route.ts`. The same schemas drive runtime validation,
   so the docs cannot drift from behaviour.
@@ -120,15 +121,14 @@ contracts and rendered with [Scalar](https://scalar.com).
    The wrapper validates the request (400 on bad input) and the response. Return
    `{ data, status? }` on success, or a raw `NextResponse` for early/auth returns.
 3. Add a side-effect import of the new `openapi.ts` to `src/lib/openapi/manifest.ts`.
-4. Run `npm run openapi:check -- --init` (drop the migrated routes from the
-   allowlist) then `npm run openapi:generate` (refresh `public/openapi.json`).
+4. Run `npm run openapi:generate` (refresh `public/openapi.json`) and commit the updated spec.
 
 ### Drift gate
 
-`npm run openapi:check` (run in CI) fails if any route lacks a contract and isn't
-in `src/lib/openapi/route-allowlist.ts`, if a contract isn't wired into the
-manifest, or if `public/openapi.json` is stale. The allowlist holds the routes
-not yet migrated and shrinks to empty as more domains are documented.
+`npm run openapi:check` (run in CI) fails if any route lacks a contract, if a
+contract isn't wired into the manifest, or if `public/openapi.json` is stale.
+All routes are now contracted — the allowlist (`src/lib/openapi/route-allowlist.ts`)
+is empty and must stay that way.
 
 ## License
 

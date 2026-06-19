@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@/lib/openapi/registry';
 import { defineContract } from '@/lib/openapi/contract';
 
 // Both routes use public PIN token auth (no Clerk session).

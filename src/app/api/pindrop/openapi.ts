@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@/lib/openapi/registry';
 import { defineContract } from '@/lib/openapi/contract';
 
 export const createPindropContract = defineContract({
