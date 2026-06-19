@@ -3,11 +3,10 @@ import { auth } from '@/lib/clerk-server';
 import { getPortalMember } from '@/lib/portal';
 import { gateFeature } from '@/lib/features';
 import { markMessageRead } from '@/lib/member-messages';
+import { route } from '@/lib/openapi/route';
+import { markMessageReadContract } from './openapi';
 
-// POST /api/portal/messages/[id]/read — mark one of the member's own messages
-// as read. Scoped to the member so one member can't touch another's messages.
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export const POST = route(markMessageReadContract, async ({ params }) => {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -16,6 +15,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const gated = await gateFeature(session.member.clerkOrganizationId, 'MEMBERSHIP_PLATFORM');
   if (gated) return gated;
 
-  const updated = await markMessageRead(id, session.member.id);
-  return NextResponse.json({ ok: updated });
-}
+  const updated = await markMessageRead(params.id, session.member.id);
+  return { data: { ok: updated } };
+});

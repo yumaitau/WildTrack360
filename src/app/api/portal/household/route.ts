@@ -8,9 +8,13 @@ import {
   removeHouseholdMember,
 } from '@/lib/household';
 import { sanitizePlainText } from '@/lib/sanitize';
+import { route } from '@/lib/openapi/route';
+import {
+  getHouseholdContract,
+  addHouseholdMemberContract,
+  removeHouseholdMemberContract,
+} from './openapi';
 
-// Only a primary member (not themselves a household member) who holds their own
-// active membership may manage a household.
 async function requirePrimary() {
   const { userId } = await auth();
   if (!userId) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
@@ -29,14 +33,14 @@ async function requirePrimary() {
   return { member: session.member };
 }
 
-export async function GET() {
+export const GET = route(getHouseholdContract, async () => {
   const ctx = await requirePrimary();
   if (ctx.error) return ctx.error;
   const members = await listHouseholdMembers(ctx.member.clerkOrganizationId, ctx.member.id);
-  return NextResponse.json({ members });
-}
+  return { data: { members } };
+});
 
-export async function POST(request: Request) {
+export const POST = route(addHouseholdMemberContract, async ({ request }) => {
   const ctx = await requirePrimary();
   if (ctx.error) return ctx.error;
   try {
@@ -46,23 +50,23 @@ export async function POST(request: Request) {
       lastName: sanitizePlainText(String(body.lastName ?? '')),
       email: String(body.email ?? ''),
     });
-    return NextResponse.json(result);
+    return { data: result };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to add household member';
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});
 
-export async function DELETE(request: Request) {
+export const DELETE = route(removeHouseholdMemberContract, async ({ query }) => {
   const ctx = await requirePrimary();
   if (ctx.error) return ctx.error;
-  const id = new URL(request.url).searchParams.get('id');
+  const id = query.id;
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
   try {
     await removeHouseholdMember(ctx.member.clerkOrganizationId, ctx.member.id, id);
-    return NextResponse.json({ ok: true });
+    return { data: { ok: true } };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to remove household member';
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

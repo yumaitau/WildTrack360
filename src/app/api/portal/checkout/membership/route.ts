@@ -5,11 +5,10 @@ import { getPortalMember } from '@/lib/portal';
 import { gateFeature } from '@/lib/features';
 import { createRecurringSubscription } from '@/lib/square/subscriptions';
 import { totalWithCoveredFees } from '@/lib/fees';
+import { route } from '@/lib/openapi/route';
+import { membershipCheckoutContract } from './openapi';
 
-// Membership purchase. Memberships are always an annual auto-renewing
-// commitment, so this always creates a recurring subscription. Expects the card
-// token (sourceId) from the Web Payments SDK.
-export async function POST(request: Request) {
+export const POST = route(membershipCheckoutContract, async ({ body }) => {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -19,15 +18,6 @@ export async function POST(request: Request) {
   if (gated) return gated;
 
   try {
-    const body = (await request.json()) as {
-      tierId?: string;
-      coverFees?: boolean;
-      sourceId?: string;
-      verificationToken?: string | null;
-    };
-    if (!body.tierId) return NextResponse.json({ error: 'tierId required' }, { status: 400 });
-    if (!body.sourceId) return NextResponse.json({ error: 'sourceId required' }, { status: 400 });
-
     const tier = await prisma.membershipTier.findFirst({
       where: {
         id: body.tierId,
@@ -40,10 +30,6 @@ export async function POST(request: Request) {
 
     const donorName = `${session.member.firstName} ${session.member.lastName}`.trim();
 
-    // When the member opts to cover fees, gross up the trusted tier price so the
-    // org nets the full tier amount after the 5% platform + ~2.2% Square fees.
-    // Derived server-side from tier.amountCents — never from a client value — and
-    // stored as the subscription amount so every annual renewal covers fees too.
     const amountCents = body.coverFees
       ? totalWithCoveredFees(tier.amountCents)
       : tier.amountCents;
@@ -61,9 +47,9 @@ export async function POST(request: Request) {
       sourceId: body.sourceId,
       verificationToken: body.verificationToken ?? null,
     });
-    return NextResponse.json(result);
+    return { data: result };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to create membership payment';
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

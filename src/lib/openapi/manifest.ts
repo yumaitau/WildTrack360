@@ -23,4 +23,21 @@ import '@/app/api/members/import/openapi';
 import '@/app/api/members/import/sample/openapi';
 import '@/app/api/members/messages/openapi';
 
+// Portal domain
+import '@/app/api/portal/openapi';
+import '@/app/api/portal/me/openapi';
+import '@/app/api/portal/carer-interest/openapi';
+import '@/app/api/portal/household/openapi';
+import '@/app/api/portal/messages/openapi';
+import '@/app/api/portal/messages/[id]/read/openapi';
+import '@/app/api/portal/news/openapi';
+import '@/app/api/portal/tiers/openapi';
+import '@/app/api/portal/subscriptions/openapi';
+import '@/app/api/portal/square-config/openapi';
+import '@/app/api/portal/checkout/donation/openapi';
+import '@/app/api/portal/checkout/membership/openapi';
+import '@/app/api/portal/checkout/recurring-donation/openapi';
+import '@/app/api/portal/subscriptions/[id]/cancel/openapi';
+import '@/app/api/portal/subscriptions/[id]/card/openapi';
+
 export {};

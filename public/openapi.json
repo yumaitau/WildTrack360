@@ -1387,6 +1387,719 @@
           "subject",
           "body"
         ]
+      },
+      "PortalMe": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "LAPSED",
+              "CANCELLED",
+              "DECEASED"
+            ]
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clerkOrganizationId": {
+            "type": "string"
+          },
+          "customFieldsJson": {},
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addressLine1": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addressLine2": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suburb": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "memberNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "firstName",
+          "lastName",
+          "country",
+          "status",
+          "joinedAt",
+          "clerkOrganizationId",
+          "phone",
+          "addressLine1",
+          "addressLine2",
+          "suburb",
+          "state",
+          "postcode",
+          "memberNumber"
+        ]
+      },
+      "PortalProfileUpdate": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addressLine1": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addressLine2": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suburb": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CarerInterest": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "clerkOrganizationId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "CONTACTED",
+              "APPROVED",
+              "DECLINED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "memberId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "experience": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "availability": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "clerkOrganizationId",
+          "name",
+          "email",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "memberId",
+          "phone",
+          "experience",
+          "availability",
+          "message"
+        ]
+      },
+      "CarerInterestOpen": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "$ref": "#/components/schemas/CarerInterest"
+          }
+        },
+        "required": [
+          "open"
+        ]
+      },
+      "CreatedId": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "CarerInterestSubmit": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          },
+          "experience": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "HouseholdMembers": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "firstName": {
+                  "type": "string"
+                },
+                "lastName": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "clerkUserId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "firstName",
+                "lastName",
+                "email",
+                "clerkUserId"
+              ]
+            }
+          }
+        },
+        "required": [
+          "members"
+        ]
+      },
+      "PortalOk": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "PortalMessages": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                },
+                "sentByName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "readAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "subject",
+                "body",
+                "sentByName",
+                "readAt",
+                "createdAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "messages",
+          "nextCursor"
+        ]
+      },
+      "PortalMessageReadResult": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "PortalNewsPost": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "authorName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "publishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "authorName",
+          "publishedAt"
+        ]
+      },
+      "PortalTier": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amountCents": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "billingInterval": {
+            "type": "string",
+            "enum": [
+              "ONE_OFF",
+              "MONTHLY",
+              "ANNUAL",
+              "LIFETIME"
+            ]
+          },
+          "benefits": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "amountCents",
+          "currency",
+          "billingInterval",
+          "benefits"
+        ]
+      },
+      "PortalSubscription": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "DONATION",
+              "MEMBERSHIP"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "amountCents": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "interval": {
+            "type": "string",
+            "enum": [
+              "ONE_OFF",
+              "MONTHLY",
+              "ANNUAL",
+              "LIFETIME"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACTIVE",
+              "PAST_DUE",
+              "CANCELLED"
+            ]
+          },
+          "nextChargeAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "amountCents",
+          "currency",
+          "interval",
+          "status",
+          "nextChargeAt",
+          "startedAt"
+        ]
+      },
+      "SquareConfig": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "string"
+          },
+          "locationId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "applicationId",
+          "locationId"
+        ]
+      },
+      "CheckoutResult": {
+        "type": "object",
+        "properties": {
+          "paymentId": {
+            "type": "string"
+          },
+          "squarePaymentId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "receiptNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "paymentId",
+          "squarePaymentId",
+          "status",
+          "receiptNumber"
+        ]
+      },
+      "DonationCheckout": {
+        "type": "object",
+        "properties": {
+          "amountCents": {
+            "type": "number"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isAnonymous": {
+            "type": "boolean"
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verificationToken": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "amountCents",
+          "sourceId"
+        ]
+      },
+      "SubscriptionResult": {
+        "type": "object",
+        "properties": {
+          "subscriptionId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "firstPaymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "receiptNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "subscriptionId",
+          "status",
+          "firstPaymentId",
+          "receiptNumber"
+        ]
+      },
+      "MembershipCheckout": {
+        "type": "object",
+        "properties": {
+          "tierId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "coverFees": {
+            "type": "boolean"
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verificationToken": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "tierId",
+          "sourceId"
+        ]
+      },
+      "RecurringDonationCheckout": {
+        "type": "object",
+        "properties": {
+          "amountCents": {
+            "type": "number"
+          },
+          "interval": {
+            "type": "string",
+            "enum": [
+              "MONTHLY",
+              "ANNUAL"
+            ]
+          },
+          "isAnonymous": {
+            "type": "boolean"
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verificationToken": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "amountCents",
+          "interval",
+          "sourceId"
+        ]
+      },
+      "UpdateSubscriptionCard": {
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verificationToken": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "sourceId"
+        ]
       }
     },
     "parameters": {}
@@ -2455,6 +3168,713 @@
           },
           "404": {
             "description": "Feature not enabled"
+          }
+        }
+      }
+    },
+    "/api/portal/me": {
+      "get": {
+        "summary": "Get the current portal member profile",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Portal member profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalMe"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update the current portal member profile",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalProfileUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated portal member profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalMe"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No editable fields supplied or update failed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership found"
+          }
+        }
+      }
+    },
+    "/api/portal/carer-interest": {
+      "get": {
+        "summary": "Get the current member open carer interest application",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Open carer interest or null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarerInterestOpen"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit a carer interest application",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CarerInterestSubmit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created carer interest id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedId"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Application already in progress or submission failed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership found"
+          }
+        }
+      }
+    },
+    "/api/portal/household": {
+      "get": {
+        "summary": "List household members",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Household member list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdMembers"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Secondary member or no active membership"
+          },
+          "404": {
+            "description": "No membership found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a household member",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created household member id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedId"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error from household lib"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Secondary member or no active membership"
+          },
+          "404": {
+            "description": "No membership found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a household member",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOk"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id required or removal failed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Secondary member or no active membership"
+          },
+          "404": {
+            "description": "No membership found"
+          }
+        }
+      }
+    },
+    "/api/portal/messages": {
+      "get": {
+        "summary": "List portal member messages",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated message list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalMessages"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership or feature not enabled"
+          }
+        }
+      }
+    },
+    "/api/portal/messages/{id}/read": {
+      "post": {
+        "summary": "Mark a portal message as read",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marked as read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalMessageReadResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership or feature not enabled"
+          }
+        }
+      }
+    },
+    "/api/portal/news": {
+      "get": {
+        "summary": "List published news posts for the member",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "News post list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PortalNewsPost"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership or feature not enabled"
+          }
+        }
+      }
+    },
+    "/api/portal/tiers": {
+      "get": {
+        "summary": "List active membership tiers for the organisation",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tier list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PortalTier"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership or feature not enabled"
+          }
+        }
+      }
+    },
+    "/api/portal/subscriptions": {
+      "get": {
+        "summary": "List active recurring subscriptions for the member",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PortalSubscription"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership or feature not enabled"
+          }
+        }
+      }
+    },
+    "/api/portal/square-config": {
+      "get": {
+        "summary": "Get Square SDK configuration for the member portal",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Square application and location ids",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SquareConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership found"
+          },
+          "503": {
+            "description": "Payments not configured (Square not connected or revoked), or Square application id env var not set"
+          }
+        }
+      }
+    },
+    "/api/portal/checkout/donation": {
+      "post": {
+        "summary": "Process a one-off donation payment",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DonationCheckout"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Donation payment result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or payment failure"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership or feature not enabled"
+          }
+        }
+      }
+    },
+    "/api/portal/checkout/membership": {
+      "post": {
+        "summary": "Purchase a membership tier (creates a recurring subscription)",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipCheckout"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Subscription result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or payment failure"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership, feature not enabled, or tier not found"
+          }
+        }
+      }
+    },
+    "/api/portal/checkout/recurring-donation": {
+      "post": {
+        "summary": "Start a recurring donation subscription",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecurringDonationCheckout"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Subscription result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or payment failure"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership or feature not enabled"
+          }
+        }
+      }
+    },
+    "/api/portal/subscriptions/{id}/cancel": {
+      "post": {
+        "summary": "Cancel a recurring subscription",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOk"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership, feature not enabled, or subscription not found"
+          }
+        }
+      }
+    },
+    "/api/portal/subscriptions/{id}/card": {
+      "post": {
+        "summary": "Update the card on file for a recurring subscription",
+        "tags": [
+          "Portal"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSubscriptionCard"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Card updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOk"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or Square failure"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No membership, feature not enabled, or subscription not found"
           }
         }
       }
