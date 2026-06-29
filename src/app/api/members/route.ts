@@ -4,9 +4,10 @@ import { requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { createMember, listMembers } from '@/lib/members';
-import type { MemberStatus } from '@prisma/client';
+import { route } from '@/lib/openapi/route';
+import { listMembersContract, createMemberContract } from './openapi';
 
-export async function GET(request: Request) {
+export const GET = route(listMembersContract, async ({ query }) => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,25 +20,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const search = searchParams.get('search') ?? undefined;
-  const status = (searchParams.get('status') ?? undefined) as MemberStatus | undefined;
-  const includeArchived = searchParams.get('includeArchived') === 'true';
-  const limitParam = Number(searchParams.get('limit'));
+  const { search, status, includeArchived: includeArchivedStr, limit: limitStr } = query;
+  const includeArchived = includeArchivedStr === 'true';
+  const limitParam = Number(limitStr);
   const limit = Number.isFinite(limitParam) && limitParam > 0
     ? Math.min(limitParam, 5000)
     : 5000;
 
   try {
     const members = await listMembers(orgId, { search, status, includeArchived, limit });
-    return NextResponse.json(members);
+    return { data: members };
   } catch (error) {
     console.error('Error listing members:', error);
     return NextResponse.json({ error: 'Failed to list members' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = route(createMemberContract, async ({ body }) => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -51,7 +50,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
     const member = await createMember(orgId, body);
     logAudit({
       userId,
@@ -61,9 +59,9 @@ export async function POST(request: Request) {
       entityId: member.id,
       metadata: { email: member.email },
     });
-    return NextResponse.json(member, { status: 201 });
+    return { data: member, status: 201 };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to create member';
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

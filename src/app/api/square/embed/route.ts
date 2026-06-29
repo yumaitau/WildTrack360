@@ -3,13 +3,12 @@ import { auth, clerkClient } from '@/lib/clerk-server';
 import { requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { prisma } from '@/lib/prisma';
+import { route } from '@/lib/openapi/route';
+import { squareEmbedContract } from '../openapi';
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
-// Returns the public embed URLs for this org's donate/join buttons, and — as a
-// side effect — mirrors the org's Clerk `org_url` into OrganisationSettings.orgUrl
-// so the unauthenticated public pages can resolve the subdomain → org.
-export async function GET() {
+export const GET = route(squareEmbedContract, async () => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -25,10 +24,7 @@ export async function GET() {
   const org = await clerk.organizations.getOrganization({ organizationId: orgId });
   const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
   if (!orgUrl || !/^[a-zA-Z0-9-]+$/.test(orgUrl)) {
-    return NextResponse.json(
-      { error: 'Your organisation has no public web address configured yet.' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Your organisation has no public web address configured yet.' }, { status: 400 });
   }
 
   try {
@@ -43,10 +39,12 @@ export async function GET() {
 
   const protocol = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
   const baseUrl = `${protocol}://${orgUrl}.${ROOT_DOMAIN}`;
-  return NextResponse.json({
-    handle: orgUrl,
-    baseUrl,
-    donateUrl: `${baseUrl}/donate`,
-    joinUrl: `${baseUrl}/join`,
-  });
-}
+  return {
+    data: {
+      handle: orgUrl,
+      baseUrl,
+      donateUrl: `${baseUrl}/donate`,
+      joinUrl: `${baseUrl}/join`,
+    },
+  };
+});

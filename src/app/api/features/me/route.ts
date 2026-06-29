@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
 import { FEATURES, isFeatureEnabled, type Feature } from '@/lib/features';
+import { route } from '@/lib/openapi/route';
+import { getMyFeaturesContract } from './openapi';
 
-// Returns the active org's enabled-feature set so client components can hide
-// nav items + buttons for dark features without round-tripping to each gated
-// API. Safe to expose: this leaks only the org's own configuration.
-export async function GET() {
+export const GET = route(getMyFeaturesContract, async () => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -15,5 +14,5 @@ export async function GET() {
   for (const feature of FEATURES) {
     enabled[feature] = await isFeatureEnabled(orgId, feature);
   }
-  return NextResponse.json(enabled);
-}
+  return { data: enabled };
+});

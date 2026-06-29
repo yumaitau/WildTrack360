@@ -3,8 +3,10 @@ import { auth } from '@/lib/clerk-server';
 import { getPortalMember } from '@/lib/portal';
 import { gateFeature } from '@/lib/features';
 import { listPublishedNews } from '@/lib/news';
+import { route } from '@/lib/openapi/route';
+import { listPortalNewsContract } from './openapi';
 
-export async function GET() {
+export const GET = route(listPortalNewsContract, async () => {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -14,13 +16,13 @@ export async function GET() {
   if (gated) return gated;
 
   const posts = await listPublishedNews(session.member.clerkOrganizationId);
-  return NextResponse.json(
-    posts.map((p) => ({
+  return {
+    data: posts.map((p) => ({
       id: p.id,
       title: p.title,
       body: p.body,
       authorName: p.authorName,
       publishedAt: p.publishedAt?.toISOString() ?? null,
-    }))
-  );
-}
+    })),
+  };
+});

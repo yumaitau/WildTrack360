@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { updateAssetContract, deleteAssetContract } from '../openapi'
 
 const ASSET_SAFE_FIELDS = [
 	'name', 'type', 'description', 'status', 'location',
@@ -18,11 +20,10 @@ function pickAssetFields(data: Record<string, unknown>): Record<string, unknown>
 	return result;
 }
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-	const { id } = await params
+export const PATCH = route(updateAssetContract, async ({ params, body }) => {
+	const { id } = params
 	const { userId, orgId } = await auth()
 	if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	const body = await request.json()
 	try {
 		const safeFields = pickAssetFields(body)
 		const result = await prisma.asset.updateMany({
@@ -32,14 +33,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 		if (result.count === 0) return NextResponse.json({ error: 'Asset not found' }, { status: 404 })
 		const updated = await prisma.asset.findUnique({ where: { id } })
 		logAudit({ userId, orgId, action: 'UPDATE', entity: 'Asset', entityId: id, metadata: { fields: Object.keys(safeFields) } })
-		return NextResponse.json(updated)
-	} catch (e) {
+		return { data: updated! }
+	} catch {
 		return NextResponse.json({ error: 'Failed to update asset' }, { status: 500 })
 	}
-}
+})
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-	const { id } = await params
+export const DELETE = route(deleteAssetContract, async ({ params }) => {
+	const { id } = params
 	const { userId, orgId } = await auth()
 	if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 	try {
@@ -48,8 +49,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 		})
 		if (result.count === 0) return NextResponse.json({ error: 'Asset not found' }, { status: 404 })
 		logAudit({ userId, orgId, action: 'DELETE', entity: 'Asset', entityId: id })
-		return NextResponse.json({ ok: true })
-	} catch (e) {
+		return { data: { ok: true } }
+	} catch {
 		return NextResponse.json({ error: 'Failed to delete asset' }, { status: 500 })
 	}
-}
+})

@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import { verifyAndConstruct, dispatchEvent } from '@/lib/square/webhook';
+import { route } from '@/lib/openapi/route';
+import { squareWebhookContract } from '../openapi';
 
-// Square requires the raw body for HMAC signature verification, so this route
-// reads request.text() rather than request.json(). The notification URL used in
-// the signature must exactly match the URL configured on the Square webhook
-// subscription — pin it via SQUARE_WEBHOOK_NOTIFICATION_URL.
-export async function POST(request: Request) {
+export const POST = route(squareWebhookContract, async ({ request }) => {
   const signature = request.headers.get('x-square-hmacsha256-signature');
   if (!signature) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
@@ -24,11 +22,9 @@ export async function POST(request: Request) {
 
   try {
     const result = await dispatchEvent(event);
-    return NextResponse.json(result);
+    return { data: result };
   } catch (error) {
-    // event.type is attacker-controlled, so keep it out of the format-string
-    // position — pass it as a separate argument.
     console.error('Square webhook dispatch failed for type:', event.type, error);
     return NextResponse.json({ error: 'Webhook dispatch failed' }, { status: 500 });
   }
-}
+});

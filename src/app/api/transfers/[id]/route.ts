@@ -3,41 +3,36 @@ import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { getUserRole, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { getTransferContract, updateTransferContract, deleteTransferContract } from '../openapi'
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const GET = route(getTransferContract, async ({ params }) => {
+  const { id } = params
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
-
   try {
     const transfer = await prisma.animalTransfer.findFirst({
       where: { id, clerkOrganizationId: orgId },
       include: { animal: { select: { id: true, name: true, species: true } } },
     })
     if (!transfer) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(transfer)
+    return { data: transfer }
   } catch {
     return NextResponse.json({ error: 'Failed to fetch transfer' }, { status: 500 })
   }
-}
+})
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = route(updateTransferContract, async ({ params, body }) => {
+  const { id } = params
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
-  const body = await request.json()
-
   const role = await getUserRole(userId, orgId)
-  if (!hasPermission(role, 'compliance:manage_transfers')) {
+  if (!hasPermission(role, 'compliance:manage_transfers'))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
   try {
-    const existing = await prisma.animalTransfer.findFirst({
-      where: { id, clerkOrganizationId: orgId },
-    })
+    const existing = await prisma.animalTransfer.findFirst({ where: { id, clerkOrganizationId: orgId } })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
+    const b = body as Record<string, unknown>
     const safeFields: Record<string, unknown> = {}
     const allowedFields = [
       'transferDate', 'transferType', 'reasonForTransfer', 'fromCarerId', 'toCarerId',
@@ -48,46 +43,34 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       'transferAuthorizedBy', 'verifiedByUserId', 'verifiedAt', 'transferNotes', 'documents',
     ]
     for (const field of allowedFields) {
-      if (field in body) {
-        if (field === 'transferDate' || field === 'verifiedAt') {
-          safeFields[field] = body[field] ? new Date(body[field]) : null
-        } else {
-          safeFields[field] = body[field]
-        }
+      if (field in b) {
+        safeFields[field] = (field === 'transferDate' || field === 'verifiedAt')
+          ? (b[field] ? new Date(b[field] as string) : null)
+          : b[field]
       }
     }
-
-    const updated = await prisma.animalTransfer.update({
-      where: { id },
-      data: safeFields,
-    })
+    const updated = await prisma.animalTransfer.update({ where: { id }, data: safeFields })
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'AnimalTransfer', entityId: id, metadata: { fields: Object.keys(safeFields) } })
-    return NextResponse.json(updated)
+    return { data: updated }
   } catch {
     return NextResponse.json({ error: 'Failed to update transfer' }, { status: 500 })
   }
-}
+})
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = route(deleteTransferContract, async ({ params }) => {
+  const { id } = params
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
-
   const role = await getUserRole(userId, orgId)
-  if (!hasPermission(role, 'compliance:manage_transfers')) {
+  if (!hasPermission(role, 'compliance:manage_transfers'))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
   try {
-    const existing = await prisma.animalTransfer.findFirst({
-      where: { id, clerkOrganizationId: orgId },
-    })
+    const existing = await prisma.animalTransfer.findFirst({ where: { id, clerkOrganizationId: orgId } })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
     await prisma.animalTransfer.delete({ where: { id } })
     logAudit({ userId, orgId, action: 'DELETE', entity: 'AnimalTransfer', entityId: id, metadata: { animalId: existing.animalId } })
-    return NextResponse.json({ ok: true })
+    return { data: { ok: true } }
   } catch {
     return NextResponse.json({ error: 'Failed to delete transfer' }, { status: 500 })
   }
-}
+})

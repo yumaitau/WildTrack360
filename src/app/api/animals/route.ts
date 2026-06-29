@@ -6,8 +6,10 @@ import { Prisma } from '@prisma/client'
 import { getUserRole, getAuthorisedSpecies, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
 import { commitAnimalId } from '@/lib/animalId/generate'
+import { route } from '@/lib/openapi/route'
+import { listAnimalsContract, createAnimalContract } from './openapi'
 
-export async function GET(request: Request) {
+export const GET = route(listAnimalsContract, async ({ request }) => {
 	const { userId, orgId: activeOrgId } = await auth()
 	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -27,7 +29,7 @@ export async function GET(request: Request) {
 				include: { carer: true, records: true, photos: true },
 				orderBy: { dateFound: 'desc' },
 			})
-			return NextResponse.json(animals)
+			return { data: animals }
 		}
 
 		// COORDINATOR: sees animals in assigned species groups plus animals assigned to them
@@ -46,7 +48,7 @@ export async function GET(request: Request) {
 				include: { carer: true, records: true, photos: true },
 				orderBy: { dateFound: 'desc' },
 			})
-			return NextResponse.json(animals)
+			return { data: animals }
 		}
 
 		// CARER: sees only animals assigned to them
@@ -58,7 +60,7 @@ export async function GET(request: Request) {
 			include: { carer: true, records: true, photos: true },
 			orderBy: { dateFound: 'desc' },
 		})
-		return NextResponse.json(animals)
+		return { data: animals }
 	} catch (err) {
 		const message = err instanceof Error ? err.message : ''
 		if (message === 'Forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -66,14 +68,15 @@ export async function GET(request: Request) {
 		console.error('Error fetching animals:', err)
 		return NextResponse.json({ error: 'Failed to fetch animals' }, { status: 500 })
 	}
-}
+})
 
-export async function POST(request: Request) {
+export const POST = route(createAnimalContract, async ({ body }) => {
 	const { userId, orgId: activeOrgId } = await auth()
 	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-	const body = await request.json()
-	const requestedOrgId = body.clerkOrganizationId || activeOrgId || undefined
+	// body is the validated, passthrough request payload (mutable copy).
+	const data = { ...(body as Record<string, unknown>) }
+	const requestedOrgId = (data.clerkOrganizationId as string) || activeOrgId || undefined
 
 	try {
 		if (!requestedOrgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
@@ -85,8 +88,8 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 		}
 
-		const autoGenerate = body._autoGenerateOrgAnimalId === true
-		delete body._autoGenerateOrgAnimalId
+		const autoGenerate = data._autoGenerateOrgAnimalId === true
+		delete data._autoGenerateOrgAnimalId
 
 		if (autoGenerate) {
 			// Use a transaction to atomically claim a sequence number and create the animal
@@ -94,24 +97,24 @@ export async function POST(request: Request) {
 				const generatedId = await commitAnimalId(
 					tx,
 					requestedOrgId,
-					body.dateFound || new Date().toISOString(),
-					body.species
+					(data.dateFound as string) || new Date().toISOString(),
+					data.species as string
 				)
-				body.orgAnimalId = generatedId
-				return createAnimal({ ...body, clerkUserId: userId, clerkOrganizationId: requestedOrgId }, tx)
+				data.orgAnimalId = generatedId
+				return createAnimal({ ...data, clerkUserId: userId, clerkOrganizationId: requestedOrgId }, tx)
 			})
 			logAudit({ userId, orgId: requestedOrgId, action: 'CREATE', entity: 'Animal', entityId: created.id, metadata: { name: created.name, species: created.species, orgAnimalId: created.orgAnimalId } })
-			return NextResponse.json(created, { status: 201 })
+			return { data: created, status: 201 }
 		}
 
-		const created = await createAnimal({ ...body, clerkUserId: userId, clerkOrganizationId: requestedOrgId })
+		const created = await createAnimal({ ...data, clerkUserId: userId, clerkOrganizationId: requestedOrgId })
 		logAudit({ userId, orgId: requestedOrgId, action: 'CREATE', entity: 'Animal', entityId: created.id, metadata: { name: created.name, species: created.species, orgAnimalId: created.orgAnimalId } })
-		return NextResponse.json(created, { status: 201 })
+		return { data: created, status: 201 }
 	} catch (err) {
 		// Catch unique constraint violation on orgAnimalId
 		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
 			return NextResponse.json(
-				{ error: `Animal ID "${body.orgAnimalId}" is already in use by another animal in this organisation.` },
+				{ error: `Animal ID "${data.orgAnimalId}" is already in use by another animal in this organisation.` },
 				{ status: 422 }
 			)
 		}
@@ -121,4 +124,4 @@ export async function POST(request: Request) {
 		console.error('Error creating animal:', err)
 		return NextResponse.json({ error: 'Failed to create animal' }, { status: 500 })
 	}
-}
+})

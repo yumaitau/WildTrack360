@@ -1,14 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
 import { prisma } from '@/lib/prisma';
 import { getUserRole, hasPermission } from '@/lib/rbac';
 import { logAudit } from '@/lib/audit';
+import { route } from '@/lib/openapi/route';
+import { deleteReminderContract } from './openapi';
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string; reminderId: string }> }
-) {
-  const { id: animalId, reminderId } = await params;
+export const DELETE = route(deleteReminderContract, async ({ params }) => {
+  const { id: animalId, reminderId } = params;
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -44,9 +43,9 @@ export async function DELETE(
       metadata: { animalId, message: reminder.message },
     });
 
-    return NextResponse.json({ ok: true });
+    return { data: { ok: true } };
   } catch (error) {
     console.error('Failed to delete reminder:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

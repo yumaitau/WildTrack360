@@ -1,19 +1,14 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/clerk-server'
 import { seedCallLogDefaults } from '@/lib/call-log-defaults'
+import { route } from '@/lib/openapi/route'
+import { seedLookupsContract } from '../openapi'
 
-export async function POST(request: Request) {
-  const { userId, orgId: activeOrgId } = await auth()
+export const POST = route(seedLookupsContract, async () => {
+  const { userId, orgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await request.json().catch(() => ({}))
-  const orgId = activeOrgId
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
-
   const seeded = await seedCallLogDefaults(orgId)
-
-  if (!seeded) {
-    return NextResponse.json({ message: 'Defaults already exist, nothing seeded' })
-  }
-
-  return NextResponse.json({ message: 'Default lookups seeded' }, { status: 201 })
-}
+  if (!seeded) return { data: { message: 'Defaults already exist, nothing seeded' }, status: 200 as const }
+  return { data: { message: 'Default lookups seeded' }, status: 201 as const }
+})

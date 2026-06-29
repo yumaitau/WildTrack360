@@ -3,14 +3,13 @@ import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { canAccessAnimal, getUserRole } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { listGrowthContract, createGrowthContract } from './openapi'
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = route(listGrowthContract, async ({ params }) => {
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
+  const { id } = params
 
   try {
     const animal = await prisma.animal.findFirst({
@@ -32,20 +31,17 @@ export async function GET(
       orderBy: { date: 'asc' },
     })
 
-    return NextResponse.json(measurements)
+    return { data: measurements }
   } catch (error) {
     console.error('Error fetching growth measurements:', error)
     return NextResponse.json({ error: 'Failed to fetch growth measurements' }, { status: 500 })
   }
-}
+})
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const POST = route(createGrowthContract, async ({ params, body }) => {
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
+  const { id } = params
 
   try {
     const animal = await prisma.animal.findFirst({
@@ -61,8 +57,6 @@ export async function POST(
       const allowed = await canAccessAnimal(userId, orgId, animal)
       if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-
-    const body = await request.json()
 
     const measurement = await prisma.growthMeasurement.create({
       data: {
@@ -92,9 +86,9 @@ export async function POST(
       metadata: { animalId: id },
     })
 
-    return NextResponse.json(measurement, { status: 201 })
+    return { data: measurement, status: 201 }
   } catch (error) {
     console.error('Error creating growth measurement:', error)
     return NextResponse.json({ error: 'Failed to create growth measurement' }, { status: 500 })
   }
-}
+})

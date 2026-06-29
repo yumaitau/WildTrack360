@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { listHygieneLogsContract, createHygieneLogContract } from './openapi'
 
-export async function GET(request: Request) {
+export const GET = route(listHygieneLogsContract, async () => {
   const { userId, orgId: activeOrgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = activeOrgId
@@ -11,19 +14,18 @@ export async function GET(request: Request) {
   try {
     const logs = await prisma.hygieneLog.findMany({
       where: { clerkUserId: userId, clerkOrganizationId: orgId },
-      include: { carer: true }, // CarerProfile relation
+      include: { carer: true },
       orderBy: { date: 'desc' },
     })
-    return NextResponse.json(logs)
+    return { data: logs }
   } catch {
     return NextResponse.json({ error: 'Failed to fetch hygiene logs' }, { status: 500 })
   }
-}
+})
 
-export async function POST(request: Request) {
+export const POST = route(createHygieneLogContract, async ({ body }) => {
   const { userId, orgId: activeOrgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await request.json()
   const orgId = activeOrgId
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
   try {
@@ -38,18 +40,19 @@ export async function POST(request: Request) {
         handwashAvailable: Boolean(body.handwashAvailable),
         feedingBowlsDisinfected: Boolean(body.feedingBowlsDisinfected),
         quarantineSignsPresent: Boolean(body.quarantineSignsPresent),
-        photos: body.photos ?? null,
+        photos: body.photos != null ? (body.photos as Prisma.InputJsonValue) : Prisma.DbNull,
         notes: body.notes ?? null,
         carerId: body.carerId,
         clerkUserId: userId,
         clerkOrganizationId: orgId,
       },
+      include: { carer: true },
     })
     logAudit({ userId, orgId, action: 'CREATE', entity: 'HygieneLog', entityId: created.id, metadata: { type: created.type } })
-    return NextResponse.json(created, { status: 201 })
-  } catch (e) {
+    return { data: created, status: 201 as const }
+  } catch {
     return NextResponse.json({ error: 'Failed to create hygiene log' }, { status: 500 })
   }
-}
+})
 
 

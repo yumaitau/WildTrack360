@@ -2,40 +2,18 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { bulkDeleteSpeciesContract } from '../openapi'
 
-export async function POST(request: Request) {
-	const { userId, orgId } = await auth()
-	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
-
-	try {
-		const { ids } = await request.json()
-
-		if (!Array.isArray(ids) || ids.length === 0 || !ids.every((id: unknown) => typeof id === 'string' && id.trim().length > 0)) {
-			return NextResponse.json({ error: 'ids must be a non-empty array of non-empty strings' }, { status: 400 })
-		}
-
-		const result = await prisma.species.deleteMany({
-			where: {
-				id: { in: ids },
-				clerkOrganizationId: orgId,
-			},
-		})
-
-		logAudit({
-			userId,
-			orgId,
-			action: 'DELETE',
-			entity: 'Species',
-			metadata: { bulkDelete: true, count: result.count },
-		})
-
-		return NextResponse.json({
-			deleted: result.count,
-			message: `Successfully deleted ${result.count} species.`,
-		})
-	} catch (error) {
-		console.error('Error bulk deleting species:', error)
-		return NextResponse.json({ error: 'Failed to delete species' }, { status: 500 })
-	}
-}
+export const POST = route(bulkDeleteSpeciesContract, async ({ body }) => {
+  const { userId, orgId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
+  try {
+    const result = await prisma.species.deleteMany({ where: { id: { in: body.ids }, clerkOrganizationId: orgId } })
+    logAudit({ userId, orgId, action: 'DELETE', entity: 'Species', metadata: { bulkDelete: true, count: result.count } })
+    return { data: { deleted: result.count, message: `Successfully deleted ${result.count} species.` } }
+  } catch {
+    return NextResponse.json({ error: 'Failed to delete species' }, { status: 500 })
+  }
+})

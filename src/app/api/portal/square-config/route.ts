@@ -2,11 +2,10 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
 import { getPortalMember } from '@/lib/portal';
 import { getConnection } from '@/lib/square/oauth';
+import { route } from '@/lib/openapi/route';
+import { getSquareConfigContract } from './openapi';
 
-// Public-ish config the portal needs to initialise the Square Web Payments SDK:
-// the platform application id + the member's org's Square location id. Returns
-// 503 if the org hasn't connected Square yet.
-export async function GET() {
+export const GET = route(getSquareConfigContract, async () => {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -24,5 +23,5 @@ export async function GET() {
     return NextResponse.json({ error: 'Square application id not configured' }, { status: 503 });
   }
 
-  return NextResponse.json({ applicationId, locationId: conn.locationId });
-}
+  return { data: { applicationId, locationId: conn.locationId } };
+});

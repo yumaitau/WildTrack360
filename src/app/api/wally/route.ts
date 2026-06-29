@@ -15,6 +15,8 @@ import {
 import { reserveWallyOrgMessage } from '@/lib/wally/usage';
 import { isScreenshotMode } from '@/lib/screenshot-mode';
 import { streamScreenshotWords } from '@/lib/wally/screenshot-reply';
+import { route } from '@/lib/openapi/route';
+import { wallyContract } from './openapi';
 
 export const runtime = 'nodejs';
 
@@ -33,29 +35,19 @@ type WallyMessage = z.infer<typeof MessageSchema>;
 
 function compactAuditText(value: string, maxLength = MAX_AUDIT_TEXT_LENGTH) {
   const compacted = value.replace(/\s+/g, ' ').trim();
-
-  if (compacted.length <= maxLength) {
-    return compacted;
-  }
-
+  if (compacted.length <= maxLength) return compacted;
   return `${compacted.slice(0, maxLength)}... [truncated]`;
 }
 
 function latestUserPrompt(messages: WallyMessage[]) {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
-    if (messages[index].role === 'user') {
-      return messages[index].content;
-    }
+    if (messages[index].role === 'user') return messages[index].content;
   }
-
   return '';
 }
 
 function auditUsage(usage?: LanguageModelUsage) {
-  if (!usage) {
-    return null;
-  }
-
+  if (!usage) return null;
   return {
     inputTokens: usage.inputTokens ?? null,
     outputTokens: usage.outputTokens ?? null,
@@ -65,18 +57,14 @@ function auditUsage(usage?: LanguageModelUsage) {
   };
 }
 
-export async function POST(request: Request) {
+export const POST = route(wallyContract, async ({ request }) => {
   const { userId, orgId } = await auth();
-
-  if (!userId || !orgId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const authenticatedUserId = userId;
   const authenticatedOrgId = orgId;
 
   let body: unknown;
-
   try {
     body = await request.json();
   } catch {
@@ -84,20 +72,13 @@ export async function POST(request: Request) {
   }
 
   const parsed = RequestSchema.safeParse(body);
-
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Validation failed', issues: parsed.error.issues },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Validation failed', issues: parsed.error.issues }, { status: 400 });
   }
 
   if (isScreenshotMode()) {
     return new Response(streamScreenshotWords(), {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-store',
-      },
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
     });
   }
 
@@ -144,12 +125,8 @@ export async function POST(request: Request) {
       toolCallCount?: number;
       toolResultCount?: number;
     }) {
-      if (auditLogged) {
-        return;
-      }
-
+      if (auditLogged) return;
       auditLogged = true;
-
       logAudit({
         userId: authenticatedUserId,
         orgId: authenticatedOrgId,
@@ -169,10 +146,7 @@ export async function POST(request: Request) {
             'SENT_PROMPT_TO_AWS_BEDROCK',
             status === 'completed' ? 'STREAMED_ASSISTANT_RESPONSE' : 'AI_RESPONSE_FAILED',
           ],
-          assistantToolActions: {
-            toolCallCount: toolCallCount ?? 0,
-            toolResultCount: toolResultCount ?? 0,
-          },
+          assistantToolActions: { toolCallCount: toolCallCount ?? 0, toolResultCount: toolResultCount ?? 0 },
           quota: {
             limit: usageReservation.limit,
             used: usageReservation.used,
@@ -200,10 +174,7 @@ export async function POST(request: Request) {
       prompt: buildWallyUserPrompt(parsed.data.messages),
       onError({ error }) {
         console.error('[wally] bedrock stream error:', error);
-        logWallyDiscussionAudit({
-          status: 'error',
-          error,
-        });
+        logWallyDiscussionAudit({ status: 'error', error });
       },
       onFinish({ text, usage, finishReason, toolCalls, toolResults }) {
         console.log(
@@ -225,4 +196,4 @@ export async function POST(request: Request) {
     console.error('[wally] failed:', error);
     return NextResponse.json({ error: 'Wally is unavailable right now' }, { status: 500 });
   }
-}
+});

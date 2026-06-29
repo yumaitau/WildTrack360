@@ -2,81 +2,53 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
 import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
+import { route } from '@/lib/openapi/route';
+import { listCarerTrainingsContract, createCarerTrainingContract } from './openapi';
 
-export async function GET(request: Request) {
+export const GET = route(listCarerTrainingsContract, async ({ query }) => {
   const { userId, orgId: activeOrgId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  
-  const { searchParams } = new URL(request.url);
-  const carerId = searchParams.get('carerId');
   const orgId = activeOrgId;
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
-  
   try {
-    const whereClause: any = { clerkOrganizationId: orgId };
-    if (carerId) {
-      whereClause.carerId = carerId;
-    }
-    
+    const whereClause: Record<string, unknown> = { clerkOrganizationId: orgId };
+    if (query.carerId) whereClause.carerId = query.carerId;
     const trainings = await prisma.carerTraining.findMany({
       where: whereClause,
-      include: {
-        carer: {
-          select: {
-            id: true,
-          }
-        }
-      },
-      orderBy: [
-        { expiryDate: 'asc' },
-        { date: 'desc' }
-      ]
+      include: { carer: { select: { id: true } } },
+      orderBy: [{ expiryDate: 'asc' }, { date: 'desc' }],
     });
-    
-    return NextResponse.json(trainings);
-  } catch (error) {
-    console.error('Error fetching carer trainings:', error);
+    return { data: trainings };
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch trainings' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = route(createCarerTrainingContract, async ({ body }) => {
   const { userId, orgId: activeOrgId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  
-  const body = await request.json();
   const orgId = activeOrgId;
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
-  
   try {
     const carer = await prisma.carerProfile.findFirst({ where: { id: body.carerId, clerkOrganizationId: orgId } });
     if (!carer) return NextResponse.json({ error: 'Carer not found in this organization' }, { status: 404 });
-
     const training = await prisma.carerTraining.create({
       data: {
         carerId: body.carerId,
         courseName: body.courseName,
-        provider: body.provider || null,
+        provider: body.provider ?? null,
         date: new Date(body.date),
         expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
-        certificateUrl: body.certificateUrl || null,
-        notes: body.notes || null,
+        certificateUrl: body.certificateUrl ?? null,
+        notes: body.notes ?? null,
         clerkUserId: userId,
-        clerkOrganizationId: orgId
+        clerkOrganizationId: orgId,
       },
-      include: {
-        carer: {
-          select: {
-            id: true,
-          }
-        }
-      }
+      include: { carer: { select: { id: true } } },
     });
-
     logAudit({ userId, orgId, action: 'CREATE', entity: 'CarerTraining', entityId: training.id, metadata: { courseName: body.courseName, carerId: body.carerId } });
-    return NextResponse.json(training, { status: 201 });
-  } catch (error) {
-    console.error('Error creating carer training:', error);
+    return { data: training, status: 201 as const };
+  } catch {
     return NextResponse.json({ error: 'Failed to create training' }, { status: 500 });
   }
-}
+});

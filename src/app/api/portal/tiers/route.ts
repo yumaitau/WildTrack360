@@ -3,8 +3,10 @@ import { auth } from '@/lib/clerk-server';
 import { prisma } from '@/lib/prisma';
 import { getPortalMember } from '@/lib/portal';
 import { gateFeature } from '@/lib/features';
+import { route } from '@/lib/openapi/route';
+import { listPortalTiersContract } from './openapi';
 
-export async function GET() {
+export const GET = route(listPortalTiersContract, async () => {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const session = await getPortalMember(userId);
@@ -20,8 +22,8 @@ export async function GET() {
     },
     orderBy: { amountCents: 'asc' },
   });
-  return NextResponse.json(
-    tiers.map((t) => ({
+  return {
+    data: tiers.map((t) => ({
       id: t.id,
       name: t.name,
       description: t.description,
@@ -29,6 +31,6 @@ export async function GET() {
       currency: t.currency,
       billingInterval: t.billingInterval,
       benefits: Array.isArray(t.benefitsJson) ? t.benefitsJson : [],
-    }))
-  );
-}
+    })),
+  };
+});

@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    # Postgres for the DB-backed integration tests (e.g. animalId sequence
+    # concurrency). Connection values are throwaway CI-local credentials.
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: wildtrack360_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wildtrack360_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/wildtrack360_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # No .nvmrc / engines field in the repo; pin Node 20 LTS (matches @types/node ^20, Next.js 15).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Generate the Prisma client so contract/Prisma types resolve (also run by postinstall/build).
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # Apply migrations to the CI Postgres so DB-backed integration tests can run.
+      - name: Apply database schema
+        run: npx prisma migrate deploy
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # Drift gate: every API route must be contracted or allowlisted, contracts
+      # wired into the manifest, and public/openapi.json in sync.
+      - name: OpenAPI drift check
+        run: npm run openapi:check
+
+      # Note: `next build` is intentionally NOT run here. It requires runtime
+      # secrets (Clerk, Square, Sentry) and is already performed by Vercel on
+      # deploy (see vercel.json). The steps above are deterministic given the
+      # CI Postgres service.

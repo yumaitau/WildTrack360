@@ -5,6 +5,8 @@ import { logAudit } from '@/lib/audit';
 import { prisma } from '@/lib/prisma';
 import { getPortalMember, pickPortalEditable } from '@/lib/portal';
 import { gateFeature } from '@/lib/features';
+import { route } from '@/lib/openapi/route';
+import { getPortalMeContract, updatePortalMeContract } from './openapi';
 
 function serialize(member: Awaited<ReturnType<typeof getPortalMember>>) {
   if (!member) return null;
@@ -29,7 +31,7 @@ function serialize(member: Awaited<ReturnType<typeof getPortalMember>>) {
   };
 }
 
-export async function GET() {
+export const GET = route(getPortalMeContract, async () => {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -38,10 +40,10 @@ export async function GET() {
   const gated = await gateFeature(session.member.clerkOrganizationId, 'MEMBERSHIP_PLATFORM');
   if (gated) return gated;
 
-  return NextResponse.json(serialize(session));
-}
+  return { data: serialize(session) };
+});
 
-export async function PATCH(request: Request) {
+export const PATCH = route(updatePortalMeContract, async ({ body }) => {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -51,7 +53,6 @@ export async function PATCH(request: Request) {
   if (gated) return gated;
 
   try {
-    const body = await request.json();
     const patch = pickPortalEditable(body);
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: 'No editable fields supplied' }, { status: 400 });
@@ -78,9 +79,9 @@ export async function PATCH(request: Request) {
       entityId: session.member.id,
       metadata: { source: 'portal', fields: Object.keys(patch) },
     });
-    return NextResponse.json(serialize({ member: updated, email: session.email }));
+    return { data: serialize({ member: updated, email: session.email }) };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update profile';
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

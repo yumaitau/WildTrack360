@@ -1,31 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
+import { route } from '@/lib/openapi/route'
+import { listGrowthReferencesContract } from './openapi'
 
-export async function GET(request: NextRequest) {
+export const GET = route(listGrowthReferencesContract, async ({ query }) => {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { searchParams } = request.nextUrl
-  const speciesName = searchParams.get('speciesName')
-  const sex = searchParams.get('sex')
-
-  if (!speciesName) {
-    return NextResponse.json({ error: 'speciesName is required' }, { status: 400 })
-  }
-
   try {
     const data = await prisma.speciesGrowthReference.findMany({
-      where: {
-        speciesName: { equals: speciesName, mode: 'insensitive' },
-        ...(sex ? { sex } : {}),
-      },
+      where: { speciesName: { equals: query.speciesName, mode: 'insensitive' }, ...(query.sex ? { sex: query.sex } : {}) },
       orderBy: { ageDays: 'asc' },
     })
-
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error('Error fetching growth references:', error)
+    return { data }
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch growth references' }, { status: 500 })
   }
-}
+})

@@ -1,28 +1,28 @@
 import { NextResponse } from 'next/server';
 import { sendDueNSWReminderNotifications } from '@/lib/nsw-reminders';
+import { route } from '@/lib/openapi/route';
+import { nswRemindersGetContract, nswRemindersPostContract } from '../openapi';
 
 export const dynamic = 'force-dynamic';
 
 function authorised(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return process.env.NODE_ENV !== 'production';
-
   return request.headers.get('authorization') === `Bearer ${secret}`;
 }
 
-async function run(request: Request) {
+export const GET = route(nswRemindersGetContract, async ({ request }) => {
   if (!authorised(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
   const result = await sendDueNSWReminderNotifications();
-  return NextResponse.json(result);
-}
+  return { data: result };
+});
 
-export async function GET(request: Request) {
-  return run(request);
-}
-
-export async function POST(request: Request) {
-  return run(request);
-}
+export const POST = route(nswRemindersPostContract, async ({ request }) => {
+  if (!authorised(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const result = await sendDueNSWReminderNotifications();
+  return { data: result };
+});

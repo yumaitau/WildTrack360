@@ -4,8 +4,10 @@ import { requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { revokeConnection } from '@/lib/square/oauth';
+import { route } from '@/lib/openapi/route';
+import { squareDisconnectContract } from '../../openapi';
 
-export async function POST() {
+export const POST = route(squareDisconnectContract, async () => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,17 +22,10 @@ export async function POST() {
 
   try {
     await revokeConnection(orgId);
-    logAudit({
-      userId,
-      orgId,
-      action: 'DELETE',
-      entity: 'SquareConnection',
-      entityId: orgId,
-      metadata: { action: 'disconnect' },
-    });
-    return NextResponse.json({ ok: true });
+    logAudit({ userId, orgId, action: 'DELETE', entity: 'SquareConnection', entityId: orgId, metadata: { action: 'disconnect' } });
+    return { data: { ok: true } };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to disconnect';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

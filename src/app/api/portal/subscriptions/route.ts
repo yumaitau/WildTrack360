@@ -3,10 +3,10 @@ import { auth } from '@/lib/clerk-server';
 import { getPortalMember } from '@/lib/portal';
 import { gateFeature } from '@/lib/features';
 import { prisma } from '@/lib/prisma';
+import { route } from '@/lib/openapi/route';
+import { listPortalSubscriptionsContract } from './openapi';
 
-// Active recurring subscriptions for the signed-in member (donations +
-// memberships) so they can review and cancel them in the portal.
-export async function GET() {
+export const GET = route(listPortalSubscriptionsContract, async () => {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -29,8 +29,8 @@ export async function GET() {
     : [];
   const tierName = new Map(tiers.map((t) => [t.id, t.name]));
 
-  return NextResponse.json(
-    subs.map((s) => ({
+  return {
+    data: subs.map((s) => ({
       id: s.id,
       kind: s.kind,
       label: s.kind === 'MEMBERSHIP' ? (tierName.get(s.tierId ?? '') ?? 'Membership') : 'Donation',
@@ -40,6 +40,6 @@ export async function GET() {
       status: s.status,
       nextChargeAt: s.nextChargeAt,
       startedAt: s.startedAt,
-    }))
-  );
-}
+    })),
+  };
+});

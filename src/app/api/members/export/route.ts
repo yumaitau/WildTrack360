@@ -6,6 +6,8 @@ import { logAudit } from '@/lib/audit';
 import { listMembers } from '@/lib/members';
 import { getActiveTemplate } from '@/lib/forms/form-template-service';
 import { toCsv } from '@/lib/csv';
+import { route } from '@/lib/openapi/route';
+import { exportMembersContract } from './openapi';
 
 const STANDARD_COLUMNS = [
   'email',
@@ -30,7 +32,7 @@ function formatCell(value: unknown): string {
   return String(value);
 }
 
-export async function GET(request: Request) {
+export const GET = route(exportMembersContract, async ({ query }) => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -43,8 +45,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const includeArchived = searchParams.get('includeArchived') === 'true';
+  const includeArchived = query.includeArchived === 'true';
 
   const [members, template] = await Promise.all([
     listMembers(orgId, { includeArchived, limit: 5000 }),
@@ -87,4 +88,4 @@ export async function GET(request: Request) {
       'Content-Disposition': `attachment; filename="${filename}"`,
     },
   });
-}
+});

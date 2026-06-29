@@ -14,6 +14,11 @@ const isPublicRoute = createRouteMatcher([
   "/api/keepalive(.*)",
   "/api/internal/(.*)",
   "/api/weather(.*)",
+  // API docs: access policy lives in the route handlers (requireDocsAccess) -
+  // open in dev, any authenticated user in production. Public here so Clerk's
+  // middleware does not 404 unauthenticated dev requests before the handler runs.
+  "/api/docs(.*)",
+  "/api/openapi(.*)",
   "/pin(.*)",
   "/api/pin(.*)",
   // Member portal: routed past Clerk org enforcement because members are NOT

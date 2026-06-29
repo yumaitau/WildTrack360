@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { listIncidentsContract, createIncidentContract } from './openapi'
 
-export async function GET(request: Request) {
+export const GET = route(listIncidentsContract, async () => {
   const { userId, orgId: activeOrgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = activeOrgId
@@ -13,17 +15,15 @@ export async function GET(request: Request) {
       where: { clerkOrganizationId: orgId },
       orderBy: { date: 'desc' },
     })
-    return NextResponse.json(incidents)
-  } catch (error) {
-    console.error('Error fetching incident reports:', error);
+    return { data: incidents }
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch incident reports' }, { status: 500 })
   }
-}
+})
 
-export async function POST(request: Request) {
+export const POST = route(createIncidentContract, async ({ body }) => {
   const { userId, orgId: activeOrgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await request.json()
   const orgId = activeOrgId
   if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
   try {
@@ -43,14 +43,11 @@ export async function POST(request: Request) {
         notes: body.notes ?? null,
         clerkUserId: userId,
         clerkOrganizationId: orgId,
-      }
+      },
     })
     logAudit({ userId, orgId, action: 'CREATE', entity: 'IncidentReport', entityId: created.id, metadata: { type: body.type, severity: body.severity } })
-    return NextResponse.json(created, { status: 201 })
-  } catch (error) {
-    console.error('Error creating incident report:', error);
+    return { data: created, status: 201 as const }
+  } catch {
     return NextResponse.json({ error: 'Failed to create incident report' }, { status: 500 })
   }
-}
-
-
+})

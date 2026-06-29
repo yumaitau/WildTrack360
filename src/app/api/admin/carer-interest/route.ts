@@ -5,10 +5,12 @@ import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { listCarerInterests, updateCarerInterestStatus } from '@/lib/carer-interest';
 import type { CarerInterestStatus } from '@prisma/client';
+import { route } from '@/lib/openapi/route';
+import { listCarerInterestContract, updateCarerInterestContract } from '../openapi';
 
 const STATUSES: CarerInterestStatus[] = ['NEW', 'CONTACTED', 'APPROVED', 'DECLINED'];
 
-export async function GET() {
+export const GET = route(listCarerInterestContract, async () => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const gated = await gateFeature(orgId, 'MEMBERSHIP_PLATFORM');
@@ -16,16 +18,14 @@ export async function GET() {
   try {
     await requirePermission(userId, orgId, 'member:view_all');
   } catch (error) {
-    if (isForbiddenError(error)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    if (isForbiddenError(error)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     throw error;
   }
   const interests = await listCarerInterests(orgId);
-  return NextResponse.json({ interests });
-}
+  return { data: { interests } };
+});
 
-export async function PATCH(request: Request) {
+export const PATCH = route(updateCarerInterestContract, async ({ body }) => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const gated = await gateFeature(orgId, 'MEMBERSHIP_PLATFORM');
@@ -33,29 +33,19 @@ export async function PATCH(request: Request) {
   try {
     await requirePermission(userId, orgId, 'member:manage');
   } catch (error) {
-    if (isForbiddenError(error)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    if (isForbiddenError(error)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     throw error;
   }
 
   try {
-    const body = (await request.json()) as { id?: string; status?: string };
     if (!body.id || !body.status || !STATUSES.includes(body.status as CarerInterestStatus)) {
       return NextResponse.json({ error: 'id and a valid status are required' }, { status: 400 });
     }
     await updateCarerInterestStatus(orgId, body.id, body.status as CarerInterestStatus);
-    logAudit({
-      userId,
-      orgId,
-      action: 'UPDATE',
-      entity: 'CarerInterest',
-      entityId: body.id,
-      metadata: { status: body.status },
-    });
-    return NextResponse.json({ ok: true });
+    logAudit({ userId, orgId, action: 'UPDATE', entity: 'CarerInterest', entityId: body.id, metadata: { status: body.status } });
+    return { data: { ok: true } };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update';
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

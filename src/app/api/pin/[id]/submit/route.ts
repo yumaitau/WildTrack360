@@ -1,29 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getSessionForPublicAccess } from '@/lib/pindrop';
 import { prisma } from '@/lib/prisma';
+import { route } from '@/lib/openapi/route';
+import { submitPinContract } from '../../openapi';
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id: sessionId } = await params;
-  const { searchParams } = new URL(request.url);
-  const token = searchParams.get('t');
+export const POST = route(submitPinContract, async ({ query, params, request }) => {
+  const { id: sessionId } = params;
+  const token = query.t;
 
-  if (!token) {
-    return NextResponse.json({ error: 'Missing token' }, { status: 401 });
-  }
+  if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 401 });
 
   const session = await getSessionForPublicAccess(sessionId, token);
-  if (!session) {
-    return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 });
-  }
+  if (!session) return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 });
 
   if (session.status !== 'PENDING') {
-    return NextResponse.json(
-      { error: 'This form has already been submitted' },
-      { status: 409 }
-    );
+    return NextResponse.json({ error: 'This form has already been submitted' }, { status: 409 });
   }
 
   let body: Record<string, unknown>;
@@ -35,19 +26,14 @@ export async function POST(
   const { callerName, callerEmail, callerPhone, lat, lng, address, photoUrls, callerNotes } = body;
 
   if (typeof lat !== 'number' || typeof lng !== 'number') {
-    return NextResponse.json(
-      { error: 'Please drop a pin on the map to mark the location' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Please drop a pin on the map to mark the location' }, { status: 400 });
   }
 
-  // Validate photoUrls — only allow S3 keys that belong to this session
   const expectedPrefix = `pindrop/${session.clerkOrganizationId}/${sessionId}/`;
   const safePhotoUrls = Array.isArray(photoUrls)
     ? photoUrls.filter((url: unknown) => typeof url === 'string' && url.startsWith(expectedPrefix))
     : [];
 
-  // Validate string fields
   const safeName = typeof callerName === 'string' ? callerName.slice(0, 200) : null;
   const safeEmail = typeof callerEmail === 'string' ? callerEmail.slice(0, 200) : null;
   const safePhone = typeof callerPhone === 'string' ? callerPhone.slice(0, 50) : null;
@@ -73,5 +59,5 @@ export async function POST(
     },
   });
 
-  return NextResponse.json({ success: true });
-}
+  return { data: { success: true } };
+});

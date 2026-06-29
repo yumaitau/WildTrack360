@@ -6,6 +6,8 @@ import { logAudit } from '@/lib/audit';
 import { getActiveTemplate, upsertTemplate } from '@/lib/forms/form-template-service';
 import { FormFieldsArraySchema } from '@/lib/forms/form-templates';
 import type { FormEntityType } from '@prisma/client';
+import { route } from '@/lib/openapi/route';
+import { getFormTemplateContract, upsertFormTemplateContract } from '../openapi';
 
 const VALID_TYPES: FormEntityType[] = ['MEMBER'];
 
@@ -14,20 +16,17 @@ function parseEntityType(raw: string): FormEntityType | null {
   return (VALID_TYPES as string[]).includes(upper) ? (upper as FormEntityType) : null;
 }
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ entityType: string }> }
-) {
-  const { entityType: raw } = await params;
+export const GET = route(getFormTemplateContract, async ({ params }) => {
+  const { entityType: raw } = params;
   const entityType = parseEntityType(raw);
   if (!entityType) return NextResponse.json({ error: 'Unknown entity type' }, { status: 404 });
 
   const { userId, orgId } = await auth();
-  if (!userId || !orgId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const gated = await gateFeature(orgId, 'MEMBERSHIP_PLATFORM');
   if (gated) return gated;
+
   try {
     await requirePermission(userId, orgId, 'member:view_all');
   } catch {
@@ -35,23 +34,20 @@ export async function GET(
   }
 
   const template = await getActiveTemplate(orgId, entityType);
-  return NextResponse.json(template ?? { entityType, name: null, fields: [] });
-}
+  return { data: template ?? { entityType, name: null, fields: [] } };
+});
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ entityType: string }> }
-) {
-  const { entityType: raw } = await params;
+export const PUT = route(upsertFormTemplateContract, async ({ body, params }) => {
+  const { entityType: raw } = params;
   const entityType = parseEntityType(raw);
   if (!entityType) return NextResponse.json({ error: 'Unknown entity type' }, { status: 404 });
 
   const { userId, orgId } = await auth();
-  if (!userId || !orgId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const gated = await gateFeature(orgId, 'MEMBERSHIP_PLATFORM');
   if (gated) return gated;
+
   try {
     await requirePermission(userId, orgId, 'membership:configure');
   } catch {
@@ -59,20 +55,17 @@ export async function PUT(
   }
 
   try {
-    const body = await request.json();
-    if (typeof body.name !== 'string') {
+    if (typeof (body as Record<string, unknown>).name !== 'string') {
       return NextResponse.json({ error: 'name is required' }, { status: 400 });
     }
-    const fieldsParse = FormFieldsArraySchema.safeParse(body.fields);
+    const b = body as Record<string, unknown>;
+    const fieldsParse = FormFieldsArraySchema.safeParse(b.fields);
     if (!fieldsParse.success) {
-      return NextResponse.json(
-        { error: 'Invalid fields', issues: fieldsParse.error.issues },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid fields', issues: fieldsParse.error.issues }, { status: 400 });
     }
 
     const result = await upsertTemplate(orgId, entityType, {
-      name: body.name,
+      name: b.name as string,
       fields: fieldsParse.data,
     });
 
@@ -81,16 +74,12 @@ export async function PUT(
     }
 
     logAudit({
-      userId,
-      orgId,
-      action: 'UPDATE',
-      entity: 'FormTemplate',
-      entityId: result.template?.id,
+      userId, orgId, action: 'UPDATE', entity: 'FormTemplate', entityId: result.template?.id,
       metadata: { entityType, fieldCount: result.template?.fields.length },
     });
-    return NextResponse.json(result.template);
+    return { data: result.template };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to save template';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

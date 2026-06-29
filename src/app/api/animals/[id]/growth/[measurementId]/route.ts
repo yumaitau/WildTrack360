@@ -3,14 +3,13 @@ import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { canAccessAnimal, getUserRole, hasPermission } from '@/lib/rbac'
 import { logAudit } from '@/lib/audit'
+import { route } from '@/lib/openapi/route'
+import { deleteGrowthContract } from './openapi'
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string; measurementId: string }> }
-) {
+export const DELETE = route(deleteGrowthContract, async ({ params }) => {
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id, measurementId } = await params
+  const { id, measurementId } = params
 
   try {
     // First verify access to the animal (same checks as GET/POST)
@@ -52,9 +51,9 @@ export async function DELETE(
       metadata: { animalId: id },
     })
 
-    return NextResponse.json({ success: true })
+    return { data: { success: true } }
   } catch (error) {
     console.error('Error deleting growth measurement:', error)
     return NextResponse.json({ error: 'Failed to delete measurement' }, { status: 500 })
   }
-}
+})
