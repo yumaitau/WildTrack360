@@ -1829,6 +1829,11 @@
             "type": [
               "string",
               "null"
+            ],
+            "enum": [
+              "EDUCATION",
+              "COMPANION",
+              "RESEARCH"
             ]
           },
           "notes": {
@@ -1922,6 +1927,11 @@
             "type": [
               "string",
               "null"
+            ],
+            "enum": [
+              "EDUCATION",
+              "COMPANION",
+              "RESEARCH"
             ]
           },
           "notes": {
@@ -2030,19 +2040,18 @@
             "minLength": 1
           },
           "releaseLocation": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "releaseCoordinates": {},
           "within10km": {
             "type": "boolean"
           },
           "releaseType": {
-            "type": [
-              "string",
-              "null"
+            "type": "string",
+            "enum": [
+              "HARD",
+              "SOFT",
+              "PASSIVE"
             ]
           },
           "fitnessIndicators": {},
@@ -2065,7 +2074,9 @@
         },
         "required": [
           "releaseDate",
-          "animalId"
+          "animalId",
+          "releaseLocation",
+          "releaseType"
         ]
       },
       "CallLogAnimalLite": {
@@ -2248,10 +2259,7 @@
         "type": "object",
         "properties": {
           "callerName": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "callerPhone": {
             "type": [
@@ -2321,7 +2329,11 @@
             ]
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "CLOSED"
+            ]
           },
           "dateTime": {
             "type": "string"
@@ -2347,7 +2359,10 @@
           "pindropSessionId": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "callerName"
+        ]
       },
       "CallLogUpdate": {
         "type": "object",

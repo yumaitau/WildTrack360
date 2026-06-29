@@ -46,6 +46,7 @@ export const POST = route(createHygieneLogContract, async ({ body }) => {
         clerkUserId: userId,
         clerkOrganizationId: orgId,
       },
+      include: { carer: true },
     })
     logAudit({ userId, orgId, action: 'CREATE', entity: 'HygieneLog', entityId: created.id, metadata: { type: created.type } })
     return { data: created, status: 201 as const }

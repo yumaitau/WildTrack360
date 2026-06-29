@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
@@ -29,13 +30,13 @@ export const POST = route(createReleaseChecklistContract, async ({ body }) => {
       data: {
         releaseDate: new Date(body.releaseDate),
         animalId: body.animalId,
-        releaseLocation: body.releaseLocation ?? null,
-        releaseCoordinates: body.releaseCoordinates ?? null,
+        releaseLocation: body.releaseLocation,
+        releaseCoordinates: body.releaseCoordinates != null ? (body.releaseCoordinates as Prisma.InputJsonValue) : Prisma.DbNull,
         within10km: Boolean(body.within10km ?? false),
-        releaseType: body.releaseType ?? null,
+        releaseType: body.releaseType,
         fitnessIndicators: Array.isArray(body.fitnessIndicators) ? body.fitnessIndicators : [],
-        vetSignOff: body.vetSignOff ?? null,
-        photos: body.photos ?? null,
+        vetSignOff: body.vetSignOff != null ? (body.vetSignOff as Prisma.InputJsonValue) : Prisma.DbNull,
+        photos: body.photos != null ? (body.photos as Prisma.InputJsonValue) : Prisma.DbNull,
         completed: Boolean(body.completed ?? true),
         notes: body.notes ?? null,
         clerkUserId: userId,

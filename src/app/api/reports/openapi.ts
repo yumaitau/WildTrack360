@@ -1,7 +1,7 @@
 import { z } from '@/lib/openapi/registry';
 import { defineContract } from '@/lib/openapi/contract';
 
-const ReportMapEntrySchema = z
+export const ReportMapEntrySchema = z
   .object({
     id: z.string(),
     species: z.string().nullable(),
@@ -13,6 +13,8 @@ const ReportMapEntrySchema = z
     status: z.string(),
   })
   .openapi('ReportMapEntry');
+
+export type ReportMapEntry = z.infer<typeof ReportMapEntrySchema>;
 
 export const carerContactsReportContract = defineContract({
   method: 'get',

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
-import { requirePermission } from '@/lib/rbac';
+import { requirePermission, isForbiddenError } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { archiveTier, updateTier } from '@/lib/membership-tiers';
@@ -14,7 +14,10 @@ export const PATCH = route(updateTierContract, async ({ params, body }) => {
   const gated = await gateFeature(orgId, 'MEMBERSHIP_PLATFORM');
   if (gated) return gated;
   try { await requirePermission(userId, orgId, 'membership:configure'); }
-  catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }); }
+  catch (error) {
+    if (isForbiddenError(error)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw error;
+  }
   try {
     const tier = await updateTier(id, orgId, body);
     logAudit({ userId, orgId, action: 'UPDATE', entity: 'MembershipTier', entityId: id, metadata: { fields: Object.keys(body) } });
@@ -33,7 +36,10 @@ export const DELETE = route(deleteTierContract, async ({ params }) => {
   const gated = await gateFeature(orgId, 'MEMBERSHIP_PLATFORM');
   if (gated) return gated;
   try { await requirePermission(userId, orgId, 'membership:configure'); }
-  catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }); }
+  catch (error) {
+    if (isForbiddenError(error)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw error;
+  }
   try {
     await archiveTier(id, orgId);
     logAudit({ userId, orgId, action: 'DELETE', entity: 'MembershipTier', entityId: id });

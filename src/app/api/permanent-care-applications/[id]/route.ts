@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type { PermanentCareCategory } from '@prisma/client'
 import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { getUserRole, hasPermission } from '@/lib/rbac'
@@ -49,12 +50,12 @@ export const PATCH = route(updatePCAContract, async ({ params, body }) => {
         where: { id },
         data: {
           status: 'SUBMITTED', submittedByUserId: userId, submittedAt: new Date(),
-          ...(b.vetReportUrl && { vetReportUrl: b.vetReportUrl as string }),
-          ...(b.vetName && { vetName: b.vetName as string }),
-          ...(b.vetClinic && { vetClinic: b.vetClinic as string }),
-          ...(b.vetContact && { vetContact: b.vetContact as string }),
-          ...(b.nonReleasableReasons && { nonReleasableReasons: b.nonReleasableReasons as string }),
-          ...(b.euthanasiaJustification && { euthanasiaJustification: b.euthanasiaJustification as string }),
+          ...(b.vetReportUrl ? { vetReportUrl: b.vetReportUrl as string } : {}),
+          ...(b.vetName ? { vetName: b.vetName as string } : {}),
+          ...(b.vetClinic ? { vetClinic: b.vetClinic as string } : {}),
+          ...(b.vetContact ? { vetContact: b.vetContact as string } : {}),
+          ...(b.nonReleasableReasons ? { nonReleasableReasons: b.nonReleasableReasons as string } : {}),
+          ...(b.euthanasiaJustification ? { euthanasiaJustification: b.euthanasiaJustification as string } : {}),
           ...(b.notes !== undefined && { notes: b.notes as string | null }),
         },
       })
@@ -82,13 +83,13 @@ export const PATCH = route(updatePCAContract, async ({ params, body }) => {
             facilityAddress: (b.facilityAddress ?? application.facilityAddress) as string | null,
             facilitySuburb: (b.facilitySuburb ?? application.facilitySuburb) as string | null,
             facilityPostcode: (b.facilityPostcode ?? application.facilityPostcode) as string | null,
-            category: (b.category ?? application.category) as string | null,
+            category: (b.category ?? application.category) as PermanentCareCategory | null,
           },
         })
         const approvalData = {
           npwsApprovalDate: new Date(b.npwsApprovalDate as string),
           npwsApprovalNumber: b.npwsApprovalNumber as string,
-          approvalCategory: (b.category ?? application.category ?? 'COMPANION') as string,
+          approvalCategory: (b.category ?? application.category ?? 'COMPANION') as PermanentCareCategory,
           facilityName: ((b.facilityName ?? application.facilityName) ?? '') as string,
           licenseNumber: (b.receivingLicense ?? '') as string,
           keeperName: (b.keeperName ?? application.keeperName) as string | null,

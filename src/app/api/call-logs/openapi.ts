@@ -37,7 +37,7 @@ export const CallLogSchema = z
 
 const CallLogCreateSchema = z
   .object({
-    callerName: z.string().nullable().optional(),
+    callerName: z.string(),
     callerPhone: z.string().nullable().optional(),
     callerEmail: z.string().nullable().optional(),
     species: z.string().nullable().optional(),
@@ -50,7 +50,7 @@ const CallLogCreateSchema = z
     referrer: z.string().nullable().optional(),
     action: z.string().nullable().optional(),
     outcome: z.string().nullable().optional(),
-    status: z.string().optional(),
+    status: z.enum(['OPEN', 'CLOSED']).optional(),
     dateTime: z.string().optional(),
     assignedToUserId: z.string().nullable().optional(),
     assignedToUserName: z.string().nullable().optional(),

@@ -123,7 +123,7 @@ export const POST = route(createTransferContract, async ({ body }) => {
           receivingPostcode: body.receivingPostcode ?? null,
           transferAuthorizedBy: body.transferAuthorizedBy ?? null,
           transferNotes: body.transferNotes ?? null,
-          documents: body.documents ?? null,
+          documents: body.documents != null ? (body.documents as Prisma.InputJsonValue) : Prisma.DbNull,
           clerkUserId: userId,
           clerkOrganizationId: orgId,
         },

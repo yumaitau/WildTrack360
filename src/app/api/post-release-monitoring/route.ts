@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
@@ -50,10 +51,10 @@ export const POST = route(createPRMContract, async ({ body }) => {
         date: body.date ? new Date(body.date) : new Date(),
         time: body.time ?? null,
         location: body.location ?? null,
-        coordinates: body.coordinates ?? null,
+        coordinates: body.coordinates != null ? (body.coordinates as Prisma.InputJsonValue) : Prisma.DbNull,
         animalCondition: body.animalCondition ?? null,
         notes: body.notes,
-        photos: body.photos ?? null,
+        photos: body.photos != null ? (body.photos as Prisma.InputJsonValue) : Prisma.DbNull,
         clerkUserId: userId,
         clerkOrganizationId: orgId,
       },

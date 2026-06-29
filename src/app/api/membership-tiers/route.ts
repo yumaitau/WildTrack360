@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
-import { requirePermission } from '@/lib/rbac';
+import { requirePermission, isForbiddenError } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { logAudit } from '@/lib/audit';
 import { createTier, listTiers } from '@/lib/membership-tiers';
@@ -13,7 +13,10 @@ export const GET = route(listTiersContract, async ({ query }) => {
   const gated = await gateFeature(orgId, 'MEMBERSHIP_PLATFORM');
   if (gated) return gated;
   try { await requirePermission(userId, orgId, 'member:view_all'); }
-  catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }); }
+  catch (error) {
+    if (isForbiddenError(error)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw error;
+  }
   try {
     const tiers = await listTiers(orgId, { includeArchived: query.includeArchived === 'true' });
     return { data: tiers };
@@ -29,7 +32,10 @@ export const POST = route(createTierContract, async ({ body }) => {
   const gated = await gateFeature(orgId, 'MEMBERSHIP_PLATFORM');
   if (gated) return gated;
   try { await requirePermission(userId, orgId, 'membership:configure'); }
-  catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }); }
+  catch (error) {
+    if (isForbiddenError(error)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw error;
+  }
   try {
     const tier = await createTier(orgId, body);
     logAudit({ userId, orgId, action: 'CREATE', entity: 'MembershipTier', entityId: tier.id, metadata: { name: tier.name, amountCents: tier.amountCents } });

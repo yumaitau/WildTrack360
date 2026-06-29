@@ -28,10 +28,10 @@ const ReleaseChecklistCreateSchema = z
   .object({
     releaseDate: z.string().min(1),
     animalId: z.string().min(1),
-    releaseLocation: z.string().nullable().optional(),
+    releaseLocation: z.string(),
     releaseCoordinates: z.unknown().optional(),
     within10km: z.boolean().optional(),
-    releaseType: z.string().nullable().optional(),
+    releaseType: z.enum(['HARD', 'SOFT', 'PASSIVE']),
     fitnessIndicators: z.unknown().optional(),
     vetSignOff: z.boolean().nullable().optional(),
     photos: z.unknown().optional(),

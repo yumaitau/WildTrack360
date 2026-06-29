@@ -57,7 +57,7 @@ const PCACreateSchema = z
     facilitySuburb: z.string().nullable().optional(),
     facilityState: z.string().optional(),
     facilityPostcode: z.string().nullable().optional(),
-    category: z.string().nullable().optional(),
+    category: z.enum(['EDUCATION', 'COMPANION', 'RESEARCH']).nullable().optional(),
     notes: z.string().nullable().optional(),
   })
   .passthrough()
@@ -78,7 +78,7 @@ const PCAUpdateSchema = z
     facilitySuburb: z.string().nullable().optional(),
     facilityState: z.string().optional(),
     facilityPostcode: z.string().nullable().optional(),
-    category: z.string().nullable().optional(),
+    category: z.enum(['EDUCATION', 'COMPANION', 'RESEARCH']).nullable().optional(),
     notes: z.string().nullable().optional(),
     npwsApprovalNumber: z.string().optional(),
     npwsApprovalDate: z.string().optional(),

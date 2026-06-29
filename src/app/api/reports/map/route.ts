@@ -5,6 +5,8 @@ import { Prisma } from '@prisma/client'
 import { route } from '@/lib/openapi/route'
 import { reportMapContract } from '../openapi'
 
+export type { ReportMapEntry } from '../openapi'
+
 export const GET = route(reportMapContract, async () => {
   const { userId, orgId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

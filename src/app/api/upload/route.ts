@@ -76,7 +76,8 @@ export const POST = route(uploadPhotoContract, async ({ request }) => {
 
     logAudit({ userId, orgId, action: 'CREATE', entity: 'Photo', entityId: photo.id, metadata: { animalId, description, s3Key } })
     return { data: photo, status: 201 as const }
-  } catch {
+  } catch (error) {
+    console.error('Upload error:', error)
     return NextResponse.json({ error: 'Upload failed. Please try again.' }, { status: 500 })
   }
 })

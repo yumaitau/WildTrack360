@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/clerk-server'
 import { clerkClient } from '@/lib/clerk-server'
 import { prisma } from '@/lib/prisma'
@@ -45,12 +46,12 @@ export const POST = route(createCallLogContract, async ({ body }) => {
         data: {
           dateTime: body.dateTime ? new Date(body.dateTime) : new Date(),
           status: body.status ?? 'OPEN',
-          callerName: body.callerName ?? null,
+          callerName: body.callerName,
           callerPhone: body.callerPhone ?? null,
           callerEmail: body.callerEmail ?? null,
           species: body.species ?? null,
           location: body.location ?? null,
-          coordinates: body.coordinates ?? null,
+          coordinates: body.coordinates != null ? (body.coordinates as Prisma.InputJsonValue) : Prisma.DbNull,
           suburb: body.suburb ?? null,
           postcode: body.postcode ?? null,
           notes: body.notes ?? null,

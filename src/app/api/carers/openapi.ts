@@ -5,7 +5,7 @@ const EnrichedCarerSchema = z.object({}).passthrough().openapi('EnrichedCarer');
 
 const CarerProfileBodySchema = z.object({}).passthrough().openapi('CarerProfileBody');
 
-const CarerMapEntrySchema = z
+export const CarerMapEntrySchema = z
   .object({
     id: z.string(),
     name: z.string(),
@@ -21,6 +21,8 @@ const CarerMapEntrySchema = z
     lng: z.number(),
   })
   .openapi('CarerMapEntry');
+
+export type CarerMapEntry = z.infer<typeof CarerMapEntrySchema>;
 
 export const listCarersContract = defineContract({
   method: 'get',
