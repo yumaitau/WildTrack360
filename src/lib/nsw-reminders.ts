@@ -18,6 +18,10 @@ type NSWReminderDefinition = {
   startDay: number;
   endMonth: number;
   endDay: number;
+  // Deadline the countdown references — `{countdown}` is replaced with the real
+  // number of days from "today" to this date (e.g. "in 14 days", "in 1 day", "today").
+  deadlineMonth: number;
+  deadlineDay: number;
   title: string;
   message: string;
   emailBody: string;
@@ -30,11 +34,13 @@ const NSW_REMINDERS: NSWReminderDefinition[] = [
     startDay: 1,
     endMonth: 6,
     endDay: 15,
-    title: 'NSW reporting period closes in 30 days',
+    deadlineMonth: 6,
+    deadlineDay: 30,
+    title: 'NSW reporting period closes {countdown}',
     message:
-      'Your NSW reporting period closes in 30 days. Review and complete outstanding animal records now so nothing falls through the cracks.',
+      'Your NSW reporting period closes {countdown}. Review and complete outstanding animal records now so nothing falls through the cracks.',
     emailBody:
-      'Your NSW reporting period closes in 30 days. Review and complete outstanding animal records now so nothing falls through the cracks.',
+      'Your NSW reporting period closes {countdown}. Review and complete outstanding animal records now so nothing falls through the cracks.',
   },
   {
     key: 'eofy-14-day',
@@ -42,11 +48,13 @@ const NSW_REMINDERS: NSWReminderDefinition[] = [
     startDay: 16,
     endMonth: 6,
     endDay: 30,
-    title: 'NSW EOFY is in 14 days',
+    deadlineMonth: 6,
+    deadlineDay: 30,
+    title: 'NSW EOFY is {countdown}',
     message:
-      'NSW EOFY is in 14 days. Check your open animal records and carer data for gaps before the reporting window closes.',
+      'NSW EOFY is {countdown}. Check your open animal records and carer data for gaps before the reporting window closes.',
     emailBody:
-      'NSW EOFY is in 14 days. Check your open animal records and carer data for gaps before the reporting window closes.',
+      'NSW EOFY is {countdown}. Check your open animal records and carer data for gaps before the reporting window closes.',
   },
   {
     key: 'submission-30-day',
@@ -54,11 +62,13 @@ const NSW_REMINDERS: NSWReminderDefinition[] = [
     startDay: 31,
     endMonth: 9,
     endDay: 15,
-    title: 'NSW annual return is due in 30 days',
+    deadlineMonth: 9,
+    deadlineDay: 30,
+    title: 'NSW annual return is due {countdown}',
     message:
-      'Your NSW annual return is due in 30 days (30 September). Generate your Detailed and Combined reports now to catch data issues early.',
+      'Your NSW annual return is due {countdown} (30 September). Generate your Detailed and Combined reports now to catch data issues early.',
     emailBody:
-      'Your NSW annual return is due in 30 days (30 September). Generate your Detailed and Combined reports now to catch data issues early.',
+      'Your NSW annual return is due {countdown} (30 September). Generate your Detailed and Combined reports now to catch data issues early.',
   },
   {
     key: 'submission-14-day',
@@ -66,11 +76,13 @@ const NSW_REMINDERS: NSWReminderDefinition[] = [
     startDay: 16,
     endMonth: 9,
     endDay: 30,
-    title: 'NSW annual return is due in 14 days',
+    deadlineMonth: 9,
+    deadlineDay: 30,
+    title: 'NSW annual return is due {countdown}',
     message:
-      'NSW annual return is due in 14 days. Email your Detailed and Combined reports to wildlife.rehabilitation@environment.nsw.gov.au before 30 September.',
+      'NSW annual return is due {countdown}. Email your Detailed and Combined reports to wildlife.rehabilitation@environment.nsw.gov.au before 30 September.',
     emailBody:
-      'NSW annual return is due in 14 days. Email your Detailed and Combined reports to wildlife.rehabilitation@environment.nsw.gov.au before 30 September.',
+      'NSW annual return is due {countdown}. Email your Detailed and Combined reports to wildlife.rehabilitation@environment.nsw.gov.au before 30 September.',
   },
 ];
 
@@ -117,6 +129,26 @@ function reminderForDate(today: SydneyDateParts): NSWReminderDefinition | null {
   }) ?? null;
 }
 
+function formatCountdown(days: number): string {
+  if (days <= 0) return 'today';
+  if (days === 1) return 'in 1 day';
+  return `in ${days} days`;
+}
+
+// Replaces the `{countdown}` token in each reminder's copy with the real number of
+// days from "today" to the reminder's deadline, so the banner never shows a stale count.
+function resolveReminder(definition: NSWReminderDefinition, today: SydneyDateParts) {
+  const deadline = { year: today.year, month: definition.deadlineMonth, day: definition.deadlineDay };
+  const countdown = formatCountdown(dayNumber(deadline) - dayNumber(today));
+  return {
+    ...definition,
+    year: today.year,
+    title: definition.title.replace('{countdown}', countdown),
+    message: definition.message.replace('{countdown}', countdown),
+    emailBody: definition.emailBody.replace('{countdown}', countdown),
+  };
+}
+
 export function canReceiveNSWReminder(role: OrgRole): boolean {
   return role === 'ADMIN' || role === 'COORDINATOR_ALL';
 }
@@ -135,10 +167,7 @@ export function getActiveNSWReminder(now: Date = new Date()) {
 
   if (!definition) return null;
 
-  return {
-    ...definition,
-    year: today.year,
-  };
+  return resolveReminder(definition, today);
 }
 
 export function getNSWReminderDueForEmail(now: Date = new Date()) {
@@ -147,10 +176,7 @@ export function getNSWReminderDueForEmail(now: Date = new Date()) {
 
   if (!definition) return null;
 
-  return {
-    ...definition,
-    year: today.year,
-  };
+  return resolveReminder(definition, today);
 }
 
 type NSWRequiredAnimalFields = Pick<

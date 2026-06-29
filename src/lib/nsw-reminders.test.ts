@@ -60,6 +60,24 @@ describe('NSW reminder date windows', () => {
     expect(getNSWReminderDueForEmail(new Date('2026-10-01T02:00:00.000Z'))).toBeNull();
   });
 
+  it('counts down to the real EOFY deadline rather than a fixed label', () => {
+    // 14-day window opens on 16 June — exactly 14 days before 30 June.
+    expect(getActiveNSWReminder(new Date('2026-06-16T02:00:00.000Z'))?.title).toBe('NSW EOFY is in 14 days');
+    // Late in the window the count shrinks instead of staying stuck at 14.
+    expect(getActiveNSWReminder(new Date('2026-06-29T02:00:00.000Z'))?.title).toBe('NSW EOFY is in 1 day');
+    expect(getActiveNSWReminder(new Date('2026-06-29T02:00:00.000Z'))?.message).toBe(
+      'NSW EOFY is in 1 day. Check your open animal records and carer data for gaps before the reporting window closes.'
+    );
+    // On the deadline itself the copy reads "today".
+    expect(getActiveNSWReminder(new Date('2026-06-30T02:00:00.000Z'))?.title).toBe('NSW EOFY is today');
+  });
+
+  it('counts down to 30 September for submission email reminders', () => {
+    expect(getNSWReminderDueForEmail(new Date('2026-09-16T02:00:00.000Z'))?.emailBody).toContain('in 14 days');
+    expect(getNSWReminderDueForEmail(new Date('2026-09-29T02:00:00.000Z'))?.emailBody).toContain('in 1 day');
+    expect(getNSWReminderDueForEmail(new Date('2026-09-30T02:00:00.000Z'))?.title).toBe('NSW annual return is due today');
+  });
+
   it('reports the NSW financial year for the annual return year', () => {
     const period = getNSWReportingPeriod(2026);
     expect(period.label).toBe('1 July 2025 to 30 June 2026');
