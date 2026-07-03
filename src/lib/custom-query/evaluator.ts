@@ -1,12 +1,18 @@
 // ─── Safe custom QL evaluator ─────────────────────────────────────────────────
 //
-// Pipeline: parse → validate range → fetch ONLY the one allowlisted source
-// (tenant-scoped by clerkOrganizationId + bounded by the date window) → drop to
-// safe normalised rows → filter/aggregate in memory → return aggregate DTOs.
+// Pipeline: parse → validate range → evaluate ONLY the one allowlisted source
+// (tenant-scoped by clerkOrganizationId + bounded by the date window):
+//   * Plain-column count/sum queries run as a single Prisma
+//     `aggregate`/`groupBy` (see pushdown.ts) so no raw rows are materialised.
+//   * Everything else (derived fields, trends) fetches rows, drops to safe
+//     normalised rows, and filters/aggregates in memory.
 //
-// No SQL is constructed from user input. The `where` equality is applied to
-// normalised rows in application code, never pushed into Prisma, so a user can
-// never reference a raw column, relation or tenant id.
+// No SQL is constructed from user input. Field names are validated against
+// the allowlist by the parser; the pushed-down path maps them to columns via
+// the hand-maintained registry in pushdown.ts (values are Prisma filter
+// parameters, never interpolated), and the in-memory path applies `where` to
+// normalised rows in application code. Either way a user can never reference
+// a raw column, relation or tenant id.
 
 import {
   CustomQueryAst,
@@ -18,12 +24,19 @@ import {
 } from './types';
 import { getCustomQuerySource, type CustomQuerySource } from './allowlist';
 import { parseCustomQuery, getVisualFitWarnings } from './parser';
-import { resolveQueryRange } from './range';
+import { resolveQueryRange, type ResolvedRange } from './range';
+import { planPushdown, executePushdown, supportsAggregation } from './pushdown';
 
-/** Minimal Prisma surface the evaluator needs (also satisfied by test fakes). */
+/**
+ * Minimal Prisma surface the evaluator needs (also satisfied by test fakes).
+ * `aggregate`/`groupBy` are optional — when a delegate lacks them (e.g. a
+ * simple fake), pushdown-eligible queries transparently use the findMany path.
+ */
 export interface QueryablePrisma {
   [model: string]: {
     findMany: (args: { where: Record<string, unknown> }) => Promise<unknown[]>;
+    aggregate?: (args: unknown) => Promise<unknown>;
+    groupBy?: (args: unknown) => Promise<unknown[]>;
   };
 }
 
@@ -83,7 +96,7 @@ function aggregateGrouped(
   }
   return [...totals.entries()]
     .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value);
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
 }
 
 function aggregateTrend(
@@ -190,18 +203,10 @@ function enrichReportRow(
 async function fetchNormalizedRows(
   source: CustomQuerySource,
   ast: CustomQueryAst,
-  options: EvaluateOptions
+  options: EvaluateOptions,
+  range: ResolvedRange
 ): Promise<NormalizedRow[]> {
-  const range = resolveQueryRange(ast.between, {
-    defaultStart: options.defaultStart,
-    defaultEnd: options.defaultEnd,
-    now: options.now,
-  });
-
   const delegate = options.prisma[source.model];
-  if (!delegate || typeof delegate.findMany !== 'function') {
-    throw new CustomQueryError(`Source "${ast.source}" is not available.`);
-  }
 
   const raw = await delegate.findMany({
     where: {
@@ -243,8 +248,16 @@ export async function evaluateCustomQuery(
     const source = getCustomQuerySource(ast.source);
     if (!source) throw new CustomQueryError(`Unknown source "${ast.source}".`);
 
-    const rows = await fetchNormalizedRows(source, ast, options);
-    const filtered = ast.where ? rows.filter((r) => matchesWhere(r, ast.where!)) : rows;
+    const range = resolveQueryRange(ast.between, {
+      defaultStart: options.defaultStart,
+      defaultEnd: options.defaultEnd,
+      now: options.now,
+    });
+
+    const delegate = options.prisma[source.model];
+    if (!delegate || typeof delegate.findMany !== 'function') {
+      throw new CustomQueryError(`Source "${ast.source}" is not available.`);
+    }
 
     const base: CustomQueryResult = {
       query: ast.raw,
@@ -257,6 +270,22 @@ export async function evaluateCustomQuery(
       visualization: ast.visualization,
       warnings: getVisualFitWarnings(ast),
     };
+
+    // Plain-column count/sum queries run as one Prisma aggregation instead of
+    // materialising rows. Derived fields, trends, and delegates without
+    // aggregate/groupBy (simple fakes) use the in-memory path below.
+    const plan = planPushdown(ast, source);
+    if (plan && supportsAggregation(delegate)) {
+      const { value, rows } = await executePushdown(plan, {
+        delegate,
+        orgId: options.orgId,
+        range,
+      });
+      return { ...base, value, rows };
+    }
+
+    const rows = await fetchNormalizedRows(source, ast, options, range);
+    const filtered = ast.where ? rows.filter((r) => matchesWhere(r, ast.where!)) : rows;
 
     // Multi-series line: group by + trend by.
     if (ast.groupBy && ast.trendBy) {
