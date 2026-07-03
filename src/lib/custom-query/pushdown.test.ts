@@ -183,17 +183,22 @@ const ROWS: Record<string, Row[]> = {
 
 const BETWEEN = 'between 2026-01-01 and 2026-06-30';
 
+// Fixed clock so queries without a between clause (trailing one-year window)
+// stay deterministic as real time moves past the fixture dates.
+const NOW = d('2026-07-01');
+
 async function assertParity(query: string) {
   const inMemory = fakePrisma(ROWS, { aggregating: false });
   const pushed = fakePrisma(ROWS, { aggregating: true });
 
-  const expected = await evaluateCustomQuery(query, { prisma: inMemory.prisma, orgId: ORG });
-  const actual = await evaluateCustomQuery(query, { prisma: pushed.prisma, orgId: ORG });
+  const expected = await evaluateCustomQuery(query, { prisma: inMemory.prisma, orgId: ORG, now: NOW });
+  const actual = await evaluateCustomQuery(query, { prisma: pushed.prisma, orgId: ORG, now: NOW });
 
   expect(expected.ok).toBe(true);
   expect(actual).toEqual(expected);
   // The pushed run must actually have pushed down — no row fetch.
   expect(Object.keys(pushed.findManyCalls)).toEqual([]);
+  return pushed;
 }
 
 describe('pushdown parity with the in-memory evaluator', () => {
@@ -233,6 +238,18 @@ describe('pushdown parity with the in-memory evaluator', () => {
       await assertParity(query);
     });
   }
+
+  it('impossible filters skip the database entirely', async () => {
+    const impossible = [
+      `count from animals ${BETWEEN} where status = nonsense`,
+      `count from incidents ${BETWEEN} where resolved = maybe group by severity`,
+    ];
+    for (const query of impossible) {
+      const pushed = await assertParity(query);
+      expect(Object.keys(pushed.aggregateCalls)).toEqual([]);
+      expect(Object.keys(pushed.groupByCalls)).toEqual([]);
+    }
+  });
 });
 
 describe('pushdown planning boundaries', () => {

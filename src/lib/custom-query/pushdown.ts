@@ -182,11 +182,18 @@ export function buildPushdownArgs(
   plan: PushdownPlan,
   options: { orgId: string; range: ResolvedRange }
 ): PushdownDbArgs {
+  // Fail closed: an impossible filter means "no rows", never "all rows".
+  // Callers must short-circuit to an empty result (as executePushdown does)
+  // instead of building args without the QL filter.
+  if (plan.qlWhere === IMPOSSIBLE) {
+    throw new Error('Cannot build pushdown args for an impossible filter; skip the query instead.');
+  }
+
   const clauses: PrismaWhere[] = [
     ...(plan.source.baseWhere ? [plan.source.baseWhere] : []),
     { clerkOrganizationId: options.orgId },
     { [plan.source.dateField]: { gte: options.range.start, lte: options.range.end } },
-    ...(plan.qlWhere && plan.qlWhere !== IMPOSSIBLE ? [plan.qlWhere] : []),
+    ...(plan.qlWhere ? [plan.qlWhere] : []),
   ];
 
   return {
