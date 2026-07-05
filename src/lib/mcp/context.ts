@@ -22,11 +22,17 @@ export class McpToolError extends Error {}
  *
  * The Clerk OAuth access token carries only the user identity (no active
  * organisation, unlike a session token), so the org is resolved here:
- * - if the tool call passes `orgId`, verify the user is a member of it
- *   via Clerk (same gate as ensureUserInOrg used by the REST API)
- * - otherwise fall back to the user's first Clerk organisation
  *
- * The role always comes from WildTrack360's own OrgMember RBAC record.
+ * - Connected via a tenant subdomain ({org}.wildtrack360.com.au/mcp): the
+ *   route handler resolves the subdomain to an org (OrganisationSettings.orgUrl)
+ *   and stashes it on authInfo.extra. The context is pinned to that org —
+ *   mirroring the middleware's org_url enforcement for the web app — and a
+ *   conflicting explicit orgId is rejected.
+ * - Connected via the root domain: an explicit `orgId` tool argument is
+ *   honoured, otherwise the user's first Clerk organisation is used.
+ *
+ * Membership is always verified via Clerk (ensureUserInOrg), and the role
+ * always comes from WildTrack360's own OrgMember RBAC record.
  */
 export async function resolveMcpContext(
   authInfo: AuthInfo | undefined,
@@ -37,8 +43,27 @@ export async function resolveMcpContext(
     throw new McpToolError('Unauthorized: no user on OAuth token');
   }
 
+  const subdomain =
+    typeof authInfo?.extra?.subdomain === 'string' ? authInfo.extra.subdomain : null;
+  const subdomainOrgId =
+    typeof authInfo?.extra?.subdomainOrgId === 'string' ? authInfo.extra.subdomainOrgId : null;
+
   let orgId: string;
-  if (requestedOrgId) {
+  if (subdomain) {
+    if (!subdomainOrgId) {
+      throw new McpToolError(`Unknown organisation subdomain "${subdomain}"`);
+    }
+    if (requestedOrgId && requestedOrgId !== subdomainOrgId) {
+      throw new McpToolError(
+        "Forbidden: this MCP endpoint is pinned to its subdomain's organisation; omit orgId or connect via the root domain"
+      );
+    }
+    try {
+      orgId = await ensureUserInOrg(userId, subdomainOrgId);
+    } catch {
+      throw new McpToolError(`Forbidden: you are not a member of the "${subdomain}" organisation`);
+    }
+  } else if (requestedOrgId) {
     try {
       orgId = await ensureUserInOrg(userId, requestedOrgId);
     } catch {

@@ -40,9 +40,14 @@ The server cannot be exercised against a local checkout without real Clerk keys,
 | `get_report_query_reference` | any member | QL grammar plus every queryable source and its fields. |
 | `list_saved_report_queries` | coordinator+ | Saved report queries, re-runnable via `run_report_query`. |
 
-### Multi-organisation users
+### Organisation resolution and subdomains
 
-The OAuth token identifies the user but carries no active organisation, so every tool accepts an optional `orgId`. Omitted, the user's first Clerk organisation is used. A supplied `orgId` is verified against the caller's Clerk memberships before any data access.
+The OAuth token identifies the user but carries no active organisation, so the org is resolved per tool call:
+
+- **Connected via a tenant subdomain** (recommended), e.g. `https://yumait.wildtrack360.com.au/mcp`: the session is pinned to that subdomain's organisation (resolved through `OrganisationSettings.orgUrl`, the same mapping the public donate/join pages use). This mirrors the web app's `org_url` middleware enforcement. A conflicting `orgId` argument is rejected, and callers who aren't members of that organisation get an error.
+- **Connected via the root domain** (`https://wildtrack360.com.au/mcp`): every tool accepts an optional `orgId`; omitted, the user's first Clerk organisation is used.
+
+Either way, membership is verified against Clerk before any data access — the host header only *selects* an org, it never grants access.
 
 ## Architecture
 
