@@ -15,6 +15,11 @@ const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 // this route imports `auth` from @clerk/nextjs/server directly instead of
 // the @/lib/clerk-server shim: it must run with acceptsToken: 'oauth_token',
 // and the route is never exercised in screenshot/demo mode.
+
+// Next.js route-segment timeout, matching the mcp-handler maxDuration below —
+// the handler config alone does not extend the platform function timeout.
+export const maxDuration = 60;
+
 const handler = createMcpHandler(
   (server) => {
     registerWildTrackTools(server);

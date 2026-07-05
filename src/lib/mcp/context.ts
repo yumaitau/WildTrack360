@@ -17,6 +17,18 @@ export interface McpContext {
  */
 export class McpToolError extends Error {}
 
+// ensureUserInOrg signals a genuine membership denial with these exact
+// messages; anything else (Clerk API/network failure) must propagate so the
+// tool wrapper logs it instead of masquerading as a Forbidden response.
+function isMembershipDenial(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message === 'Forbidden' ||
+      error.message === 'Unauthorized' ||
+      error.message === 'Organization ID is required')
+  );
+}
+
 /**
  * Resolve the authenticated MCP caller into a WildTrack360 tenant context.
  *
@@ -60,14 +72,22 @@ export async function resolveMcpContext(
     }
     try {
       orgId = await ensureUserInOrg(userId, subdomainOrgId);
-    } catch {
-      throw new McpToolError(`Forbidden: you are not a member of the "${subdomain}" organisation`);
+    } catch (error) {
+      if (isMembershipDenial(error)) {
+        throw new McpToolError(
+          `Forbidden: you are not a member of the "${subdomain}" organisation`
+        );
+      }
+      throw error;
     }
   } else if (requestedOrgId) {
     try {
       orgId = await ensureUserInOrg(userId, requestedOrgId);
-    } catch {
-      throw new McpToolError('Forbidden: you are not a member of that organisation');
+    } catch (error) {
+      if (isMembershipDenial(error)) {
+        throw new McpToolError('Forbidden: you are not a member of that organisation');
+      }
+      throw error;
     }
   } else {
     const firstOrgId = await getFirstUserOrgId(userId);
