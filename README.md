@@ -20,6 +20,7 @@ WildTrack360 is a comprehensive wildlife conservation management application des
 - **SMS Notifications**: AWS SNS integration for carer notifications
 - **Membership & Payments**: Member management, public join/donate flows, Square payments, receipts, and recurring subscriptions
 - **Wally AI Assistant**: AWS Bedrock-backed workspace assistant grounded in product docs and organisation context
+- **MCP Server**: Clerk OAuth-secured [Model Context Protocol](https://modelcontextprotocol.io) endpoint at `/mcp` so Claude, ChatGPT, and other MCP clients can query animals, carers, and reports on a user's behalf ([docs](docs/mcp-server.md))
 - **Email Notifications**: Resend-backed admin alerts and payment receipts
 - **Error Monitoring**: Sentry integration for production error tracking
 - **Maps & Weather**: Google Maps/Places, OpenStreetMap/Nominatim reverse geocoding, and Google Weather integration

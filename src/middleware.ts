@@ -1,43 +1,51 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
-import { extractSubdomain } from "@/lib/subdomain";
-import { assertScreenshotModeSafe, isScreenshotMode } from "@/lib/screenshot-mode";
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
+import { extractSubdomain } from '@/lib/subdomain';
+import { assertScreenshotModeSafe, isScreenshotMode } from '@/lib/screenshot-mode';
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
 const isPublicRoute = createRouteMatcher([
-  "/landing(.*)",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/logout-success(.*)",
-  "/unauthorized(.*)",
-  "/api/keepalive(.*)",
-  "/api/internal/(.*)",
-  "/api/weather(.*)",
+  '/landing(.*)',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/logout-success(.*)',
+  '/unauthorized(.*)',
+  '/api/keepalive(.*)',
+  '/api/internal/(.*)',
+  '/api/weather(.*)',
   // API docs: access policy lives in the route handlers (requireDocsAccess) -
   // open in dev, any authenticated user in production. Public here so Clerk's
   // middleware does not 404 unauthenticated dev requests before the handler runs.
-  "/api/docs(.*)",
-  "/api/openapi(.*)",
-  "/pin(.*)",
-  "/api/pin(.*)",
+  '/api/docs(.*)',
+  '/api/openapi(.*)',
+  '/pin(.*)',
+  '/api/pin(.*)',
   // Member portal: routed past Clerk org enforcement because members are NOT
   // part of a Clerk Organization — they are bound to a wildlife org via
   // Member.clerkOrganizationId. The portal layout and /api/portal handlers
   // run their own auth + membership checks.
-  "/portal(.*)",
-  "/api/portal(.*)",
+  '/portal(.*)',
+  '/api/portal(.*)',
   // Public, no-login donate / become-a-member pages (embeddable from org
   // websites). The handlers resolve the org from the subdomain and rely on
   // Square + server-side amount validation, not Clerk auth.
-  "/donate(.*)",
-  "/join(.*)",
-  "/api/public/(.*)",
+  '/donate(.*)',
+  '/join(.*)',
+  '/api/public/(.*)',
   // Square webhook + OAuth callback are callback-only on a single canonical
   // host; HMAC signature / signed-state verification inside the handlers is the
   // gate, not Clerk auth (the caller arrives from Square without our session).
-  "/api/square/webhook(.*)",
-  "/api/square/oauth/callback(.*)",
+  '/api/square/webhook(.*)',
+  '/api/square/oauth/callback(.*)',
+  // MCP server: authenticated with Clerk OAuth Bearer tokens inside the
+  // handler (withMcpAuth + verifyClerkToken), not the session cookie — MCP
+  // clients never carry a Clerk session, so the middleware must let these
+  // through. The .well-known OAuth discovery endpoints must be public per
+  // RFC 8414 / RFC 9728.
+  '/mcp(.*)',
+  '/.well-known/oauth-authorization-server(.*)',
+  '/.well-known/oauth-protected-resource(.*)',
 ]);
 
 function screenshotMiddleware() {
@@ -45,45 +53,47 @@ function screenshotMiddleware() {
   return NextResponse.next();
 }
 
-export default isScreenshotMode() ? screenshotMiddleware : clerkMiddleware(async (auth, request) => {
-  const host = request.headers.get("host") ?? "";
-  const subdomain = extractSubdomain(host, ROOT_DOMAIN);
+export default isScreenshotMode()
+  ? screenshotMiddleware
+  : clerkMiddleware(async (auth, request) => {
+      const host = request.headers.get('host') ?? '';
+      const subdomain = extractSubdomain(host, ROOT_DOMAIN);
 
-  // No subdomain (root domain) — allow public routes, let Clerk handle auth for the rest
-  if (!subdomain) {
-    if (!isPublicRoute(request)) {
-      await auth.protect();
-    } else if (request.nextUrl.pathname.startsWith("/unauthorized")) {
-      // Prevent authorized users from manually navigating to /unauthorized
-      const session = await auth();
-      if (session?.userId) {
-        return NextResponse.redirect(new URL("/", request.url));
+      // No subdomain (root domain) — allow public routes, let Clerk handle auth for the rest
+      if (!subdomain) {
+        if (!isPublicRoute(request)) {
+          await auth.protect();
+        } else if (request.nextUrl.pathname.startsWith('/unauthorized')) {
+          // Prevent authorized users from manually navigating to /unauthorized
+          const session = await auth();
+          if (session?.userId) {
+            return NextResponse.redirect(new URL('/', request.url));
+          }
+        }
+        return;
       }
-    }
-    return;
-  }
 
-  // On a subdomain — allow public routes through (sign-in page must be accessible)
-  // But prevent authorized users from manually navigating to /unauthorized
-  if (isPublicRoute(request)) {
-    if (request.nextUrl.pathname.startsWith("/unauthorized")) {
-      const session = await auth();
-      if (session?.sessionClaims?.org_url === subdomain) {
-        return NextResponse.redirect(new URL("/", request.url));
+      // On a subdomain — allow public routes through (sign-in page must be accessible)
+      // But prevent authorized users from manually navigating to /unauthorized
+      if (isPublicRoute(request)) {
+        if (request.nextUrl.pathname.startsWith('/unauthorized')) {
+          const session = await auth();
+          if (session?.sessionClaims?.org_url === subdomain) {
+            return NextResponse.redirect(new URL('/', request.url));
+          }
+        }
+        return;
       }
-    }
-    return;
-  }
 
-  // Protected route on a subdomain — require auth and validate org_url
-  const session = await auth.protect();
-  const orgUrl = session.sessionClaims?.org_url;
+      // Protected route on a subdomain — require auth and validate org_url
+      const session = await auth.protect();
+      const orgUrl = session.sessionClaims?.org_url;
 
-  if (!orgUrl || orgUrl !== subdomain) {
-    const unauthorizedUrl = new URL("/unauthorized", request.url);
-    return NextResponse.redirect(unauthorizedUrl);
-  }
-});
+      if (!orgUrl || orgUrl !== subdomain) {
+        const unauthorizedUrl = new URL('/unauthorized', request.url);
+        return NextResponse.redirect(unauthorizedUrl);
+      }
+    });
 
 export const config = {
   matcher: [
@@ -94,6 +104,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
