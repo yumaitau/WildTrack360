@@ -78,6 +78,10 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
 - Organization support
 - Webhooks for user events
 
+## MCP Server (AI chat app access)
+
+WildTrack360 ships an MCP server at `/mcp` secured by Clerk OAuth, so Claude, ChatGPT, and other MCP clients can act on a user's behalf. To enable it, toggle on **Dynamic client registration** under **OAuth applications** in the Clerk Dashboard. See [docs/mcp-server.md](docs/mcp-server.md) for the tool list and client setup.
+
 ## Troubleshooting
 
 ### Common Issues
