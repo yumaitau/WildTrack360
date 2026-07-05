@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
 import { bedrock } from '@ai-sdk/amazon-bedrock';
-import { streamText, type LanguageModelUsage } from 'ai';
+import { streamText, stepCountIs, type LanguageModelUsage } from 'ai';
 import { z } from 'zod';
 import { logAudit } from '@/lib/audit';
 import { getUserRole } from '@/lib/rbac';
@@ -12,6 +12,7 @@ import {
   buildWallyUserPrompt,
   WALLY_MODEL,
 } from '@/lib/wally/context';
+import { buildWallyTools } from '@/lib/wally/tools';
 import { reserveWallyOrgMessage } from '@/lib/wally/usage';
 import { isScreenshotMode } from '@/lib/screenshot-mode';
 import { streamScreenshotWords } from '@/lib/wally/screenshot-reply';
@@ -116,6 +117,7 @@ export const POST = route(wallyContract, async ({ request }) => {
       error,
       toolCallCount,
       toolResultCount,
+      toolNames,
     }: {
       status: 'completed' | 'error';
       response?: string;
@@ -124,6 +126,7 @@ export const POST = route(wallyContract, async ({ request }) => {
       error?: unknown;
       toolCallCount?: number;
       toolResultCount?: number;
+      toolNames?: string[];
     }) {
       if (auditLogged) return;
       auditLogged = true;
@@ -146,7 +149,11 @@ export const POST = route(wallyContract, async ({ request }) => {
             'SENT_PROMPT_TO_AWS_BEDROCK',
             status === 'completed' ? 'STREAMED_ASSISTANT_RESPONSE' : 'AI_RESPONSE_FAILED',
           ],
-          assistantToolActions: { toolCallCount: toolCallCount ?? 0, toolResultCount: toolResultCount ?? 0 },
+          assistantToolActions: {
+            toolCallCount: toolCallCount ?? 0,
+            toolResultCount: toolResultCount ?? 0,
+            toolNames: toolNames ?? [],
+          },
           quota: {
             limit: usageReservation.limit,
             used: usageReservation.used,
@@ -172,13 +179,21 @@ export const POST = route(wallyContract, async ({ request }) => {
       model: bedrock(WALLY_MODEL),
       system: buildWallySystemPrompt(operationalContext),
       prompt: buildWallyUserPrompt(parsed.data.messages),
+      tools: buildWallyTools({
+        userId: authenticatedUserId,
+        orgId: authenticatedOrgId,
+        role,
+      }),
+      stopWhen: stepCountIs(8),
       onError({ error }) {
         console.error('[wally] bedrock stream error:', error);
         logWallyDiscussionAudit({ status: 'error', error });
       },
-      onFinish({ text, usage, finishReason, toolCalls, toolResults }) {
+      onFinish({ text, usage, finishReason, steps }) {
+        const toolCalls = steps.flatMap((step) => step.toolCalls);
+        const toolResults = steps.flatMap((step) => step.toolResults);
         console.log(
-          `[wally] finished user=${authenticatedUserId} org=${authenticatedOrgId} reason=${finishReason} tokens=${usage?.inputTokens ?? '?'}->${usage?.outputTokens ?? '?'}`
+          `[wally] finished user=${authenticatedUserId} org=${authenticatedOrgId} reason=${finishReason} tools=${toolCalls.length} tokens=${usage?.inputTokens ?? '?'}->${usage?.outputTokens ?? '?'}`
         );
         logWallyDiscussionAudit({
           status: 'completed',
@@ -187,6 +202,7 @@ export const POST = route(wallyContract, async ({ request }) => {
           usage,
           toolCallCount: toolCalls.length,
           toolResultCount: toolResults.length,
+          toolNames: toolCalls.map((call) => call.toolName),
         });
       },
     });

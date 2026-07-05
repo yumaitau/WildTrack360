@@ -27,44 +27,69 @@ const WALLY_UNAVAILABLE_MESSAGE = 'Wally is unavailable right now.';
 
 const starterPrompts = [
   {
-    category: 'Docs',
-    label: 'How do I admit my first animal?',
-    prompt: 'How do I admit my first animal in WildTrack360?',
+    category: 'Do it for me',
+    label: 'Admit a new animal',
+    prompt:
+      'I want to admit a new animal into care. Ask me for the details you need, one at a time, then create the animal record for me.',
   },
   {
-    category: 'Docs',
-    label: 'Walk me through a release checklist.',
-    prompt: 'Walk me through creating a release checklist for an animal ready for release.',
+    category: 'Do it for me',
+    label: 'Add a care record',
+    prompt:
+      'Help me add a care record for one of my animals. Ask me which animal it is and what happened, then save the record for me.',
   },
   {
-    category: 'Workspace',
-    label: 'Which open call logs need follow-up?',
-    prompt: 'Which open call logs need follow-up?',
+    category: 'Do it for me',
+    label: 'Log a training certificate',
+    prompt:
+      'Help me add a training record for a course I completed. Ask me for the course name, provider, and dates, then save it for me.',
   },
   {
-    category: 'Workspace',
+    category: 'Growth tools',
+    label: "Estimate an animal's age",
+    prompt:
+      "Help me estimate an animal's age and birth date from its measurements. Ask me for the species and the measurements you need.",
+  },
+  {
+    category: 'Growth tools',
+    label: 'Is this weight on track?',
+    prompt:
+      "Help me check whether an animal's weight is on track for its age. Ask me for the species, age, and current weight.",
+  },
+  {
+    category: 'My workspace',
+    label: 'Show my animals in care',
+    prompt: 'Show me my animals currently in care.',
+  },
+  {
+    category: 'My workspace',
     label: 'What reminders are due soon?',
     prompt: 'What reminders are due soon?',
   },
   {
+    category: 'My workspace',
+    label: 'Which open call logs need follow-up?',
+    prompt: 'Which open call logs need follow-up?',
+  },
+  {
     category: 'Reports',
-    label: 'Make a report for unresolved incidents.',
-    prompt: 'Make a custom reporting query for unresolved incidents by severity.',
+    label: 'Run a report for me',
+    prompt: 'Run a report showing animals currently in care, grouped by species.',
+  },
+  {
+    category: 'How do I...',
+    label: 'How do I admit my first animal?',
+    prompt: 'How do I admit my first animal in WildTrack360?',
+  },
+  {
+    category: 'How do I...',
+    label: 'Walk me through a release checklist.',
+    prompt: 'Walk me through creating a release checklist for an animal ready for release.',
   },
   {
     category: 'Compliance',
     label: 'What should I check before NSW reporting?',
     prompt: 'What should I check before NSW annual reporting?',
-  },
-  {
-    category: 'Admin',
-    label: 'Where do I manage roles and species groups?',
-    prompt: 'Where do I manage roles and species groups?',
-  },
-  {
-    category: 'Care tools',
-    label: 'How does the feed roster find overdue feeds?',
-    prompt: 'How does the feed roster decide which animals are overdue for feeding?',
   },
 ];
 
@@ -303,7 +328,7 @@ export function WallyAssistant() {
       id: makeId(),
       role: 'assistant',
       content:
-        "Hi, I'm Wally. I can answer from WildTrack360's public docs and your workspace context. Ask me how to use a module, where a workflow lives, or to summarise visible animals, open call logs, unresolved incidents, reminders, release readiness, recent records, expiring carer training, and custom reports.",
+        "Hi, I'm Wally. I can look things up and do things for you: admit animals, add care records, log training certificates, record growth measurements, estimate ages with the growth calculator, and run reports. I always check the details with you before saving anything. Pick an option below or just tell me what you need.",
     },
   ]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -522,8 +547,9 @@ export function WallyAssistant() {
                       WildTrack360 workspace assistant
                     </p>
                     <p className="max-w-2xl text-sm text-muted-foreground">
-                      Ask Wally to explain documented workflows, link the right help page, summarise
-                      live workspace risks, or turn a reporting question into a safe query.
+                      Ask Wally to look up your animals, admit a new animal, add care or training
+                      records, run growth calculations and reports, or explain any workflow. Wally
+                      confirms details with you before saving anything.
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
