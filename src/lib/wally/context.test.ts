@@ -12,6 +12,26 @@ describe('buildWallySystemPrompt', () => {
     expect(prompt).toContain('How do I admit my first animal?');
   });
 
+  it('includes every docs topic without truncation', () => {
+    const prompt = buildWallySystemPrompt('{}');
+
+    // First, middle, and last topics in WALLY_DOCS_TOPICS — the guide is
+    // capped by compactText, so the last topics disappear first if the map
+    // outgrows the cap.
+    expect(prompt).toContain('/docs/getting-started');
+    expect(prompt).toContain('/docs/modules/growth-calculator');
+    expect(prompt).toContain('/docs/modules/wally-assistant');
+    expect(prompt).toContain('/docs/modules/sms-billing');
+  });
+
+  it('describes assistant tools and write-confirmation rules', () => {
+    const prompt = buildWallySystemPrompt('{}');
+
+    expect(prompt).toContain('growth_calculator');
+    expect(prompt).toContain('run_report_query');
+    expect(prompt).toContain("get the user's confirmation");
+  });
+
   it('keeps docs answers scoped to provided context and custom reporting rules', () => {
     const prompt = buildWallySystemPrompt('{"dataScope":"organisation-wide"}');
 
