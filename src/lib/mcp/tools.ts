@@ -13,6 +13,10 @@ import { canPreviewReports } from '@/lib/custom-query/access';
 import { evaluateCustomQueries, type QueryablePrisma } from '@/lib/custom-query/evaluator';
 import { getReportCarerNamesById } from '@/lib/custom-query/carer-names';
 import { CUSTOM_QUERY_SOURCES } from '@/lib/custom-query/allowlist';
+import {
+  CLERK_EMAIL_UNAVAILABLE,
+  getClerkUserEmail,
+} from '@/lib/clerk-user-display';
 import { McpToolError, resolveMcpContext, requireMcpPermission, type McpContext } from './context';
 
 const ANIMAL_STATUSES = [
@@ -59,8 +63,55 @@ type ToolResult = {
   isError?: boolean;
 };
 
+type CarerDisplay = {
+  name: string;
+  email: string | null;
+};
+
+const CARER_EMAIL_UNAVAILABLE = 'Carer email unavailable';
+
 function ok(data: unknown): ToolResult {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
+}
+
+function carerDisplayFor(
+  carerId: string | null | undefined,
+  carersById: Map<string, CarerDisplay>
+) {
+  if (!carerId) return null;
+  return carersById.get(carerId) ?? { name: CARER_EMAIL_UNAVAILABLE, email: null };
+}
+
+async function getCarerDisplayById(orgId: string): Promise<Map<string, CarerDisplay>> {
+  const carers = (await getEnrichedCarers(orgId)) ?? [];
+  return new Map(
+    carers.map((carer) => [
+      carer.id,
+      {
+        name: carer.name || carer.email || CARER_EMAIL_UNAVAILABLE,
+        email: carer.email || null,
+      },
+    ])
+  );
+}
+
+function omitInternalUserFields<T extends object>(value: T) {
+  const {
+    clerkUserId: _clerkUserId,
+    clerkOrganizationId: _clerkOrganizationId,
+    carerId: _carerId,
+    createdByUserId: _createdByUserId,
+    submittedByUserId: _submittedByUserId,
+    reviewedByUserId: _reviewedByUserId,
+    verifiedByUserId: _verifiedByUserId,
+    takenByUserId: _takenByUserId,
+    assignedToUserId: _assignedToUserId,
+    fromCarerId: _fromCarerId,
+    toCarerId: _toCarerId,
+    userId: _userId,
+    ...rest
+  } = value as Record<string, unknown>;
+  return rest;
 }
 
 /**
@@ -131,9 +182,8 @@ export function registerWildTrackTools(server: McpServer): void {
       ]);
       return ok({
         user: {
-          id: context.userId,
           name: [user.firstName, user.lastName].filter(Boolean).join(' ') || null,
-          email: user.emailAddresses?.[0]?.emailAddress ?? null,
+          email: getClerkUserEmail(user) ?? CLERK_EMAIL_UNAVAILABLE,
         },
         activeOrganisation: { id: context.orgId, role: context.role },
         organisations: memberships.data.map(
@@ -193,7 +243,16 @@ export function registerWildTrackTools(server: McpServer): void {
           take: limit,
         }),
       ]);
-      return ok({ total, returned: animals.length, truncated: total > animals.length, animals });
+      const carersById = await getCarerDisplayById(context.orgId);
+      return ok({
+        total,
+        returned: animals.length,
+        truncated: total > animals.length,
+        animals: animals.map(({ carerId, ...animal }) => ({
+          ...animal,
+          carer: carerDisplayFor(carerId, carersById),
+        })),
+      });
     })
   );
 
@@ -223,7 +282,16 @@ export function registerWildTrackTools(server: McpServer): void {
       const allowed = await canAccessAnimal(context.userId, context.orgId, animal);
       if (!allowed)
         throw new McpToolError('Forbidden: your role does not give you access to this animal');
-      return ok(animal);
+      const carersById = await getCarerDisplayById(context.orgId);
+      const { records, photos, carer: _carer, carerId, ...animalFields } = animal;
+      return ok({
+        animal: {
+          ...omitInternalUserFields(animalFields),
+          carer: carerDisplayFor(carerId, carersById),
+        },
+        records: records.map((record) => omitInternalUserFields(record)),
+        photos,
+      });
     })
   );
 
@@ -285,7 +353,7 @@ export function registerWildTrackTools(server: McpServer): void {
         entityId: record.id,
         metadata: { animalId: animal.id, type: args.type, via: 'mcp' },
       });
-      return ok(record);
+      return ok({ record: omitInternalUserFields(record) });
     })
   );
 
@@ -299,7 +367,13 @@ export function registerWildTrackTools(server: McpServer): void {
     withContext('list_carers', async (context) => {
       requireMcpPermission(context, 'carer:view_workload');
       const carers = await getEnrichedCarers(context.orgId);
-      return ok(carers.map(({ imageUrl: _imageUrl, ...carer }) => carer));
+      return ok({
+        carers: carers.map(({ id: _id, imageUrl: _imageUrl, ...carer }) => ({
+          ...carer,
+          email: carer.email || CARER_EMAIL_UNAVAILABLE,
+          trainings: carer.trainings?.map((training) => omitInternalUserFields(training)),
+        })),
+      });
     })
   );
 

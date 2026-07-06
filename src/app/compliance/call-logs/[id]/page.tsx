@@ -1,13 +1,14 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Phone, Calendar, ArrowLeft, Home, MapPin, User, Pencil, Map } from "lucide-react";
-import Link from "next/link";
-import { auth } from "@/lib/clerk-server";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Phone, Calendar, ArrowLeft, Home, MapPin, User, Pencil, Map } from 'lucide-react';
+import Link from 'next/link';
+import { auth } from '@/lib/clerk-server';
 import { prisma } from '@/lib/prisma';
-import { redirect, notFound } from "next/navigation";
+import { redirect, notFound } from 'next/navigation';
 import { CallLogPindropSection } from './pindrop-section';
 import { CloseCallButton } from './close-call-button';
+import { resolveClerkUserEmailMap } from '@/lib/clerk-user-display';
 
 export default async function CallLogDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,6 +30,18 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
   ]);
 
   if (!callLog) notFound();
+
+  const userEmailById = await resolveClerkUserEmailMap([
+    callLog.takenByUserName ? null : callLog.takenByUserId,
+    callLog.assignedToUserName ? null : callLog.assignedToUserId,
+  ]);
+  const takenByDisplay =
+    callLog.takenByUserName || userEmailById.get(callLog.takenByUserId) || 'Email unavailable';
+  const assignedToDisplay = callLog.assignedToUserId
+    ? callLog.assignedToUserName ||
+      userEmailById.get(callLog.assignedToUserId) ||
+      'Email unavailable'
+    : 'Unassigned';
 
   const hasSmsPlan = smsSubscription != null && smsSubscription.tier !== 'NONE';
 
@@ -66,15 +79,15 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
               Edit
             </Button>
           </Link>
-          <Link href={`/compliance/carers/map${callLog.species ? `?species=${encodeURIComponent(callLog.species)}` : ''}`}>
+          <Link
+            href={`/compliance/carers/map${callLog.species ? `?species=${encodeURIComponent(callLog.species)}` : ''}`}
+          >
             <Button variant="outline" size="sm" className="sm:h-9 sm:px-4">
               <Map className="h-4 w-4 mr-2" />
               Find Nearest Carer
             </Button>
           </Link>
-          {callLog.status === 'OPEN' && (
-            <CloseCallButton callLogId={callLog.id} />
-          )}
+          {callLog.status === 'OPEN' && <CloseCallButton callLogId={callLog.id} />}
         </div>
       </div>
 
@@ -123,7 +136,10 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
                 <div className="text-sm text-muted-foreground">Date/Time</div>
                 <div className="font-medium">
                   {new Date(callLog.dateTime).toLocaleDateString()} at{' '}
-                  {new Date(callLog.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(callLog.dateTime).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
                 </div>
               </div>
               <div>
@@ -190,20 +206,25 @@ export default async function CallLogDetailPage({ params }: { params: Promise<{ 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-muted-foreground">Taken By</div>
-                <div className="font-medium">{callLog.takenByUserName || callLog.takenByUserId}</div>
+                <div className="font-medium">{takenByDisplay}</div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">Assigned To</div>
-                <div className="font-medium">{callLog.assignedToUserName || 'Unassigned'}</div>
+                <div className="font-medium">{assignedToDisplay}</div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">Linked Animal</div>
                 <div className="font-medium">
                   {callLog.animal ? (
-                    <Link href={`/animals/${callLog.animal.id}`} className="text-primary hover:underline">
+                    <Link
+                      href={`/animals/${callLog.animal.id}`}
+                      className="text-primary hover:underline"
+                    >
                       {callLog.animal.name} — {callLog.animal.species}
                     </Link>
-                  ) : '—'}
+                  ) : (
+                    '—'
+                  )}
                 </div>
               </div>
             </div>

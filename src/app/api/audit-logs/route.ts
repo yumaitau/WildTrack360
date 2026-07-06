@@ -5,16 +5,35 @@ import { requirePermission } from '@/lib/rbac';
 import type { AuditAction, Prisma } from '@prisma/client';
 import { route } from '@/lib/openapi/route';
 import { listAuditLogsContract } from './openapi';
+import { resolveClerkUserEmailMap } from '@/lib/clerk-user-display';
 
 const VALID_ACTIONS: AuditAction[] = [
-  'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'ROLE_CHANGE', 'ASSIGN', 'UNASSIGN',
-  'SUBMIT', 'APPROVE', 'REJECT', 'EXPORT',
+  'CREATE',
+  'UPDATE',
+  'DELETE',
+  'LOGIN',
+  'ROLE_CHANGE',
+  'ASSIGN',
+  'UNASSIGN',
+  'SUBMIT',
+  'APPROVE',
+  'REJECT',
+  'EXPORT',
 ];
 
 const VALID_ENTITIES = new Set([
-  'Animal', 'Record', 'Species', 'ReleaseChecklist',
-  'HygieneLog', 'IncidentReport', 'Asset', 'CarerTraining',
-  'CarerProfile', 'OrgMember', 'SpeciesGroup', 'CoordinatorSpeciesAssignment',
+  'Animal',
+  'Record',
+  'Species',
+  'ReleaseChecklist',
+  'HygieneLog',
+  'IncidentReport',
+  'Asset',
+  'CarerTraining',
+  'CarerProfile',
+  'OrgMember',
+  'SpeciesGroup',
+  'CoordinatorSpeciesAssignment',
   'AIAssistantDiscussion',
 ]);
 
@@ -39,7 +58,8 @@ export const GET = route(listAuditLogsContract, async ({ query }) => {
     const userFilter = query.user ?? query.userId;
 
     const where: Prisma.AuditLogWhereInput = { orgId };
-    if (actionFilter && VALID_ACTIONS.includes(actionFilter as AuditAction)) where.action = actionFilter as AuditAction;
+    if (actionFilter && VALID_ACTIONS.includes(actionFilter as AuditAction))
+      where.action = actionFilter as AuditAction;
     if (entityFilter && VALID_ENTITIES.has(entityFilter)) where.entity = entityFilter;
     if (userFilter && USER_SEARCH_PATTERN.test(userFilter)) {
       where.OR = [
@@ -58,10 +78,16 @@ export const GET = route(listAuditLogsContract, async ({ query }) => {
       prisma.auditLog.findMany({ where, orderBy, skip, take: pageSize }),
       prisma.auditLog.count({ where }),
     ]);
+    const userIdsToResolve = new Set(logs.map((log) => log.userId));
+    const emailByUserId = await resolveClerkUserEmailMap(userIdsToResolve);
+    const displayLogs = logs.map((log) => ({
+      ...log,
+      userEmail: log.userEmail || emailByUserId.get(log.userId) || null,
+    }));
 
     return {
       data: {
-        data: logs,
+        data: displayLogs,
         pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
       },
     };

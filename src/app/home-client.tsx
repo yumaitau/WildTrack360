@@ -297,7 +297,10 @@ function AdminCoordinatorView({
   }, []);
 
   const carerMap = useMemo(
-    () => Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name])),
+    () =>
+      Object.fromEntries(
+        (carersList || []).map((c: any) => [c.id, c.name || c.email || 'Carer email unavailable'])
+      ),
     [carersList]
   );
   const [customReportWidgets, setCustomReportWidgets] = useState<DashboardReportWidget[] | null>(

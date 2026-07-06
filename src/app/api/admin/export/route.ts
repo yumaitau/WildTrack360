@@ -1,226 +1,1004 @@
-import { NextResponse } from 'next/server'
-import { auth } from '@/lib/clerk-server'
-import { prisma } from '@/lib/prisma'
-import { getUserRole } from '@/lib/rbac'
-import { logAudit } from '@/lib/audit'
-import ExcelJS from 'exceljs'
-import archiver from 'archiver'
-import { getObjectFromS3 } from '@/lib/s3'
-import { PassThrough } from 'stream'
-import { route } from '@/lib/openapi/route'
-import { dataExportContract } from '../openapi'
+import { NextResponse } from 'next/server';
+import { auth } from '@/lib/clerk-server';
+import { prisma } from '@/lib/prisma';
+import { getUserRole } from '@/lib/rbac';
+import { logAudit } from '@/lib/audit';
+import ExcelJS from 'exceljs';
+import archiver from 'archiver';
+import { getObjectFromS3 } from '@/lib/s3';
+import { PassThrough } from 'stream';
+import { route } from '@/lib/openapi/route';
+import { dataExportContract } from '../openapi';
+import { resolveClerkUserEmailMap } from '@/lib/clerk-user-display';
 
 // Helper formatters
-const fmtDate = (d: Date | null | undefined) => (d ? d.toISOString() : '')
-const fmtJson = (j: unknown) => (j ? JSON.stringify(j) : '')
-const fmtArr = (a: string[] | null | undefined) => (a ? a.join(', ') : '')
-const fmtBool = (b: boolean) => (b ? 'Yes' : 'No')
+const fmtDate = (d: Date | null | undefined) => (d ? d.toISOString() : '');
+const fmtJson = (j: unknown) => (j ? JSON.stringify(j) : '');
+const fmtArr = (a: string[] | null | undefined) => (a ? a.join(', ') : '');
+const fmtBool = (b: boolean) => (b ? 'Yes' : 'No');
+const fmtEmail = (email: string | null | undefined) => email || 'Email unavailable';
 
 function styleHeaderRow(sheet: ExcelJS.Worksheet) {
-	const headerRow = sheet.getRow(1)
-	headerRow.font = { bold: true }
-	headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } }
-	headerRow.alignment = { vertical: 'middle', wrapText: true }
-	sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columnCount } }
+  const headerRow = sheet.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } };
+  headerRow.alignment = { vertical: 'middle', wrapText: true };
+  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columnCount } };
 }
 
 export const GET = route(dataExportContract, async () => {
-	const { userId, orgId } = await auth()
-	if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
+  const { userId, orgId } = await auth();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!orgId) return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
 
-	const role = await getUserRole(userId, orgId)
-	if (role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const role = await getUserRole(userId, orgId);
+  if (role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-	try {
-		const [
-			animals, records, species, carerProfiles, carerTrainings, hygieneLogs,
-			incidentReports, releaseChecklists, assets, preservedSpecimens,
-			orgMembers, speciesGroups, callLogs, auditLogs, permanentCareApplications,
-			animalTransfers, photos, postReleaseRecords,
-		] = await Promise.all([
-			prisma.animal.findMany({ where: { clerkOrganizationId: orgId }, include: { carer: true }, orderBy: { createdAt: 'desc' } }),
-			prisma.record.findMany({ where: { clerkOrganizationId: orgId }, include: { animal: { select: { name: true, species: true } } }, orderBy: { date: 'desc' } }),
-			prisma.species.findMany({ where: { clerkOrganizationId: orgId }, orderBy: { name: 'asc' } }),
-			prisma.carerProfile.findMany({ where: { clerkOrganizationId: orgId }, orderBy: { createdAt: 'desc' } }),
-			prisma.carerTraining.findMany({ where: { clerkOrganizationId: orgId }, orderBy: { date: 'desc' } }),
-			prisma.hygieneLog.findMany({ where: { clerkOrganizationId: orgId }, orderBy: { date: 'desc' } }),
-			prisma.incidentReport.findMany({ where: { clerkOrganizationId: orgId }, include: { animal: { select: { name: true } } }, orderBy: { date: 'desc' } }),
-			prisma.releaseChecklist.findMany({ where: { clerkOrganizationId: orgId }, include: { animal: { select: { name: true, species: true } } }, orderBy: { releaseDate: 'desc' } }),
-			prisma.asset.findMany({ where: { clerkOrganizationId: orgId }, orderBy: { createdAt: 'desc' } }),
-			prisma.preservedSpecimen.findMany({ where: { clerkOrganizationId: orgId }, include: { animal: { select: { name: true } } }, orderBy: { createdAt: 'desc' } }),
-			prisma.orgMember.findMany({ where: { orgId }, include: { speciesAssignments: { include: { speciesGroup: true } } }, orderBy: { createdAt: 'asc' } }),
-			prisma.speciesGroup.findMany({ where: { orgId }, include: { coordinators: { include: { orgMember: true } } }, orderBy: { name: 'asc' } }),
-			prisma.callLog.findMany({ where: { clerkOrganizationId: orgId }, include: { animal: { select: { name: true, species: true } } }, orderBy: { dateTime: 'desc' } }),
-			prisma.auditLog.findMany({ where: { orgId }, orderBy: { createdAt: 'desc' }, take: 10000 }),
-			prisma.permanentCareApplication.findMany({ where: { clerkOrganizationId: orgId }, include: { animal: { select: { name: true, species: true } } }, orderBy: { createdAt: 'desc' } }),
-			prisma.animalTransfer.findMany({ where: { clerkOrganizationId: orgId }, include: { animal: { select: { name: true, species: true } } }, orderBy: { transferDate: 'desc' } }),
-			prisma.photo.findMany({ where: { clerkOrganizationId: orgId }, select: { url: true, animalId: true, animal: { select: { name: true } } } }),
-			prisma.postReleaseMonitoring.findMany({ where: { clerkOrganizationId: orgId }, include: { animal: { select: { name: true, species: true } } }, orderBy: { date: 'desc' } }),
-		])
+  try {
+    const [
+      animals,
+      records,
+      species,
+      carerProfiles,
+      carerTrainings,
+      hygieneLogs,
+      incidentReports,
+      releaseChecklists,
+      assets,
+      preservedSpecimens,
+      orgMembers,
+      speciesGroups,
+      callLogs,
+      auditLogs,
+      permanentCareApplications,
+      animalTransfers,
+      photos,
+      postReleaseRecords,
+    ] = await Promise.all([
+      prisma.animal.findMany({
+        where: { clerkOrganizationId: orgId },
+        include: { carer: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.record.findMany({
+        where: { clerkOrganizationId: orgId },
+        include: { animal: { select: { name: true, species: true } } },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.species.findMany({ where: { clerkOrganizationId: orgId }, orderBy: { name: 'asc' } }),
+      prisma.carerProfile.findMany({
+        where: { clerkOrganizationId: orgId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.carerTraining.findMany({
+        where: { clerkOrganizationId: orgId },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.hygieneLog.findMany({
+        where: { clerkOrganizationId: orgId },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.incidentReport.findMany({
+        where: { clerkOrganizationId: orgId },
+        include: { animal: { select: { name: true } } },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.releaseChecklist.findMany({
+        where: { clerkOrganizationId: orgId },
+        include: { animal: { select: { name: true, species: true } } },
+        orderBy: { releaseDate: 'desc' },
+      }),
+      prisma.asset.findMany({
+        where: { clerkOrganizationId: orgId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.preservedSpecimen.findMany({
+        where: { clerkOrganizationId: orgId },
+        include: { animal: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.orgMember.findMany({
+        where: { orgId },
+        include: { speciesAssignments: { include: { speciesGroup: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.speciesGroup.findMany({
+        where: { orgId },
+        include: { coordinators: { include: { orgMember: true } } },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.callLog.findMany({
+        where: { clerkOrganizationId: orgId },
+        include: { animal: { select: { name: true, species: true } } },
+        orderBy: { dateTime: 'desc' },
+      }),
+      prisma.auditLog.findMany({ where: { orgId }, orderBy: { createdAt: 'desc' }, take: 10000 }),
+      prisma.permanentCareApplication.findMany({
+        where: { clerkOrganizationId: orgId },
+        include: { animal: { select: { name: true, species: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.animalTransfer.findMany({
+        where: { clerkOrganizationId: orgId },
+        include: { animal: { select: { name: true, species: true } } },
+        orderBy: { transferDate: 'desc' },
+      }),
+      prisma.photo.findMany({
+        where: { clerkOrganizationId: orgId },
+        select: { url: true, animalId: true, animal: { select: { name: true } } },
+      }),
+      prisma.postReleaseMonitoring.findMany({
+        where: { clerkOrganizationId: orgId },
+        include: { animal: { select: { name: true, species: true } } },
+        orderBy: { date: 'desc' },
+      }),
+    ]);
+    const userIdsToResolve = new Set<string>();
+    for (const animal of animals) if (animal.carerId) userIdsToResolve.add(animal.carerId);
+    for (const profile of carerProfiles) userIdsToResolve.add(profile.id);
+    for (const training of carerTrainings) userIdsToResolve.add(training.carerId);
+    for (const log of hygieneLogs) userIdsToResolve.add(log.carerId);
+    for (const member of orgMembers) userIdsToResolve.add(member.userId);
+    for (const group of speciesGroups) {
+      for (const coordinator of group.coordinators)
+        userIdsToResolve.add(coordinator.orgMember.userId);
+    }
+    for (const callLog of callLogs) {
+      userIdsToResolve.add(callLog.takenByUserId);
+      if (callLog.assignedToUserId) userIdsToResolve.add(callLog.assignedToUserId);
+    }
+    for (const transfer of animalTransfers) {
+      if (transfer.fromCarerId) userIdsToResolve.add(transfer.fromCarerId);
+      if (transfer.toCarerId) userIdsToResolve.add(transfer.toCarerId);
+      if (transfer.verifiedByUserId) userIdsToResolve.add(transfer.verifiedByUserId);
+    }
+    const userEmailById = await resolveClerkUserEmailMap(userIdsToResolve);
+    const emailForUserId = (id: string | null | undefined) =>
+      id ? fmtEmail(userEmailById.get(id)) : '';
 
-		const workbook = new ExcelJS.Workbook()
-		workbook.creator = 'WildTrack360'
-		workbook.created = new Date()
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'WildTrack360';
+    workbook.created = new Date();
 
-		const animalsSheet = workbook.addWorksheet('Animals')
-		animalsSheet.columns = [
-			{ header: 'ID', key: 'id', width: 28 }, { header: 'Name', key: 'name', width: 20 }, { header: 'Species', key: 'species', width: 20 },
-			{ header: 'Sex', key: 'sex', width: 10 }, { header: 'Age Class', key: 'ageClass', width: 12 }, { header: 'Age', key: 'age', width: 10 },
-			{ header: 'Date of Birth', key: 'dateOfBirth', width: 18 }, { header: 'Status', key: 'status', width: 18 },
-			{ header: 'Date Found', key: 'dateFound', width: 18 }, { header: 'Date Released', key: 'dateReleased', width: 18 },
-			{ header: 'Outcome Date', key: 'outcomeDate', width: 18 }, { header: 'Outcome', key: 'outcome', width: 16 },
-			{ header: 'Notes', key: 'notes', width: 30 }, { header: 'Rescue Location', key: 'rescueLocation', width: 25 },
-			{ header: 'Rescue Address', key: 'rescueAddress', width: 25 }, { header: 'Rescue Suburb', key: 'rescueSuburb', width: 15 },
-			{ header: 'Rescue Postcode', key: 'rescuePostcode', width: 12 }, { header: 'Rescue Coordinates', key: 'rescueCoordinates', width: 22 },
-			{ header: 'Release Location', key: 'releaseLocation', width: 25 }, { header: 'Release Address', key: 'releaseAddress', width: 25 },
-			{ header: 'Release Suburb', key: 'releaseSuburb', width: 15 }, { header: 'Release Postcode', key: 'releasePostcode', width: 12 },
-			{ header: 'Release Coordinates', key: 'releaseCoordinates', width: 22 }, { header: 'Release Notes', key: 'releaseNotes', width: 25 },
-			{ header: 'Encounter Type', key: 'encounterType', width: 16 }, { header: 'Initial Weight (g)', key: 'initialWeightGrams', width: 16 },
-			{ header: 'Weight Unit', key: 'weightUnit', width: 10 }, { header: 'Animal Condition', key: 'animalCondition', width: 16 },
-			{ header: 'Pouch Condition', key: 'pouchCondition', width: 16 }, { header: 'Fate', key: 'fate', width: 14 },
-			{ header: 'Tag/Band colour and number', key: 'tagBandColourNumber', width: 22 }, { header: 'Microchip number', key: 'microchipNumber', width: 22 },
-			{ header: 'Life Stage', key: 'lifeStage', width: 14 }, { header: 'Date Admitted', key: 'dateAdmitted', width: 18 },
-			{ header: 'Org Animal ID', key: 'orgAnimalId', width: 18 }, { header: 'Outcome Reason', key: 'outcomeReason', width: 25 },
-			{ header: 'Carer ID', key: 'carerId', width: 28 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 },
-		]
-		for (const a of animals) {
-			animalsSheet.addRow({ id: a.id, name: a.name, species: a.species, sex: a.sex || '', ageClass: a.ageClass || '', age: a.age || '', dateOfBirth: fmtDate(a.dateOfBirth), status: a.status, dateFound: fmtDate(a.dateFound), dateReleased: fmtDate(a.dateReleased), outcomeDate: fmtDate(a.outcomeDate), outcome: a.outcome || '', notes: a.notes || '', rescueLocation: a.rescueLocation || '', rescueAddress: a.rescueAddress || '', rescueSuburb: a.rescueSuburb || '', rescuePostcode: a.rescuePostcode || '', rescueCoordinates: fmtJson(a.rescueCoordinates), releaseLocation: a.releaseLocation || '', releaseAddress: a.releaseAddress || '', releaseSuburb: a.releaseSuburb || '', releasePostcode: a.releasePostcode || '', releaseCoordinates: fmtJson(a.releaseCoordinates), releaseNotes: a.releaseNotes || '', encounterType: a.encounterType || '', initialWeightGrams: a.initialWeightGrams ?? '', weightUnit: a.weightUnit || '', animalCondition: a.animalCondition || '', pouchCondition: a.pouchCondition || '', fate: a.fate || '', tagBandColourNumber: a.tagBandColourNumber || '', microchipNumber: a.microchipNumber || '', lifeStage: a.lifeStage || '', dateAdmitted: fmtDate(a.dateAdmitted), orgAnimalId: a.orgAnimalId || '', outcomeReason: a.outcomeReason || '', carerId: a.carerId || '', createdAt: fmtDate(a.createdAt), updatedAt: fmtDate(a.updatedAt) })
-		}
-		styleHeaderRow(animalsSheet)
+    const animalsSheet = workbook.addWorksheet('Animals');
+    animalsSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Name', key: 'name', width: 20 },
+      { header: 'Species', key: 'species', width: 20 },
+      { header: 'Sex', key: 'sex', width: 10 },
+      { header: 'Age Class', key: 'ageClass', width: 12 },
+      { header: 'Age', key: 'age', width: 10 },
+      { header: 'Date of Birth', key: 'dateOfBirth', width: 18 },
+      { header: 'Status', key: 'status', width: 18 },
+      { header: 'Date Found', key: 'dateFound', width: 18 },
+      { header: 'Date Released', key: 'dateReleased', width: 18 },
+      { header: 'Outcome Date', key: 'outcomeDate', width: 18 },
+      { header: 'Outcome', key: 'outcome', width: 16 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Rescue Location', key: 'rescueLocation', width: 25 },
+      { header: 'Rescue Address', key: 'rescueAddress', width: 25 },
+      { header: 'Rescue Suburb', key: 'rescueSuburb', width: 15 },
+      { header: 'Rescue Postcode', key: 'rescuePostcode', width: 12 },
+      { header: 'Rescue Coordinates', key: 'rescueCoordinates', width: 22 },
+      { header: 'Release Location', key: 'releaseLocation', width: 25 },
+      { header: 'Release Address', key: 'releaseAddress', width: 25 },
+      { header: 'Release Suburb', key: 'releaseSuburb', width: 15 },
+      { header: 'Release Postcode', key: 'releasePostcode', width: 12 },
+      { header: 'Release Coordinates', key: 'releaseCoordinates', width: 22 },
+      { header: 'Release Notes', key: 'releaseNotes', width: 25 },
+      { header: 'Encounter Type', key: 'encounterType', width: 16 },
+      { header: 'Initial Weight (g)', key: 'initialWeightGrams', width: 16 },
+      { header: 'Weight Unit', key: 'weightUnit', width: 10 },
+      { header: 'Animal Condition', key: 'animalCondition', width: 16 },
+      { header: 'Pouch Condition', key: 'pouchCondition', width: 16 },
+      { header: 'Fate', key: 'fate', width: 14 },
+      { header: 'Tag/Band colour and number', key: 'tagBandColourNumber', width: 22 },
+      { header: 'Microchip number', key: 'microchipNumber', width: 22 },
+      { header: 'Life Stage', key: 'lifeStage', width: 14 },
+      { header: 'Date Admitted', key: 'dateAdmitted', width: 18 },
+      { header: 'Org Animal ID', key: 'orgAnimalId', width: 18 },
+      { header: 'Outcome Reason', key: 'outcomeReason', width: 25 },
+      { header: 'Carer Email', key: 'carerEmail', width: 28 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const a of animals) {
+      animalsSheet.addRow({
+        id: a.id,
+        name: a.name,
+        species: a.species,
+        sex: a.sex || '',
+        ageClass: a.ageClass || '',
+        age: a.age || '',
+        dateOfBirth: fmtDate(a.dateOfBirth),
+        status: a.status,
+        dateFound: fmtDate(a.dateFound),
+        dateReleased: fmtDate(a.dateReleased),
+        outcomeDate: fmtDate(a.outcomeDate),
+        outcome: a.outcome || '',
+        notes: a.notes || '',
+        rescueLocation: a.rescueLocation || '',
+        rescueAddress: a.rescueAddress || '',
+        rescueSuburb: a.rescueSuburb || '',
+        rescuePostcode: a.rescuePostcode || '',
+        rescueCoordinates: fmtJson(a.rescueCoordinates),
+        releaseLocation: a.releaseLocation || '',
+        releaseAddress: a.releaseAddress || '',
+        releaseSuburb: a.releaseSuburb || '',
+        releasePostcode: a.releasePostcode || '',
+        releaseCoordinates: fmtJson(a.releaseCoordinates),
+        releaseNotes: a.releaseNotes || '',
+        encounterType: a.encounterType || '',
+        initialWeightGrams: a.initialWeightGrams ?? '',
+        weightUnit: a.weightUnit || '',
+        animalCondition: a.animalCondition || '',
+        pouchCondition: a.pouchCondition || '',
+        fate: a.fate || '',
+        tagBandColourNumber: a.tagBandColourNumber || '',
+        microchipNumber: a.microchipNumber || '',
+        lifeStage: a.lifeStage || '',
+        dateAdmitted: fmtDate(a.dateAdmitted),
+        orgAnimalId: a.orgAnimalId || '',
+        outcomeReason: a.outcomeReason || '',
+        carerEmail: emailForUserId(a.carerId),
+        createdAt: fmtDate(a.createdAt),
+        updatedAt: fmtDate(a.updatedAt),
+      });
+    }
+    styleHeaderRow(animalsSheet);
 
-		const recordsSheet = workbook.addWorksheet('Records')
-		recordsSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Type', key: 'type', width: 14 }, { header: 'Date', key: 'date', width: 18 }, { header: 'Description', key: 'description', width: 40 }, { header: 'Location', key: 'location', width: 20 }, { header: 'Notes', key: 'notes', width: 30 }, { header: 'Animal ID', key: 'animalId', width: 28 }, { header: 'Animal Name', key: 'animalName', width: 20 }, { header: 'Animal Species', key: 'animalSpecies', width: 20 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const r of records) { recordsSheet.addRow({ id: r.id, type: r.type, date: fmtDate(r.date), description: r.description, location: r.location || '', notes: r.notes || '', animalId: r.animalId, animalName: r.animal.name, animalSpecies: r.animal.species, createdAt: fmtDate(r.createdAt), updatedAt: fmtDate(r.updatedAt) }) }
-		styleHeaderRow(recordsSheet)
+    const recordsSheet = workbook.addWorksheet('Records');
+    recordsSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Type', key: 'type', width: 14 },
+      { header: 'Date', key: 'date', width: 18 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Location', key: 'location', width: 20 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Animal ID', key: 'animalId', width: 28 },
+      { header: 'Animal Name', key: 'animalName', width: 20 },
+      { header: 'Animal Species', key: 'animalSpecies', width: 20 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const r of records) {
+      recordsSheet.addRow({
+        id: r.id,
+        type: r.type,
+        date: fmtDate(r.date),
+        description: r.description,
+        location: r.location || '',
+        notes: r.notes || '',
+        animalId: r.animalId,
+        animalName: r.animal.name,
+        animalSpecies: r.animal.species,
+        createdAt: fmtDate(r.createdAt),
+        updatedAt: fmtDate(r.updatedAt),
+      });
+    }
+    styleHeaderRow(recordsSheet);
 
-		const speciesSheet = workbook.addWorksheet('Species')
-		speciesSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Name', key: 'name', width: 22 }, { header: 'Scientific Name', key: 'scientificName', width: 25 }, { header: 'Type', key: 'type', width: 14 }, { header: 'Description', key: 'description', width: 35 }, { header: 'Care Requirements', key: 'careRequirements', width: 35 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const s of species) { speciesSheet.addRow({ id: s.id, name: s.name, scientificName: s.scientificName || '', type: s.type || '', description: s.description || '', careRequirements: s.careRequirements || '', createdAt: fmtDate(s.createdAt), updatedAt: fmtDate(s.updatedAt) }) }
-		styleHeaderRow(speciesSheet)
+    const speciesSheet = workbook.addWorksheet('Species');
+    speciesSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Name', key: 'name', width: 22 },
+      { header: 'Scientific Name', key: 'scientificName', width: 25 },
+      { header: 'Type', key: 'type', width: 14 },
+      { header: 'Description', key: 'description', width: 35 },
+      { header: 'Care Requirements', key: 'careRequirements', width: 35 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const s of species) {
+      speciesSheet.addRow({
+        id: s.id,
+        name: s.name,
+        scientificName: s.scientificName || '',
+        type: s.type || '',
+        description: s.description || '',
+        careRequirements: s.careRequirements || '',
+        createdAt: fmtDate(s.createdAt),
+        updatedAt: fmtDate(s.updatedAt),
+      });
+    }
+    styleHeaderRow(speciesSheet);
 
-		const carersSheet = workbook.addWorksheet('Carer Profiles')
-		carersSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Phone', key: 'phone', width: 16 }, { header: 'License Number', key: 'licenseNumber', width: 18 }, { header: 'License Expiry', key: 'licenseExpiry', width: 18 }, { header: 'Jurisdiction', key: 'jurisdiction', width: 14 }, { header: 'Specialties', key: 'specialties', width: 30 }, { header: 'Notes', key: 'notes', width: 30 }, { header: 'Active', key: 'active', width: 10 }, { header: 'Street Address', key: 'streetAddress', width: 25 }, { header: 'Suburb', key: 'suburb', width: 16 }, { header: 'State', key: 'state', width: 10 }, { header: 'Postcode', key: 'postcode', width: 10 }, { header: 'Executive Position', key: 'executivePosition', width: 20 }, { header: 'Species Coordinator For', key: 'speciesCoordinatorFor', width: 22 }, { header: 'Rehabilitates Koala', key: 'rehabilitatesKoala', width: 18 }, { header: 'Rehabilitates Flying Fox', key: 'rehabilitatesFlyingFox', width: 22 }, { header: 'Rehabilitates Bird of Prey', key: 'rehabilitatesBirdOfPrey', width: 24 }, { header: 'Member Since', key: 'memberSince', width: 18 }, { header: 'Training Level', key: 'trainingLevel', width: 16 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const c of carerProfiles) { carersSheet.addRow({ id: c.id, phone: c.phone || '', licenseNumber: c.licenseNumber || '', licenseExpiry: fmtDate(c.licenseExpiry), jurisdiction: c.jurisdiction || '', specialties: fmtArr(c.specialties), notes: c.notes || '', active: fmtBool(c.active), streetAddress: c.streetAddress || '', suburb: c.suburb || '', state: c.state || '', postcode: c.postcode || '', executivePosition: c.executivePosition || '', speciesCoordinatorFor: c.speciesCoordinatorFor || '', rehabilitatesKoala: fmtBool(c.rehabilitatesKoala), rehabilitatesFlyingFox: fmtBool(c.rehabilitatesFlyingFox), rehabilitatesBirdOfPrey: fmtBool(c.rehabilitatesBirdOfPrey), memberSince: fmtDate(c.memberSince), trainingLevel: c.trainingLevel || '', createdAt: fmtDate(c.createdAt), updatedAt: fmtDate(c.updatedAt) }) }
-		styleHeaderRow(carersSheet)
+    const carersSheet = workbook.addWorksheet('Carer Profiles');
+    carersSheet.columns = [
+      { header: 'Email', key: 'email', width: 28 },
+      { header: 'Phone', key: 'phone', width: 16 },
+      { header: 'License Number', key: 'licenseNumber', width: 18 },
+      { header: 'License Expiry', key: 'licenseExpiry', width: 18 },
+      { header: 'Jurisdiction', key: 'jurisdiction', width: 14 },
+      { header: 'Specialties', key: 'specialties', width: 30 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Active', key: 'active', width: 10 },
+      { header: 'Street Address', key: 'streetAddress', width: 25 },
+      { header: 'Suburb', key: 'suburb', width: 16 },
+      { header: 'State', key: 'state', width: 10 },
+      { header: 'Postcode', key: 'postcode', width: 10 },
+      { header: 'Executive Position', key: 'executivePosition', width: 20 },
+      { header: 'Species Coordinator For', key: 'speciesCoordinatorFor', width: 22 },
+      { header: 'Rehabilitates Koala', key: 'rehabilitatesKoala', width: 18 },
+      { header: 'Rehabilitates Flying Fox', key: 'rehabilitatesFlyingFox', width: 22 },
+      { header: 'Rehabilitates Bird of Prey', key: 'rehabilitatesBirdOfPrey', width: 24 },
+      { header: 'Member Since', key: 'memberSince', width: 18 },
+      { header: 'Training Level', key: 'trainingLevel', width: 16 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const c of carerProfiles) {
+      carersSheet.addRow({
+        email: emailForUserId(c.id),
+        phone: c.phone || '',
+        licenseNumber: c.licenseNumber || '',
+        licenseExpiry: fmtDate(c.licenseExpiry),
+        jurisdiction: c.jurisdiction || '',
+        specialties: fmtArr(c.specialties),
+        notes: c.notes || '',
+        active: fmtBool(c.active),
+        streetAddress: c.streetAddress || '',
+        suburb: c.suburb || '',
+        state: c.state || '',
+        postcode: c.postcode || '',
+        executivePosition: c.executivePosition || '',
+        speciesCoordinatorFor: c.speciesCoordinatorFor || '',
+        rehabilitatesKoala: fmtBool(c.rehabilitatesKoala),
+        rehabilitatesFlyingFox: fmtBool(c.rehabilitatesFlyingFox),
+        rehabilitatesBirdOfPrey: fmtBool(c.rehabilitatesBirdOfPrey),
+        memberSince: fmtDate(c.memberSince),
+        trainingLevel: c.trainingLevel || '',
+        createdAt: fmtDate(c.createdAt),
+        updatedAt: fmtDate(c.updatedAt),
+      });
+    }
+    styleHeaderRow(carersSheet);
 
-		const trainingSheet = workbook.addWorksheet('Carer Training')
-		trainingSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Carer ID', key: 'carerId', width: 28 }, { header: 'Course Name', key: 'courseName', width: 25 }, { header: 'Provider', key: 'provider', width: 22 }, { header: 'Date', key: 'date', width: 18 }, { header: 'Expiry Date', key: 'expiryDate', width: 18 }, { header: 'Certificate URL', key: 'certificateUrl', width: 30 }, { header: 'Certificate Number', key: 'certificateNumber', width: 20 }, { header: 'Training Type', key: 'trainingType', width: 16 }, { header: 'Training Hours', key: 'trainingHours', width: 14 }, { header: 'Notes', key: 'notes', width: 30 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const t of carerTrainings) { trainingSheet.addRow({ id: t.id, carerId: t.carerId, courseName: t.courseName, provider: t.provider || '', date: fmtDate(t.date), expiryDate: fmtDate(t.expiryDate), certificateUrl: t.certificateUrl || '', certificateNumber: t.certificateNumber || '', trainingType: t.trainingType || '', trainingHours: t.trainingHours ?? '', notes: t.notes || '', createdAt: fmtDate(t.createdAt), updatedAt: fmtDate(t.updatedAt) }) }
-		styleHeaderRow(trainingSheet)
+    const trainingSheet = workbook.addWorksheet('Carer Training');
+    trainingSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Carer Email', key: 'carerEmail', width: 28 },
+      { header: 'Course Name', key: 'courseName', width: 25 },
+      { header: 'Provider', key: 'provider', width: 22 },
+      { header: 'Date', key: 'date', width: 18 },
+      { header: 'Expiry Date', key: 'expiryDate', width: 18 },
+      { header: 'Certificate URL', key: 'certificateUrl', width: 30 },
+      { header: 'Certificate Number', key: 'certificateNumber', width: 20 },
+      { header: 'Training Type', key: 'trainingType', width: 16 },
+      { header: 'Training Hours', key: 'trainingHours', width: 14 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const t of carerTrainings) {
+      trainingSheet.addRow({
+        id: t.id,
+        carerEmail: emailForUserId(t.carerId),
+        courseName: t.courseName,
+        provider: t.provider || '',
+        date: fmtDate(t.date),
+        expiryDate: fmtDate(t.expiryDate),
+        certificateUrl: t.certificateUrl || '',
+        certificateNumber: t.certificateNumber || '',
+        trainingType: t.trainingType || '',
+        trainingHours: t.trainingHours ?? '',
+        notes: t.notes || '',
+        createdAt: fmtDate(t.createdAt),
+        updatedAt: fmtDate(t.updatedAt),
+      });
+    }
+    styleHeaderRow(trainingSheet);
 
-		const hygieneSheet = workbook.addWorksheet('Hygiene Logs')
-		hygieneSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Date', key: 'date', width: 18 }, { header: 'Type', key: 'type', width: 16 }, { header: 'Description', key: 'description', width: 35 }, { header: 'Completed', key: 'completed', width: 12 }, { header: 'Enclosure Cleaned', key: 'enclosureCleaned', width: 18 }, { header: 'PPE Used', key: 'ppeUsed', width: 12 }, { header: 'Handwash Available', key: 'handwashAvailable', width: 18 }, { header: 'Feeding Bowls Disinfected', key: 'feedingBowlsDisinfected', width: 24 }, { header: 'Quarantine Signs Present', key: 'quarantineSignsPresent', width: 24 }, { header: 'Carer ID', key: 'carerId', width: 28 }, { header: 'Notes', key: 'notes', width: 30 }, { header: 'Photos', key: 'photos', width: 30 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const h of hygieneLogs) { hygieneSheet.addRow({ id: h.id, date: fmtDate(h.date), type: h.type, description: h.description, completed: fmtBool(h.completed), enclosureCleaned: fmtBool(h.enclosureCleaned), ppeUsed: fmtBool(h.ppeUsed), handwashAvailable: fmtBool(h.handwashAvailable), feedingBowlsDisinfected: fmtBool(h.feedingBowlsDisinfected), quarantineSignsPresent: fmtBool(h.quarantineSignsPresent), carerId: h.carerId, notes: h.notes || '', photos: fmtJson(h.photos), createdAt: fmtDate(h.createdAt), updatedAt: fmtDate(h.updatedAt) }) }
-		styleHeaderRow(hygieneSheet)
+    const hygieneSheet = workbook.addWorksheet('Hygiene Logs');
+    hygieneSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Date', key: 'date', width: 18 },
+      { header: 'Type', key: 'type', width: 16 },
+      { header: 'Description', key: 'description', width: 35 },
+      { header: 'Completed', key: 'completed', width: 12 },
+      { header: 'Enclosure Cleaned', key: 'enclosureCleaned', width: 18 },
+      { header: 'PPE Used', key: 'ppeUsed', width: 12 },
+      { header: 'Handwash Available', key: 'handwashAvailable', width: 18 },
+      { header: 'Feeding Bowls Disinfected', key: 'feedingBowlsDisinfected', width: 24 },
+      { header: 'Quarantine Signs Present', key: 'quarantineSignsPresent', width: 24 },
+      { header: 'Carer Email', key: 'carerEmail', width: 28 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Photos', key: 'photos', width: 30 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const h of hygieneLogs) {
+      hygieneSheet.addRow({
+        id: h.id,
+        date: fmtDate(h.date),
+        type: h.type,
+        description: h.description,
+        completed: fmtBool(h.completed),
+        enclosureCleaned: fmtBool(h.enclosureCleaned),
+        ppeUsed: fmtBool(h.ppeUsed),
+        handwashAvailable: fmtBool(h.handwashAvailable),
+        feedingBowlsDisinfected: fmtBool(h.feedingBowlsDisinfected),
+        quarantineSignsPresent: fmtBool(h.quarantineSignsPresent),
+        carerEmail: emailForUserId(h.carerId),
+        notes: h.notes || '',
+        photos: fmtJson(h.photos),
+        createdAt: fmtDate(h.createdAt),
+        updatedAt: fmtDate(h.updatedAt),
+      });
+    }
+    styleHeaderRow(hygieneSheet);
 
-		const incidentsSheet = workbook.addWorksheet('Incident Reports')
-		incidentsSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Date', key: 'date', width: 18 }, { header: 'Type', key: 'type', width: 16 }, { header: 'Description', key: 'description', width: 40 }, { header: 'Severity', key: 'severity', width: 12 }, { header: 'Resolved', key: 'resolved', width: 10 }, { header: 'Resolution', key: 'resolution', width: 30 }, { header: 'Person Involved', key: 'personInvolved', width: 20 }, { header: 'Reported To', key: 'reportedTo', width: 20 }, { header: 'Action Taken', key: 'actionTaken', width: 30 }, { header: 'Location', key: 'location', width: 20 }, { header: 'Animal ID', key: 'animalId', width: 28 }, { header: 'Animal Name', key: 'animalName', width: 20 }, { header: 'Notes', key: 'notes', width: 30 }, { header: 'Attachments', key: 'attachments', width: 30 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const i of incidentReports) { incidentsSheet.addRow({ id: i.id, date: fmtDate(i.date), type: i.type, description: i.description, severity: i.severity, resolved: fmtBool(i.resolved), resolution: i.resolution || '', personInvolved: i.personInvolved || '', reportedTo: i.reportedTo || '', actionTaken: i.actionTaken || '', location: i.location || '', animalId: i.animalId || '', animalName: i.animal?.name || '', notes: i.notes || '', attachments: fmtJson(i.attachments), createdAt: fmtDate(i.createdAt), updatedAt: fmtDate(i.updatedAt) }) }
-		styleHeaderRow(incidentsSheet)
+    const incidentsSheet = workbook.addWorksheet('Incident Reports');
+    incidentsSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Date', key: 'date', width: 18 },
+      { header: 'Type', key: 'type', width: 16 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Severity', key: 'severity', width: 12 },
+      { header: 'Resolved', key: 'resolved', width: 10 },
+      { header: 'Resolution', key: 'resolution', width: 30 },
+      { header: 'Person Involved', key: 'personInvolved', width: 20 },
+      { header: 'Reported To', key: 'reportedTo', width: 20 },
+      { header: 'Action Taken', key: 'actionTaken', width: 30 },
+      { header: 'Location', key: 'location', width: 20 },
+      { header: 'Animal ID', key: 'animalId', width: 28 },
+      { header: 'Animal Name', key: 'animalName', width: 20 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Attachments', key: 'attachments', width: 30 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const i of incidentReports) {
+      incidentsSheet.addRow({
+        id: i.id,
+        date: fmtDate(i.date),
+        type: i.type,
+        description: i.description,
+        severity: i.severity,
+        resolved: fmtBool(i.resolved),
+        resolution: i.resolution || '',
+        personInvolved: i.personInvolved || '',
+        reportedTo: i.reportedTo || '',
+        actionTaken: i.actionTaken || '',
+        location: i.location || '',
+        animalId: i.animalId || '',
+        animalName: i.animal?.name || '',
+        notes: i.notes || '',
+        attachments: fmtJson(i.attachments),
+        createdAt: fmtDate(i.createdAt),
+        updatedAt: fmtDate(i.updatedAt),
+      });
+    }
+    styleHeaderRow(incidentsSheet);
 
-		const releaseSheet = workbook.addWorksheet('Release Checklists')
-		releaseSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Release Date', key: 'releaseDate', width: 18 }, { header: 'Animal ID', key: 'animalId', width: 28 }, { header: 'Animal Name', key: 'animalName', width: 20 }, { header: 'Animal Species', key: 'animalSpecies', width: 20 }, { header: 'Release Location', key: 'releaseLocation', width: 25 }, { header: 'Release Coordinates', key: 'releaseCoordinates', width: 22 }, { header: 'Within 10km', key: 'within10km', width: 12 }, { header: 'Release Type', key: 'releaseType', width: 14 }, { header: 'Fitness Indicators', key: 'fitnessIndicators', width: 30 }, { header: 'Vet Sign Off', key: 'vetSignOff', width: 25 }, { header: 'Photos', key: 'photos', width: 30 }, { header: 'Completed', key: 'completed', width: 12 }, { header: 'Notes', key: 'notes', width: 30 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const rc of releaseChecklists) { releaseSheet.addRow({ id: rc.id, releaseDate: fmtDate(rc.releaseDate), animalId: rc.animalId, animalName: rc.animal.name, animalSpecies: rc.animal.species, releaseLocation: rc.releaseLocation, releaseCoordinates: fmtJson(rc.releaseCoordinates), within10km: fmtBool(rc.within10km), releaseType: rc.releaseType, fitnessIndicators: fmtArr(rc.fitnessIndicators), vetSignOff: fmtJson(rc.vetSignOff), photos: fmtJson(rc.photos), completed: fmtBool(rc.completed), notes: rc.notes || '', createdAt: fmtDate(rc.createdAt), updatedAt: fmtDate(rc.updatedAt) }) }
-		styleHeaderRow(releaseSheet)
+    const releaseSheet = workbook.addWorksheet('Release Checklists');
+    releaseSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Release Date', key: 'releaseDate', width: 18 },
+      { header: 'Animal ID', key: 'animalId', width: 28 },
+      { header: 'Animal Name', key: 'animalName', width: 20 },
+      { header: 'Animal Species', key: 'animalSpecies', width: 20 },
+      { header: 'Release Location', key: 'releaseLocation', width: 25 },
+      { header: 'Release Coordinates', key: 'releaseCoordinates', width: 22 },
+      { header: 'Within 10km', key: 'within10km', width: 12 },
+      { header: 'Release Type', key: 'releaseType', width: 14 },
+      { header: 'Fitness Indicators', key: 'fitnessIndicators', width: 30 },
+      { header: 'Vet Sign Off', key: 'vetSignOff', width: 25 },
+      { header: 'Photos', key: 'photos', width: 30 },
+      { header: 'Completed', key: 'completed', width: 12 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const rc of releaseChecklists) {
+      releaseSheet.addRow({
+        id: rc.id,
+        releaseDate: fmtDate(rc.releaseDate),
+        animalId: rc.animalId,
+        animalName: rc.animal.name,
+        animalSpecies: rc.animal.species,
+        releaseLocation: rc.releaseLocation,
+        releaseCoordinates: fmtJson(rc.releaseCoordinates),
+        within10km: fmtBool(rc.within10km),
+        releaseType: rc.releaseType,
+        fitnessIndicators: fmtArr(rc.fitnessIndicators),
+        vetSignOff: fmtJson(rc.vetSignOff),
+        photos: fmtJson(rc.photos),
+        completed: fmtBool(rc.completed),
+        notes: rc.notes || '',
+        createdAt: fmtDate(rc.createdAt),
+        updatedAt: fmtDate(rc.updatedAt),
+      });
+    }
+    styleHeaderRow(releaseSheet);
 
-		const assetsSheet = workbook.addWorksheet('Assets')
-		assetsSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Name', key: 'name', width: 22 }, { header: 'Type', key: 'type', width: 16 }, { header: 'Description', key: 'description', width: 30 }, { header: 'Status', key: 'status', width: 14 }, { header: 'Location', key: 'location', width: 20 }, { header: 'Assigned To', key: 'assignedTo', width: 20 }, { header: 'Purchase Date', key: 'purchaseDate', width: 18 }, { header: 'Last Maintenance', key: 'lastMaintenance', width: 18 }, { header: 'Notes', key: 'notes', width: 30 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const a of assets) { assetsSheet.addRow({ id: a.id, name: a.name, type: a.type, description: a.description || '', status: a.status, location: a.location || '', assignedTo: a.assignedTo || '', purchaseDate: fmtDate(a.purchaseDate), lastMaintenance: fmtDate(a.lastMaintenance), notes: a.notes || '', createdAt: fmtDate(a.createdAt), updatedAt: fmtDate(a.updatedAt) }) }
-		styleHeaderRow(assetsSheet)
+    const assetsSheet = workbook.addWorksheet('Assets');
+    assetsSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Name', key: 'name', width: 22 },
+      { header: 'Type', key: 'type', width: 16 },
+      { header: 'Description', key: 'description', width: 30 },
+      { header: 'Status', key: 'status', width: 14 },
+      { header: 'Location', key: 'location', width: 20 },
+      { header: 'Assigned To', key: 'assignedTo', width: 20 },
+      { header: 'Purchase Date', key: 'purchaseDate', width: 18 },
+      { header: 'Last Maintenance', key: 'lastMaintenance', width: 18 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const a of assets) {
+      assetsSheet.addRow({
+        id: a.id,
+        name: a.name,
+        type: a.type,
+        description: a.description || '',
+        status: a.status,
+        location: a.location || '',
+        assignedTo: a.assignedTo || '',
+        purchaseDate: fmtDate(a.purchaseDate),
+        lastMaintenance: fmtDate(a.lastMaintenance),
+        notes: a.notes || '',
+        createdAt: fmtDate(a.createdAt),
+        updatedAt: fmtDate(a.updatedAt),
+      });
+    }
+    styleHeaderRow(assetsSheet);
 
-		const specimensSheet = workbook.addWorksheet('Preserved Specimens')
-		specimensSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Animal ID', key: 'animalId', width: 28 }, { header: 'Animal Name', key: 'animalName', width: 20 }, { header: 'Species', key: 'species', width: 20 }, { header: 'Register Reference Number', key: 'registerReferenceNumber', width: 24 }, { header: 'Specimen Description', key: 'specimenDescription', width: 30 }, { header: 'Preservation Method', key: 'preservationMethod', width: 20 }, { header: 'Preservation Date', key: 'preservationDate', width: 18 }, { header: 'Facility Name', key: 'facilityName', width: 25 }, { header: 'Facility License', key: 'facilityLicense', width: 18 }, { header: 'Storage Address', key: 'storageAddress', width: 25 }, { header: 'Storage Suburb', key: 'storageSuburb', width: 16 }, { header: 'Storage State', key: 'storageState', width: 12 }, { header: 'Storage Postcode', key: 'storagePostcode', width: 14 }, { header: 'Scientific Purpose', key: 'scientificPurpose', width: 22 }, { header: 'Authorized By', key: 'authorizedBy', width: 20 }, { header: 'Notes', key: 'notes', width: 30 }, { header: 'Photos', key: 'photos', width: 30 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const ps of preservedSpecimens) { specimensSheet.addRow({ id: ps.id, animalId: ps.animalId || '', animalName: ps.animal?.name || '', species: ps.species, registerReferenceNumber: ps.registerReferenceNumber, specimenDescription: ps.specimenDescription, preservationMethod: ps.preservationMethod || '', preservationDate: fmtDate(ps.preservationDate), facilityName: ps.facilityName, facilityLicense: ps.facilityLicense || '', storageAddress: ps.storageAddress, storageSuburb: ps.storageSuburb, storageState: ps.storageState, storagePostcode: ps.storagePostcode, scientificPurpose: ps.scientificPurpose || '', authorizedBy: ps.authorizedBy || '', notes: ps.notes || '', photos: fmtJson(ps.photos), createdAt: fmtDate(ps.createdAt), updatedAt: fmtDate(ps.updatedAt) }) }
-		styleHeaderRow(specimensSheet)
+    const specimensSheet = workbook.addWorksheet('Preserved Specimens');
+    specimensSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Animal ID', key: 'animalId', width: 28 },
+      { header: 'Animal Name', key: 'animalName', width: 20 },
+      { header: 'Species', key: 'species', width: 20 },
+      { header: 'Register Reference Number', key: 'registerReferenceNumber', width: 24 },
+      { header: 'Specimen Description', key: 'specimenDescription', width: 30 },
+      { header: 'Preservation Method', key: 'preservationMethod', width: 20 },
+      { header: 'Preservation Date', key: 'preservationDate', width: 18 },
+      { header: 'Facility Name', key: 'facilityName', width: 25 },
+      { header: 'Facility License', key: 'facilityLicense', width: 18 },
+      { header: 'Storage Address', key: 'storageAddress', width: 25 },
+      { header: 'Storage Suburb', key: 'storageSuburb', width: 16 },
+      { header: 'Storage State', key: 'storageState', width: 12 },
+      { header: 'Storage Postcode', key: 'storagePostcode', width: 14 },
+      { header: 'Scientific Purpose', key: 'scientificPurpose', width: 22 },
+      { header: 'Authorized By', key: 'authorizedBy', width: 20 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Photos', key: 'photos', width: 30 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const ps of preservedSpecimens) {
+      specimensSheet.addRow({
+        id: ps.id,
+        animalId: ps.animalId || '',
+        animalName: ps.animal?.name || '',
+        species: ps.species,
+        registerReferenceNumber: ps.registerReferenceNumber,
+        specimenDescription: ps.specimenDescription,
+        preservationMethod: ps.preservationMethod || '',
+        preservationDate: fmtDate(ps.preservationDate),
+        facilityName: ps.facilityName,
+        facilityLicense: ps.facilityLicense || '',
+        storageAddress: ps.storageAddress,
+        storageSuburb: ps.storageSuburb,
+        storageState: ps.storageState,
+        storagePostcode: ps.storagePostcode,
+        scientificPurpose: ps.scientificPurpose || '',
+        authorizedBy: ps.authorizedBy || '',
+        notes: ps.notes || '',
+        photos: fmtJson(ps.photos),
+        createdAt: fmtDate(ps.createdAt),
+        updatedAt: fmtDate(ps.updatedAt),
+      });
+    }
+    styleHeaderRow(specimensSheet);
 
-		const membersSheet = workbook.addWorksheet('Organisation Members')
-		membersSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'User ID', key: 'userId', width: 32 }, { header: 'Role', key: 'role', width: 14 }, { header: 'Species Group Assignments', key: 'speciesAssignments', width: 40 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const m of orgMembers) { membersSheet.addRow({ id: m.id, userId: m.userId, role: m.role, speciesAssignments: m.speciesAssignments.map((sa) => sa.speciesGroup.name).join(', '), createdAt: fmtDate(m.createdAt), updatedAt: fmtDate(m.updatedAt) }) }
-		styleHeaderRow(membersSheet)
+    const membersSheet = workbook.addWorksheet('Organisation Members');
+    membersSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'User Email', key: 'userEmail', width: 32 },
+      { header: 'Role', key: 'role', width: 14 },
+      { header: 'Species Group Assignments', key: 'speciesAssignments', width: 40 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const m of orgMembers) {
+      membersSheet.addRow({
+        id: m.id,
+        userEmail: emailForUserId(m.userId),
+        role: m.role,
+        speciesAssignments: m.speciesAssignments.map((sa) => sa.speciesGroup.name).join(', '),
+        createdAt: fmtDate(m.createdAt),
+        updatedAt: fmtDate(m.updatedAt),
+      });
+    }
+    styleHeaderRow(membersSheet);
 
-		const groupsSheet = workbook.addWorksheet('Species Groups')
-		groupsSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Slug', key: 'slug', width: 18 }, { header: 'Name', key: 'name', width: 22 }, { header: 'Description', key: 'description', width: 30 }, { header: 'Species Names', key: 'speciesNames', width: 40 }, { header: 'Coordinators', key: 'coordinators', width: 40 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const sg of speciesGroups) { groupsSheet.addRow({ id: sg.id, slug: sg.slug, name: sg.name, description: sg.description || '', speciesNames: fmtArr(sg.speciesNames), coordinators: sg.coordinators.map((c) => c.orgMember.userId).join(', '), createdAt: fmtDate(sg.createdAt), updatedAt: fmtDate(sg.updatedAt) }) }
-		styleHeaderRow(groupsSheet)
+    const groupsSheet = workbook.addWorksheet('Species Groups');
+    groupsSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Slug', key: 'slug', width: 18 },
+      { header: 'Name', key: 'name', width: 22 },
+      { header: 'Description', key: 'description', width: 30 },
+      { header: 'Species Names', key: 'speciesNames', width: 40 },
+      { header: 'Coordinators', key: 'coordinators', width: 40 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const sg of speciesGroups) {
+      groupsSheet.addRow({
+        id: sg.id,
+        slug: sg.slug,
+        name: sg.name,
+        description: sg.description || '',
+        speciesNames: fmtArr(sg.speciesNames),
+        coordinators: sg.coordinators.map((c) => emailForUserId(c.orgMember.userId)).join(', '),
+        createdAt: fmtDate(sg.createdAt),
+        updatedAt: fmtDate(sg.updatedAt),
+      });
+    }
+    styleHeaderRow(groupsSheet);
 
-		const callLogsSheet = workbook.addWorksheet('Call Logs')
-		callLogsSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Date/Time', key: 'dateTime', width: 22 }, { header: 'Status', key: 'status', width: 10 }, { header: 'Caller Name', key: 'callerName', width: 20 }, { header: 'Caller Phone', key: 'callerPhone', width: 16 }, { header: 'Caller Email', key: 'callerEmail', width: 25 }, { header: 'Species', key: 'species', width: 20 }, { header: 'Reason', key: 'reason', width: 18 }, { header: 'Referrer', key: 'referrer', width: 18 }, { header: 'Action', key: 'action', width: 18 }, { header: 'Outcome', key: 'outcome', width: 18 }, { header: 'Location', key: 'location', width: 30 }, { header: 'Suburb', key: 'suburb', width: 16 }, { header: 'Postcode', key: 'postcode', width: 10 }, { header: 'Coordinates', key: 'coordinates', width: 22 }, { header: 'Taken By', key: 'takenByUserName', width: 20 }, { header: 'Assigned To', key: 'assignedToUserName', width: 20 }, { header: 'Linked Animal', key: 'animalName', width: 20 }, { header: 'Notes', key: 'notes', width: 35 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const cl of callLogs) { callLogsSheet.addRow({ id: cl.id, dateTime: fmtDate(cl.dateTime), status: cl.status, callerName: cl.callerName, callerPhone: cl.callerPhone || '', callerEmail: cl.callerEmail || '', species: cl.species || '', reason: cl.reason || '', referrer: cl.referrer || '', action: cl.action || '', outcome: cl.outcome || '', location: cl.location || '', suburb: cl.suburb || '', postcode: cl.postcode || '', coordinates: fmtJson(cl.coordinates), takenByUserName: cl.takenByUserName || '', assignedToUserName: cl.assignedToUserName || '', animalName: cl.animal?.name || '', notes: cl.notes || '', createdAt: fmtDate(cl.createdAt), updatedAt: fmtDate(cl.updatedAt) }) }
-		styleHeaderRow(callLogsSheet)
+    const callLogsSheet = workbook.addWorksheet('Call Logs');
+    callLogsSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Date/Time', key: 'dateTime', width: 22 },
+      { header: 'Status', key: 'status', width: 10 },
+      { header: 'Caller Name', key: 'callerName', width: 20 },
+      { header: 'Caller Phone', key: 'callerPhone', width: 16 },
+      { header: 'Caller Email', key: 'callerEmail', width: 25 },
+      { header: 'Species', key: 'species', width: 20 },
+      { header: 'Reason', key: 'reason', width: 18 },
+      { header: 'Referrer', key: 'referrer', width: 18 },
+      { header: 'Action', key: 'action', width: 18 },
+      { header: 'Outcome', key: 'outcome', width: 18 },
+      { header: 'Location', key: 'location', width: 30 },
+      { header: 'Suburb', key: 'suburb', width: 16 },
+      { header: 'Postcode', key: 'postcode', width: 10 },
+      { header: 'Coordinates', key: 'coordinates', width: 22 },
+      { header: 'Taken By', key: 'takenByUserName', width: 20 },
+      { header: 'Assigned To', key: 'assignedToUserName', width: 20 },
+      { header: 'Linked Animal', key: 'animalName', width: 20 },
+      { header: 'Notes', key: 'notes', width: 35 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const cl of callLogs) {
+      callLogsSheet.addRow({
+        id: cl.id,
+        dateTime: fmtDate(cl.dateTime),
+        status: cl.status,
+        callerName: cl.callerName,
+        callerPhone: cl.callerPhone || '',
+        callerEmail: cl.callerEmail || '',
+        species: cl.species || '',
+        reason: cl.reason || '',
+        referrer: cl.referrer || '',
+        action: cl.action || '',
+        outcome: cl.outcome || '',
+        location: cl.location || '',
+        suburb: cl.suburb || '',
+        postcode: cl.postcode || '',
+        coordinates: fmtJson(cl.coordinates),
+        takenByUserName: cl.takenByUserName || emailForUserId(cl.takenByUserId),
+        assignedToUserName: cl.assignedToUserName || emailForUserId(cl.assignedToUserId),
+        animalName: cl.animal?.name || '',
+        notes: cl.notes || '',
+        createdAt: fmtDate(cl.createdAt),
+        updatedAt: fmtDate(cl.updatedAt),
+      });
+    }
+    styleHeaderRow(callLogsSheet);
 
-		const pcaSheet = workbook.addWorksheet('Permanent Care Applications')
-		pcaSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Animal ID', key: 'animalId', width: 28 }, { header: 'Animal Name', key: 'animalName', width: 20 }, { header: 'Status', key: 'status', width: 12 }, { header: 'Non-Releasable Reasons', key: 'nonReleasableReasons', width: 35 }, { header: 'Euthanasia Justification', key: 'euthanasiaJustification', width: 35 }, { header: 'Vet Name', key: 'vetName', width: 18 }, { header: 'Vet Clinic', key: 'vetClinic', width: 18 }, { header: 'Vet Report', key: 'vetReportUrl', width: 12 }, { header: 'NPWS Approval Number', key: 'npwsApprovalNumber', width: 22 }, { header: 'NPWS Approval Date', key: 'npwsApprovalDate', width: 18 }, { header: 'Category', key: 'category', width: 14 }, { header: 'Facility Name', key: 'facilityName', width: 20 }, { header: 'Keeper Name', key: 'keeperName', width: 18 }, { header: 'Submitted At', key: 'submittedAt', width: 22 }, { header: 'Reviewed At', key: 'reviewedAt', width: 22 }, { header: 'Rejection Reason', key: 'rejectionReason', width: 30 }, { header: 'Notes', key: 'notes', width: 30 }, { header: 'Created At', key: 'createdAt', width: 22 }]
-		for (const pca of permanentCareApplications) { pcaSheet.addRow({ id: pca.id, animalId: pca.animalId, animalName: pca.animal.name, status: pca.status, nonReleasableReasons: pca.nonReleasableReasons, euthanasiaJustification: pca.euthanasiaJustification, vetName: pca.vetName || '', vetClinic: pca.vetClinic || '', vetReportUrl: pca.vetReportUrl ? 'Yes' : 'No', npwsApprovalNumber: pca.npwsApprovalNumber || '', npwsApprovalDate: fmtDate(pca.npwsApprovalDate), category: pca.category || '', facilityName: pca.facilityName || '', keeperName: pca.keeperName || '', submittedAt: fmtDate(pca.submittedAt), reviewedAt: fmtDate(pca.reviewedAt), rejectionReason: pca.rejectionReason || '', notes: pca.notes || '', createdAt: fmtDate(pca.createdAt) }) }
-		styleHeaderRow(pcaSheet)
+    const pcaSheet = workbook.addWorksheet('Permanent Care Applications');
+    pcaSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Animal ID', key: 'animalId', width: 28 },
+      { header: 'Animal Name', key: 'animalName', width: 20 },
+      { header: 'Status', key: 'status', width: 12 },
+      { header: 'Non-Releasable Reasons', key: 'nonReleasableReasons', width: 35 },
+      { header: 'Euthanasia Justification', key: 'euthanasiaJustification', width: 35 },
+      { header: 'Vet Name', key: 'vetName', width: 18 },
+      { header: 'Vet Clinic', key: 'vetClinic', width: 18 },
+      { header: 'Vet Report', key: 'vetReportUrl', width: 12 },
+      { header: 'NPWS Approval Number', key: 'npwsApprovalNumber', width: 22 },
+      { header: 'NPWS Approval Date', key: 'npwsApprovalDate', width: 18 },
+      { header: 'Category', key: 'category', width: 14 },
+      { header: 'Facility Name', key: 'facilityName', width: 20 },
+      { header: 'Keeper Name', key: 'keeperName', width: 18 },
+      { header: 'Submitted At', key: 'submittedAt', width: 22 },
+      { header: 'Reviewed At', key: 'reviewedAt', width: 22 },
+      { header: 'Rejection Reason', key: 'rejectionReason', width: 30 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+    ];
+    for (const pca of permanentCareApplications) {
+      pcaSheet.addRow({
+        id: pca.id,
+        animalId: pca.animalId,
+        animalName: pca.animal.name,
+        status: pca.status,
+        nonReleasableReasons: pca.nonReleasableReasons,
+        euthanasiaJustification: pca.euthanasiaJustification,
+        vetName: pca.vetName || '',
+        vetClinic: pca.vetClinic || '',
+        vetReportUrl: pca.vetReportUrl ? 'Yes' : 'No',
+        npwsApprovalNumber: pca.npwsApprovalNumber || '',
+        npwsApprovalDate: fmtDate(pca.npwsApprovalDate),
+        category: pca.category || '',
+        facilityName: pca.facilityName || '',
+        keeperName: pca.keeperName || '',
+        submittedAt: fmtDate(pca.submittedAt),
+        reviewedAt: fmtDate(pca.reviewedAt),
+        rejectionReason: pca.rejectionReason || '',
+        notes: pca.notes || '',
+        createdAt: fmtDate(pca.createdAt),
+      });
+    }
+    styleHeaderRow(pcaSheet);
 
-		const transfersSheet = workbook.addWorksheet('Animal Transfers')
-		transfersSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Animal ID', key: 'animalId', width: 28 }, { header: 'Animal Name', key: 'animalName', width: 20 }, { header: 'Transfer Date', key: 'transferDate', width: 18 }, { header: 'Transfer Type', key: 'transferType', width: 22 }, { header: 'Reason', key: 'reasonForTransfer', width: 30 }, { header: 'From Carer', key: 'fromCarerId', width: 28 }, { header: 'To Carer', key: 'toCarerId', width: 28 }, { header: 'Receiving Entity', key: 'receivingEntity', width: 25 }, { header: 'Entity Type', key: 'receivingEntityType', width: 16 }, { header: 'Receiving Licence', key: 'receivingLicense', width: 20 }, { header: 'Contact Name', key: 'receivingContactName', width: 20 }, { header: 'Contact Phone', key: 'receivingContactPhone', width: 16 }, { header: 'Contact Email', key: 'receivingContactEmail', width: 25 }, { header: 'Receiving Org Animal ID', key: 'receivingOrgAnimalId', width: 22 }, { header: 'Authority Type', key: 'receivingAuthorityType', width: 18 }, { header: 'Address', key: 'receivingAddress', width: 25 }, { header: 'Suburb', key: 'receivingSuburb', width: 15 }, { header: 'State', key: 'receivingState', width: 8 }, { header: 'Postcode', key: 'receivingPostcode', width: 10 }, { header: 'Authorised By', key: 'transferAuthorizedBy', width: 20 }, { header: 'Verified By', key: 'verifiedByUserId', width: 28 }, { header: 'Verified At', key: 'verifiedAt', width: 22 }, { header: 'Notes', key: 'transferNotes', width: 30 }, { header: 'Documents', key: 'documents', width: 20 }, { header: 'Created At', key: 'createdAt', width: 22 }]
-		for (const t of animalTransfers) { transfersSheet.addRow({ id: t.id, animalId: t.animalId, animalName: t.animal.name, transferDate: fmtDate(t.transferDate), transferType: t.transferType, reasonForTransfer: t.reasonForTransfer, fromCarerId: t.fromCarerId || '', toCarerId: t.toCarerId || '', receivingEntity: t.receivingEntity, receivingEntityType: t.receivingEntityType || '', receivingLicense: t.receivingLicense || '', receivingContactName: t.receivingContactName || '', receivingContactPhone: t.receivingContactPhone || '', receivingContactEmail: t.receivingContactEmail || '', receivingOrgAnimalId: t.receivingOrgAnimalId || '', receivingAuthorityType: t.receivingAuthorityType || '', receivingAddress: t.receivingAddress || '', receivingSuburb: t.receivingSuburb || '', receivingState: t.receivingState || '', receivingPostcode: t.receivingPostcode || '', transferAuthorizedBy: t.transferAuthorizedBy || '', verifiedByUserId: t.verifiedByUserId || '', verifiedAt: fmtDate(t.verifiedAt), transferNotes: t.transferNotes || '', documents: fmtJson(t.documents), createdAt: fmtDate(t.createdAt) }) }
-		styleHeaderRow(transfersSheet)
+    const transfersSheet = workbook.addWorksheet('Animal Transfers');
+    transfersSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Animal ID', key: 'animalId', width: 28 },
+      { header: 'Animal Name', key: 'animalName', width: 20 },
+      { header: 'Transfer Date', key: 'transferDate', width: 18 },
+      { header: 'Transfer Type', key: 'transferType', width: 22 },
+      { header: 'Reason', key: 'reasonForTransfer', width: 30 },
+      { header: 'From Carer Email', key: 'fromCarerEmail', width: 28 },
+      { header: 'To Carer Email', key: 'toCarerEmail', width: 28 },
+      { header: 'Receiving Entity', key: 'receivingEntity', width: 25 },
+      { header: 'Entity Type', key: 'receivingEntityType', width: 16 },
+      { header: 'Receiving Licence', key: 'receivingLicense', width: 20 },
+      { header: 'Contact Name', key: 'receivingContactName', width: 20 },
+      { header: 'Contact Phone', key: 'receivingContactPhone', width: 16 },
+      { header: 'Contact Email', key: 'receivingContactEmail', width: 25 },
+      { header: 'Receiving Org Animal ID', key: 'receivingOrgAnimalId', width: 22 },
+      { header: 'Authority Type', key: 'receivingAuthorityType', width: 18 },
+      { header: 'Address', key: 'receivingAddress', width: 25 },
+      { header: 'Suburb', key: 'receivingSuburb', width: 15 },
+      { header: 'State', key: 'receivingState', width: 8 },
+      { header: 'Postcode', key: 'receivingPostcode', width: 10 },
+      { header: 'Authorised By', key: 'transferAuthorizedBy', width: 20 },
+      { header: 'Verified By Email', key: 'verifiedByEmail', width: 28 },
+      { header: 'Verified At', key: 'verifiedAt', width: 22 },
+      { header: 'Notes', key: 'transferNotes', width: 30 },
+      { header: 'Documents', key: 'documents', width: 20 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+    ];
+    for (const t of animalTransfers) {
+      transfersSheet.addRow({
+        id: t.id,
+        animalId: t.animalId,
+        animalName: t.animal.name,
+        transferDate: fmtDate(t.transferDate),
+        transferType: t.transferType,
+        reasonForTransfer: t.reasonForTransfer,
+        fromCarerEmail: emailForUserId(t.fromCarerId),
+        toCarerEmail: emailForUserId(t.toCarerId),
+        receivingEntity: t.receivingEntity,
+        receivingEntityType: t.receivingEntityType || '',
+        receivingLicense: t.receivingLicense || '',
+        receivingContactName: t.receivingContactName || '',
+        receivingContactPhone: t.receivingContactPhone || '',
+        receivingContactEmail: t.receivingContactEmail || '',
+        receivingOrgAnimalId: t.receivingOrgAnimalId || '',
+        receivingAuthorityType: t.receivingAuthorityType || '',
+        receivingAddress: t.receivingAddress || '',
+        receivingSuburb: t.receivingSuburb || '',
+        receivingState: t.receivingState || '',
+        receivingPostcode: t.receivingPostcode || '',
+        transferAuthorizedBy: t.transferAuthorizedBy || '',
+        verifiedByEmail: emailForUserId(t.verifiedByUserId),
+        verifiedAt: fmtDate(t.verifiedAt),
+        transferNotes: t.transferNotes || '',
+        documents: fmtJson(t.documents),
+        createdAt: fmtDate(t.createdAt),
+      });
+    }
+    styleHeaderRow(transfersSheet);
 
-		const postReleaseSheet = workbook.addWorksheet('Post-Release Monitoring')
-		postReleaseSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'Animal ID', key: 'animalId', width: 28 }, { header: 'Animal Name', key: 'animalName', width: 20 }, { header: 'Animal Species', key: 'animalSpecies', width: 20 }, { header: 'Date', key: 'date', width: 18 }, { header: 'Time', key: 'time', width: 10 }, { header: 'Location', key: 'location', width: 30 }, { header: 'Coordinates', key: 'coordinates', width: 22 }, { header: 'Animal Condition', key: 'animalCondition', width: 16 }, { header: 'Notes', key: 'notes', width: 40 }, { header: 'Photos', key: 'photos', width: 30 }, { header: 'Created At', key: 'createdAt', width: 22 }, { header: 'Updated At', key: 'updatedAt', width: 22 }]
-		for (const pr of postReleaseRecords) { postReleaseSheet.addRow({ id: pr.id, animalId: pr.animalId, animalName: pr.animal.name, animalSpecies: pr.animal.species, date: fmtDate(pr.date), time: pr.time || '', location: pr.location || '', coordinates: fmtJson(pr.coordinates), animalCondition: pr.animalCondition || '', notes: pr.notes, photos: fmtJson(pr.photos), createdAt: fmtDate(pr.createdAt), updatedAt: fmtDate(pr.updatedAt) }) }
-		styleHeaderRow(postReleaseSheet)
+    const postReleaseSheet = workbook.addWorksheet('Post-Release Monitoring');
+    postReleaseSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Animal ID', key: 'animalId', width: 28 },
+      { header: 'Animal Name', key: 'animalName', width: 20 },
+      { header: 'Animal Species', key: 'animalSpecies', width: 20 },
+      { header: 'Date', key: 'date', width: 18 },
+      { header: 'Time', key: 'time', width: 10 },
+      { header: 'Location', key: 'location', width: 30 },
+      { header: 'Coordinates', key: 'coordinates', width: 22 },
+      { header: 'Animal Condition', key: 'animalCondition', width: 16 },
+      { header: 'Notes', key: 'notes', width: 40 },
+      { header: 'Photos', key: 'photos', width: 30 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Updated At', key: 'updatedAt', width: 22 },
+    ];
+    for (const pr of postReleaseRecords) {
+      postReleaseSheet.addRow({
+        id: pr.id,
+        animalId: pr.animalId,
+        animalName: pr.animal.name,
+        animalSpecies: pr.animal.species,
+        date: fmtDate(pr.date),
+        time: pr.time || '',
+        location: pr.location || '',
+        coordinates: fmtJson(pr.coordinates),
+        animalCondition: pr.animalCondition || '',
+        notes: pr.notes,
+        photos: fmtJson(pr.photos),
+        createdAt: fmtDate(pr.createdAt),
+        updatedAt: fmtDate(pr.updatedAt),
+      });
+    }
+    styleHeaderRow(postReleaseSheet);
 
-		const auditSheet = workbook.addWorksheet('Audit Logs')
-		auditSheet.columns = [{ header: 'ID', key: 'id', width: 28 }, { header: 'User ID', key: 'userId', width: 32 }, { header: 'User Name', key: 'userName', width: 20 }, { header: 'User Email', key: 'userEmail', width: 25 }, { header: 'Action', key: 'action', width: 14 }, { header: 'Entity', key: 'entity', width: 20 }, { header: 'Entity ID', key: 'entityId', width: 28 }, { header: 'Metadata', key: 'metadata', width: 50 }, { header: 'Created At', key: 'createdAt', width: 22 }]
-		for (const al of auditLogs) { auditSheet.addRow({ id: al.id, userId: al.userId, userName: al.userName || '', userEmail: al.userEmail || '', action: al.action, entity: al.entity, entityId: al.entityId || '', metadata: fmtJson(al.metadata), createdAt: fmtDate(al.createdAt) }) }
-		styleHeaderRow(auditSheet)
+    const auditSheet = workbook.addWorksheet('Audit Logs');
+    auditSheet.columns = [
+      { header: 'ID', key: 'id', width: 28 },
+      { header: 'Clerk User ID', key: 'userId', width: 32 },
+      { header: 'Action', key: 'action', width: 14 },
+      { header: 'Entity', key: 'entity', width: 20 },
+      { header: 'Entity ID', key: 'entityId', width: 28 },
+      { header: 'Metadata', key: 'metadata', width: 50 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+    ];
+    for (const al of auditLogs) {
+      auditSheet.addRow({
+        id: al.id,
+        userId: al.userId,
+        action: al.action,
+        entity: al.entity,
+        entityId: al.entityId || '',
+        metadata: fmtJson(al.metadata),
+        createdAt: fmtDate(al.createdAt),
+      });
+    }
+    styleHeaderRow(auditSheet);
 
-		const xlsxBuffer = await workbook.xlsx.writeBuffer()
+    const xlsxBuffer = await workbook.xlsx.writeBuffer();
 
-		const fileEntries: { folder: string; key: string; filename: string }[] = []
-		function collectJsonKeys(json: unknown, folder: string, prefix: string) {
-			if (!json) return
-			const items = Array.isArray(json) ? json : [json]
-			for (const item of items) {
-				const key = typeof item === 'string' ? item : (item?.key || item?.url)
-				if (typeof key === 'string' && key.startsWith('orgs/')) {
-					const ext = key.split('.').pop() || 'bin'
-					fileEntries.push({ folder, key, filename: `${prefix}-${fileEntries.length}.${ext}` })
-				}
-			}
-		}
+    const fileEntries: { folder: string; key: string; filename: string }[] = [];
+    function collectJsonKeys(json: unknown, folder: string, prefix: string) {
+      if (!json) return;
+      const items = Array.isArray(json) ? json : [json];
+      for (const item of items) {
+        const key = typeof item === 'string' ? item : item?.key || item?.url;
+        if (typeof key === 'string' && key.startsWith('orgs/')) {
+          const ext = key.split('.').pop() || 'bin';
+          fileEntries.push({ folder, key, filename: `${prefix}-${fileEntries.length}.${ext}` });
+        }
+      }
+    }
 
-		for (const a of animals) { if (a.photo && a.photo.startsWith('orgs/')) { const ext = a.photo.split('.').pop() || 'jpg'; const safeName = (a.name || a.id).replace(/[^a-zA-Z0-9_-]/g, '_'); fileEntries.push({ folder: 'animal-photos', key: a.photo, filename: `${safeName}.${ext}` }) } }
-		for (const p of photos) { if (p.url && p.url.startsWith('orgs/')) { const ext = p.url.split('.').pop() || 'jpg'; const safeName = (p.animal?.name || p.animalId).replace(/[^a-zA-Z0-9_-]/g, '_'); fileEntries.push({ folder: 'animal-gallery', key: p.url, filename: `${safeName}-${fileEntries.length}.${ext}` }) } }
-		for (const pca of permanentCareApplications) { if (pca.vetReportUrl && pca.vetReportUrl.startsWith('orgs/')) { const safeName = (pca.animal.name || pca.animalId).replace(/[^a-zA-Z0-9_-]/g, '_'); fileEntries.push({ folder: 'vet-reports', key: pca.vetReportUrl, filename: `${safeName}-vet-report.pdf` }) } }
-		for (const h of hygieneLogs) { collectJsonKeys(h.photos, 'hygiene-photos', `hygiene-${h.id.slice(-6)}`) }
-		for (const i of incidentReports) { collectJsonKeys(i.attachments, 'incident-attachments', `incident-${i.id.slice(-6)}`) }
-		for (const ps of preservedSpecimens) { collectJsonKeys(ps.photos, 'specimen-photos', `specimen-${ps.id.slice(-6)}`) }
-		for (const t of animalTransfers) { collectJsonKeys(t.documents, 'transfer-documents', `transfer-${t.id.slice(-6)}`) }
-		for (const rc of releaseChecklists) { collectJsonKeys(rc.photos, 'release-photos', `release-${rc.id.slice(-6)}`) }
-		for (const pr of postReleaseRecords) { collectJsonKeys(pr.photos, 'post-release-photos', `post-release-${pr.id.slice(-6)}`) }
+    for (const a of animals) {
+      if (a.photo && a.photo.startsWith('orgs/')) {
+        const ext = a.photo.split('.').pop() || 'jpg';
+        const safeName = (a.name || a.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+        fileEntries.push({ folder: 'animal-photos', key: a.photo, filename: `${safeName}.${ext}` });
+      }
+    }
+    for (const p of photos) {
+      if (p.url && p.url.startsWith('orgs/')) {
+        const ext = p.url.split('.').pop() || 'jpg';
+        const safeName = (p.animal?.name || p.animalId).replace(/[^a-zA-Z0-9_-]/g, '_');
+        fileEntries.push({
+          folder: 'animal-gallery',
+          key: p.url,
+          filename: `${safeName}-${fileEntries.length}.${ext}`,
+        });
+      }
+    }
+    for (const pca of permanentCareApplications) {
+      if (pca.vetReportUrl && pca.vetReportUrl.startsWith('orgs/')) {
+        const safeName = (pca.animal.name || pca.animalId).replace(/[^a-zA-Z0-9_-]/g, '_');
+        fileEntries.push({
+          folder: 'vet-reports',
+          key: pca.vetReportUrl,
+          filename: `${safeName}-vet-report.pdf`,
+        });
+      }
+    }
+    for (const h of hygieneLogs) {
+      collectJsonKeys(h.photos, 'hygiene-photos', `hygiene-${h.id.slice(-6)}`);
+    }
+    for (const i of incidentReports) {
+      collectJsonKeys(i.attachments, 'incident-attachments', `incident-${i.id.slice(-6)}`);
+    }
+    for (const ps of preservedSpecimens) {
+      collectJsonKeys(ps.photos, 'specimen-photos', `specimen-${ps.id.slice(-6)}`);
+    }
+    for (const t of animalTransfers) {
+      collectJsonKeys(t.documents, 'transfer-documents', `transfer-${t.id.slice(-6)}`);
+    }
+    for (const rc of releaseChecklists) {
+      collectJsonKeys(rc.photos, 'release-photos', `release-${rc.id.slice(-6)}`);
+    }
+    for (const pr of postReleaseRecords) {
+      collectJsonKeys(pr.photos, 'post-release-photos', `post-release-${pr.id.slice(-6)}`);
+    }
 
-		const today = new Date().toISOString().split('T')[0]
-		const zipFilename = `wildtrack360-export-${today}.zip`
-		const archive = archiver('zip', { zlib: { level: 5 } })
-		const passthrough = new PassThrough()
-		archive.pipe(passthrough)
-		archive.append(Buffer.from(xlsxBuffer as ArrayBuffer), { name: `wildtrack360-export-${today}.xlsx` })
+    const today = new Date().toISOString().split('T')[0];
+    const zipFilename = `wildtrack360-export-${today}.zip`;
+    const archive = archiver('zip', { zlib: { level: 5 } });
+    const passthrough = new PassThrough();
+    archive.pipe(passthrough);
+    archive.append(Buffer.from(xlsxBuffer as ArrayBuffer), {
+      name: `wildtrack360-export-${today}.xlsx`,
+    });
 
-		const BATCH_SIZE = 10
-		let filesAdded = 0, filesFailed = 0
-		for (let i = 0; i < fileEntries.length; i += BATCH_SIZE) {
-			const results = await Promise.allSettled(fileEntries.slice(i, i + BATCH_SIZE).map(async (entry) => { const { body } = await getObjectFromS3(entry.key); return { ...entry, body } }))
-			for (const result of results) { if (result.status === 'fulfilled') { archive.append(result.value.body, { name: `files/${result.value.folder}/${result.value.filename}` }); filesAdded++ } else { filesFailed++ } }
-		}
-		archive.finalize()
+    const BATCH_SIZE = 10;
+    let filesAdded = 0,
+      filesFailed = 0;
+    for (let i = 0; i < fileEntries.length; i += BATCH_SIZE) {
+      const results = await Promise.allSettled(
+        fileEntries.slice(i, i + BATCH_SIZE).map(async (entry) => {
+          const { body } = await getObjectFromS3(entry.key);
+          return { ...entry, body };
+        })
+      );
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          archive.append(result.value.body, {
+            name: `files/${result.value.folder}/${result.value.filename}`,
+          });
+          filesAdded++;
+        } else {
+          filesFailed++;
+        }
+      }
+    }
+    archive.finalize();
 
-		const chunks: Buffer[] = []
-		for await (const chunk of passthrough) { chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)) }
-		const zipBuffer = Buffer.concat(chunks)
+    const chunks: Buffer[] = [];
+    for await (const chunk of passthrough) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    const zipBuffer = Buffer.concat(chunks);
 
-		logAudit({ userId, orgId, action: 'EXPORT', entity: 'DataExport', metadata: { format: 'zip', tables: 17, filesAdded, filesFailed, totalFileEntries: fileEntries.length, rowCounts: { animals: animals.length, records: records.length, species: species.length, carerProfiles: carerProfiles.length, carerTrainings: carerTrainings.length, hygieneLogs: hygieneLogs.length, incidentReports: incidentReports.length, releaseChecklists: releaseChecklists.length, assets: assets.length, preservedSpecimens: preservedSpecimens.length, orgMembers: orgMembers.length, speciesGroups: speciesGroups.length, callLogs: callLogs.length, auditLogs: auditLogs.length, permanentCareApplications: permanentCareApplications.length, animalTransfers: animalTransfers.length, postReleaseRecords: postReleaseRecords.length } } })
+    logAudit({
+      userId,
+      orgId,
+      action: 'EXPORT',
+      entity: 'DataExport',
+      metadata: {
+        format: 'zip',
+        tables: 17,
+        filesAdded,
+        filesFailed,
+        totalFileEntries: fileEntries.length,
+        rowCounts: {
+          animals: animals.length,
+          records: records.length,
+          species: species.length,
+          carerProfiles: carerProfiles.length,
+          carerTrainings: carerTrainings.length,
+          hygieneLogs: hygieneLogs.length,
+          incidentReports: incidentReports.length,
+          releaseChecklists: releaseChecklists.length,
+          assets: assets.length,
+          preservedSpecimens: preservedSpecimens.length,
+          orgMembers: orgMembers.length,
+          speciesGroups: speciesGroups.length,
+          callLogs: callLogs.length,
+          auditLogs: auditLogs.length,
+          permanentCareApplications: permanentCareApplications.length,
+          animalTransfers: animalTransfers.length,
+          postReleaseRecords: postReleaseRecords.length,
+        },
+      },
+    });
 
-		return new NextResponse(zipBuffer, {
-			status: 200,
-			headers: { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="${zipFilename}"` },
-		})
-	} catch (err) {
-		console.error('Error generating data export:', err)
-		return NextResponse.json({ error: 'Failed to generate data export' }, { status: 500 })
-	}
-})
+    return new NextResponse(zipBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${zipFilename}"`,
+      },
+    });
+  } catch (err) {
+    console.error('Error generating data export:', err);
+    return NextResponse.json({ error: 'Failed to generate data export' }, { status: 500 });
+  }
+});

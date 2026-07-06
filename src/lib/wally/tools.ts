@@ -86,7 +86,9 @@ function guarded<Args, Result>(toolName: string, impl: (args: Args) => Promise<R
     } catch (error) {
       if (error instanceof WallyToolError) return { error: error.message };
       console.error(`[wally] tool ${toolName} failed:`, error);
-      return { error: `The ${toolName} tool failed unexpectedly. Suggest the user try again or use the app directly.` };
+      return {
+        error: `The ${toolName} tool failed unexpectedly. Suggest the user try again or use the app directly.`,
+      };
     }
   };
 }
@@ -94,9 +96,78 @@ function guarded<Args, Result>(toolName: string, impl: (args: Args) => Promise<R
 function parseDateInput(value: string, fieldName: string): Date {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    throw new WallyToolError(`"${value}" is not a valid ${fieldName}. Use an ISO date like 2026-07-05.`);
+    throw new WallyToolError(
+      `"${value}" is not a valid ${fieldName}. Use an ISO date like 2026-07-05.`
+    );
   }
   return date;
+}
+
+type CarerDisplay = {
+  name: string;
+  email: string | null;
+};
+
+const CARER_EMAIL_UNAVAILABLE = 'Carer email unavailable';
+
+function carerDisplayFor(
+  carerId: string | null | undefined,
+  carersById: Map<string, CarerDisplay>
+) {
+  if (!carerId) return null;
+  return carersById.get(carerId) ?? { name: CARER_EMAIL_UNAVAILABLE, email: null };
+}
+
+async function getCarerDisplayById(orgId: string): Promise<Map<string, CarerDisplay>> {
+  const carers = (await getEnrichedCarers(orgId)) ?? [];
+  return new Map(
+    carers.map((carer) => [
+      carer.id,
+      {
+        name: carer.name || carer.email || CARER_EMAIL_UNAVAILABLE,
+        email: carer.email || null,
+      },
+    ])
+  );
+}
+
+async function resolveCarerReference(
+  orgId: string,
+  reference: { carerId?: string | null; carerEmail?: string | null }
+): Promise<{ id: string; display: CarerDisplay } | null> {
+  const email = reference.carerEmail?.trim().toLowerCase();
+  const carerId = reference.carerId?.trim();
+  if (!email && !carerId) return null;
+
+  if (email) {
+    const carersById = await getCarerDisplayById(orgId);
+    for (const [id, display] of carersById) {
+      if (display.email?.toLowerCase() === email) return { id, display };
+    }
+    throw new WallyToolError(
+      `No carer found with email "${reference.carerEmail}" in this organisation`
+    );
+  }
+
+  return {
+    id: carerId!,
+    display: { name: CARER_EMAIL_UNAVAILABLE, email: null },
+  };
+}
+
+function omitInternalUserFields<T extends Record<string, unknown>>(value: T) {
+  const {
+    clerkUserId: _clerkUserId,
+    clerkOrganizationId: _clerkOrganizationId,
+    carerId: _carerId,
+    createdByUserId: _createdByUserId,
+    submittedByUserId: _submittedByUserId,
+    reviewedByUserId: _reviewedByUserId,
+    takenByUserId: _takenByUserId,
+    assignedToUserId: _assignedToUserId,
+    ...rest
+  } = value;
+  return rest;
 }
 
 /**
@@ -199,7 +270,16 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
             take: limit,
           }),
         ]);
-        return { total, returned: animals.length, truncated: total > animals.length, animals };
+        const carersById = await getCarerDisplayById(orgId);
+        return {
+          total,
+          returned: animals.length,
+          truncated: total > animals.length,
+          animals: animals.map(({ carerId, ...animal }) => ({
+            ...animal,
+            carer: carerDisplayFor(carerId, carersById),
+          })),
+        };
       }),
     }),
 
@@ -223,7 +303,17 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
             take: 10,
           }),
         ]);
-        return { animal, records, growthMeasurements };
+        const carersById = await getCarerDisplayById(orgId);
+        return {
+          animal: {
+            ...omitInternalUserFields(animal),
+            carer: carerDisplayFor(animal.carerId, carersById),
+          },
+          records: records.map((record) => omitInternalUserFields(record)),
+          growthMeasurements: growthMeasurements.map((measurement) =>
+            omitInternalUserFields(measurement)
+          ),
+        };
       }),
     }),
 
@@ -244,21 +334,32 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
           throw new WallyToolError(`Forbidden: your role (${role}) cannot view the carer list`);
         }
         const carers = await getEnrichedCarers(orgId);
-        return { carers: carers.map(({ imageUrl: _imageUrl, ...carer }) => carer) };
+        return {
+          carers: carers.map(({ id: _id, imageUrl: _imageUrl, ...carer }) => ({
+            ...carer,
+            email: carer.email || CARER_EMAIL_UNAVAILABLE,
+            trainings: carer.trainings?.map((training) => omitInternalUserFields(training)),
+          })),
+        };
       }),
     }),
 
     list_training_records: tool({
       description:
-        "List carer training records and certificates for the organisation, ordered by expiry date. Optionally filter to one carer's user ID.",
+        "List carer training records and certificates for the organisation, ordered by expiry date. Optionally filter to one carer's email. Use carer IDs only as internal tool values, never in user-facing replies.",
       inputSchema: z.object({
-        carerId: z.string().optional().describe('Carer user ID to filter to'),
+        carerEmail: z.string().email().optional().describe('Carer email address to filter to'),
+        carerId: z
+          .string()
+          .optional()
+          .describe('Internal carer ID to filter to; do not ask the user for this value'),
       }),
       execute: guarded('list_training_records', async (args) => {
+        const requestedCarer = await resolveCarerReference(orgId, args);
         const trainings = await prisma.carerTraining.findMany({
           where: {
             clerkOrganizationId: orgId,
-            ...(args.carerId ? { carerId: args.carerId } : {}),
+            ...(requestedCarer ? { carerId: requestedCarer.id } : {}),
           },
           orderBy: [{ expiryDate: 'asc' }, { date: 'desc' }],
           select: {
@@ -271,15 +372,32 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
             notes: true,
           },
         });
-        return { total: trainings.length, trainings };
+        const carersById = await getCarerDisplayById(orgId);
+        return {
+          total: trainings.length,
+          trainings: trainings.map(({ carerId, ...training }) => ({
+            ...training,
+            carer: carerDisplayFor(carerId, carersById),
+          })),
+        };
       }),
     }),
 
     add_training_record: tool({
       description:
-        'Add a carer training or certificate record. Defaults to the current user; adding for another carer requires a coordinator or admin role. Confirm details with the user before calling.',
+        'Add a carer training or certificate record. Defaults to the current user; adding for another carer requires a coordinator or admin role. Use a carer email for another carer. Confirm details with the user before calling.',
       inputSchema: z.object({
-        carerId: z.string().optional().describe('Carer user ID; omit for the current user'),
+        carerEmail: z
+          .string()
+          .email()
+          .optional()
+          .describe('Carer email address; omit for the current user'),
+        carerId: z
+          .string()
+          .optional()
+          .describe(
+            'Internal carer ID; omit for the current user and do not ask the user for this value'
+          ),
         courseName: z.string().min(1).describe('Name of the course or certificate'),
         provider: z.string().optional().describe('Training provider'),
         date: z.string().describe('Date completed, ISO format (YYYY-MM-DD)'),
@@ -287,7 +405,8 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
         notes: z.string().optional(),
       }),
       execute: guarded('add_training_record', async (args) => {
-        const carerId = args.carerId ?? userId;
+        const requestedCarer = await resolveCarerReference(orgId, args);
+        const carerId = requestedCarer?.id ?? userId;
         if (carerId !== userId && !hasPermission(role, 'carer:view_workload')) {
           throw new WallyToolError(
             `Forbidden: your role (${role}) can only add training records for yourself`
@@ -298,7 +417,7 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
         });
         if (!carer) {
           throw new WallyToolError(
-            `No carer profile found for user "${carerId}" in this organisation. The carer must complete their profile first.`
+            'No carer profile found for that user in this organisation. The carer must complete their profile first.'
           );
         }
         const training = await prisma.carerTraining.create({
@@ -321,7 +440,13 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
           entityId: training.id,
           metadata: { courseName: args.courseName, carerId, via: 'wally' },
         });
-        return { created: training };
+        const carersById = await getCarerDisplayById(orgId);
+        return {
+          created: {
+            ...omitInternalUserFields(training),
+            carer: carerDisplayFor(carerId, carersById),
+          },
+        };
       }),
     }),
 
@@ -334,26 +459,42 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
         sex: z.enum(['Male', 'Female', 'Unknown']).optional(),
         ageClass: z.string().optional().describe('e.g. Adult, Juvenile, Pouch young'),
         status: z.enum(ANIMAL_STATUSES).default('IN_CARE'),
-        dateFound: z.string().optional().describe('Date found/rescued, ISO format; defaults to today'),
+        dateFound: z
+          .string()
+          .optional()
+          .describe('Date found/rescued, ISO format; defaults to today'),
         rescueLocation: z.string().optional().describe('Where the animal was found'),
         rescueSuburb: z.string().optional(),
         initialWeightGrams: z.number().int().positive().optional(),
         notes: z.string().optional(),
-        carerId: z.string().optional().describe('Carer user ID to assign the animal to'),
-        orgAnimalId: z.string().optional().describe('Explicit org animal ID; omit to auto-generate'),
+        carerEmail: z
+          .string()
+          .email()
+          .optional()
+          .describe('Carer email address to assign the animal to'),
+        carerId: z
+          .string()
+          .optional()
+          .describe(
+            'Internal carer ID to assign the animal to; do not ask the user for this value'
+          ),
+        orgAnimalId: z
+          .string()
+          .optional()
+          .describe('Explicit org animal ID; omit to auto-generate'),
       }),
       execute: guarded('create_animal', async (args) => {
         if (!hasPermission(role, 'animal:create')) {
           throw new WallyToolError(`Forbidden: your role (${role}) cannot admit animals`);
         }
-        if (args.carerId) {
+        const requestedCarer = await resolveCarerReference(orgId, args);
+        const carerId = requestedCarer?.id;
+        if (carerId) {
           const carer = await prisma.carerProfile.findFirst({
-            where: { id: args.carerId, clerkOrganizationId: orgId },
+            where: { id: carerId, clerkOrganizationId: orgId },
           });
           if (!carer) {
-            throw new WallyToolError(
-              `No carer profile found for user "${args.carerId}" in this organisation`
-            );
+            throw new WallyToolError('No carer profile found for that user in this organisation');
           }
         }
         const dateFound = args.dateFound
@@ -370,7 +511,7 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
           rescueSuburb: args.rescueSuburb,
           initialWeightGrams: args.initialWeightGrams,
           notes: args.notes,
-          carerId: args.carerId,
+          carerId,
           clerkUserId: userId,
           clerkOrganizationId: orgId,
         };
@@ -399,7 +540,13 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
               via: 'wally',
             },
           });
-          return { created };
+          const carersById = await getCarerDisplayById(orgId);
+          return {
+            created: {
+              ...omitInternalUserFields(created),
+              carer: carerDisplayFor(created.carerId, carersById),
+            },
+          };
         } catch (error) {
           if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
             throw new WallyToolError(
@@ -442,7 +589,7 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
           entityId: record.id,
           metadata: { animalId: animal.id, type: args.type, via: 'wally' },
         });
-        return { created: record };
+        return { created: omitInternalUserFields(record) };
       }),
     }),
 
@@ -489,7 +636,7 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
           entityId: measurement.id,
           metadata: { animalId: animal.id, via: 'wally' },
         });
-        return { created: measurement };
+        return { created: omitInternalUserFields(measurement) };
       }),
     }),
 
@@ -552,7 +699,10 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
 
         if (args.ageDays != null) {
           const predictedWeightGrams = calculatePredictedWeight(referenceData, args.ageDays);
-          const weightCheck: Record<string, unknown> = { ageDays: args.ageDays, predictedWeightGrams };
+          const weightCheck: Record<string, unknown> = {
+            ageDays: args.ageDays,
+            predictedWeightGrams,
+          };
           if (args.actualWeightGrams != null && predictedWeightGrams != null) {
             const wfa = calculateWFA(referenceData, args.ageDays, args.actualWeightGrams);
             weightCheck.actualWeightGrams = args.actualWeightGrams;
@@ -579,7 +729,9 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
           .array(z.string().min(1))
           .min(1)
           .max(10)
-          .describe('QL lines, e.g. ["count from animals where status = IN_CARE group by species"]'),
+          .describe(
+            'QL lines, e.g. ["count from animals where status = IN_CARE group by species"]'
+          ),
         start: z.string().optional().describe('Default window start, YYYY-MM-DD'),
         end: z.string().optional().describe('Default window end, YYYY-MM-DD'),
       }),
@@ -594,7 +746,9 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
           const d = new Date(value);
           return Number.isNaN(d.getTime()) ? undefined : d;
         };
-        const carerNamesById = lines.some((q: string) => /\b(?:carerName|animal_assignments)\b/i.test(q))
+        const carerNamesById = lines.some((q: string) =>
+          /\b(?:carerName|animal_assignments)\b/i.test(q)
+        )
           ? await getReportCarerNamesById(orgId)
           : undefined;
         const results = await evaluateCustomQueries(lines, {

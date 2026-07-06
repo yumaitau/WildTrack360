@@ -1,12 +1,25 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Shield, Calendar, Download, ArrowLeft, AlertTriangle, CheckCircle, XCircle, User, FileText, Image as ImageIcon, Home } from "lucide-react";
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { auth, clerkClient } from "@/lib/clerk-server";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Shield,
+  Calendar,
+  Download,
+  ArrowLeft,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  User,
+  FileText,
+  Image as ImageIcon,
+  Home,
+} from 'lucide-react';
+import Link from 'next/link';
+import { notFound, redirect } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
+import { auth, clerkClient } from '@/lib/clerk-server';
+import { CLERK_EMAIL_UNAVAILABLE, getClerkUserEmail } from '@/lib/clerk-user-display';
 
 interface HygieneLogDetailPageProps {
   params: Promise<{
@@ -17,8 +30,8 @@ interface HygieneLogDetailPageProps {
 export default async function HygieneLogDetailPage({ params }: HygieneLogDetailPageProps) {
   const { id } = await params;
   const { userId, orgId } = await auth();
-  if (!userId) redirect("/sign-in");
-  const organizationId = orgId || "";
+  if (!userId) redirect('/sign-in');
+  const organizationId = orgId || '';
 
   const log = await prisma.hygieneLog.findFirst({
     where: { id: id, clerkUserId: userId, clerkOrganizationId: organizationId },
@@ -28,13 +41,18 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
   const carerProfile = log.carer;
 
   // Resolve carer name from Clerk
-  let carerName = carerProfile?.id || '—';
+  let carerName = '—';
   if (carerProfile?.id) {
     try {
       const client = await clerkClient();
       const clerkUser = await client.users.getUser(carerProfile.id);
-      carerName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || clerkUser.emailAddresses[0]?.emailAddress || carerProfile.id;
-    } catch { /* fallback to ID */ }
+      carerName =
+        [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') ||
+        getClerkUserEmail(clerkUser) ||
+        CLERK_EMAIL_UNAVAILABLE;
+    } catch {
+      carerName = CLERK_EMAIL_UNAVAILABLE;
+    }
   }
   const carer = { ...carerProfile, name: carerName };
 
@@ -44,7 +62,7 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
       log.ppeUsed,
       log.handwashAvailable,
       log.feedingBowlsDisinfected,
-      log.quarantineSignsPresent
+      log.quarantineSignsPresent,
     ];
     const passed = checks.filter(Boolean).length;
     return Math.round((passed / checks.length) * 100);
@@ -59,7 +77,7 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
     { name: 'PPE Used', value: log.ppeUsed },
     { name: 'Handwash Available', value: log.handwashAvailable },
     { name: 'Feeding Bowls Disinfected', value: log.feedingBowlsDisinfected },
-    { name: 'Quarantine Signs Present', value: log.quarantineSignsPresent }
+    { name: 'Quarantine Signs Present', value: log.quarantineSignsPresent },
   ];
 
   return (
@@ -80,7 +98,12 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold">Hygiene Log</h1>
             <p className="text-sm sm:text-base text-muted-foreground">
-              {carer?.name} • {new Date(log.date).toLocaleDateString("en-AU", { year: "numeric", month: "short", day: "numeric" })}
+              {carer?.name} •{' '}
+              {new Date(log.date).toLocaleDateString('en-AU', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })}
             </p>
           </div>
         </div>
@@ -90,7 +113,9 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
             Export PDF
           </Button>
           <Link href={`/compliance/hygiene/${id}/edit`}>
-            <Button size="sm" className="sm:h-9 sm:px-4">Edit Log</Button>
+            <Button size="sm" className="sm:h-9 sm:px-4">
+              Edit Log
+            </Button>
           </Link>
         </div>
       </div>
@@ -113,12 +138,20 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
                   <p className="text-lg font-medium">{carer?.name}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Licence Number</label>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Licence Number
+                  </label>
                   <p className="font-mono text-sm">{carer?.licenseNumber || '—'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Date</label>
-                  <p className="text-lg">{new Date(log.date).toLocaleDateString("en-AU", { year: "numeric", month: "long", day: "numeric" })}</p>
+                  <p className="text-lg">
+                    {new Date(log.date).toLocaleDateString('en-AU', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Jurisdiction</label>
@@ -144,7 +177,10 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
             <CardContent>
               <div className="space-y-4">
                 {checks.map((check, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded"
+                  >
                     <span className="font-medium">{check.name}</span>
                     <div className="flex items-center gap-2">
                       {check.value ? (
@@ -199,9 +235,9 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
                     <li>• Quarantine area signs clearly displayed</li>
                   </ul>
                 </div>
-                
+
                 <Separator />
-                
+
                 <div>
                   <h4 className="font-semibold mb-2">Biosecurity Protocols</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
@@ -266,20 +302,28 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
                   )}
                 </div>
               </div>
-              
+
               <Separator />
-              
+
               <div className="text-center">
-                <div className={`text-2xl font-bold ${
-                  isFullyCompliant ? 'text-green-600' : 
-                  isMostlyCompliant ? 'text-orange-600' : 'text-red-600'
-                }`}>
+                <div
+                  className={`text-2xl font-bold ${
+                    isFullyCompliant
+                      ? 'text-green-600'
+                      : isMostlyCompliant
+                        ? 'text-orange-600'
+                        : 'text-red-600'
+                  }`}
+                >
                   {complianceScore}%
                 </div>
                 <div className="text-sm text-muted-foreground">Compliance Score</div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {isFullyCompliant ? 'Fully Compliant' : 
-                   isMostlyCompliant ? 'Mostly Compliant' : 'Non-Compliant'}
+                  {isFullyCompliant
+                    ? 'Fully Compliant'
+                    : isMostlyCompliant
+                      ? 'Mostly Compliant'
+                      : 'Non-Compliant'}
                 </div>
               </div>
             </CardContent>
@@ -293,7 +337,9 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Date</span>
-                <span className="font-medium">{new Date(log.date).toLocaleDateString("en-AU")}</span>
+                <span className="font-medium">
+                  {new Date(log.date).toLocaleDateString('en-AU')}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Carer</span>
@@ -301,11 +347,13 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Completed Items</span>
-                <span className="font-medium">{checks.filter(c => c.value).length}/5</span>
+                <span className="font-medium">{checks.filter((c) => c.value).length}/5</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Photos Attached</span>
-                <span className="font-medium">{Array.isArray((log as any).photos) ? ((log as any).photos as any[]).length : 0}</span>
+                <span className="font-medium">
+                  {Array.isArray((log as any).photos) ? ((log as any).photos as any[]).length : 0}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -342,21 +390,11 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
               </CardHeader>
               <CardContent>
                 <div className="text-sm text-orange-800 space-y-2">
-                  {!log.enclosureCleaned && (
-                    <p>• Enclosure cleaning not completed</p>
-                  )}
-                  {!log.ppeUsed && (
-                    <p>• PPE not used during cleaning</p>
-                  )}
-                  {!log.handwashAvailable && (
-                    <p>• Handwashing facilities not available</p>
-                  )}
-                  {!log.feedingBowlsDisinfected && (
-                    <p>• Feeding bowls not disinfected</p>
-                  )}
-                  {!log.quarantineSignsPresent && (
-                    <p>• Quarantine signs not present</p>
-                  )}
+                  {!log.enclosureCleaned && <p>• Enclosure cleaning not completed</p>}
+                  {!log.ppeUsed && <p>• PPE not used during cleaning</p>}
+                  {!log.handwashAvailable && <p>• Handwashing facilities not available</p>}
+                  {!log.feedingBowlsDisinfected && <p>• Feeding bowls not disinfected</p>}
+                  {!log.quarantineSignsPresent && <p>• Quarantine signs not present</p>}
                 </div>
                 <Button variant="outline" className="w-full mt-3" size="sm">
                   Report Issue
@@ -368,4 +406,4 @@ export default async function HygieneLogDetailPage({ params }: HygieneLogDetailP
       </div>
     </div>
   );
-} 
+}

@@ -1,20 +1,14 @@
 // src/components/carer-workload-dashboard.tsx
-"use client";
+'use client';
 
-import * as React from "react";
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { Animal } from "@prisma/client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, AlertTriangle, Users } from "lucide-react";
+import * as React from 'react';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Animal } from '@prisma/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronUp, AlertTriangle, Users } from 'lucide-react';
 
 interface CarerWorkloadDashboardProps {
   animals: Animal[];
@@ -22,15 +16,14 @@ interface CarerWorkloadDashboardProps {
 }
 
 function daysInCare(dateFound: Date | string): number {
-  return Math.floor(
-    (Date.now() - new Date(dateFound).getTime()) / 86_400_000
-  );
+  return Math.floor((Date.now() - new Date(dateFound).getTime()) / 86_400_000);
 }
 
 function workloadLevel(count: number) {
-  if (count <= 3) return { label: "Light", color: "bg-green-100 text-green-800 border-green-300" };
-  if (count <= 6) return { label: "Moderate", color: "bg-amber-100 text-amber-800 border-amber-300" };
-  return { label: "Heavy", color: "bg-red-100 text-red-800 border-red-300" };
+  if (count <= 3) return { label: 'Light', color: 'bg-green-100 text-green-800 border-green-300' };
+  if (count <= 6)
+    return { label: 'Moderate', color: 'bg-amber-100 text-amber-800 border-amber-300' };
+  return { label: 'Heavy', color: 'bg-red-100 text-red-800 border-red-300' };
 }
 
 export default function CarerWorkloadDashboard({
@@ -39,10 +32,7 @@ export default function CarerWorkloadDashboard({
 }: CarerWorkloadDashboardProps) {
   const [expandedCarers, setExpandedCarers] = useState<Set<string>>(new Set());
 
-  const inCareAnimals = useMemo(
-    () => animals.filter((a) => a.status === "IN_CARE"),
-    [animals]
-  );
+  const inCareAnimals = useMemo(() => animals.filter((a) => a.status === 'IN_CARE'), [animals]);
 
   const carerData = useMemo(() => {
     const grouped: Record<string, Animal[]> = {};
@@ -71,10 +61,8 @@ export default function CarerWorkloadDashboard({
 
         return {
           carerId,
-          name: carerMap[carerId] || carerId,
-          animals: carerAnimals.sort(
-            (a, b) => daysInCare(b.dateFound) - daysInCare(a.dateFound)
-          ),
+          name: carerMap[carerId] || 'Carer email unavailable',
+          animals: carerAnimals.sort((a, b) => daysInCare(b.dateFound) - daysInCare(a.dateFound)),
           count: carerAnimals.length,
           speciesCounts,
           longestDays,
@@ -87,7 +75,7 @@ export default function CarerWorkloadDashboard({
 
   const totalCarers = carerData.carers.length;
   const totalInCare = inCareAnimals.length;
-  const avgPerCarer = totalCarers > 0 ? (totalInCare / totalCarers).toFixed(1) : "0";
+  const avgPerCarer = totalCarers > 0 ? (totalInCare / totalCarers).toFixed(1) : '0';
 
   const toggleExpand = (carerId: string) => {
     setExpandedCarers((prev) => {
@@ -105,9 +93,7 @@ export default function CarerWorkloadDashboard({
           <Users className="h-5 w-5" />
           Carer Workload
         </CardTitle>
-        <CardDescription>
-          Detailed breakdown of animals in care per carer
-        </CardDescription>
+        <CardDescription>Detailed breakdown of animals in care per carer</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Summary Bar */}
@@ -138,10 +124,7 @@ export default function CarerWorkloadDashboard({
               const isExpanded = expandedCarers.has(carer.carerId);
 
               return (
-                <div
-                  key={carer.carerId}
-                  className="rounded-lg border"
-                >
+                <div key={carer.carerId} className="rounded-lg border">
                   {/* Carer header row */}
                   <button
                     className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/50 transition-colors"
@@ -149,33 +132,29 @@ export default function CarerWorkloadDashboard({
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold truncate">
-                          {carer.name}
-                        </span>
-                        <Badge variant="secondary">{carer.count} animal{carer.count !== 1 ? "s" : ""}</Badge>
-                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${wl.color}`}>
+                        <span className="font-semibold truncate">{carer.name}</span>
+                        <Badge variant="secondary">
+                          {carer.count} animal{carer.count !== 1 ? 's' : ''}
+                        </Badge>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${wl.color}`}
+                        >
                           {wl.label}
                         </span>
                       </div>
 
                       {/* Species badges */}
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {Object.entries(carer.speciesCounts).map(
-                          ([species, count]) => (
-                            <Badge
-                              key={species}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {species} &times;{count}
-                            </Badge>
-                          )
-                        )}
+                        {Object.entries(carer.speciesCounts).map(([species, count]) => (
+                          <Badge key={species} variant="outline" className="text-xs">
+                            {species} &times;{count}
+                          </Badge>
+                        ))}
                       </div>
 
                       {/* Longest in care */}
                       <p className="text-xs text-muted-foreground mt-1.5">
-                        Longest in care: {carer.longestDays} day{carer.longestDays !== 1 ? "s" : ""}
+                        Longest in care: {carer.longestDays} day{carer.longestDays !== 1 ? 's' : ''}
                       </p>
                     </div>
 
@@ -214,7 +193,7 @@ export default function CarerWorkloadDashboard({
                                 <td className="py-2 pr-4">{animal.species}</td>
                                 <td className="py-2 pr-4">
                                   <Badge variant="outline" className="text-xs">
-                                    {animal.status.replace(/_/g, " ")}
+                                    {animal.status.replace(/_/g, ' ')}
                                   </Badge>
                                 </td>
                                 <td className="py-2 pr-4">
