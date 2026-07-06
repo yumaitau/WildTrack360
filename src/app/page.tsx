@@ -1,30 +1,31 @@
-import { auth, currentUser, clerkClient } from "@/lib/clerk-server";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import HomeClient from "./home-client";
-import { getSpecies } from "@/lib/database";
-import { createOrUpdateClerkUser, createOrUpdateClerkOrganization } from "@/lib/database";
-import { getEnrichedCarers } from "@/lib/carer-helpers";
-import { prisma } from "@/lib/prisma";
-import { getUserRole, getAuthorisedSpecies, getOrgMember } from "@/lib/rbac";
-import { fetchFeedRosterItems } from "@/lib/feed-roster";
-import { extractSubdomain } from "@/lib/subdomain";
-import { getNSWReminderBannerForUser } from "@/lib/nsw-reminders";
-import { isScreenshotMode } from "@/lib/screenshot-mode";
+import { auth, currentUser, clerkClient } from '@/lib/clerk-server';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import HomeClient from './home-client';
+import { getSpecies } from '@/lib/database';
+import { createOrUpdateClerkUser, createOrUpdateClerkOrganization } from '@/lib/database';
+import { getEnrichedCarers } from '@/lib/carer-helpers';
+import { getCarerDisplayLabel } from '@/lib/carer-display';
+import { prisma } from '@/lib/prisma';
+import { getUserRole, getAuthorisedSpecies, getOrgMember } from '@/lib/rbac';
+import { fetchFeedRosterItems } from '@/lib/feed-roster';
+import { extractSubdomain } from '@/lib/subdomain';
+import { getNSWReminderBannerForUser } from '@/lib/nsw-reminders';
+import { isScreenshotMode } from '@/lib/screenshot-mode';
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
 export default async function Home() {
   const { userId, orgId } = await auth();
   const user = await currentUser();
 
   if (!userId) {
-    redirect("/landing");
+    redirect('/landing');
   }
 
   // If user is on the root domain but has an active org, redirect to their tenant subdomain
   const headersList = await headers();
-  const host = headersList.get("host") ?? "";
+  const host = headersList.get('host') ?? '';
   const subdomain = extractSubdomain(host, ROOT_DOMAIN);
 
   if (!isScreenshotMode() && !subdomain && orgId) {
@@ -33,25 +34,26 @@ export default async function Home() {
       const org = await clerk.organizations.getOrganization({ organizationId: orgId });
       const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
       if (orgUrl && /^[a-zA-Z0-9-]+$/.test(orgUrl)) {
-        const protocol = ROOT_DOMAIN.startsWith("localhost") ? "http" : "https";
+        const protocol = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
         redirect(`${protocol}://${orgUrl}.${ROOT_DOMAIN}/`);
       }
     } catch (error) {
       // Re-throw Next.js redirect (it throws a special error internally)
-      const digest = error instanceof Error && "digest" in error ? (error as { digest: string }).digest : "";
-      if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) throw error;
-      console.error("Failed to look up org for subdomain redirect:", error);
+      const digest =
+        error instanceof Error && 'digest' in error ? (error as { digest: string }).digest : '';
+      if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) throw error;
+      console.error('Failed to look up org for subdomain redirect:', error);
     }
   }
 
   // Use the active Clerk organization
-  const organizationId = orgId || "";
+  const organizationId = orgId || '';
 
   // Sync Clerk user data with our database
   if (user) {
     await createOrUpdateClerkUser({
       id: user.id,
-      email: user.emailAddresses[0]?.emailAddress || "",
+      email: user.emailAddresses[0]?.emailAddress || '',
       firstName: user.firstName || undefined,
       lastName: user.lastName || undefined,
       imageUrl: user.imageUrl || undefined,
@@ -62,7 +64,7 @@ export default async function Home() {
   if (organizationId) {
     const member = await getOrgMember(userId, organizationId);
     if (!member) {
-      redirect("/setup-role");
+      redirect('/setup-role');
     }
   }
 
@@ -115,7 +117,7 @@ export default async function Home() {
       role,
     }).catch(() => null);
 
-    const carerMap = new Map(carers.map((c) => [c.id, c.name]));
+    const carerMap = new Map(carers.map((c) => [c.id, getCarerDisplayLabel(c)]));
     const feedRosterItems = await fetchFeedRosterItems(role, userId, organizationId, carerMap);
 
     const showOnboarding = role === 'ADMIN' && species.length === 0;

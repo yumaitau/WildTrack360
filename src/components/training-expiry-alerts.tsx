@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +40,7 @@ export function TrainingExpiryAlerts() {
           const carers = await carersRes.json();
           const map: Record<string, string> = {};
           for (const c of carers) {
-            map[c.id] = c.name;
+            map[c.id] = c.name || c.email || 'Carer email unavailable';
           }
           setCarerMap(map);
         }
@@ -57,21 +57,23 @@ export function TrainingExpiryAlerts() {
   const getExpiringTrainings = () => {
     const now = new Date();
     const thirtyDaysFromNow = addDays(now, 30);
-    
-    return trainings.filter(training => {
-      if (!training.expiryDate) return false;
-      const expiry = new Date(training.expiryDate);
-      return isBefore(expiry, thirtyDaysFromNow);
-    }).sort((a, b) => {
-      const dateA = new Date(a.expiryDate!);
-      const dateB = new Date(b.expiryDate!);
-      return dateA.getTime() - dateB.getTime();
-    });
+
+    return trainings
+      .filter((training) => {
+        if (!training.expiryDate) return false;
+        const expiry = new Date(training.expiryDate);
+        return isBefore(expiry, thirtyDaysFromNow);
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.expiryDate!);
+        const dateB = new Date(b.expiryDate!);
+        return dateA.getTime() - dateB.getTime();
+      });
   };
 
   const expiringTrainings = getExpiringTrainings();
-  const expiredCount = expiringTrainings.filter(t => 
-    t.expiryDate && isBefore(new Date(t.expiryDate), new Date())
+  const expiredCount = expiringTrainings.filter(
+    (t) => t.expiryDate && isBefore(new Date(t.expiryDate), new Date())
   ).length;
   const expiringSoonCount = expiringTrainings.length - expiredCount;
 
@@ -144,19 +146,21 @@ export function TrainingExpiryAlerts() {
             </div>
           )}
         </div>
-        
+
         <div className="space-y-2">
-          {expiringTrainings.slice(0, 5).map(training => {
-            const isExpired = training.expiryDate && 
-              isBefore(new Date(training.expiryDate), new Date());
-            
+          {expiringTrainings.slice(0, 5).map((training) => {
+            const isExpired =
+              training.expiryDate && isBefore(new Date(training.expiryDate), new Date());
+
             return (
               <div
                 key={training.id}
                 className="flex items-center justify-between p-2 rounded-lg border"
               >
                 <div className="flex-1">
-                  <p className="font-medium text-sm">{carerMap[training.carerId] || training.carer.id}</p>
+                  <p className="font-medium text-sm">
+                    {carerMap[training.carerId] || 'Carer email unavailable'}
+                  </p>
                   <p className="text-xs text-muted-foreground">{training.courseName}</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -174,7 +178,7 @@ export function TrainingExpiryAlerts() {
             );
           })}
         </div>
-        
+
         {expiringTrainings.length > 5 && (
           <p className="text-xs text-muted-foreground mt-2">
             And {expiringTrainings.length - 5} more...

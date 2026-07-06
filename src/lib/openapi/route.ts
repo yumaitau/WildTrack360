@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z, type ZodError, type ZodTypeAny } from 'zod';
 import type { ContractConfig } from './contract';
 import { validateResponse } from './response';
+import { addUserEmailsToResponse } from '@/lib/user-reference-response';
 
 type InferOr<T, F> = T extends ZodTypeAny ? z.infer<T> : F;
 
@@ -91,8 +92,9 @@ export function route<C extends ContractConfig>(
     }
 
     const status = result.status ?? contract.successStatus;
+    const data = await addUserEmailsToResponse(result.data);
     const schema = contract.responses[status]?.schema;
-    if (schema) validateResponse(schema, result.data);
-    return NextResponse.json(result.data, { status });
+    if (schema) validateResponse(schema, data);
+    return NextResponse.json(data, { status });
   };
 }

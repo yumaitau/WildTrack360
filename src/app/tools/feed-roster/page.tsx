@@ -1,25 +1,26 @@
-import Link from "next/link";
-import { auth } from "@/lib/clerk-server";
-import { redirect } from "next/navigation";
-import { ArrowLeft, Home } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { getEnrichedCarers } from "@/lib/carer-helpers";
-import { fetchFeedRosterItems } from "@/lib/feed-roster";
-import { getUserRole } from "@/lib/rbac";
-import FeedRosterClient from "./feed-roster-client";
+import Link from 'next/link';
+import { auth } from '@/lib/clerk-server';
+import { redirect } from 'next/navigation';
+import { ArrowLeft, Home } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { getEnrichedCarers } from '@/lib/carer-helpers';
+import { getCarerDisplayLabel } from '@/lib/carer-display';
+import { fetchFeedRosterItems } from '@/lib/feed-roster';
+import { getUserRole } from '@/lib/rbac';
+import FeedRosterClient from './feed-roster-client';
 
 export const metadata = {
-  title: "Feed Roster - WildTrack360",
+  title: 'Feed Roster - WildTrack360',
 };
 
 export default async function FeedRosterPage() {
   const { userId, orgId } = await auth();
-  if (!userId) redirect("/sign-in");
-  if (!orgId) redirect("/landing");
+  if (!userId) redirect('/sign-in');
+  if (!orgId) redirect('/landing');
 
   const role = await getUserRole(userId, orgId);
   const carers = await getEnrichedCarers(orgId);
-  const carerMap = new Map(carers.map((carer) => [carer.id, carer.name]));
+  const carerMap = new Map(carers.map((carer) => [carer.id, getCarerDisplayLabel(carer)]));
   const rosterItems = await fetchFeedRosterItems(role, userId, orgId, carerMap);
 
   return (
@@ -37,7 +38,9 @@ export default async function FeedRosterPage() {
         </Link>
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Feed Roster</h1>
-          <p className="text-sm text-muted-foreground">Daily feeding status for animals currently in care.</p>
+          <p className="text-sm text-muted-foreground">
+            Daily feeding status for animals currently in care.
+          </p>
         </div>
       </div>
       <FeedRosterClient initialItems={rosterItems} />

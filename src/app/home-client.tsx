@@ -80,6 +80,7 @@ import { useUser, useOrganization, useClerk } from '@/lib/clerk-client';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { getJurisdictionFromOrg } from '@/lib/config';
+import { getCarerDisplayLabel } from '@/lib/carer-display';
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -217,7 +218,9 @@ function CarerView({
             <AnimalTable
               animals={animals}
               onEdit={onEdit}
-              carerMap={Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name]))}
+              carerMap={Object.fromEntries(
+                (carersList || []).map((c: any) => [c.id, getCarerDisplayLabel(c)])
+              )}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -297,7 +300,10 @@ function AdminCoordinatorView({
   }, []);
 
   const carerMap = useMemo(
-    () => Object.fromEntries((carersList || []).map((c: any) => [c.id, c.name])),
+    () =>
+      Object.fromEntries(
+        (carersList || []).map((c: any) => [c.id, getCarerDisplayLabel(c)])
+      ),
     [carersList]
   );
   const [customReportWidgets, setCustomReportWidgets] = useState<DashboardReportWidget[] | null>(
