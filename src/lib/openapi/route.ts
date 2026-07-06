@@ -92,9 +92,9 @@ export function route<C extends ContractConfig>(
     }
 
     const status = result.status ?? contract.successStatus;
-    const schema = contract.responses[status]?.schema;
-    if (schema) validateResponse(schema, result.data);
     const data = await addUserEmailsToResponse(result.data);
+    const schema = contract.responses[status]?.schema;
+    if (schema) validateResponse(schema, data);
     return NextResponse.json(data, { status });
   };
 }

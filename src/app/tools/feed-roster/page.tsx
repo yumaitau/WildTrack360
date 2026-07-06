@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { ArrowLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getEnrichedCarers } from '@/lib/carer-helpers';
+import { getCarerDisplayLabel } from '@/lib/carer-display';
 import { fetchFeedRosterItems } from '@/lib/feed-roster';
 import { getUserRole } from '@/lib/rbac';
 import FeedRosterClient from './feed-roster-client';
@@ -19,9 +20,7 @@ export default async function FeedRosterPage() {
 
   const role = await getUserRole(userId, orgId);
   const carers = await getEnrichedCarers(orgId);
-  const carerMap = new Map(
-    carers.map((carer) => [carer.id, carer.name || carer.email || 'Carer email unavailable'])
-  );
+  const carerMap = new Map(carers.map((carer) => [carer.id, getCarerDisplayLabel(carer)]));
   const rosterItems = await fetchFeedRosterItems(role, userId, orgId, carerMap);
 
   return (

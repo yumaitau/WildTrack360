@@ -5,6 +5,7 @@ import HomeClient from './home-client';
 import { getSpecies } from '@/lib/database';
 import { createOrUpdateClerkUser, createOrUpdateClerkOrganization } from '@/lib/database';
 import { getEnrichedCarers } from '@/lib/carer-helpers';
+import { getCarerDisplayLabel } from '@/lib/carer-display';
 import { prisma } from '@/lib/prisma';
 import { getUserRole, getAuthorisedSpecies, getOrgMember } from '@/lib/rbac';
 import { fetchFeedRosterItems } from '@/lib/feed-roster';
@@ -116,9 +117,7 @@ export default async function Home() {
       role,
     }).catch(() => null);
 
-    const carerMap = new Map(
-      carers.map((c) => [c.id, c.name || c.email || 'Carer email unavailable'])
-    );
+    const carerMap = new Map(carers.map((c) => [c.id, getCarerDisplayLabel(c)]));
     const feedRosterItems = await fetchFeedRosterItems(role, userId, organizationId, carerMap);
 
     const showOnboarding = role === 'ADMIN' && species.length === 0;

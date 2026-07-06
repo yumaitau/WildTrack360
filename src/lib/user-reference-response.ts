@@ -3,7 +3,9 @@ import 'server-only';
 import { CLERK_EMAIL_UNAVAILABLE, resolveClerkUserEmailMap } from '@/lib/clerk-user-display';
 
 type JsonRecord = Record<string, unknown>;
-type UserEmailResolver = (userIds: Iterable<string | null | undefined>) => Promise<Map<string, string>>;
+type UserEmailResolver = (
+  userIds: Iterable<string | null | undefined>
+) => Promise<Map<string, string>>;
 
 const USER_ID_EMAIL_FIELDS: Record<string, string> = {
   authorClerkUserId: 'authorEmail',
@@ -22,7 +24,13 @@ const USER_ID_EMAIL_FIELDS: Record<string, string> = {
 };
 
 function isRecord(value: unknown): value is JsonRecord {
-  return value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date);
+  return (
+    value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)
+  );
+}
+
+function isCarerObjectParent(parentKey: string | undefined): boolean {
+  return parentKey === 'carer' || parentKey === 'carers';
 }
 
 function collectUserIds(value: unknown, ids: Set<string>, parentKey?: string): void {
@@ -33,7 +41,7 @@ function collectUserIds(value: unknown, ids: Set<string>, parentKey?: string): v
 
   if (!isRecord(value)) return;
 
-  if (parentKey === 'carer' && typeof value.id === 'string' && value.id.trim()) {
+  if (isCarerObjectParent(parentKey) && typeof value.id === 'string' && value.id.trim()) {
     ids.add(value.id);
   }
 
@@ -70,6 +78,9 @@ function enrichUserReferences(
     }
 
     const enrichedChild = enrichUserReferences(child, emailByUserId, key);
+    // Alias fields can be derived before an explicit nullable field is visited
+    // later in the same object. Keep the derived value instead of overwriting it
+    // with null, e.g. userId -> userEmail before a legacy userEmail: null field.
     if (!(key in next) || enrichedChild != null) {
       next[key] = enrichedChild;
     }
@@ -81,7 +92,7 @@ function enrichUserReferences(
   }
 
   if (
-    parentKey === 'carer' &&
+    isCarerObjectParent(parentKey) &&
     typeof value.id === 'string' &&
     value.id.trim() &&
     next.email == null

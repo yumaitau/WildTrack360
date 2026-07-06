@@ -53,7 +53,7 @@ export default function CarerDistributionChart({
       value: count,
       fill: CHART_COLORS[index % CHART_COLORS.length],
     }));
-  }, [animals]);
+  }, [animals, carerMap]);
 
   const chartConfig = React.useMemo(() => {
     const config: ChartConfig = {};

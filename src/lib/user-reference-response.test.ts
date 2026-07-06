@@ -77,4 +77,23 @@ describe('addUserEmailsToResponse', () => {
       },
     });
   });
+
+  it('adds emails to carer objects inside plural arrays', async () => {
+    const result = await addUserEmailsToResponse(
+      {
+        carers: [
+          { id: 'user_carer_1', name: 'First Carer' },
+          { id: 'user_carer_2', name: 'Second Carer', email: null },
+        ],
+      },
+      resolveEmails
+    );
+
+    expect(result).toEqual({
+      carers: [
+        { id: 'user_carer_1', name: 'First Carer', email: 'user_carer_1@example.test' },
+        { id: 'user_carer_2', name: 'Second Carer', email: 'user_carer_2@example.test' },
+      ],
+    });
+  });
 });

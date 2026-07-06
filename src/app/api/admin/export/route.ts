@@ -144,8 +144,9 @@ export const GET = route(dataExportContract, async () => {
         userIdsToResolve.add(coordinator.orgMember.userId);
     }
     for (const callLog of callLogs) {
-      userIdsToResolve.add(callLog.takenByUserId);
-      if (callLog.assignedToUserId) userIdsToResolve.add(callLog.assignedToUserId);
+      if (!callLog.takenByUserName) userIdsToResolve.add(callLog.takenByUserId);
+      if (callLog.assignedToUserId && !callLog.assignedToUserName)
+        userIdsToResolve.add(callLog.assignedToUserId);
     }
     for (const transfer of animalTransfers) {
       if (transfer.fromCarerId) userIdsToResolve.add(transfer.fromCarerId);
@@ -305,6 +306,7 @@ export const GET = route(dataExportContract, async () => {
 
     const carersSheet = workbook.addWorksheet('Carer Profiles');
     carersSheet.columns = [
+      { header: 'Clerk User ID', key: 'id', width: 32 },
       { header: 'Email', key: 'email', width: 28 },
       { header: 'Phone', key: 'phone', width: 16 },
       { header: 'License Number', key: 'licenseNumber', width: 18 },
@@ -329,6 +331,7 @@ export const GET = route(dataExportContract, async () => {
     ];
     for (const c of carerProfiles) {
       carersSheet.addRow({
+        id: c.id,
         email: emailForUserId(c.id),
         phone: c.phone || '',
         licenseNumber: c.licenseNumber || '',
