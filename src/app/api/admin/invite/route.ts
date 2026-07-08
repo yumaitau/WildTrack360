@@ -6,6 +6,12 @@ import { inviteUserContract } from '../openapi';
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
+function clerkErrorStatus(error: unknown): number | null {
+  if (!error || typeof error !== 'object') return null;
+  const status = (error as { status?: unknown }).status;
+  return typeof status === 'number' ? status : null;
+}
+
 export const POST = route(inviteUserContract, async ({ body }) => {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -31,13 +37,18 @@ export const POST = route(inviteUserContract, async ({ body }) => {
       organizationId: orgId,
       emailAddress,
       role: 'org:member',
-      inviterUserId: userId,
       redirectUrl,
     });
 
     return { data: { id: invitation.id } };
   } catch (error) {
     console.error('Clerk API error during invitation:', error);
+    if (clerkErrorStatus(error) === 403) {
+      return NextResponse.json(
+        { error: 'Invitation is not permitted for this organisation' },
+        { status: 403 },
+      );
+    }
     return NextResponse.json({ error: 'Failed to create invitation' }, { status: 502 });
   }
 });

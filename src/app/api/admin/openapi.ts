@@ -164,6 +164,9 @@ export const inviteUserContract = defineContract({
   },
   responses: {
     200: { description: 'Invitation created', schema: z.object({ id: z.string() }) },
+    401: { description: 'Unauthorized' },
+    403: { description: 'Forbidden or invitation not permitted by Clerk' },
+    502: { description: 'Invitation provider failed' },
   },
   successStatus: 200,
 });

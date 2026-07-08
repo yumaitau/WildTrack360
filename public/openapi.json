@@ -10247,6 +10247,15 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden or invitation not permitted by Clerk"
+          },
+          "502": {
+            "description": "Invitation provider failed"
           }
         }
       }
