@@ -1,0 +1,66 @@
+name: E2E staging (full CRUD + RBAC)
+
+# Full multi-role suite against the STAGING tenant: verifies every page's access
+# per role and exercises admin CRUD through the real UI. Runs daily and on
+# demand only — never on PR/merge. NEVER points at production (specs write+delete).
+on:
+  schedule:
+    # 20:00 UTC = 06:00 AEST. Same window as the read-only monitor.
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Override staging target URL'
+        required: false
+        type: string
+
+concurrency:
+  # Serialise: the suite mutates a shared staging tenant.
+  group: e2e-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run staging E2E suite
+        run: npm run test:e2e:staging
+        env:
+          CI: 'true'
+          E2E_STAGING_BASE_URL: ${{ inputs.base_url || secrets.E2E_STAGING_BASE_URL }}
+          # Clerk instance backing STAGING.
+          E2E_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_STAGING_CLERK_PUBLISHABLE_KEY }}
+          # Two seeded users on the staging tenant (roles ADMIN and CARER).
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_STAGING_ADMIN_EMAIL }}
+          E2E_CARER_EMAIL: ${{ secrets.E2E_STAGING_CARER_EMAIL }}
+          # Auth: passwords (dev instance) OR a secret key (sign-in token).
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_STAGING_ADMIN_PASSWORD }}
+          E2E_CARER_PASSWORD: ${{ secrets.E2E_STAGING_CARER_PASSWORD }}
+          E2E_CLERK_SECRET_KEY: ${{ secrets.E2E_STAGING_CLERK_SECRET_KEY }}
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-staging
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

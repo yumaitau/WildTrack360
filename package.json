@@ -35,7 +35,11 @@
     "refresh-tokens": "tsx --tsconfig tsconfig.scripts.json src/scripts/refresh-square-tokens.ts",
     "prod_start": "npm run db:migrate:prod && npm run start",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:staging": "playwright test --config playwright.staging.config.ts",
+    "test:e2e:staging:ui": "playwright test --config playwright.staging.config.ts --ui"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^4.0.111",
@@ -119,7 +123,9 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@clerk/testing": "^2.2.5",
     "@eslint/eslintrc": "^3.3.3",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^18",

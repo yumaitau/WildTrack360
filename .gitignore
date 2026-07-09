@@ -48,6 +48,11 @@ firestore-debug.log
 # clerk configuration (can include secrets)
 /.clerk/
 
+# Playwright E2E artifacts + saved Clerk session
+/playwright/.clerk/
+/playwright-report/
+/test-results/
+
 # Jetbrains
 .idea/
 # Sentry Config File
