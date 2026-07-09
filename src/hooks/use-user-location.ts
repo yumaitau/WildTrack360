@@ -1,10 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-
-// Geographic centre of Australia — neutral fallback when the user's
-// location is unavailable, so maps no longer default to Canberra.
-const AUSTRALIA_CENTER = { lat: -25.2744, lng: 133.7751 };
+import { AUSTRALIA_CENTER } from '@/lib/map-defaults';
 
 interface UserLocationResult {
   location: { lat: number; lng: number };

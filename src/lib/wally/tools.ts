@@ -165,6 +165,7 @@ function omitInternalUserFields<T extends Record<string, unknown>>(value: T) {
     reviewedByUserId: _reviewedByUserId,
     takenByUserId: _takenByUserId,
     assignedToUserId: _assignedToUserId,
+    deletedBy: _deletedBy,
     ...rest
   } = value;
   return rest;

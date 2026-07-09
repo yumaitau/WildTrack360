@@ -23,7 +23,14 @@ export const DELETE = route(deleteRecordContract, async ({ params }) => {
 
     // Soft delete: immutable ledger — retain the row, flag it as deleted so it
     // disappears from the UI but remains in the database and data exports.
-    await prisma.record.update({ where: { id }, data: { deletedAt: new Date(), deletedBy: userId } })
+    // Atomic guard against a concurrent delete: only flag the row if it is still
+    // active (deletedAt: null), and treat a zero-count result as already deleted.
+    const { count } = await prisma.record.updateMany({
+      where: { id, clerkOrganizationId: orgId, deletedAt: null },
+      data: { deletedAt: new Date(), deletedBy: userId },
+    })
+    if (count === 0) return NextResponse.json({ error: 'Record already deleted' }, { status: 409 })
+
     logAudit({ userId, orgId, action: 'DELETE', entity: 'Record', entityId: id, metadata: { type: existing.type, animalId: existing.animalId, softDelete: true } })
     return { data: { success: true } }
   } catch {

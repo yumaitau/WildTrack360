@@ -8,6 +8,7 @@ import { GoogleMap, Marker, Polyline } from '@react-google-maps/api';
 import { useGoogleMaps } from '@/components/google-maps-provider';
 import { Button } from '@/components/ui/button';
 import { getJurisdictionComplianceConfig } from '@/lib/compliance-rules';
+import { AUSTRALIA_CENTER } from '@/lib/map-defaults';
 import {
   Dialog,
   DialogContent,
@@ -80,7 +81,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ rescueLocation, releaseLocati
       // Neutral Australia-wide centre — no longer defaults to Canberra.
       // (Unreachable in practice: the component early-returns when neither
       // location is set, but kept as a safe fallback.)
-      return { lat: -25.2744, lng: 133.7751 };
+      return AUSTRALIA_CENTER;
     }
   }, [rescueLocation, releaseLocation]);
 

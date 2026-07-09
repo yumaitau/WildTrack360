@@ -95,6 +95,7 @@ export default function RecordTimeline({ records, userMap = {}, rescueLocation, 
                         size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         title="Delete record"
+                        aria-label={`Delete ${record.type} record`}
                         onClick={() => setRecordToDelete(record)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -228,7 +229,7 @@ export default function RecordTimeline({ records, userMap = {}, rescueLocation, 
       </CardContent>
     </Card>
 
-    <Dialog open={!!recordToDelete} onOpenChange={(open) => { if (!open) setRecordToDelete(null); }}>
+    <Dialog open={!!recordToDelete} onOpenChange={(open) => { if (!open && !isDeleting) setRecordToDelete(null); }}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
