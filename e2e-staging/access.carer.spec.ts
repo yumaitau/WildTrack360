@@ -38,9 +38,9 @@ for (const path of GATED_PAGES) {
     await page.goto(path, { waitUntil: 'domcontentloaded' });
     // The layout gate redirects to home. Assert we did NOT stay on the gated
     // route (and weren't sent to sign-in — the carer is authenticated).
-    await expect(page).not.toHaveURL(new RegExp(`${path}(\\?|$)`));
+    await expect(page).not.toHaveURL((url) => url.pathname === path);
     await expect(page).not.toHaveURL(/\/sign-in/);
-    await expect(page).toHaveURL(/\/(\?|$)/);
+    await expect(page).toHaveURL((url) => url.pathname === '/');
   });
 }
 

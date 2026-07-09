@@ -45,7 +45,9 @@ test.describe.serial('incidents CRUD', () => {
       .getByRole('button', { name: /Save|Update/i })
       .first()
       .click();
-    await expect(page).toHaveURL(new RegExp(`/compliance/incidents/${id}$`));
+    await expect(page).toHaveURL(
+      (url) => url.pathname === `/compliance/incidents/${id}`,
+    );
     await expect(page.getByText(editedDescription)).toBeVisible();
 
     // ---- DELETE (via API — no UI affordance) ----------------------------

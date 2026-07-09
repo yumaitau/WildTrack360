@@ -51,7 +51,7 @@ for (const path of ADMIN_PAGES) {
     await expect(page).not.toHaveURL(/\/unauthorized/);
     // Admin is never bounced off a gated section back to home.
     if (path.startsWith('/admin') || path.startsWith('/compliance')) {
-      await expect(page).toHaveURL(new RegExp(path.replace(/\//g, '\\/')));
+      await expect(page).toHaveURL((url) => url.pathname.startsWith(path));
     }
 
     await expect(
