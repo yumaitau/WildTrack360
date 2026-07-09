@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 
-const CANBERRA_CENTER = { lat: -35.2809, lng: 149.1300 };
+// Geographic centre of Australia — neutral fallback when the user's
+// location is unavailable, so maps no longer default to Canberra.
+const AUSTRALIA_CENTER = { lat: -25.2744, lng: 133.7751 };
 
 interface UserLocationResult {
   location: { lat: number; lng: number };
@@ -11,7 +13,7 @@ interface UserLocationResult {
 }
 
 export function useUserLocation(): UserLocationResult {
-  const [location, setLocation] = useState(CANBERRA_CENTER);
+  const [location, setLocation] = useState(AUSTRALIA_CENTER);
   const [isLocating, setIsLocating] = useState(true);
   const [hasUserLocation, setHasUserLocation] = useState(false);
 
@@ -31,7 +33,7 @@ export function useUserLocation(): UserLocationResult {
         setIsLocating(false);
       },
       () => {
-        // Permission denied or error — keep Canberra default
+        // Permission denied or error — keep the neutral Australia-wide default
         setIsLocating(false);
       },
       { timeout: 10000, enableHighAccuracy: false }

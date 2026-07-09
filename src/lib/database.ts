@@ -83,6 +83,7 @@ export async function getRecords(organizationId: string): Promise<PrismaRecord[]
 	return await prisma.record.findMany({
 		where: {
 			clerkOrganizationId: organizationId,
+			deletedAt: null,
 		},
 		include: {
 			animal: true,

@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import { MapPin, Crosshair, Upload, X, Loader2, Map, Satellite } from 'lucide-react';
+import { useUserLocation } from '@/hooks/use-user-location';
 
 interface PindropFormProps {
   sessionId: string;
@@ -11,7 +12,6 @@ interface PindropFormProps {
   initialName?: string;
 }
 
-const AU_CENTER = { lat: -33.8688, lng: 151.2093 };
 const MAX_PHOTOS = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -42,6 +42,8 @@ export function PindropForm({ sessionId, token, initialPhone = '', initialName =
   const [error, setError] = useState<string | null>(null);
   const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
   const [geolocating, setGeolocating] = useState(false);
+  // Prompts the browser for location on mount and defaults the map there.
+  const { location: userLocation, hasUserLocation } = useUserLocation();
   const mapRef = useRef<google.maps.Map | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -291,8 +293,8 @@ export function PindropForm({ sessionId, token, initialPhone = '', initialName =
           <div className="relative">
             <GoogleMap
               mapContainerStyle={mapContainerStyle}
-              center={markerPosition || AU_CENTER}
-              zoom={markerPosition ? 15 : 5}
+              center={markerPosition || userLocation}
+              zoom={markerPosition ? 15 : hasUserLocation ? 13 : 5}
               onClick={handleMapClick}
               onLoad={(map) => { mapRef.current = map; }}
               options={{
@@ -347,7 +349,7 @@ export function PindropForm({ sessionId, token, initialPhone = '', initialName =
                   onChange={(e) => {
                     const lat = parseFloat(e.target.value);
                     if (!isNaN(lat)) {
-                      const lng = markerPosition?.lng ?? AU_CENTER.lng;
+                      const lng = markerPosition?.lng ?? userLocation.lng;
                       setMarkerPosition({ lat, lng });
                       reverseGeocode(lat, lng);
                     }
@@ -366,7 +368,7 @@ export function PindropForm({ sessionId, token, initialPhone = '', initialName =
                   onChange={(e) => {
                     const lng = parseFloat(e.target.value);
                     if (!isNaN(lng)) {
-                      const lat = markerPosition?.lat ?? AU_CENTER.lat;
+                      const lat = markerPosition?.lat ?? userLocation.lat;
                       setMarkerPosition({ lat, lng });
                       reverseGeocode(lat, lng);
                     }

@@ -148,6 +148,7 @@ export const GET = route(dataExportContract, async () => {
       if (callLog.assignedToUserId && !callLog.assignedToUserName)
         userIdsToResolve.add(callLog.assignedToUserId);
     }
+    for (const r of records) if (r.deletedBy) userIdsToResolve.add(r.deletedBy);
     for (const transfer of animalTransfers) {
       if (transfer.fromCarerId) userIdsToResolve.add(transfer.fromCarerId);
       if (transfer.toCarerId) userIdsToResolve.add(transfer.toCarerId);
@@ -261,6 +262,9 @@ export const GET = route(dataExportContract, async () => {
       { header: 'Animal Species', key: 'animalSpecies', width: 20 },
       { header: 'Created At', key: 'createdAt', width: 22 },
       { header: 'Updated At', key: 'updatedAt', width: 22 },
+      { header: 'Deleted', key: 'deleted', width: 10 },
+      { header: 'Deleted At', key: 'deletedAt', width: 22 },
+      { header: 'Deleted By', key: 'deletedBy', width: 28 },
     ];
     for (const r of records) {
       recordsSheet.addRow({
@@ -275,6 +279,9 @@ export const GET = route(dataExportContract, async () => {
         animalSpecies: r.animal.species,
         createdAt: fmtDate(r.createdAt),
         updatedAt: fmtDate(r.updatedAt),
+        deleted: fmtBool(!!r.deletedAt),
+        deletedAt: fmtDate(r.deletedAt),
+        deletedBy: r.deletedBy ? emailForUserId(r.deletedBy) : '',
       });
     }
     styleHeaderRow(recordsSheet);

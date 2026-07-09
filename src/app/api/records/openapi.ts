@@ -15,3 +15,19 @@ export const createRecordContract = defineContract({
   },
   successStatus: 201,
 });
+
+export const deleteRecordContract = defineContract({
+  method: 'delete',
+  path: '/api/records/{id}',
+  summary: 'Delete a care record',
+  tags: ['Records'],
+  security: 'clerkSession',
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    200: { description: 'Deleted', schema: z.object({ success: z.boolean() }).openapi('RecordDeleted') },
+    401: { description: 'Unauthorized' },
+    403: { description: 'Forbidden' },
+    404: { description: 'Not found' },
+  },
+  successStatus: 200,
+});

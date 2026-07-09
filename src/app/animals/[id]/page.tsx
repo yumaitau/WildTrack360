@@ -19,7 +19,7 @@ export default async function AnimalDetailPage({ params }: { params: Promise<{ i
 
   const [records, photos, releaseChecklist, activeReminders, permanentCareApplications, transfers, postReleaseRecords, growthMeasurements] = await Promise.all([
     prisma.record.findMany({
-      where: { animalId: id, clerkOrganizationId: organizationId },
+      where: { animalId: id, clerkOrganizationId: organizationId, deletedAt: null },
       orderBy: { date: "desc" },
     }),
     prisma.photo.findMany({

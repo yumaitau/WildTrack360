@@ -188,6 +188,26 @@ export default function AnimalDetailClient({
     setRecords(prevRecords => [savedRecord, ...prevRecords].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
   };
 
+  const handleDeleteRecord = async (recordId: string) => {
+    const response = await fetch(`/api/records/${recordId}`, { method: 'DELETE' });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to delete record' }));
+      toast({
+        variant: 'destructive',
+        title: 'Delete failed',
+        description: err.error || 'Failed to delete record. Please try again.',
+      });
+      throw new Error(err.error || 'Failed to delete record');
+    }
+
+    setRecords(prevRecords => prevRecords.filter(r => r.id !== recordId));
+    toast({
+      title: 'Record Deleted',
+      description: 'The record has been permanently removed.',
+    });
+  };
+
   // Find the most recent release record
   const releaseRecord = useMemo(() => {
     return records.find(record => record.type === RecordType.RELEASE);
@@ -745,6 +765,7 @@ export default function AnimalDetailClient({
                   'Unknown location'
                 )}
                 jurisdiction={jurisdiction}
+                onDeleteRecord={handleDeleteRecord}
               />
                 </TabsContent>
 

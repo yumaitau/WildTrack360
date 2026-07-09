@@ -491,6 +491,7 @@ export async function buildWallyOperationalContext({
         clerkOrganizationId: orgId,
         date: { gte: thirtyDaysAgo },
         animal: animalWhere,
+        deletedAt: null,
       },
     }),
     prisma.callLog.findMany({
