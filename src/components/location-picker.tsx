@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { MapPin, Crosshair, MousePointerClick, CheckCircle2 } from 'lucide-react';
+import { Crosshair, MousePointerClick, CheckCircle2 } from 'lucide-react';
 import SimpleMap from './simple-map';
 import { useUserLocation } from '@/hooks/use-user-location';
 
@@ -40,9 +40,6 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
       setLng(userLocation.lng);
     }
   }, [initialLocation, isLocating, userLocation]);
-
-  // Canberra ACT coordinates
-  const CANBERRA_CENTER = { lat: -35.2809, lng: 149.1300 };
 
   // Determine the effective map center
   const mapCenter = initialLocation
@@ -153,13 +150,6 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
     }
   };
 
-  const centerOnCanberra = () => {
-    setLat(CANBERRA_CENTER.lat);
-    setLng(CANBERRA_CENTER.lng);
-    setLocationSelected(true);
-    reverseGeocode(CANBERRA_CENTER.lat, CANBERRA_CENTER.lng);
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -174,15 +164,6 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
           >
             <Crosshair className="h-4 w-4 mr-1" />
             {isLoading ? 'Getting...' : 'My Location'}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={centerOnCanberra}
-          >
-            <MapPin className="h-4 w-4 mr-1" />
-            Canberra
           </Button>
         </div>
       </div>
@@ -235,7 +216,7 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
             value={lat || ''}
             onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
             onBlur={handleCoordinateChange}
-            placeholder="-35.2809"
+            placeholder="-25.2744"
           />
         </div>
         <div>
@@ -247,7 +228,7 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
             value={lng || ''}
             onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
             onBlur={handleCoordinateChange}
-            placeholder="149.1300"
+            placeholder="133.7751"
           />
         </div>
       </div>
@@ -264,7 +245,7 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
 
       <p className="text-xs text-muted-foreground">
         Drop a pin by clicking the map, drag it to adjust, or enter coordinates manually.
-        The map initially centres on your current location, or Canberra ACT if location access is unavailable.
+        The map initially centres on your current location, or an Australia-wide view if location access is unavailable.
       </p>
     </div>
   );

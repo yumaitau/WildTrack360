@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import Link from 'next/link'
+import { useUserLocation } from '@/hooks/use-user-location'
 import type { CarerMapEntry } from '@/app/api/carers/map/route'
 import type { ReportMapEntry } from '@/app/api/reports/map/route'
 
@@ -29,11 +30,11 @@ const mapContainerStyle = {
   height: '100%',
 }
 
-const DEFAULT_CENTER = { lat: -33.8688, lng: 151.2093 } // Sydney default
 const DEFAULT_ZOOM = 10
 
 export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerMapProps) {
   const { isLoaded } = useGoogleMaps()
+  const { location: userLocation } = useUserLocation()
   const [carers, setCarers] = useState<CarerMapEntry[]>([])
   const [reports, setReports] = useState<ReportMapEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -109,13 +110,14 @@ export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerM
     })
   }, [carers, specialtyFilter, searchQuery])
 
-  // Calculate map center from filtered carers
+  // Calculate map center from filtered carers, falling back to the user's
+  // browser location when there are no carers to centre on.
   const mapCenter = useMemo(() => {
-    if (filteredCarers.length === 0) return DEFAULT_CENTER
+    if (filteredCarers.length === 0) return userLocation
     const avgLat = filteredCarers.reduce((sum, c) => sum + c.lat, 0) / filteredCarers.length
     const avgLng = filteredCarers.reduce((sum, c) => sum + c.lng, 0) / filteredCarers.length
     return { lat: avgLat, lng: avgLng }
-  }, [filteredCarers])
+  }, [filteredCarers, userLocation])
 
   const handleMarkerClick = useCallback((carer: CarerMapEntry) => {
     setSelectedCarer(carer)

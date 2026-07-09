@@ -165,6 +165,7 @@ function omitInternalUserFields<T extends Record<string, unknown>>(value: T) {
     reviewedByUserId: _reviewedByUserId,
     takenByUserId: _takenByUserId,
     assignedToUserId: _assignedToUserId,
+    deletedBy: _deletedBy,
     ...rest
   } = value;
   return rest;
@@ -293,7 +294,7 @@ export function buildWallyTools(context: WallyToolContext): ToolSet {
         const animal = await findAccessibleAnimal(context, args.animalId);
         const [records, growthMeasurements] = await Promise.all([
           prisma.record.findMany({
-            where: { animalId: animal.id },
+            where: { animalId: animal.id, deletedAt: null },
             orderBy: { date: 'desc' },
             take: 15,
           }),

@@ -4670,6 +4670,17 @@
       "EofyReport": {},
       "DataExport": {},
       "NSWRegisterExport": {},
+      "RecordDeleted": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
       "WallyStream": {},
       "PhotoBinary": {},
       "SquareAuthorizeRedirect": {},
@@ -11415,6 +11426,53 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/records/{id}": {
+      "delete": {
+        "summary": "Delete a care record",
+        "tags": [
+          "Records"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordDeleted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Record already deleted"
           }
         }
       }

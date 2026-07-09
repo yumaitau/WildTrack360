@@ -71,7 +71,7 @@ export default async function AnimalPrintReportPage({ params }: { params: Promis
 
   const [records, photos, releaseChecklist, latestGrowth, carer] = await Promise.all([
     prisma.record.findMany({
-      where: { animalId: id, clerkOrganizationId: orgId },
+      where: { animalId: id, clerkOrganizationId: orgId, deletedAt: null },
       orderBy: { date: "desc" },
       take: 20,
     }),

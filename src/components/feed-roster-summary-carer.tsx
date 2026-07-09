@@ -21,6 +21,7 @@ function formatDateTime(value: string | null) {
   return new Date(value).toLocaleString("en-AU", {
     day: "2-digit",
     month: "short",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });

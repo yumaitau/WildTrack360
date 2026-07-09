@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-
-const CANBERRA_CENTER = { lat: -35.2809, lng: 149.1300 };
+import { AUSTRALIA_CENTER } from '@/lib/map-defaults';
 
 interface UserLocationResult {
   location: { lat: number; lng: number };
@@ -11,7 +10,7 @@ interface UserLocationResult {
 }
 
 export function useUserLocation(): UserLocationResult {
-  const [location, setLocation] = useState(CANBERRA_CENTER);
+  const [location, setLocation] = useState(AUSTRALIA_CENTER);
   const [isLocating, setIsLocating] = useState(true);
   const [hasUserLocation, setHasUserLocation] = useState(false);
 
@@ -31,7 +30,7 @@ export function useUserLocation(): UserLocationResult {
         setIsLocating(false);
       },
       () => {
-        // Permission denied or error — keep Canberra default
+        // Permission denied or error — keep the neutral Australia-wide default
         setIsLocating(false);
       },
       { timeout: 10000, enableHighAccuracy: false }

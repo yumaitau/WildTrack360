@@ -1,12 +1,22 @@
-import { useMemo } from 'react';
+"use client";
+
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { getRecordIcon } from './icons';
 import type { Record } from '@prisma/client';
-import { FileText, MapPin, AlertTriangle, User, Clock, Phone } from 'lucide-react';
+import { FileText, MapPin, AlertTriangle, User, Clock, Phone, Trash2, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { getJurisdictionComplianceConfig } from '@/lib/compliance-rules';
 
 const CALL_LOG_ID_PATTERN = /^\[CallLog:([^\]]+)\]\s*/;
@@ -17,6 +27,7 @@ interface RecordTimelineProps {
   userMap?: { [clerkUserId: string]: string };
   rescueLocation?: { lat: number; lng: number; address: string };
   jurisdiction?: string;
+  onDeleteRecord?: (recordId: string) => Promise<void>;
 }
 
 const isCoordObj = (loc: any): loc is { lat: number; lng: number; address?: string } =>
@@ -31,14 +42,31 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
-export default function RecordTimeline({ records, userMap = {}, rescueLocation, jurisdiction }: RecordTimelineProps) {
+export default function RecordTimeline({ records, userMap = {}, rescueLocation, jurisdiction, onDeleteRecord }: RecordTimelineProps) {
   const distanceReq = useMemo(() => {
     if (!jurisdiction) return null;
     const config = getJurisdictionComplianceConfig(jurisdiction);
     return config.distanceRequirements;
   }, [jurisdiction]);
 
+  const [recordToDelete, setRecordToDelete] = useState<Record | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!recordToDelete || !onDeleteRecord) return;
+    setIsDeleting(true);
+    try {
+      await onDeleteRecord(recordToDelete.id);
+      setRecordToDelete(null);
+    } catch (error) {
+      console.error('Error deleting record:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
+    <>
     <Card className="shadow-lg h-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -59,7 +87,21 @@ export default function RecordTimeline({ records, userMap = {}, rescueLocation, 
                    </div>
                 </div>
                 <div className="ml-8">
-                  <p className="font-semibold text-primary">{record.type}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-primary">{record.type}</p>
+                    {onDeleteRecord && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        title="Delete record"
+                        aria-label={`Delete ${record.type} record`}
+                        onClick={() => setRecordToDelete(record)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                   <time className="text-sm text-muted-foreground">
                     {record.date ? new Date(record.date).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : new Date(record.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </time>
@@ -186,5 +228,49 @@ export default function RecordTimeline({ records, userMap = {}, rescueLocation, 
         )}
       </CardContent>
     </Card>
+
+    <Dialog open={!!recordToDelete} onOpenChange={(open) => { if (!open && !isDeleting) setRecordToDelete(null); }}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            Delete Record
+          </DialogTitle>
+          <DialogDescription className="pt-3" asChild>
+            <div className="space-y-3">
+              <p className="font-semibold text-foreground">
+                Are you sure you want to delete this {recordToDelete?.type} record?
+              </p>
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                <p className="text-sm text-destructive font-medium">
+                  Warning: This action cannot be reversed.
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  WildTrack360 is designed as an immutable ledger. Deleting a record permanently
+                  removes it and may affect your compliance and activity reporting. Only remove
+                  records that were created in error or for testing.
+                </p>
+              </div>
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => setRecordToDelete(null)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleConfirmDelete} disabled={isDeleting}>
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              <>Delete Record</>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
