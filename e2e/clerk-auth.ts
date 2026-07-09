@@ -5,8 +5,8 @@ import { createClerkClient } from '@clerk/backend';
 // Sign in `page` using whatever credentials the env provides:
 //   - a password  → password strategy (simplest for local runs; needs a Clerk
 //     dev instance so setupClerkTestingToken can bypass bot protection).
-//   - otherwise    → Backend-API sign-in token (ticket strategy; works on prod
-//     sk_live). Requires E2E_CLERK_SECRET_KEY.
+//   - otherwise    → Backend-API sign-in token (ticket strategy; works on a
+//     production instance). Requires E2E_CLERK_SECRET_KEY.
 export async function signIn(
   page: Page,
   identifier: string,

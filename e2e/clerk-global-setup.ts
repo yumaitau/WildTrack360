@@ -1,6 +1,6 @@
 // Playwright global setup. We do NOT call @clerk/testing's clerkSetup() here:
 // it mints a Clerk *testing token*, which the Backend API only issues for
-// development instances — it fails against a production (sk_live) instance.
+// development instances — it fails against a production instance.
 //
 // Instead we derive the Clerk Frontend API host from the publishable key and
 // expose it as CLERK_FAPI, which setupClerkTestingToken() needs during the

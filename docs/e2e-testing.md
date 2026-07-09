@@ -25,7 +25,7 @@ watchers.
 - `e2e/clerk-global-setup.ts` — derives `CLERK_FAPI` from the publishable key.
 - `e2e/clerk-auth.ts` — `signIn()`: **password** strategy when a `*_PASSWORD` env
   var is set (simplest for local runs; needs a Clerk dev instance), else a
-  Backend-API **sign-in token** (ticket strategy; works on prod `sk_live`).
+  Backend-API **sign-in token** (ticket strategy; works on a production instance).
 - `e2e/auth.setup.ts` → saves session to `playwright/.clerk/user.json`.
 - `e2e/smoke.spec.ts` — read-only heartbeat over key pages.
 
