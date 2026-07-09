@@ -1,0 +1,65 @@
+name: E2E daily monitor
+
+# Drives the LIVE product in a headless browser to confirm the real tenant
+# works end-to-end. Runs every morning and on demand. A failed run fails the
+# workflow, which triggers GitHub's built-in email to repo watchers.
+on:
+  schedule:
+    # 20:00 UTC = 06:00 AEST (UTC+10). GitHub cron is UTC and does NOT follow
+    # DST, so while the eastern states are on AEDT (~Oct–Apr) this fires at
+    # 07:00 local; Queensland (no DST) stays at 06:00 year-round.
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Override target URL (defaults to the configured tenant)'
+        required: false
+        type: string
+
+concurrency:
+  group: e2e-daily
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E suite
+        run: npm run test:e2e
+        env:
+          CI: 'true'
+          # Empty falls back to the DEFAULT_BASE_URL in playwright.config.ts.
+          E2E_BASE_URL: ${{ inputs.base_url || secrets.E2E_BASE_URL }}
+          E2E_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+          # Email OR username of the E2E user in the throwaway monitor org.
+          E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+          # Auth: set a password (dev instance) OR a secret key (prod sign-in token).
+          E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+          E2E_CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
