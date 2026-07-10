@@ -2,31 +2,18 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   PawPrint,
   PlusCircle,
-  Settings,
   List,
   LayoutGrid,
-  Shield,
-  ShieldCheck,
-  ShieldAlert,
-  User,
   RefreshCw,
-  LogOut,
-  Building,
   AlertTriangle,
   Clock,
-  Menu,
-  X,
-  Calculator,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Animal } from '@prisma/client';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 // Local type for create-animal payload
 type CreateAnimalData = {
@@ -76,7 +63,7 @@ import {
 import type { FeedRosterItem } from '@/lib/feed-roster';
 import type { NSWReminderBannerData } from '@/lib/nsw-reminder-types';
 import type { CustomQueryResult } from '@/lib/custom-query/types';
-import { useUser, useOrganization, useClerk } from '@/lib/clerk-client';
+import { useUser, useOrganization } from '@/lib/clerk-client';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { getJurisdictionFromOrg } from '@/lib/config';
@@ -650,7 +637,6 @@ export default function HomeClient({
 }: HomeClientProps) {
   const { user, isLoaded: userLoaded } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
-  const { signOut } = useClerk();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -668,14 +654,7 @@ export default function HomeClient({
   const orgJurisdiction = useMemo(() => getJurisdictionFromOrg(organization), [organization]);
   const [userRole, setUserRole] = useState<string>('CARER');
   const [hasIncompleteProfile, setHasIncompleteProfile] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dashboardRefreshCycle, setDashboardRefreshCycle] = useState(0);
-  const isMobile = useIsMobile();
-
-  // Close mobile menu when viewport switches to desktop
-  useEffect(() => {
-    if (!isMobile) setMobileMenuOpen(false);
-  }, [isMobile]);
 
   // Load species, carers, and user role from API for current organization
   useEffect(() => {
@@ -823,10 +802,6 @@ export default function HomeClient({
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut({ redirectUrl: '/logout-success' });
-  };
-
   if (!userLoaded || !orgLoaded) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -837,185 +812,19 @@ export default function HomeClient({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation Header */}
-      <header className="bg-card shadow-md">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 sm:h-20">
-            <Link href="/" className="flex items-center gap-2 sm:gap-3">
-              <PawPrint className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-              <h1 className="text-xl sm:text-3xl font-bold font-headline text-primary">
-                WildTrack360
-              </h1>
-            </Link>
-
-            {/* Desktop nav */}
-            <div className="hidden md:flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-medium">
-                    Welcome, {user.firstName} {user.lastName}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    {organization?.name && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Building className="w-3 h-3" />
-                        {organization.name}
-                      </span>
-                    )}
-                    <Badge
-                      variant={
-                        userRole === 'ADMIN'
-                          ? 'default'
-                          : userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL'
-                            ? 'secondary'
-                            : 'outline'
-                      }
-                      className="text-xs"
-                    >
-                      {userRole === 'ADMIN' && <ShieldAlert className="h-3 w-3 mr-1" />}
-                      {(userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') && (
-                        <ShieldCheck className="h-3 w-3 mr-1" />
-                      )}
-                      {(userRole === 'CARER' || userRole === 'CARER_ALL') && (
-                        <Shield className="h-3 w-3 mr-1" />
-                      )}
-                      {userRole === 'COORDINATOR_ALL'
-                        ? 'Coordinator (All)'
-                        : userRole === 'CARER_ALL'
-                          ? 'Carer (All)'
-                          : userRole}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/tools">
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Tools
-                </Link>
-              </Button>
-              {userRole !== 'CARER' && userRole !== 'CARER_ALL' && (
-                <Link href="/admin">
-                  <Button size="sm">{userRole === 'ADMIN' ? 'Admin' : 'Coordinator'}</Button>
-                </Link>
-              )}
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-
-            {/* Mobile menu button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={mobileMenuOpen}
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-          </div>
-
-          {/* Mobile menu dropdown */}
-          {mobileMenuOpen && (
-            <div className="md:hidden border-t py-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <div>
-                  <p className="text-sm font-medium">
-                    {user.firstName} {user.lastName}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {organization?.name && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Building className="w-3 h-3" />
-                        {organization.name}
-                      </span>
-                    )}
-                    <Badge
-                      variant={
-                        userRole === 'ADMIN'
-                          ? 'default'
-                          : userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL'
-                            ? 'secondary'
-                            : 'outline'
-                      }
-                      className="text-xs"
-                    >
-                      {userRole === 'ADMIN' && <ShieldAlert className="h-3 w-3 mr-1" />}
-                      {(userRole === 'COORDINATOR' || userRole === 'COORDINATOR_ALL') && (
-                        <ShieldCheck className="h-3 w-3 mr-1" />
-                      )}
-                      {(userRole === 'CARER' || userRole === 'CARER_ALL') && (
-                        <Shield className="h-3 w-3 mr-1" />
-                      )}
-                      {userRole === 'COORDINATOR_ALL'
-                        ? 'Coordinator (All)'
-                        : userRole === 'CARER_ALL'
-                          ? 'Carer (All)'
-                          : userRole}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Button asChild variant="outline" size="sm" className="w-full">
-                  <Link href="/tools" onClick={() => setMobileMenuOpen(false)}>
-                    <Calculator className="h-4 w-4 mr-2" />
-                    Tools
-                  </Link>
-                </Button>
-                {userRole !== 'CARER' && userRole !== 'CARER_ALL' && (
-                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
-                    <Button size="sm" className="w-full">
-                      {userRole === 'ADMIN' ? 'Admin' : 'Coordinator'}
-                    </Button>
-                  </Link>
-                )}
-                <Button variant="outline" size="sm" className="w-full" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
-              </div>
-            </div>
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            {greeting}{user.firstName ? `, ${user.firstName}` : ''}
+          </h1>
+          {organization?.name && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {organization.name}{orgJurisdiction ? ` · ${orgJurisdiction} jurisdiction` : ''}
+            </p>
           )}
         </div>
-      </header>
 
-      {/* Brandmark Logo Section */}
-      <div className="flex justify-center py-4 px-4">
-        <div className="relative h-28 w-64 sm:h-40 sm:w-96">
-          <Image
-            src="/Brandmark-Text-Vert.svg"
-            alt="WildTrack360 Logo"
-            fill
-            className="object-contain"
-            priority
-          />
-        </div>
-      </div>
-
-      {/* User + Organization Summary under Brandmark */}
-      <div className="flex flex-col items-center gap-2 mb-2 px-4 text-center">
-        <p className="text-lg font-medium">
-          {greeting}
-          {user?.firstName ? `, ${user.firstName} ${user.lastName || ''}` : ''}
-        </p>
-        {organization?.name && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{organization.name}</span>
-            {orgJurisdiction && (
-              <span className="text-xs border rounded px-2 py-0.5 bg-muted text-muted-foreground">
-                Jurisdiction: {orgJurisdiction}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <NSWReportingReminderBanner reminder={nswReminderBanner} />
 
         {/* Incomplete Profile Banner */}

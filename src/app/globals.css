@@ -82,3 +82,9 @@
   }
 }
 
+@media (max-width: 1279px) {
+  body:has([data-workspace-bottom-nav])
+    [data-wally-assistant]:not([data-wally-fullscreen]) {
+    bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+}

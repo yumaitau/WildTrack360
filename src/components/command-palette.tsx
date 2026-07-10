@@ -14,6 +14,9 @@ import {
   ShieldCheck,
   Users,
 } from 'lucide-react';
+import { isWorkspaceRoute } from '@/lib/workspace-navigation';
+
+export const COMMAND_PALETTE_OPEN_EVENT = 'wildtrack360:open-command-palette';
 
 type CommandIcon =
   | 'admin'
@@ -76,6 +79,7 @@ function scoreItem(item: CommandItem, query: string) {
 export function CommandPalette({ items }: { items: CommandItem[] }) {
   const router = useRouter();
   const pathname = usePathname();
+  const enabled = isWorkspaceRoute(pathname);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -93,6 +97,8 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
   }, [items, query]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     function onKeyDown(event: globalThis.KeyboardEvent) {
       const key = typeof event.key === 'string' ? event.key.toLowerCase() : '';
       const isPaletteShortcut = key === 'k' && (event.metaKey || event.ctrlKey);
@@ -115,7 +121,15 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const openPalette = () => setOpen(true);
+    window.addEventListener(COMMAND_PALETTE_OPEN_EVENT, openPalette);
+    return () => window.removeEventListener(COMMAND_PALETTE_OPEN_EVENT, openPalette);
+  }, [enabled]);
 
   useEffect(() => {
     if (!open) {
@@ -163,7 +177,7 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
     }
   }
 
-  if (!open) return null;
+  if (!enabled || !open) return null;
 
   const activeId = results[selectedIndex]?.id
     ? `command-palette-item-${results[selectedIndex].id}`

@@ -65,3 +65,23 @@ test('carer sees access-denied on /tools/reporting', async ({ page }) => {
     page.getByText(/don't have access|access to custom reporting/i),
   ).toBeVisible();
 });
+
+test('carer workspace navigation stays focused on care tasks', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  const desktopNavigation = page.getByRole('navigation', { name: 'Workspace' });
+  await expect(desktopNavigation).toBeVisible();
+  await expect(desktopNavigation.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+  await expect(desktopNavigation.getByRole('link', { name: 'My Animals' })).toBeVisible();
+  await expect(desktopNavigation.getByRole('link', { name: 'Feed Roster' })).toBeVisible();
+  await expect(desktopNavigation.getByRole('link', { name: 'Care Tools' })).toBeVisible();
+  await expect(desktopNavigation.getByRole('link', { name: 'Compliance' })).toHaveCount(0);
+  await expect(desktopNavigation.getByRole('link', { name: 'Organisation' })).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileNavigation = page.getByRole('navigation', { name: 'Primary workspace' });
+  await expect(mobileNavigation).toBeVisible();
+  await expect(mobileNavigation.getByRole('link', { name: 'Feed' })).toBeVisible();
+  await expect(mobileNavigation.getByRole('link', { name: 'Tools' })).toBeVisible();
+});

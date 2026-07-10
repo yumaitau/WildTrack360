@@ -59,3 +59,30 @@ for (const path of ADMIN_PAGES) {
     ).toHaveCount(0);
   });
 }
+
+test('admin workspace navigation is visible and responsive', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  const desktopNavigation = page.getByRole('navigation', { name: 'Workspace' });
+  await expect(desktopNavigation).toBeVisible();
+  await expect(desktopNavigation.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
+    'aria-current',
+    'page'
+  );
+  await expect(desktopNavigation.getByRole('link', { name: 'Call Logs' })).toBeVisible();
+  await expect(desktopNavigation.getByRole('link', { name: 'Compliance' })).toBeVisible();
+  await expect(desktopNavigation.getByRole('link', { name: 'Organisation' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Search and navigate' })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileNavigation = page.getByRole('navigation', { name: 'Primary workspace' });
+  await expect(mobileNavigation).toBeVisible();
+  await expect(mobileNavigation.getByRole('link', { name: 'Home' })).toBeVisible();
+  await expect(mobileNavigation.getByRole('link', { name: 'Animals' })).toBeVisible();
+  await expect(mobileNavigation.getByRole('link', { name: 'Calls' })).toBeVisible();
+  await expect(mobileNavigation.getByRole('link', { name: 'Compliance' })).toBeVisible();
+  await expect(
+    mobileNavigation.getByRole('button', { name: 'More navigation and account options' })
+  ).toBeVisible();
+});
