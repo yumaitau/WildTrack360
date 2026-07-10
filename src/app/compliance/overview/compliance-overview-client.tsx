@@ -82,7 +82,9 @@ export default function ComplianceOverviewClient({ jurisdiction, organizationId 
     return (
       <div className="container mx-auto p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-red-600">Error loading data</div>
+          <div className="text-lg text-red-600">
+            We couldn't load the compliance overview. Refresh the page to try again.
+          </div>
         </div>
       </div>
     );
@@ -668,4 +670,4 @@ export default function ComplianceOverviewClient({ jurisdiction, organizationId 
       </div>
     </div>
   );
-} 
+}

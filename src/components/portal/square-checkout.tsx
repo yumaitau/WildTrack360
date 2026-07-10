@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { payments as loadPayments } from '@square/web-sdk';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 
 type SquarePayments = NonNullable<Awaited<ReturnType<typeof loadPayments>>>;

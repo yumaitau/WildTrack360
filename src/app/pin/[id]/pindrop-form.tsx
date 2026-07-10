@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import { MapPin, Crosshair, Upload, X, Loader2, Map, Satellite } from 'lucide-react';
 import { useUserLocation } from '@/hooks/use-user-location';
+import { getUserFriendlyErrorMessage } from '@/lib/user-friendly-error';
 
 interface PindropFormProps {
   sessionId: string;
@@ -151,7 +152,12 @@ export function PindropForm({ sessionId, token, initialPhone = '', initialName =
         });
         if (!res.ok) {
           const data = await res.json();
-          setError(data.error || 'Upload failed.');
+          setError(
+            getUserFriendlyErrorMessage(
+              data.error,
+              "We couldn't upload the photo. Please try again."
+            )
+          );
           continue;
         }
         const data = await res.json();
@@ -196,7 +202,12 @@ export function PindropForm({ sessionId, token, initialPhone = '', initialName =
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Submission failed.');
+        setError(
+          getUserFriendlyErrorMessage(
+            data.error,
+            "We couldn't send the location. Please try again."
+          )
+        );
         setSubmitting(false);
         return;
       }

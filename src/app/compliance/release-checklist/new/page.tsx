@@ -17,6 +17,7 @@ import { getCurrentJurisdiction } from '@/lib/config';
 import { getJurisdictionComplianceConfig, isFormRequired } from '@/lib/compliance-rules';
 import { LocationPicker } from '@/components/location-picker';
 import LocationMap from '@/components/location-map';
+import { toast } from '@/lib/toast';
 
 function NewReleaseChecklistForm() {
   const router = useRouter();
@@ -224,7 +225,7 @@ function NewReleaseChecklistForm() {
       }
     } catch (error) {
       console.error('Error saving release checklist:', error);
-      alert('Error saving release checklist');
+      toast.error("We couldn't save the release checklist. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -542,4 +543,4 @@ export default function NewReleaseChecklistPage() {
       <NewReleaseChecklistForm />
     </Suspense>
   );
-} 
+}

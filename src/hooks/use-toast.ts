@@ -7,6 +7,7 @@ import type {
   ToastActionElement,
   ToastProps,
 } from "@/components/ui/toast"
+import { getUserFriendlyErrorMessage } from "@/lib/user-friendly-error"
 
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
@@ -144,6 +145,12 @@ type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
   const id = genId()
+  const isErrorToast = props.variant === "destructive"
+  const title = isErrorToast && props.title === "Error" ? "Something went wrong" : props.title
+  const description =
+    isErrorToast && typeof props.description === "string"
+      ? getUserFriendlyErrorMessage(props.description)
+      : props.description
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -156,6 +163,8 @@ function toast({ ...props }: Toast) {
     type: "ADD_TOAST",
     toast: {
       ...props,
+      title,
+      description,
       id,
       open: true,
       onOpenChange: (open) => {

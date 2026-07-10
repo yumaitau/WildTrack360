@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react";
+import { getUserFriendlyErrorMessage } from "@/lib/user-friendly-error";
 
 const EXPORT_TABLES = [
   { name: "Animals", description: "All animal records with rescue/release details, conditions, and carer assignments" },
@@ -60,7 +61,12 @@ export function DataExport() {
       document.body.removeChild(a);
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Export failed");
+      setError(
+        getUserFriendlyErrorMessage(
+          err,
+          "We couldn't prepare the export. Please try again."
+        )
+      );
     } finally {
       setExporting(false);
     }

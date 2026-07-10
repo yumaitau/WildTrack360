@@ -48,7 +48,7 @@ import {
   UserPlus, Users, Trash2, Mail, Info, Clock, X, Pen, Save,
   Shield, ShieldCheck, ShieldAlert, Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { SpeciesGroupBadges } from './species-group-badges';
 import type { OrgMemberWithAssignments, SpeciesGroupWithCoordinators, EnrichedCarer } from '@/lib/types';
 import { AddressAutocomplete, type AddressDetails } from '@/components/address-autocomplete';

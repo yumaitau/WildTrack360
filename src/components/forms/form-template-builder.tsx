@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Archive, ArchiveRestore, GripVertical, Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
   type DragEndEvent,

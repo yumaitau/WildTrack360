@@ -44,7 +44,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PlusCircle, Trash2, Edit2, Leaf, Users, Info, X, Plus, Check, ChevronRight, ChevronLeft, ArrowRight, Search } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import type { SpeciesGroupWithCoordinators, OrgMemberWithAssignments } from '@/lib/types';
 
 // ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@ import { ClerkProvider } from '@/lib/clerk-client';
 import { auth } from '@/lib/clerk-server';
 import { headers } from 'next/headers';
 import { Toaster } from 'sonner';
+import { Toaster as LegacyToaster } from '@/components/ui/toaster';
 import { GoogleMapsProvider } from '@/components/google-maps-provider';
 import { CommandPalette, type CommandItem } from '@/components/command-palette';
 import { WallyAssistant } from '@/components/wally-assistant';
@@ -296,7 +297,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </GoogleMapsProvider>
           <CommandPalette items={visibleCommandItems} />
           <WallyAssistant />
-          <Toaster richColors position="top-right" />
+          <Toaster closeButton richColors position="top-right" />
+          <LegacyToaster />
         </body>
       </html>
     </ClerkProvider>

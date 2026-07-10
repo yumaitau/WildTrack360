@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useOrganization } from '@/lib/clerk-client';
 import { getCurrentJurisdiction } from '@/lib/config';
 import { getJurisdictionComplianceConfig } from '@/lib/compliance-rules';
+import { toast } from '@/lib/toast';
 
 export default function NewHygieneLogPage() {
   const router = useRouter();
@@ -155,7 +156,7 @@ export default function NewHygieneLogPage() {
       router.push('/compliance/hygiene');
     } catch (error) {
       console.error('Error saving hygiene log:', error);
-      alert('Error saving hygiene log');
+      toast.error("We couldn't save the hygiene log. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -443,4 +444,4 @@ export default function NewHygieneLogPage() {
       </div>
     </div>
   );
-} 
+}

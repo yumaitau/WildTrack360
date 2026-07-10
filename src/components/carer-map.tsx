@@ -19,6 +19,7 @@ import Link from 'next/link'
 import { useUserLocation } from '@/hooks/use-user-location'
 import type { CarerMapEntry } from '@/app/api/carers/map/route'
 import type { ReportMapEntry } from '@/app/api/reports/map/route'
+import { getUserFriendlyErrorMessage } from '@/lib/user-friendly-error'
 
 interface CarerMapProps {
   initialSpeciesFilter?: string
@@ -63,7 +64,12 @@ export default function CarerMap({ initialSpeciesFilter, onSelectCarer }: CarerM
           setReports(reportsData)
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load map data')
+        setError(
+          getUserFriendlyErrorMessage(
+            err,
+            "We couldn't load the map. Please refresh and try again."
+          )
+        )
       } finally {
         setLoading(false)
       }
