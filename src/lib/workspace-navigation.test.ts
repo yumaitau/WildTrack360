@@ -6,6 +6,7 @@ import {
   getMobileMoreNavigation,
   getMobilePrimaryNavigation,
   getWorkspaceNavigation,
+  getWorkspaceRoleLabel,
   isWorkspaceRoute,
 } from './workspace-navigation';
 
@@ -49,6 +50,7 @@ describe('workspace navigation', () => {
     expect(getActiveWorkspaceNavigationId('/compliance/call-logs/new', items)).toBe('calls');
     expect(getActiveWorkspaceNavigationId('/compliance/hygiene', items)).toBe('compliance');
     expect(getActiveWorkspaceNavigationId('/tools/feed-roster', items)).toBe('tools');
+    expect(getActiveWorkspaceNavigationId('/portal', items)).toBeNull();
   });
 
   it('shows the workspace shell only on interactive workspace routes', () => {
@@ -85,5 +87,17 @@ describe('workspace navigation', () => {
       'tools',
       'admin',
     ]);
+    expect(filterCommandItemsForRole(items, null)).toEqual([]);
+    expect(filterCommandItemsForRole(items, 'ADMIN')).toEqual(items);
+  });
+
+  it.each([
+    ['ADMIN', 'Administrator'],
+    ['COORDINATOR', 'Coordinator'],
+    ['COORDINATOR_ALL', 'Coordinator (all species)'],
+    ['CARER_ALL', 'Carer (all animals)'],
+    ['CARER', 'Carer'],
+  ] as const)('labels the %s workspace role', (role, label) => {
+    expect(getWorkspaceRoleLabel(role)).toBe(label);
   });
 });

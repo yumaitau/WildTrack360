@@ -200,7 +200,7 @@ export function WorkspaceShell({ children, role }: { children: React.ReactNode; 
                 <DropdownMenuLabel className="space-y-1">
                   <span className="block truncate">{userName}</span>
                   <span className="block truncate text-xs font-normal text-muted-foreground">
-                    {organization?.name}
+                    {organization?.name || roleLabel}
                   </span>
                   <span className="block text-xs font-normal text-muted-foreground">{roleLabel}</span>
                 </DropdownMenuLabel>
