@@ -482,6 +482,8 @@ export function WallyAssistant() {
 
   return (
     <div
+      data-wally-assistant=""
+      data-wally-fullscreen={isFullscreen ? 'true' : undefined}
       className={cn(
         'fixed z-40 flex flex-col items-end gap-3',
         isFullscreen

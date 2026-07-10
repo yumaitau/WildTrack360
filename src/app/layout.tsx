@@ -1,11 +1,16 @@
 import type { Metadata } from 'next';
+import type { OrgRole } from '@prisma/client';
 import './globals.css';
 import { ClerkProvider } from '@/lib/clerk-client';
+import { auth } from '@/lib/clerk-server';
 import { headers } from 'next/headers';
 import { Toaster } from 'sonner';
 import { GoogleMapsProvider } from '@/components/google-maps-provider';
 import { CommandPalette, type CommandItem } from '@/components/command-palette';
 import { WallyAssistant } from '@/components/wally-assistant';
+import { WorkspaceShell } from '@/components/workspace-shell';
+import { getUserRole } from '@/lib/rbac';
+import { filterCommandItemsForRole } from '@/lib/workspace-navigation';
 
 export const metadata: Metadata = {
   title: 'WildTrack360',
@@ -261,6 +266,18 @@ function buildAllowedRedirectOrigins(currentHost: string | null): string[] {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const headerStore = await headers();
   const allowedRedirectOrigins = buildAllowedRedirectOrigins(headerStore.get('host'));
+  const { userId, orgId } = await auth();
+  let workspaceRole: OrgRole | null = null;
+
+  if (userId && orgId) {
+    try {
+      workspaceRole = await getUserRole(userId, orgId);
+    } catch (error) {
+      console.error('Unable to load workspace navigation role:', error);
+    }
+  }
+
+  const visibleCommandItems = filterCommandItemsForRole(commandItems, workspaceRole);
 
   return (
     <ClerkProvider allowedRedirectOrigins={allowedRedirectOrigins}>
@@ -274,8 +291,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           />
         </head>
         <body className="font-body antialiased min-h-screen">
-          <GoogleMapsProvider>{children}</GoogleMapsProvider>
-          <CommandPalette items={commandItems} />
+          <GoogleMapsProvider>
+            <WorkspaceShell role={workspaceRole}>{children}</WorkspaceShell>
+          </GoogleMapsProvider>
+          <CommandPalette items={visibleCommandItems} />
           <WallyAssistant />
           <Toaster richColors position="top-right" />
         </body>
