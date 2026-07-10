@@ -44,6 +44,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Animal } from '@prisma/client';
+import { getUserFriendlyErrorMessage } from "@/lib/user-friendly-error"
 
 type CreateAnimalData = {
   name: string;
@@ -575,7 +576,10 @@ export function AddAnimalDialog({
         }
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to save animal'
+      const message = getUserFriendlyErrorMessage(
+        e,
+        "We couldn't save the animal. Please try again."
+      )
 
       // Provide actionable guidance for compliance guardrails
       let description = message
@@ -586,7 +590,7 @@ export function AddAnimalDialog({
       }
 
       if (totalToCreate > 1 && createdCount > 0) {
-        description = `Created ${createdCount} of ${totalToCreate} records before failure — remaining ${totalToCreate - createdCount} not saved. ${description}`
+        description = `Created ${createdCount} of ${totalToCreate} records. ${totalToCreate - createdCount} still need to be saved. ${description}`
       }
 
       toast({

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Code2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getUserFriendlyErrorMessage } from '@/lib/user-friendly-error';
 
 interface EmbedData {
   handle: string;
@@ -37,7 +38,12 @@ export function EmbedButtonsCard() {
         }
         setData((await res.json()) as EmbedData);
       } catch (err) {
-        setError((err as Error).message);
+        setError(
+          getUserFriendlyErrorMessage(
+            err,
+            "We couldn't load the embed buttons. Please refresh and try again."
+          )
+        );
       } finally {
         setLoading(false);
       }
@@ -49,7 +55,7 @@ export function EmbedButtonsCard() {
       await navigator.clipboard.writeText(text);
       toast.success('Copied to clipboard');
     } catch {
-      toast.error('Copy failed — select and copy manually');
+      toast.error("Copying didn't work. Select the code and copy it manually.");
     }
   }
 

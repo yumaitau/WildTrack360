@@ -49,7 +49,9 @@ export default function HygieneLogPage() {
     return (
       <div className="container mx-auto p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-red-600">Error loading data</div>
+          <div className="text-lg text-red-600">
+            We couldn't load the hygiene logs. Refresh the page to try again.
+          </div>
         </div>
       </div>
     );
@@ -538,4 +540,4 @@ export default function HygieneLogPage() {
       </div>
     </div>
   );
-} 
+}

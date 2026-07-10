@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Save, Loader2, Settings, Building2, ReceiptText } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from '@/lib/toast';
 import { renderAnimalIdTemplate } from "@/lib/animalId/template";
 
 export function OrganisationSettings() {

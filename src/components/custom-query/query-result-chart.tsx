@@ -28,6 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { CustomQueryResult } from '@/lib/custom-query/types';
+import { getUserFriendlyErrorMessage } from '@/lib/user-friendly-error';
 
 const COLORS = [
   'hsl(var(--chart-1))',
@@ -55,7 +56,10 @@ export function QueryResultChart({ result, height = 280 }: Props) {
   if (!result.ok) {
     return (
       <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-        {result.error ?? 'Query failed.'}
+        {getUserFriendlyErrorMessage(
+          result.error,
+          "We couldn't run this query. Check it and try again."
+        )}
       </div>
     );
   }

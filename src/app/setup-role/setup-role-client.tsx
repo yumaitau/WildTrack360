@@ -6,6 +6,7 @@ import { useClerk } from '@/lib/clerk-client';
 import { PawPrint, ShieldAlert, Clock, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getUserFriendlyErrorMessage } from '@/lib/user-friendly-error';
 
 export default function SetupRoleClient({
   isClerkAdmin,
@@ -32,7 +33,12 @@ export default function SetupRoleClient({
       // Success — redirect to admin
       router.push('/admin');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong');
+      setError(
+        getUserFriendlyErrorMessage(
+          e,
+          "We couldn't finish setting up your role. Please try again."
+        )
+      );
       setIsProvisioning(false);
     }
   }

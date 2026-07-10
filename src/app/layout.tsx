@@ -3,6 +3,7 @@ import './globals.css';
 import { ClerkProvider } from '@/lib/clerk-client';
 import { headers } from 'next/headers';
 import { Toaster } from 'sonner';
+import { Toaster as LegacyToaster } from '@/components/ui/toaster';
 import { GoogleMapsProvider } from '@/components/google-maps-provider';
 import { CommandPalette, type CommandItem } from '@/components/command-palette';
 import { WallyAssistant } from '@/components/wally-assistant';
@@ -277,7 +278,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <GoogleMapsProvider>{children}</GoogleMapsProvider>
           <CommandPalette items={commandItems} />
           <WallyAssistant />
-          <Toaster richColors position="top-right" />
+          <Toaster closeButton richColors position="top-right" />
+          <LegacyToaster />
         </body>
       </html>
     </ClerkProvider>

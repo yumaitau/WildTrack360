@@ -6,7 +6,7 @@ import { Loader2, Maximize2, Minimize2, Send, ShieldCheck, X } from 'lucide-reac
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useOrganization, useUser } from '@/lib/clerk-client';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
