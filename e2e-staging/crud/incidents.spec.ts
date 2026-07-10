@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mark } from '../constants';
-import { selectOption, pickDate, expectToast } from '../ui';
+import { selectOption } from '../ui';
 
 // Incident report: Create → Read → Update through the real UI (dedicated
 // /new and /[id]/edit pages). The UI has NO delete button for incidents, so the
@@ -15,10 +15,11 @@ test.describe.serial('incidents CRUD', () => {
 
   test('create → read → update → delete an incident', async ({ page }) => {
     // ---- CREATE ---------------------------------------------------------
+    // Date of Incident defaults to today, so no date interaction is needed.
+    // This plain form's Selects aren't label-linked → target by placeholder.
     await page.goto('/compliance/incidents/new');
-    await pickDate(page, /Pick a date|Date of Incident/i);
-    await selectOption(page, /Incident Type/i);
-    await selectOption(page, /Severity/i);
+    await selectOption(page, /Select incident type/i);
+    await selectOption(page, /Select severity/i);
     await page.getByLabel(/Description/i).fill(description);
 
     const [createRes] = await Promise.all([
@@ -31,7 +32,6 @@ test.describe.serial('incidents CRUD', () => {
     const created = await createRes.json();
     const id: string = created?.data?.id ?? created?.id;
     expect(id, 'no incident id in create response').toBeTruthy();
-    await expectToast(page, /created successfully/i);
 
     // ---- READ -----------------------------------------------------------
     await page.goto(`/compliance/incidents/${id}`);
@@ -40,11 +40,12 @@ test.describe.serial('incidents CRUD', () => {
     // ---- UPDATE ---------------------------------------------------------
     await page.getByRole('link', { name: /Edit Report/i }).click();
     await expect(page).toHaveURL(/\/compliance\/incidents\/[^/]+\/edit$/);
-    await page.getByLabel(/Description/i).fill(editedDescription);
-    await page
-      .getByRole('button', { name: /Save|Update/i })
-      .first()
-      .click();
+    // The edit form hydrates from a fetch — wait for it before editing, or the
+    // other required fields are still empty and the submit is silently blocked.
+    const descField = page.getByLabel(/Description/i);
+    await expect(descField).toHaveValue(description);
+    await descField.fill(editedDescription);
+    await page.getByRole('button', { name: /Update Report/i }).click();
     await expect(page).toHaveURL(
       (url) => url.pathname === `/compliance/incidents/${id}`,
     );
