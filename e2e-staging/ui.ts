@@ -1,18 +1,18 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
-// Shared helpers for the app's shadcn/Radix form conventions (see the UI-audit
-// in docs/e2e-testing.md). No data-testids exist, so we drive by accessible
-// name / label.
+// Shared helpers for the app's two form conventions:
+//   - shadcn Form (e.g. Add Animal dialog): labels are linked to controls, so
+//     target the trigger with dialog.getByLabel(...) and pass it here.
+//   - plain useState forms (e.g. compliance /new pages): Radix Select triggers
+//     are NOT label-linked, so target them by placeholder via selectOption().
 
-// Open a Radix <Select> by its trigger's accessible name and pick an option.
-// If `optionName` is omitted, selects the first real option (useful when the
-// concrete list — e.g. species — is seeded and not known ahead of time).
-export async function selectOption(
+// Pick a Radix <Select> option given the trigger's Locator.
+export async function chooseOption(
   page: Page,
-  triggerName: RegExp | string,
+  trigger: Locator,
   optionName?: RegExp | string,
 ): Promise<void> {
-  await page.getByRole('combobox', { name: triggerName }).click();
+  await trigger.click();
   const listbox = page.getByRole('listbox');
   await expect(listbox).toBeVisible();
   const option = optionName
@@ -21,20 +21,42 @@ export async function selectOption(
   await option.click();
 }
 
-// Open a date-picker Popover (button currently shows "Pick a date") and choose
-// a day. Defaults to today's visible day number.
-export async function pickDate(
+// Pick a Radix <Select> on a plain form where the trigger has no accessible
+// name — locate it by the placeholder TEXT it currently renders.
+export async function selectOption(
   page: Page,
-  triggerName: RegExp | string,
+  placeholder: RegExp | string,
+  optionName?: RegExp | string,
+): Promise<void> {
+  const trigger = page
+    .getByRole('combobox')
+    .filter({ hasText: placeholder })
+    .first();
+  await chooseOption(page, trigger, optionName);
+}
+
+// Open a date-picker Popover from its trigger Locator and click a day. The
+// popover may not auto-close and can overlay the trigger + fields below it, so
+// pass `dismiss` — a field ABOVE the trigger (its click closes the popover via
+// outside-click, without closing the parent Dialog as Escape would).
+export async function chooseDate(
+  page: Page,
+  trigger: Locator,
   day = new Date().getDate(),
 ): Promise<void> {
-  await page.getByRole('button', { name: triggerName }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
-  await dialog
+  await trigger.click();
+  const grid = page.getByRole('grid');
+  await expect(grid).toBeVisible();
+  // Day cells are clickable gridcells (no inner button). This sets the date but
+  // doesn't auto-close, so toggle the trigger to close the popover afterwards.
+  await grid
     .getByRole('gridcell', { name: String(day), exact: true })
     .first()
     .click();
+  if (await grid.isVisible().catch(() => false)) {
+    await trigger.click({ force: true });
+    await expect(grid).toBeHidden();
+  }
 }
 
 // Wait for the app's custom toast (use-toast) to show given text.
