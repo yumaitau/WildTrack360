@@ -61,7 +61,7 @@ export default function WildlifeRegisterPage() {
       <div className="container mx-auto p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg text-red-600">
-            We couldn't load the compliance register. Refresh the page to try again.
+            We couldn&apos;t load the compliance register. Refresh the page to try again.
           </div>
         </div>
       </div>
