@@ -74,12 +74,15 @@ jobs:
   trivy-vulnerabilities:
     name: Trivy dependency vulnerabilities
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       security-events: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # Trivy reads package manifests and lockfiles directly; npm install is
       # deliberately unnecessary for this dependency scan.
@@ -102,12 +105,15 @@ jobs:
   trivy-secrets-and-misconfigurations:
     name: Trivy secrets and misconfigurations
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       security-events: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Scan source and configuration
         uses: aquasecurity/trivy-action@v0.36.0
