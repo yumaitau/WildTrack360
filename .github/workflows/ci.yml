@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
 
+# The verification job only needs repository contents. Code-scanning upload
+# permission is granted to the two Trivy jobs below, not workflow-wide.
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -65,3 +70,55 @@ jobs:
       # secrets (Clerk, Square, Sentry) and is already performed by Vercel on
       # deploy (see vercel.json). The steps above are deterministic given the
       # CI Postgres service.
+
+  trivy-vulnerabilities:
+    name: Trivy dependency vulnerabilities
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Trivy reads package manifests and lockfiles directly; npm install is
+      # deliberately unnecessary for this dependency scan.
+      - name: Scan dependencies
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-vulnerabilities.sarif
+
+      - name: Upload vulnerability results to GitHub code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-vulnerabilities.sarif
+          category: trivy-vulnerabilities
+
+  trivy-secrets-and-misconfigurations:
+    name: Trivy secrets and misconfigurations
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan source and configuration
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scanners: secret,misconfig
+          format: sarif
+          output: trivy-secrets-and-misconfigurations.sarif
+
+      - name: Upload secret and configuration results to GitHub code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-secrets-and-misconfigurations.sarif
+          category: trivy-secrets-and-misconfigurations
