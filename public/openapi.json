@@ -11403,6 +11403,867 @@
         }
       }
     },
+    "/api/custom-forms": {
+      "get": {
+        "summary": "List custom forms (published only for submitters, all for managers)",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Custom forms",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "forms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "forms"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Feature not enabled"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a custom form",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created form",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Feature not enabled"
+          },
+          "409": {
+            "description": "Slug conflict"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/{id}": {
+      "get": {
+        "summary": "Get a custom form",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Custom form",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a custom form (creates a new version snapshot)",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated form",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Slug conflict"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a custom form and its submissions",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/{id}/versions": {
+      "get": {
+        "summary": "List version history for a custom form",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "versions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/{id}/versions/{versionId}": {
+      "get": {
+        "summary": "Get a specific version snapshot of a custom form",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "versionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Version snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/{id}/versions/{versionId}/rollback": {
+      "post": {
+        "summary": "Roll a form back by creating a new version from an old snapshot",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "versionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Form after rollback",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/{id}/submissions/export": {
+      "get": {
+        "summary": "Export submissions for a form as CSV or JSON",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ]
+            },
+            "required": false,
+            "name": "format",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submissions export",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/submissions": {
+      "get": {
+        "summary": "List custom form submissions",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "formId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "submissions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "submissions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Feature not enabled"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit a custom form response (idempotent via clientSubmissionId)",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deduplicated (already synced)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clientSubmissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "submissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "CREATED",
+                        "DEDUPLICATED",
+                        "REJECTED"
+                      ]
+                    },
+                    "errorCode": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "required": [
+                    "clientSubmissionId",
+                    "submissionId",
+                    "status",
+                    "errorCode",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Submission created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clientSubmissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "submissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "CREATED",
+                        "DEDUPLICATED",
+                        "REJECTED"
+                      ]
+                    },
+                    "errorCode": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "required": [
+                    "clientSubmissionId",
+                    "submissionId",
+                    "status",
+                    "errorCode",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clientSubmissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "submissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "CREATED",
+                        "DEDUPLICATED",
+                        "REJECTED"
+                      ]
+                    },
+                    "errorCode": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "required": [
+                    "clientSubmissionId",
+                    "submissionId",
+                    "status",
+                    "errorCode",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/submissions/batch": {
+      "post": {
+        "summary": "Sync up to 50 offline submissions in one request",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "submissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {}
+                    },
+                    "minItems": 1,
+                    "maxItems": 50
+                  }
+                },
+                "required": [
+                  "submissions"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-record results in input order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "clientSubmissionId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "submissionId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "CREATED",
+                              "DEDUPLICATED",
+                              "REJECTED"
+                            ]
+                          },
+                          "errorCode": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "issues": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        },
+                        "required": [
+                          "clientSubmissionId",
+                          "submissionId",
+                          "status",
+                          "errorCode",
+                          "message"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "results"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Feature not enabled"
+          }
+        }
+      }
+    },
     "/api/records": {
       "post": {
         "summary": "Create a care record for an animal",

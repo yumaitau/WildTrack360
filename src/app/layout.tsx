@@ -11,6 +11,7 @@ import { CommandPalette, type CommandItem } from '@/components/command-palette';
 import { WallyAssistant } from '@/components/wally-assistant';
 import { WorkspaceShell } from '@/components/workspace-shell';
 import { getUserRole } from '@/lib/rbac';
+import { isFeatureEnabled } from '@/lib/features';
 import { filterCommandItemsForRole } from '@/lib/workspace-navigation';
 
 export const metadata: Metadata = {
@@ -269,10 +270,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const allowedRedirectOrigins = buildAllowedRedirectOrigins(headerStore.get('host'));
   const { userId, orgId } = await auth();
   let workspaceRole: OrgRole | null = null;
+  let customFormsEnabled = false;
 
   if (userId && orgId) {
     try {
       workspaceRole = await getUserRole(userId, orgId);
+      customFormsEnabled = await isFeatureEnabled(orgId, 'CUSTOM_FORMS');
     } catch (error) {
       console.error('Unable to load workspace navigation role:', error);
     }
@@ -293,7 +296,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </head>
         <body className="font-body antialiased min-h-screen">
           <GoogleMapsProvider>
-            <WorkspaceShell role={workspaceRole}>{children}</WorkspaceShell>
+            <WorkspaceShell role={workspaceRole} customFormsEnabled={customFormsEnabled}>
+              {children}
+            </WorkspaceShell>
           </GoogleMapsProvider>
           <CommandPalette items={visibleCommandItems} />
           <WallyAssistant />

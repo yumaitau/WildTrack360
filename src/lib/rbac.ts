@@ -43,7 +43,10 @@ export type Permission =
   | 'member:view_all'
   | 'member:manage'
   | 'membership:configure'
-  | 'donation:view';
+  | 'donation:view'
+  | 'form:manage'
+  | 'form:submit'
+  | 'form:view_submissions';
 
 // ─── Permission Matrix ───────────────────────────────────────────────────────
 const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
@@ -77,6 +80,9 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'member:manage',
     'membership:configure',
     'donation:view',
+    'form:manage',
+    'form:submit',
+    'form:view_submissions',
   ]),
   COORDINATOR_ALL: new Set([
     'animal:view_all',
@@ -96,6 +102,9 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'compliance:manage_post_release',
     'member:view_all',
     'donation:view',
+    'form:manage',
+    'form:submit',
+    'form:view_submissions',
   ]),
   COORDINATOR: new Set([
     'animal:view_species_group',
@@ -112,6 +121,9 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'compliance:submit_permanent_care',
     'compliance:manage_transfers',
     'compliance:manage_post_release',
+    'form:manage',
+    'form:submit',
+    'form:view_submissions',
   ]),
   CARER_ALL: new Set([
     'animal:view_all',
@@ -119,12 +131,14 @@ const PERMISSION_MATRIX: Record<OrgRole, Set<Permission>> = {
     'animal:edit_own',
     'reminder:create',
     'compliance:draft_permanent_care',
+    'form:submit',
   ]),
   CARER: new Set([
     'animal:view_own',
     'animal:edit_own',
     'reminder:create',
     'compliance:draft_permanent_care',
+    'form:submit',
   ]),
 };
 

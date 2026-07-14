@@ -1225,6 +1225,96 @@ model FormTemplate {
   @@map("form_templates")
 }
 
+// ─── Custom Forms ────────────────────────────────────────────────────────────
+// Standalone org-defined data-collection forms (ported from WildForm360).
+// A form's definition (capture toggles + field list) lives as JSON on the form
+// row; every save snapshots an immutable CustomFormVersion so historical
+// submissions can always be resolved against the exact schema they were
+// captured under. Submissions carry a clientSubmissionId so offline mobile
+// clients can sync idempotently.
+
+enum CustomFormStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model CustomForm {
+  id                  String           @id @default(cuid())
+  clerkOrganizationId String           @map("clerk_organization_id")
+  createdByUserId     String           @map("created_by_user_id")
+  title               String
+  slug                String
+  description         String?
+  status              CustomFormStatus @default(DRAFT)
+  currentVersion      Int              @default(1) @map("current_version")
+  definitionJson      Json             @map("definition_json")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  versions    CustomFormVersion[]
+  submissions CustomFormSubmission[]
+
+  @@unique([clerkOrganizationId, slug])
+  @@index([clerkOrganizationId, status])
+  @@map("custom_forms")
+}
+
+model CustomFormVersion {
+  id                  String           @id @default(cuid())
+  formId              String           @map("form_id")
+  clerkOrganizationId String           @map("clerk_organization_id")
+  version             Int
+  createdByUserId     String           @map("created_by_user_id")
+  changeSummary       String?          @map("change_summary")
+  title               String
+  slug                String
+  description         String?
+  status              CustomFormStatus
+  definitionJson      Json             @map("definition_json")
+  createdAt           DateTime         @default(now()) @map("created_at")
+
+  form        CustomForm             @relation(fields: [formId], references: [id], onDelete: Cascade)
+  submissions CustomFormSubmission[]
+
+  @@unique([formId, version])
+  @@index([clerkOrganizationId])
+  @@map("custom_form_versions")
+}
+
+model CustomFormSubmission {
+  id                     String   @id @default(cuid())
+  clerkOrganizationId    String   @map("clerk_organization_id")
+  formId                 String   @map("form_id")
+  formVersionId          String?  @map("form_version_id")
+  formVersionNumber      Int      @map("form_version_number")
+  submittedByUserId      String   @map("submitted_by_user_id")
+  clientSubmissionId     String?  @map("client_submission_id")
+  observedAt             DateTime @map("observed_at")
+  latitude               Float?
+  longitude              Float?
+  locationAccuracyMeters Float?   @map("location_accuracy_meters")
+  photoUrls              Json     @default("[]") @map("photo_urls")
+  weatherJson            Json?    @map("weather_json")
+  valuesJson             Json     @map("values_json")
+  notes                  String?
+  deviceJson             Json?    @map("device_json")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  form        CustomForm         @relation(fields: [formId], references: [id], onDelete: Cascade)
+  formVersion CustomFormVersion? @relation(fields: [formVersionId], references: [id], onDelete: SetNull)
+
+  // Offline sync idempotency: a mobile client retrying a sync with the same
+  // clientSubmissionId must not create a duplicate row. Postgres treats NULLs
+  // as distinct, so web submissions without a client id are unaffected.
+  @@unique([clerkOrganizationId, submittedByUserId, clientSubmissionId])
+  @@index([clerkOrganizationId, formId])
+  @@index([formId, observedAt])
+  @@index([clerkOrganizationId, submittedByUserId])
+  @@map("custom_form_submissions")
+}
+
 // ─── Membership ─────────────────────────────────────────────────────────────
 
 enum MemberStatus {

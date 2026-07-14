@@ -98,6 +98,9 @@ import '@/app/api/pin/openapi';
 // Form templates domain
 import '@/app/api/form-templates/openapi';
 
+// Custom forms domain
+import '@/app/api/custom-forms/openapi';
+
 // Records domain
 import '@/app/api/records/openapi';
 
