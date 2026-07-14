@@ -6,6 +6,7 @@ export type WorkspaceNavigationIcon =
   | 'compliance'
   | 'dashboard'
   | 'feed'
+  | 'forms'
   | 'organisation'
   | 'tools';
 
@@ -21,6 +22,7 @@ const CARER_NAVIGATION: WorkspaceNavigationItem[] = [
   { id: 'dashboard', label: 'Dashboard', mobileLabel: 'Home', href: '/', icon: 'dashboard' },
   { id: 'animals', label: 'My Animals', mobileLabel: 'Animals', href: '/animals', icon: 'animals' },
   { id: 'feed', label: 'Feed Roster', mobileLabel: 'Feed', href: '/tools/feed-roster', icon: 'feed' },
+  { id: 'forms', label: 'Forms', mobileLabel: 'Forms', href: '/forms', icon: 'forms' },
   { id: 'tools', label: 'Care Tools', mobileLabel: 'Tools', href: '/tools', icon: 'tools' },
 ];
 
@@ -41,6 +43,7 @@ const COORDINATOR_NAVIGATION: WorkspaceNavigationItem[] = [
     href: '/compliance',
     icon: 'compliance',
   },
+  { id: 'forms', label: 'Forms', mobileLabel: 'Forms', href: '/forms', icon: 'forms' },
   { id: 'tools', label: 'Care Tools', mobileLabel: 'Tools', href: '/tools', icon: 'tools' },
   {
     id: 'organisation',
@@ -51,7 +54,7 @@ const COORDINATOR_NAVIGATION: WorkspaceNavigationItem[] = [
   },
 ];
 
-const WORKSPACE_PREFIXES = ['/animals', '/compliance', '/admin', '/tools'];
+const WORKSPACE_PREFIXES = ['/animals', '/compliance', '/admin', '/tools', '/forms'];
 const PRINT_ROUTE_PATTERNS = [
   /\/print(?:\/|$)/,
   /\/receipt(?:\/|$)/,
@@ -63,18 +66,34 @@ export function isCoordinatorRole(role: OrgRole): boolean {
   return role === 'ADMIN' || role === 'COORDINATOR' || role === 'COORDINATOR_ALL';
 }
 
-export function getWorkspaceNavigation(role: OrgRole): WorkspaceNavigationItem[] {
-  return isCoordinatorRole(role) ? COORDINATOR_NAVIGATION : CARER_NAVIGATION;
+export type WorkspaceNavigationOptions = {
+  // CUSTOM_FORMS is an org feature flag; the Forms entry ships dark until the
+  // flag is enabled for the org (mirrors how the routes 404 when disabled).
+  customFormsEnabled?: boolean;
+};
+
+export function getWorkspaceNavigation(
+  role: OrgRole,
+  options: WorkspaceNavigationOptions = {}
+): WorkspaceNavigationItem[] {
+  const items = isCoordinatorRole(role) ? COORDINATOR_NAVIGATION : CARER_NAVIGATION;
+  return items.filter((item) => item.id !== 'forms' || options.customFormsEnabled);
 }
 
-export function getMobilePrimaryNavigation(role: OrgRole): WorkspaceNavigationItem[] {
-  const items = getWorkspaceNavigation(role);
+export function getMobilePrimaryNavigation(
+  role: OrgRole,
+  options: WorkspaceNavigationOptions = {}
+): WorkspaceNavigationItem[] {
+  const items = getWorkspaceNavigation(role, options);
   return isCoordinatorRole(role) ? items.slice(0, 4) : items;
 }
 
-export function getMobileMoreNavigation(role: OrgRole): WorkspaceNavigationItem[] {
-  const primaryIds = new Set(getMobilePrimaryNavigation(role).map((item) => item.id));
-  return getWorkspaceNavigation(role).filter((item) => !primaryIds.has(item.id));
+export function getMobileMoreNavigation(
+  role: OrgRole,
+  options: WorkspaceNavigationOptions = {}
+): WorkspaceNavigationItem[] {
+  const primaryIds = new Set(getMobilePrimaryNavigation(role, options).map((item) => item.id));
+  return getWorkspaceNavigation(role, options).filter((item) => !primaryIds.has(item.id));
 }
 
 export function getActiveWorkspaceNavigationId(

@@ -30,11 +30,11 @@ function badRequest(error: ZodError): NextResponse {
  */
 export function route<C extends ContractConfig>(
   contract: C,
-  handler: (ctx: HandlerCtx<C>) => Promise<HandlerResult>,
+  handler: (ctx: HandlerCtx<C>) => Promise<HandlerResult>
 ) {
   return async (
     request: Request,
-    context?: { params?: Promise<Record<string, string>> },
+    context?: { params?: Promise<Record<string, string>> }
   ): Promise<Response> => {
     let params: unknown;
     if (contract.request?.params) {
@@ -60,7 +60,7 @@ export function route<C extends ContractConfig>(
       } catch {
         return NextResponse.json(
           { error: 'Invalid request', details: 'Request body must be valid JSON' },
-          { status: 400 },
+          { status: 400 }
         );
       }
       const parsed = contract.request.body.safeParse(raw);
@@ -76,16 +76,18 @@ export function route<C extends ContractConfig>(
       // returns are expected and stay quiet. Suppress the warn when the contract
       // declares a non-JSON content type (e.g. text/csv) - the raw Response is
       // the contractually expected form.
-      const declaredContent = contract.responses[result.status]?.content;
-      const isNonJson = declaredContent != null && declaredContent !== 'application/json';
+      const responseDef = contract.responses[result.status];
+      const rawResponseDeclared =
+        responseDef?.contents != null ||
+        (responseDef?.content != null && responseDef.content !== 'application/json');
       if (
         process.env.NODE_ENV !== 'production' &&
         result.status >= 200 &&
         result.status < 300 &&
-        !isNonJson
+        !rawResponseDeclared
       ) {
         console.warn(
-          'route(): handler returned a 2xx Response directly - response schema was NOT validated',
+          'route(): handler returned a 2xx Response directly - response schema was NOT validated'
         );
       }
       return result;

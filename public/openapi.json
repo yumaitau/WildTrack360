@@ -4670,6 +4670,1682 @@
       "EofyReport": {},
       "DataExport": {},
       "NSWRegisterExport": {},
+      "CustomFormStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ]
+      },
+      "CustomFormField": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "text"
+                ]
+              },
+              "maxLength": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "longText"
+                ]
+              },
+              "maxLength": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "number"
+                ]
+              },
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "integer"
+                ]
+              },
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "count"
+                ]
+              },
+              "min": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "max": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "date"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "datetime"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "boolean"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "select"
+                ]
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 50
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type",
+              "options"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "multiselect"
+                ]
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 50
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type",
+              "options"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "helpText": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "species"
+                ]
+              },
+              "suggestions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 200
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "label",
+              "required",
+              "archived",
+              "type",
+              "suggestions"
+            ]
+          }
+        ]
+      },
+      "CustomFormDefinition": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "requireLocation": {
+            "type": "boolean"
+          },
+          "captureDateTime": {
+            "type": "boolean"
+          },
+          "capturePhotos": {
+            "type": "boolean"
+          },
+          "captureWeather": {
+            "type": "boolean"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomFormField"
+            },
+            "maxItems": 80
+          }
+        },
+        "required": [
+          "version",
+          "requireLocation",
+          "captureDateTime",
+          "capturePhotos",
+          "captureWeather",
+          "fields"
+        ]
+      },
+      "CustomFormRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/CustomFormStatus"
+          },
+          "currentVersion": {
+            "type": "integer"
+          },
+          "schema": {
+            "$ref": "#/components/schemas/CustomFormDefinition"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "description",
+          "status",
+          "currentVersion",
+          "schema",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CustomFormMutationPayload": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/CustomFormStatus"
+          },
+          "schema": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "number",
+                "enum": [
+                  1
+                ]
+              },
+              "requireLocation": {
+                "type": "boolean"
+              },
+              "captureDateTime": {
+                "type": "boolean"
+              },
+              "capturePhotos": {
+                "type": "boolean"
+              },
+              "captureWeather": {
+                "type": "boolean"
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "longText",
+                        "number",
+                        "integer",
+                        "count",
+                        "date",
+                        "datetime",
+                        "boolean",
+                        "select",
+                        "multiselect",
+                        "species",
+                        "long_text",
+                        "decimal",
+                        "whole_number",
+                        "yes_no",
+                        "single_choice",
+                        "multi_choice",
+                        "multiple_choice"
+                      ]
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    },
+                    "helpText": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "maxLength": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "min": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "max": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "options": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 50
+                    },
+                    "suggestions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 200
+                    }
+                  }
+                },
+                "maxItems": 80
+              }
+            }
+          },
+          "definition": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "number",
+                "enum": [
+                  1
+                ]
+              },
+              "requireLocation": {
+                "type": "boolean"
+              },
+              "captureDateTime": {
+                "type": "boolean"
+              },
+              "capturePhotos": {
+                "type": "boolean"
+              },
+              "captureWeather": {
+                "type": "boolean"
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "longText",
+                        "number",
+                        "integer",
+                        "count",
+                        "date",
+                        "datetime",
+                        "boolean",
+                        "select",
+                        "multiselect",
+                        "species",
+                        "long_text",
+                        "decimal",
+                        "whole_number",
+                        "yes_no",
+                        "single_choice",
+                        "multi_choice",
+                        "multiple_choice"
+                      ]
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    },
+                    "helpText": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "maxLength": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "min": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "max": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "options": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 50
+                    },
+                    "suggestions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 200
+                    }
+                  }
+                },
+                "maxItems": 80
+              }
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "longText",
+                    "number",
+                    "integer",
+                    "count",
+                    "date",
+                    "datetime",
+                    "boolean",
+                    "select",
+                    "multiselect",
+                    "species",
+                    "long_text",
+                    "decimal",
+                    "whole_number",
+                    "yes_no",
+                    "single_choice",
+                    "multi_choice",
+                    "multiple_choice"
+                  ]
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "archived": {
+                  "type": "boolean"
+                },
+                "helpText": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "maxLength": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "min": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "max": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50
+                },
+                "suggestions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 200
+                }
+              }
+            },
+            "maxItems": 80
+          },
+          "requireLocation": {
+            "type": "boolean"
+          },
+          "captureDateTime": {
+            "type": "boolean"
+          },
+          "capturePhotos": {
+            "type": "boolean"
+          },
+          "captureWeather": {
+            "type": "boolean"
+          },
+          "changeSummary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CustomFormVersionRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "formId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "createdByUserId": {
+            "type": "string"
+          },
+          "changeSummary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/CustomFormStatus"
+          },
+          "schema": {
+            "$ref": "#/components/schemas/CustomFormDefinition"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "formId",
+          "version",
+          "createdByUserId",
+          "changeSummary",
+          "title",
+          "slug",
+          "description",
+          "status",
+          "schema",
+          "createdAt"
+        ]
+      },
+      "CustomFormWeatherCapture": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "capturedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "device",
+              "manual",
+              "weather_api"
+            ]
+          },
+          "temperatureCelsius": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "humidityPct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "windDirection": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "windSpeedKmh": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "windGustKmh": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "rainfallMm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CustomFormDeviceCapture": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "deviceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "platform": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "appVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CustomFormSubmissionRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "formId": {
+            "type": "string"
+          },
+          "formVersionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "formVersion": {
+            "type": "integer"
+          },
+          "formSchema": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomFormDefinition"
+              },
+              {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            ]
+          },
+          "submittedByUserId": {
+            "type": "string"
+          },
+          "submittedByUserEmail": {
+            "type": "string"
+          },
+          "clientSubmissionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "location": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              },
+              "accuracyMeters": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "latitude",
+              "longitude",
+              "accuracyMeters"
+            ]
+          },
+          "photoUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "weather": {
+            "$ref": "#/components/schemas/CustomFormWeatherCapture"
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "device": {
+            "$ref": "#/components/schemas/CustomFormDeviceCapture"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "formId",
+          "formVersionId",
+          "formVersion",
+          "formSchema",
+          "submittedByUserId",
+          "clientSubmissionId",
+          "observedAt",
+          "location",
+          "photoUrls",
+          "weather",
+          "values",
+          "notes",
+          "device",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CustomFormSubmissionsExport": {
+        "type": "object",
+        "properties": {
+          "exportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "form": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "$ref": "#/components/schemas/CustomFormStatus"
+              },
+              "currentVersion": {
+                "type": "integer"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CustomFormDefinition"
+              },
+              "versionSchemas": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer"
+                    },
+                    "schema": {
+                      "$ref": "#/components/schemas/CustomFormDefinition"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "schema"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "slug",
+              "status",
+              "currentVersion",
+              "schema",
+              "versionSchemas"
+            ]
+          },
+          "submissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomFormSubmissionRecord"
+            }
+          }
+        },
+        "required": [
+          "exportedAt",
+          "form",
+          "submissions"
+        ]
+      },
+      "CustomFormSubmissionPayload": {
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "clientSubmissionId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "clientRecordId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "observedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "performedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "recordedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "latitude": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "longitude": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "lat": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "lng": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "accuracyMeters": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "locationAccuracyMeters": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "accuracyMeters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "locationAccuracyMeters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "photoUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20
+          },
+          "weather": {
+            "type": "object",
+            "properties": {
+              "capturedAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "temperatureCelsius": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tempCelsius": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "humidityPct": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "windDirection": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "windSpeedKmh": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "windGustKmh": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "rainfallMm": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "summary": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "device": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomFormDeviceCapture"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "formId"
+        ]
+      },
+      "CustomFormBatchSubmissionPayload": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CustomFormSubmissionPayload"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "clientSubmissionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              }
+            },
+            "required": [
+              "clientSubmissionId"
+            ]
+          }
+        ]
+      },
       "RecordDeleted": {
         "type": "object",
         "properties": {
@@ -11399,6 +13075,870 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/custom-forms": {
+      "get": {
+        "summary": "List custom forms (published only for submitters, all for managers)",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Custom forms",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "forms": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CustomFormRecord"
+                      }
+                    }
+                  },
+                  "required": [
+                    "forms"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Feature not enabled"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a custom form",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomFormMutationPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created form",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFormRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Feature not enabled"
+          },
+          "409": {
+            "description": "Slug conflict"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/{id}": {
+      "get": {
+        "summary": "Get a custom form",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Custom form",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFormRecord"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a custom form (creates a new version snapshot)",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomFormMutationPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated form",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFormRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Slug or concurrent update conflict"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a custom form and its submissions",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/{id}/versions": {
+      "get": {
+        "summary": "List version history for a custom form",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CustomFormVersionRecord"
+                      }
+                    }
+                  },
+                  "required": [
+                    "versions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/{id}/versions/{versionId}": {
+      "get": {
+        "summary": "Get a specific version snapshot of a custom form",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "versionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Version snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFormVersionRecord"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/{id}/versions/{versionId}/rollback": {
+      "post": {
+        "summary": "Roll a form back by creating a new version from an old snapshot",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "versionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Form after rollback",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFormRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Concurrent update conflict"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/{id}/submissions/export": {
+      "get": {
+        "summary": "Export submissions for a form as CSV or JSON",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ]
+            },
+            "required": false,
+            "name": "format",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submissions export",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFormSubmissionsExport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/submissions": {
+      "get": {
+        "summary": "List custom form submissions",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "formId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "submissions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CustomFormSubmissionRecord"
+                      }
+                    }
+                  },
+                  "required": [
+                    "submissions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Feature not enabled"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit a custom form response (idempotent via clientSubmissionId)",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomFormSubmissionPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deduplicated (already synced)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clientSubmissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "submissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "CREATED",
+                        "DEDUPLICATED",
+                        "REJECTED"
+                      ]
+                    },
+                    "errorCode": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "required": [
+                    "clientSubmissionId",
+                    "submissionId",
+                    "status",
+                    "errorCode",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Submission created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clientSubmissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "submissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "CREATED",
+                        "DEDUPLICATED",
+                        "REJECTED"
+                      ]
+                    },
+                    "errorCode": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "required": [
+                    "clientSubmissionId",
+                    "submissionId",
+                    "status",
+                    "errorCode",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clientSubmissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "submissionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "CREATED",
+                        "DEDUPLICATED",
+                        "REJECTED"
+                      ]
+                    },
+                    "errorCode": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "required": [
+                    "clientSubmissionId",
+                    "submissionId",
+                    "status",
+                    "errorCode",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/custom-forms/submissions/batch": {
+      "post": {
+        "summary": "Sync up to 50 offline submissions in one request",
+        "tags": [
+          "Custom Forms"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "submissions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/CustomFormBatchSubmissionPayload"
+                    },
+                    "minItems": 1,
+                    "maxItems": 50
+                  }
+                },
+                "required": [
+                  "submissions"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-record results in input order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "clientSubmissionId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "submissionId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "CREATED",
+                              "DEDUPLICATED",
+                              "REJECTED"
+                            ]
+                          },
+                          "errorCode": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "issues": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        },
+                        "required": [
+                          "clientSubmissionId",
+                          "submissionId",
+                          "status",
+                          "errorCode",
+                          "message"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "results"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or submissions must contain 1-50 records"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Feature not enabled"
           }
         }
       }

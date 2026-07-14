@@ -7,6 +7,7 @@ import {
   Building2,
   Calculator,
   ChevronDown,
+  ClipboardList,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -56,6 +57,7 @@ const ICONS: Record<WorkspaceNavigationIcon, React.ComponentType<{ className?: s
   compliance: ShieldCheck,
   dashboard: LayoutDashboard,
   feed: Utensils,
+  forms: ClipboardList,
   organisation: Settings,
   tools: Calculator,
 };
@@ -116,7 +118,15 @@ function MobileNavigationLink({
   );
 }
 
-export function WorkspaceShell({ children, role }: { children: React.ReactNode; role: OrgRole | null }) {
+export function WorkspaceShell({
+  children,
+  role,
+  customFormsEnabled = false,
+}: {
+  children: React.ReactNode;
+  role: OrgRole | null;
+  customFormsEnabled?: boolean;
+}) {
   const pathname = usePathname();
   const { user } = useUser();
   const { organization } = useOrganization();
@@ -124,9 +134,10 @@ export function WorkspaceShell({ children, role }: { children: React.ReactNode; 
 
   if (!role || !isWorkspaceRoute(pathname)) return <>{children}</>;
 
-  const navigation = getWorkspaceNavigation(role);
-  const mobilePrimary = getMobilePrimaryNavigation(role);
-  const mobileMore = getMobileMoreNavigation(role);
+  const navOptions = { customFormsEnabled };
+  const navigation = getWorkspaceNavigation(role, navOptions);
+  const mobilePrimary = getMobilePrimaryNavigation(role, navOptions);
+  const mobileMore = getMobileMoreNavigation(role, navOptions);
   const activeId = getActiveWorkspaceNavigationId(pathname, navigation);
   const moreActive = mobileMore.some((item) => item.id === activeId);
   const roleLabel = getWorkspaceRoleLabel(role);

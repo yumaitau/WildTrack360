@@ -32,6 +32,16 @@ describe('workspace navigation', () => {
     expect(getWorkspaceNavigation('ADMIN')).toEqual(getWorkspaceNavigation('COORDINATOR_ALL'));
   });
 
+  it('reveals the Forms destination only when the CUSTOM_FORMS flag is on', () => {
+    expect(
+      getWorkspaceNavigation('CARER', { customFormsEnabled: true }).map((item) => item.id)
+    ).toEqual(['dashboard', 'animals', 'feed', 'forms', 'tools']);
+    expect(
+      getWorkspaceNavigation('COORDINATOR', { customFormsEnabled: true }).map((item) => item.id)
+    ).toEqual(['dashboard', 'animals', 'calls', 'compliance', 'forms', 'tools', 'organisation']);
+    expect(getWorkspaceNavigation('CARER').some((item) => item.id === 'forms')).toBe(false);
+  });
+
   it('keeps four primary destinations in the privileged mobile bar', () => {
     expect(getMobilePrimaryNavigation('ADMIN').map((item) => item.id)).toEqual([
       'dashboard',
@@ -56,6 +66,7 @@ describe('workspace navigation', () => {
   it('shows the workspace shell only on interactive workspace routes', () => {
     expect(isWorkspaceRoute('/')).toBe(true);
     expect(isWorkspaceRoute('/animals/animal-1')).toBe(true);
+    expect(isWorkspaceRoute('/forms/form-1/fill')).toBe(true);
     expect(isWorkspaceRoute('/portal')).toBe(false);
     expect(isWorkspaceRoute('/landing')).toBe(false);
     expect(isWorkspaceRoute('/animals/animal-1/print')).toBe(false);

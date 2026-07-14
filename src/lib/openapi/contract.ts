@@ -9,6 +9,8 @@ export interface ResponseDef {
   schema?: ZodTypeAny;
   /** For non-JSON responses (e.g. 'text/csv'). No schema validation occurs. */
   content?: string;
+  /** For endpoints that negotiate multiple response media types. */
+  contents?: Record<string, ZodTypeAny>;
 }
 
 export interface ContractConfig<
@@ -22,7 +24,7 @@ export interface ContractConfig<
   tags?: string[];
   /** Security scheme name, or 'public' for no auth. */
   security?: SecurityName;
-  request?: { params?: P; query?: Q; body?: B };
+  request?: { params?: P; query?: Q; body?: B; bodyRequired?: boolean };
   responses: Record<number, ResponseDef>;
   /** The 2xx status the handler returns on success (used to pick the response schema). */
   successStatus: number;
@@ -47,18 +49,33 @@ export function defineContract<
 
   const responses: RegisterPathArg['responses'] = {};
   for (const [status, def] of Object.entries(config.responses)) {
-    responses[Number(status)] = def.schema
-      ? { description: def.description, content: { [def.content ?? 'application/json']: { schema: def.schema } } }
-      : def.content
-        ? { description: def.description, content: { [def.content]: { schema: z.string() } } }
-        : { description: def.description };
+    if (def.contents) {
+      responses[Number(status)] = {
+        description: def.description,
+        content: Object.fromEntries(
+          Object.entries(def.contents).map(([contentType, schema]) => [contentType, { schema }])
+        ),
+      };
+    } else {
+      responses[Number(status)] = def.schema
+        ? {
+            description: def.description,
+            content: { [def.content ?? 'application/json']: { schema: def.schema } },
+          }
+        : def.content
+          ? { description: def.description, content: { [def.content]: { schema: z.string() } } }
+          : { description: def.description };
+    }
   }
 
   const request: RequestArg = {};
   if (config.request?.params) request.params = config.request.params as RequestArg['params'];
   if (config.request?.query) request.query = config.request.query as RequestArg['query'];
   if (config.request?.body) {
-    request.body = { content: { 'application/json': { schema: config.request.body } } };
+    request.body = {
+      content: { 'application/json': { schema: config.request.body } },
+      ...(config.request.bodyRequired ? { required: true } : {}),
+    };
   }
 
   registry.registerPath({
