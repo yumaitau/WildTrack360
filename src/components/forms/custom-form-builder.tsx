@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive,
   ArchiveRestore,
@@ -19,6 +19,7 @@ import {
 import { toast } from '@/lib/toast';
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
@@ -28,6 +29,7 @@ import {
 import {
   SortableContext,
   arrayMove,
+  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
@@ -122,10 +124,15 @@ export function CustomFormBuilder({ formId }: { formId: string }) {
   const [fields, setFields] = useState<DraftField[]>([]);
   const [changeSummary, setChangeSummary] = useState('');
   const [saving, setSaving] = useState(false);
+  const [rollbackPending, setRollbackPending] = useState<string | null>(null);
+  const rollbackPendingRef = useRef(false);
   const [issues, setIssues] = useState<ApiIssue[]>([]);
   const [previewValues, setPreviewValues] = useState<Record<string, unknown>>({});
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const hydrate = useCallback((record: CustomFormRecord) => {
     setForm(record);
@@ -310,7 +317,10 @@ export function CustomFormBuilder({ formId }: { formId: string }) {
   }
 
   async function handleRollback(version: CustomFormVersionRecord) {
+    if (rollbackPendingRef.current) return;
     if (!window.confirm(`Roll back this form to version ${version.version}?`)) return;
+    rollbackPendingRef.current = true;
+    setRollbackPending(version.id);
     try {
       const res = await fetch(`/api/custom-forms/${formId}/versions/${version.id}/rollback`, {
         method: 'POST',
@@ -325,6 +335,9 @@ export function CustomFormBuilder({ formId }: { formId: string }) {
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Rollback failed');
+    } finally {
+      rollbackPendingRef.current = false;
+      setRollbackPending(null);
     }
   }
 
@@ -549,7 +562,7 @@ export function CustomFormBuilder({ formId }: { formId: string }) {
                       variant="outline"
                       size="sm"
                       onClick={() => handleRollback(version)}
-                      disabled={version.version === form.currentVersion}
+                      disabled={rollbackPending !== null || version.version === form.currentVersion}
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
                       Roll back

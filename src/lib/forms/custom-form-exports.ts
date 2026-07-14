@@ -2,7 +2,13 @@
 // Operates on the serialized shapes so the same code path serves the export
 // API route and any future scheduled export job.
 
+import type { CustomFormDefinition, CustomFormField } from './custom-forms';
 import type { SerializedCustomForm, SerializedSubmission } from './custom-form-service';
+
+type FieldColumn = {
+  key: string;
+  field: CustomFormField;
+};
 
 export function exportSubmissionsJson({
   form,
@@ -20,6 +26,7 @@ export function exportSubmissionsJson({
       status: form.status,
       currentVersion: form.currentVersion,
       schema: form.schema,
+      versionSchemas: versionSchemasForSubmissions(form, submissions),
     },
     submissions,
   };
@@ -32,7 +39,7 @@ export function exportSubmissionsCsv({
   form: SerializedCustomForm;
   submissions: SerializedSubmission[];
 }): string {
-  const fields = form.schema.fields.filter((field) => !field.archived);
+  const fields = columnsForSubmissions(form, submissions);
   const fixedHeaders = [
     'Submission ID',
     'Client Submission ID',
@@ -50,7 +57,7 @@ export function exportSubmissionsCsv({
     'Wind Gust (km/h)',
     'Rainfall',
   ];
-  const fieldHeaders = fields.map((field) => field.label);
+  const fieldHeaders = fields.map(({ field }) => field.label);
   const trailingHeaders = ['Photo URLs', 'Created At'];
   const header = [...fixedHeaders, ...fieldHeaders, ...trailingHeaders].map(csvEscape).join(',');
 
@@ -74,8 +81,14 @@ export function exportSubmissionsCsv({
       formatNumber(weather.rainfallMm),
     ];
 
-    for (const field of fields) {
-      cells.push(formatCell(submission.values[field.id]));
+    const submissionFields = new Set(
+      schemaForSubmission(form, submission)
+        .fields.filter((field) => !field.archived)
+        .map(fieldColumnKey)
+    );
+
+    for (const { key, field } of fields) {
+      cells.push(submissionFields.has(key) ? formatCell(submission.values[field.id]) : '');
     }
 
     cells.push(submission.photoUrls.join('; '));
@@ -101,8 +114,63 @@ export function csvEscape(value: unknown): string {
 // submitted value can't execute when the export is opened in Excel.
 export function spreadsheetSafeText(value: unknown): string {
   const text = value == null ? '' : String(value);
+  const trimmed = text.trim();
+
+  if (/^[+-]?(?:(?:\d+\.?\d*)|(?:\.\d+))(?:[eE][+-]?\d+)?$/.test(trimmed)) {
+    return text;
+  }
 
   return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+}
+
+function versionSchemasForSubmissions(
+  form: SerializedCustomForm,
+  submissions: SerializedSubmission[]
+) {
+  const versions = new Map<number, CustomFormDefinition>();
+  versions.set(form.currentVersion, form.schema);
+  for (const submission of submissions) {
+    versions.set(submission.formVersion, schemaForSubmission(form, submission));
+  }
+
+  return Array.from(versions.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([version, schema]) => ({ version, schema }));
+}
+
+function columnsForSubmissions(
+  form: SerializedCustomForm,
+  submissions: SerializedSubmission[]
+): FieldColumn[] {
+  const columns: FieldColumn[] = [];
+  const seen = new Set<string>();
+  const definitions = [
+    form.schema,
+    ...submissions.map((submission) => schemaForSubmission(form, submission)),
+  ];
+
+  for (const definition of definitions) {
+    for (const field of definition.fields) {
+      if (field.archived) continue;
+      const key = fieldColumnKey(field);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      columns.push({ key, field });
+    }
+  }
+
+  return columns;
+}
+
+function schemaForSubmission(
+  form: SerializedCustomForm,
+  submission: SerializedSubmission
+): CustomFormDefinition {
+  return submission.formSchema ?? form.schema;
+}
+
+function fieldColumnKey(field: CustomFormField): string {
+  return `${field.id}:${field.type}:${field.label}`;
 }
 
 function formatCell(value: unknown): string {

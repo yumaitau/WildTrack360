@@ -99,6 +99,8 @@ export type ValidationIssue = {
   message: string;
 };
 
+const CHOICE_VALUE_MAX_LENGTH = 120;
+
 export const customFieldTypeLabels: Record<CustomFieldType, string> = {
   text: 'Short text',
   longText: 'Long text',
@@ -160,7 +162,10 @@ export function normalizeCustomFormPayload(
     issues.push({ path: 'slug', message: 'Slug must use lowercase letters, digits, or dashes.' });
   }
 
-  const description = cleanString(input.description ?? existing?.description ?? null, 2000) ?? null;
+  const descriptionInput = Object.prototype.hasOwnProperty.call(input, 'description')
+    ? input.description
+    : (existing?.description ?? null);
+  const description = cleanString(descriptionInput, 2000) ?? null;
   const status = normalizeStatus(input.status, existing?.status ?? 'draft');
 
   const definitionPatch = isRecord(input.schema)
@@ -206,8 +211,7 @@ export function normalizeSubmissionPayload(
     return { data: null, issues: [{ path: '$', message: 'Payload must be a JSON object.' }] };
   }
 
-  const clientSubmissionId =
-    cleanString(input.clientSubmissionId ?? input.clientRecordId ?? null, 160) ?? null;
+  const clientSubmissionId = normalizeClientSubmissionId(input, issues);
 
   if (options.requireClientSubmissionId && !clientSubmissionId) {
     issues.push({
@@ -216,7 +220,11 @@ export function normalizeSubmissionPayload(
     });
   }
 
-  const observedAt = parseDate(input.observedAt ?? input.performedAt ?? input.recordedAt ?? null);
+  const timestamp = firstNonEmptyTimestamp(input);
+  const observedAt = timestamp ? parseDate(timestamp.value) : null;
+  if (timestamp && !observedAt) {
+    issues.push({ path: timestamp.path, message: 'Observed date must be valid.' });
+  }
 
   const location = isRecord(input.location) ? input.location : input;
   const latitude = parseNumber(location.latitude ?? location.lat);
@@ -357,30 +365,53 @@ function normalizeFields(value: unknown, issues: ValidationIssue[]): CustomFormF
 
     switch (type) {
       case 'text':
-      case 'longText':
-        fields.push({ ...base, type, maxLength: parsePositiveInteger(rawField.maxLength) });
-        break;
-      case 'number':
-      case 'integer':
+      case 'longText': {
+        const maxLength = parseInteger(rawField.maxLength);
+        if (maxLength != null && maxLength < 1) {
+          issues.push({ path: `${path}.maxLength`, message: 'Max length must be at least 1.' });
+        }
         fields.push({
           ...base,
           type,
-          min: parseNumber(rawField.min) ?? undefined,
-          max: parseNumber(rawField.max) ?? undefined,
+          maxLength: maxLength != null && maxLength >= 1 ? maxLength : undefined,
+        });
+        break;
+      }
+      case 'number':
+      case 'integer': {
+        const min = parseNumber(rawField.min) ?? undefined;
+        const max = parseNumber(rawField.max) ?? undefined;
+        validateBounds(min, max, `${path}.min`, issues);
+        fields.push({
+          ...base,
+          type,
+          min,
+          max,
           unit: cleanString(rawField.unit, 20) ?? undefined,
         });
         break;
-      case 'count':
+      }
+      case 'count': {
+        const min = parsePositiveInteger(rawField.min) ?? 0;
+        const max = parsePositiveInteger(rawField.max);
+        validateBounds(min, max, `${path}.min`, issues);
         fields.push({
           ...base,
           type,
-          min: parsePositiveInteger(rawField.min) ?? 0,
-          max: parsePositiveInteger(rawField.max),
+          min,
+          max,
         });
         break;
+      }
       case 'select':
       case 'multiselect': {
-        const options = parseStringArray(rawField.options, 50, `${path}.options`, issues);
+        const options = parseStringArray(
+          rawField.options,
+          50,
+          `${path}.options`,
+          issues,
+          CHOICE_VALUE_MAX_LENGTH
+        );
         if (options.length === 0) {
           issues.push({
             path: `${path}.options`,
@@ -442,7 +473,7 @@ function normalizeFieldValues(
               ? (field.maxLength ?? 500)
               : 120;
         const value = cleanString(rawValue, maxLength);
-        if (value == null) {
+        if (value == null || value === '') {
           issues.push({ path, message: `${field.label} must be text.` });
         }
         values[field.id] = value;
@@ -492,7 +523,7 @@ function normalizeFieldValues(
         break;
       }
       case 'select': {
-        const value = cleanString(rawValue, 120);
+        const value = cleanString(rawValue, CHOICE_VALUE_MAX_LENGTH);
         if (!value || !field.options.includes(value)) {
           issues.push({ path, message: `${field.label} has an invalid option.` });
         }
@@ -500,7 +531,7 @@ function normalizeFieldValues(
         break;
       }
       case 'multiselect': {
-        const selected = parseStringArray(rawValue, 50, path, issues);
+        const selected = parseStringArray(rawValue, 50, path, issues, CHOICE_VALUE_MAX_LENGTH);
         const invalid = selected.filter((item) => !field.options.includes(item));
         if (invalid.length > 0) {
           issues.push({ path, message: `${field.label} has invalid options.` });
@@ -583,7 +614,8 @@ function parseStringArray(
   value: unknown,
   maxItems: number,
   path: string,
-  issues: ValidationIssue[]
+  issues: ValidationIssue[],
+  maxLength = 240
 ): string[] {
   if (value == null) {
     return [];
@@ -600,7 +632,7 @@ function parseStringArray(
 
   return value
     .slice(0, maxItems)
-    .map((item) => cleanString(item, 240))
+    .map((item) => cleanString(item, maxLength))
     .filter((item): item is string => Boolean(item));
 }
 
@@ -675,6 +707,54 @@ function parseDate(value: unknown): Date | null {
   }
 
   return null;
+}
+
+function firstNonEmptyTimestamp(
+  input: Record<string, unknown>
+): { path: 'observedAt' | 'performedAt' | 'recordedAt'; value: unknown } | null {
+  for (const path of ['observedAt', 'performedAt', 'recordedAt'] as const) {
+    const value = input[path];
+    if (value == null) continue;
+    if (typeof value === 'string' && value.trim() === '') continue;
+    return { path, value };
+  }
+
+  return null;
+}
+
+function normalizeClientSubmissionId(
+  input: Record<string, unknown>,
+  issues: ValidationIssue[]
+): string | null {
+  const path = input.clientSubmissionId != null ? 'clientSubmissionId' : 'clientRecordId';
+  const value = input.clientSubmissionId ?? input.clientRecordId;
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  if (!value.trim()) {
+    return null;
+  }
+
+  if (value.length > 160) {
+    issues.push({
+      path,
+      message: 'clientSubmissionId must be at most 160 characters.',
+    });
+  }
+
+  return value.trim();
+}
+
+function validateBounds(
+  min: number | undefined,
+  max: number | undefined,
+  path: string,
+  issues: ValidationIssue[]
+) {
+  if (min != null && max != null && min > max) {
+    issues.push({ path, message: 'Minimum cannot be greater than maximum.' });
+  }
 }
 
 function parseBoolean(value: unknown): boolean | null {

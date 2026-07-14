@@ -3,7 +3,7 @@
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -84,7 +84,7 @@ export function CustomFieldInput({
                 onChange(null);
                 return;
               }
-              const num = field.type === 'number' ? parseFloat(text) : parseInt(text, 10);
+              const num = field.type === 'number' ? parseFloat(text) : Number(text);
               onChange(Number.isFinite(num) ? num : null);
             }}
             disabled={disabled}
@@ -114,15 +114,29 @@ export function CustomFieldInput({
       break;
 
     case 'boolean':
+      const booleanValue = value === true ? true : value === false ? false : null;
       input = (
-        <div className="flex items-center gap-2">
-          <Switch
-            id={controlId}
-            checked={Boolean(value)}
-            onCheckedChange={(checked) => onChange(checked)}
+        <div id={controlId} className="flex items-center gap-2" role="radiogroup">
+          <Button
+            type="button"
+            variant={booleanValue === true ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onChange(true)}
             disabled={disabled}
-          />
-          <span className="text-sm text-muted-foreground">{value ? 'Yes' : 'No'}</span>
+            aria-pressed={booleanValue === true}
+          >
+            Yes
+          </Button>
+          <Button
+            type="button"
+            variant={booleanValue === false ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onChange(false)}
+            disabled={disabled}
+            aria-pressed={booleanValue === false}
+          >
+            No
+          </Button>
         </div>
       );
       break;

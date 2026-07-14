@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { csvEscape, exportSubmissionsCsv, exportSubmissionsJson, spreadsheetSafeText } from './custom-form-exports';
+import {
+  csvEscape,
+  exportSubmissionsCsv,
+  exportSubmissionsJson,
+  spreadsheetSafeText,
+} from './custom-form-exports';
 import type { SerializedCustomForm, SerializedSubmission } from './custom-form-service';
 
 const form: SerializedCustomForm = {
@@ -54,6 +59,7 @@ const submission: SerializedSubmission = {
   formId: 'form-1',
   formVersionId: 'ver-2',
   formVersion: 2,
+  formSchema: form.schema,
   submittedByUserId: 'user_123',
   clientSubmissionId: 'client-1',
   observedAt: '2026-07-03T04:30:00.000Z',
@@ -65,6 +71,19 @@ const submission: SerializedSubmission = {
   device: null,
   createdAt: '2026-07-03T04:31:00.000Z',
   updatedAt: '2026-07-03T04:31:00.000Z',
+};
+
+const historicalSubmission: SerializedSubmission = {
+  ...submission,
+  id: 'sub-old',
+  formVersionId: 'ver-1',
+  formVersion: 1,
+  formSchema: {
+    ...form.schema,
+    fields: form.schema.fields.map((field) =>
+      field.id === 'f-old' ? { ...field, archived: false } : field
+    ),
+  },
 };
 
 describe('exportSubmissionsCsv', () => {
@@ -84,6 +103,13 @@ describe('exportSubmissionsCsv', () => {
     expect(csv).toContain("'=SUM(A1)");
     expect(csv).not.toContain(',=SUM(A1)');
   });
+
+  it('uses captured version schemas for historical columns', () => {
+    const csv = exportSubmissionsCsv({ form, submissions: [historicalSubmission] });
+    const [header, row] = csv.split('\n');
+    expect(header).toContain('Old');
+    expect(row).toContain('stale');
+  });
 });
 
 describe('exportSubmissionsJson', () => {
@@ -91,6 +117,7 @@ describe('exportSubmissionsJson', () => {
     const json = exportSubmissionsJson({ form, submissions: [submission] });
     expect(json.form.id).toBe('form-1');
     expect(json.form.currentVersion).toBe(2);
+    expect(json.form.versionSchemas.map((entry) => entry.version)).toEqual([2]);
     expect(json.submissions).toHaveLength(1);
     expect(json.submissions[0].values['f-species']).toBe('Koala, juvenile');
   });
@@ -105,6 +132,8 @@ describe('csv helpers', () => {
   });
 
   it('prefixes formula-looking values', () => {
+    expect(spreadsheetSafeText('-33.8')).toBe('-33.8');
+    expect(spreadsheetSafeText('+151.2')).toBe('+151.2');
     expect(spreadsheetSafeText('+61 400 000 000')).toBe("'+61 400 000 000");
     expect(spreadsheetSafeText('@handle')).toBe("'@handle");
     expect(spreadsheetSafeText('safe')).toBe('safe');

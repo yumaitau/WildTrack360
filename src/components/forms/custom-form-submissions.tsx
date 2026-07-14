@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Download, Eye, MapPin } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { Badge } from '@/components/ui/badge';
@@ -78,16 +78,14 @@ export function CustomFormSubmissions({ formId, canViewSubmissions }: Props) {
     };
   }, [formId]);
 
-  const fieldsById = useMemo(() => {
-    const map = new Map<string, CustomFormField>();
-    for (const field of form?.schema.fields ?? []) map.set(field.id, field);
-    return map;
-  }, [form]);
+  function fieldsForSubmission(submission: CustomFormSubmissionRecord): CustomFormField[] {
+    return (submission.formSchema ?? form?.schema)?.fields ?? [];
+  }
 
   function valueSummary(submission: CustomFormSubmissionRecord): string {
     if (!form) return '—';
     const parts: string[] = [];
-    for (const field of form.schema.fields) {
+    for (const field of fieldsForSubmission(submission)) {
       if (field.archived) continue;
       const value = submission.values[field.id];
       if (value === null || value === undefined || value === '') continue;
@@ -271,20 +269,17 @@ export function CustomFormSubmissions({ formId, canViewSubmissions }: Props) {
 
               <div className="space-y-2 rounded-md border p-3">
                 <p className="font-medium">Values</p>
-                {form.schema.fields.filter((f) => !f.archived).length === 0 ? (
+                {fieldsForSubmission(selected).filter((f) => !f.archived).length === 0 ? (
                   <p className="text-muted-foreground">This form has no fields.</p>
                 ) : (
                   <dl className="space-y-2">
-                    {form.schema.fields
+                    {fieldsForSubmission(selected)
                       .filter((f) => !f.archived)
                       .map((field) => (
                         <div key={field.id} className="grid gap-1 sm:grid-cols-[200px_1fr]">
                           <dt className="text-muted-foreground">{field.label}</dt>
                           <dd className="break-words">
-                            {formatFieldValue(
-                              fieldsById.get(field.id) ?? field,
-                              selected.values[field.id]
-                            )}
+                            {formatFieldValue(field, selected.values[field.id])}
                           </dd>
                         </div>
                       ))}

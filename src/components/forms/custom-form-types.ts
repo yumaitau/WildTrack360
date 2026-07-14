@@ -6,6 +6,7 @@ import type {
   CustomFormDefinition,
   CustomFormField,
   CustomFormStatusValue,
+  DeviceCapture,
   WeatherCapture,
 } from '@/lib/forms/custom-forms';
 
@@ -35,7 +36,9 @@ export interface CustomFormVersionRecord {
 export interface CustomFormSubmissionRecord {
   id: string;
   formId: string;
+  formVersionId: string | null;
   formVersion: number;
+  formSchema: CustomFormDefinition | null;
   submittedByUserId: string;
   /** Enriched server-side by addUserEmailsToResponse. */
   submittedByUserEmail?: string;
@@ -50,7 +53,9 @@ export interface CustomFormSubmissionRecord {
   weather: WeatherCapture | null;
   values: Record<string, unknown>;
   notes: string | null;
+  device: DeviceCapture | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface ApiIssue {
@@ -81,7 +86,9 @@ export function formatFieldValue(field: CustomFormField, value: unknown): string
       return Array.isArray(value) ? value.join(', ') : String(value);
     case 'date': {
       const d = new Date(String(value));
-      return Number.isNaN(d.valueOf()) ? String(value) : d.toLocaleDateString();
+      return Number.isNaN(d.valueOf())
+        ? String(value)
+        : d.toLocaleDateString(undefined, { timeZone: 'UTC' });
     }
     case 'datetime': {
       const d = new Date(String(value));

@@ -40,12 +40,17 @@ export function serializeForm(row: CustomForm) {
 
 export type SerializedCustomForm = ReturnType<typeof serializeForm>;
 
-export function serializeSubmission(row: CustomFormSubmission) {
+type SubmissionWithVersion = CustomFormSubmission & {
+  formVersion?: { definitionJson: unknown } | null;
+};
+
+export function serializeSubmission(row: SubmissionWithVersion) {
   return {
     id: row.id,
     formId: row.formId,
     formVersionId: row.formVersionId,
     formVersion: row.formVersionNumber,
+    formSchema: row.formVersion ? parseCustomFormDefinition(row.formVersion.definitionJson) : null,
     submittedByUserId: row.submittedByUserId,
     clientSubmissionId: row.clientSubmissionId,
     observedAt: row.observedAt.toISOString(),
@@ -133,7 +138,7 @@ export async function createForm(
     });
     return { form: serializeForm(created) };
   } catch (error) {
-    if (isUniqueViolation(error)) {
+    if (isSlugUniqueViolation(error)) {
       return { conflict: 'A form with this slug already exists.' };
     }
     throw error;
@@ -193,8 +198,11 @@ export async function updateForm(
     });
     return { form: serializeForm(updated) };
   } catch (error) {
-    if (isUniqueViolation(error)) {
+    if (isSlugUniqueViolation(error)) {
       return { conflict: 'A form with this slug already exists.' };
+    }
+    if (isFormVersionUniqueViolation(error)) {
+      return { conflict: 'This form was updated by someone else. Reload and try again.' };
     }
     throw error;
   }
@@ -408,8 +416,18 @@ export async function listSubmissions(
       ...(filters.formId ? { formId: filters.formId } : {}),
       ...(filters.submittedByUserId ? { submittedByUserId: filters.submittedByUserId } : {}),
       ...(filters.from || filters.to
-        ? { observedAt: { ...(filters.from ? { gte: filters.from } : {}), ...(filters.to ? { lte: filters.to } : {}) } }
+        ? {
+            observedAt: {
+              ...(filters.from ? { gte: filters.from } : {}),
+              ...(filters.to ? { lte: filters.to } : {}),
+            },
+          }
         : {}),
+    },
+    include: {
+      formVersion: {
+        select: { definitionJson: true },
+      },
     },
     orderBy: { observedAt: 'desc' },
     take: Math.min(filters.limit ?? 200, 500),
@@ -417,8 +435,31 @@ export async function listSubmissions(
   return rows.map(serializeSubmission);
 }
 
-function isUniqueViolation(error: unknown): boolean {
+function isUniqueViolation(error: unknown): error is Prisma.PrismaClientKnownRequestError {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
+
+function uniqueViolationTarget(error: unknown): string[] {
+  if (!isUniqueViolation(error)) return [];
+  const target = error.meta?.target;
+  if (Array.isArray(target)) return target.map(String);
+  return typeof target === 'string' ? [target] : [];
+}
+
+function isSlugUniqueViolation(error: unknown): boolean {
+  const target = uniqueViolationTarget(error).map((part) => part.toLowerCase());
+  return target.some((part) => part.includes('slug'));
+}
+
+function isFormVersionUniqueViolation(error: unknown): boolean {
+  const target = uniqueViolationTarget(error).map((part) => part.toLowerCase());
+  return (
+    target.some((part) => part.includes('version')) &&
+    target.some(
+      (part) =>
+        part.includes('formid') || part.includes('form_id') || part.includes('custom_form_versions')
+    )
+  );
 }
 
 async function findExistingClientSubmission(

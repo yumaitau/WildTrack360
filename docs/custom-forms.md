@@ -1,8 +1,9 @@
 # Custom Forms
 
 Org-defined data-collection forms, ported from WildForm360. Coordinators build
-forms (11 field types + capture toggles), publish them, and anyone in the org
-can submit responses from the web app or (soon) the iOS/Android apps.
+forms (11 field types + capture toggles), publish them, and users with the
+`form:submit` permission can submit responses from the web app or (soon) the
+iOS/Android apps.
 
 ## Feature flag
 

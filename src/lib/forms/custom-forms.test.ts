@@ -143,6 +143,38 @@ describe('normalizeCustomFormPayload', () => {
     expect(result.data?.status).toBe('published');
     expect(result.data?.definition.fields).toHaveLength(4);
   });
+
+  it('allows an explicit null description to clear existing text', () => {
+    const existing = {
+      title: 'Koala Survey',
+      slug: 'koala-survey',
+      description: 'Field survey',
+      status: 'published' as const,
+      definition: baseDefinition,
+    };
+    const result = normalizeCustomFormPayload({ description: null }, existing);
+    expect(result.issues).toEqual([]);
+    expect(result.data?.description).toBeNull();
+  });
+
+  it('rejects invalid field constraints', () => {
+    const result = normalizeCustomFormPayload({
+      title: 'Bad constraints',
+      fields: [
+        { type: 'text', label: 'Name', maxLength: 0 },
+        { type: 'number', label: 'Weight', min: 10, max: 5 },
+        { type: 'count', label: 'Animals', min: 4, max: 2 },
+      ],
+    });
+    expect(result.data).toBeNull();
+    expect(result.issues).toContainEqual({
+      path: 'fields.0.maxLength',
+      message: 'Max length must be at least 1.',
+    });
+    expect(
+      result.issues.filter((issue) => issue.message === 'Minimum cannot be greater than maximum.')
+    ).toHaveLength(2);
+  });
 });
 
 describe('parseCustomFormDefinition', () => {
@@ -186,10 +218,7 @@ describe('normalizeSubmissionPayload', () => {
   });
 
   it('rejects missing required values and invalid options', () => {
-    const result = normalizeSubmissionPayload(
-      { values: { condition: 'Unknown' } },
-      baseDefinition
-    );
+    const result = normalizeSubmissionPayload({ values: { condition: 'Unknown' } }, baseDefinition);
     expect(result.data).toBeNull();
     expect(result.issues).toContainEqual({
       path: 'values.species',
@@ -228,13 +257,38 @@ describe('normalizeSubmissionPayload', () => {
   });
 
   it('requires clientSubmissionId when asked (mobile batch sync)', () => {
-    const result = normalizeSubmissionPayload(
-      { values: { species: 'Koala' } },
-      baseDefinition,
-      { requireClientSubmissionId: true }
-    );
+    const result = normalizeSubmissionPayload({ values: { species: 'Koala' } }, baseDefinition, {
+      requireClientSubmissionId: true,
+    });
     expect(result.data).toBeNull();
     expect(result.issues.some((issue) => issue.path === 'clientSubmissionId')).toBe(true);
+  });
+
+  it('rejects overlong clientSubmissionId values instead of truncating them', () => {
+    const result = normalizeSubmissionPayload(
+      {
+        clientSubmissionId: 'x'.repeat(161),
+        values: { species: 'Koala' },
+      },
+      baseDefinition
+    );
+    expect(result.data).toBeNull();
+    expect(result.issues).toContainEqual({
+      path: 'clientSubmissionId',
+      message: 'clientSubmissionId must be at most 160 characters.',
+    });
+  });
+
+  it('rejects invalid supplied observation timestamps', () => {
+    const result = normalizeSubmissionPayload(
+      { observedAt: 'not-a-date', values: { species: 'Koala' } },
+      baseDefinition
+    );
+    expect(result.data).toBeNull();
+    expect(result.issues).toContainEqual({
+      path: 'observedAt',
+      message: 'Observed date must be valid.',
+    });
   });
 
   it('drops photos unless the form captures them, and validates URLs when it does', () => {
