@@ -84,7 +84,7 @@ test.describe.serial('custom forms lifecycle', () => {
 
     await page.getByLabel(new RegExp(fieldLabel)).fill(fieldValue);
     await page.getByRole('button', { name: 'Add photo URL' }).click();
-    await page.getByLabel('Photo URL 1').fill(photoUrl);
+    await page.getByRole('textbox', { name: 'Photo URL 1', exact: true }).fill(photoUrl);
     await page.getByLabel('Notes').fill(notes);
 
     const [submitRes] = await Promise.all([
