@@ -34,6 +34,7 @@ const ADMIN_PAGES: string[] = [
   '/compliance/preserved-specimens',
   '/compliance/release-checklist',
   '/compliance/release-checklist/new',
+  '/forms',
   '/tools',
   '/tools/feed-roster',
   '/tools/feed-calculator/flying-fox',
@@ -54,9 +55,7 @@ for (const path of ADMIN_PAGES) {
       await expect(page).toHaveURL((url) => url.pathname.startsWith(path));
     }
 
-    await expect(
-      page.getByText(/Application error|Something went wrong/i),
-    ).toHaveCount(0);
+    await expect(page.getByText(/Application error|Something went wrong/i)).toHaveCount(0);
   });
 }
 
@@ -72,6 +71,7 @@ test('admin workspace navigation is visible and responsive', async ({ page }) =>
   );
   await expect(desktopNavigation.getByRole('link', { name: 'Call Logs' })).toBeVisible();
   await expect(desktopNavigation.getByRole('link', { name: 'Compliance' })).toBeVisible();
+  await expect(desktopNavigation.getByRole('link', { name: 'Forms' })).toBeVisible();
   await expect(desktopNavigation.getByRole('link', { name: 'Organisation' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Search and navigate' })).toBeVisible();
 

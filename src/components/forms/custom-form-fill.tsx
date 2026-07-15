@@ -202,7 +202,7 @@ export function CustomFormFill({ formId }: { formId: string }) {
       return;
     }
     if (form.schema.requireLocation && !location) {
-      toast.error('Location is required — use the "Use my location" button');
+      toast.error('Location is required. Use the "Use my location" button.');
       return;
     }
 
@@ -391,7 +391,7 @@ export function CustomFormFill({ formId }: { formId: string }) {
             <CardHeader>
               <CardTitle className="text-base">Photos</CardTitle>
               <CardDescription>
-                Paste https photo URLs for now — direct photo upload is coming later.
+                Paste https photo URLs for now. Direct photo upload is coming later.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">

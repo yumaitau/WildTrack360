@@ -2,10 +2,10 @@
 
 Two Playwright suites, different jobs:
 
-| Suite | Config | Target | Runs | Writes? |
-|-------|--------|--------|------|---------|
-| **Prod monitor** | `playwright.config.ts` (`e2e/`) | LIVE prod tenant | daily 06:00 AEST + dispatch | no (read-only) |
-| **Staging full** | `playwright.staging.config.ts` (`e2e-staging/`) | STAGING tenant | daily 06:00 AEST + dispatch | yes (CRUD) |
+| Suite            | Config                                          | Target           | Runs                        | Writes?        |
+| ---------------- | ----------------------------------------------- | ---------------- | --------------------------- | -------------- |
+| **Prod monitor** | `playwright.config.ts` (`e2e/`)                 | LIVE prod tenant | daily 06:00 AEST + dispatch | no (read-only) |
+| **Staging full** | `playwright.staging.config.ts` (`e2e-staging/`) | STAGING tenant   | daily 06:00 AEST + dispatch | yes (CRUD)     |
 
 Neither suite runs on PR or merge — both are scheduled (20:00 UTC = 06:00 AEST)
 plus manual `workflow_dispatch`.
@@ -44,7 +44,7 @@ real records). Two seeded users drive two roles.
 - `e2e-staging/access.admin.spec.ts` — ADMIN can view every authed page.
 - `e2e-staging/access.carer.spec.ts` — CARER is redirected from every
   `/admin/*` and `/compliance/*` page (layout gate = `requireMinimumRole
-  (COORDINATOR)`), and can view the allowed pages.
+(COORDINATOR)`), and can view the allowed pages.
 - `e2e-staging/crud/*.spec.ts` — admin full CRUD per resource. `ui.ts` holds the
   shared shadcn/Radix helpers (`selectOption`, `pickDate`, `expectToast`).
 - `e2e-staging/{constants,helpers,global.teardown}.ts` — the `E2E-STAGING`
@@ -56,8 +56,10 @@ Secrets: `E2E_STAGING_BASE_URL`, `E2E_STAGING_CLERK_SECRET_KEY`,
 
 ### CRUD coverage status
 
-Implemented as proven references: **animals** (dialog CRUD, UI delete) and
-**incidents** (page CRUD; UI has no delete, so the "D" goes through the REST API).
+Implemented as proven references: **animals** (API create/update, UI read/delete),
+**incidents** (page CRUD; UI has no delete, so the "D" goes through the REST API),
+and **custom forms** (UI create/build/publish/fill, photo rendering, submission
+delete, and form delete).
 
 Not yet written (one spec each, following the two references): carers, hygiene,
 call-logs, release-checklist, preserved-specimens, permanent-care, transfers,

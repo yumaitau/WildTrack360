@@ -157,7 +157,7 @@ export function CustomFormSubmissions({ formId, canViewSubmissions }: Props) {
         <div className="min-w-0">
           <BackLink />
           <h1 className="mt-1 truncate text-2xl font-bold tracking-tight">
-            {form.title} — submissions
+            {form.title}: submissions
           </h1>
           <p className="text-sm text-muted-foreground">
             {canViewSubmissions

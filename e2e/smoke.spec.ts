@@ -10,6 +10,7 @@ const PAGES: Array<{ path: string; name: string }> = [
   { path: '/compliance', name: 'compliance' },
   { path: '/compliance/overview', name: 'compliance overview' },
   { path: '/compliance/carers', name: 'carers' },
+  { path: '/forms', name: 'custom forms' },
   { path: '/tools', name: 'tools' },
 ];
 
@@ -19,10 +20,7 @@ for (const { path, name } of PAGES) {
 
     // Real HTTP response, not a 4xx/5xx.
     expect(res, `no response for ${path}`).toBeTruthy();
-    expect(
-      res!.status(),
-      `${path} returned HTTP ${res!.status()}`,
-    ).toBeLessThan(400);
+    expect(res!.status(), `${path} returned HTTP ${res!.status()}`).toBeLessThan(400);
 
     // Session held — not bounced to the sign-in / marketing pages.
     await expect(page).not.toHaveURL(/\/sign-in/);
@@ -30,8 +28,6 @@ for (const { path, name } of PAGES) {
     await expect(page).not.toHaveURL(/\/unauthorized/);
 
     // No Next.js error boundary rendered.
-    await expect(
-      page.getByText(/Application error|Something went wrong/i),
-    ).toHaveCount(0);
+    await expect(page.getByText(/Application error|Something went wrong/i)).toHaveCount(0);
   });
 }

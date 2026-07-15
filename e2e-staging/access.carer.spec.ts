@@ -27,6 +27,7 @@ const GATED_PAGES: string[] = [
 const ALLOWED_PAGES: string[] = [
   '/',
   '/animals',
+  '/forms',
   '/tools',
   '/tools/feed-roster',
   '/tools/feed-calculator/flying-fox',
@@ -50,9 +51,7 @@ for (const path of ALLOWED_PAGES) {
     expect(res, `no response for ${path}`).toBeTruthy();
     expect(res!.status(), `${path} → HTTP ${res!.status()}`).toBeLessThan(400);
     await expect(page).not.toHaveURL(/\/sign-in/);
-    await expect(
-      page.getByText(/Application error|Something went wrong/i),
-    ).toHaveCount(0);
+    await expect(page.getByText(/Application error|Something went wrong/i)).toHaveCount(0);
   });
 }
 
@@ -61,9 +60,7 @@ for (const path of ALLOWED_PAGES) {
 test('carer sees access-denied on /tools/reporting', async ({ page }) => {
   await page.goto('/tools/reporting', { waitUntil: 'domcontentloaded' });
   await expect(page).not.toHaveURL(/\/sign-in/);
-  await expect(
-    page.getByText(/don't have access|access to custom reporting/i),
-  ).toBeVisible();
+  await expect(page.getByText(/don't have access|access to custom reporting/i)).toBeVisible();
 });
 
 test('carer workspace navigation stays focused on care tasks', async ({ page }) => {
@@ -75,6 +72,7 @@ test('carer workspace navigation stays focused on care tasks', async ({ page }) 
   await expect(desktopNavigation.getByRole('link', { name: 'Dashboard' })).toBeVisible();
   await expect(desktopNavigation.getByRole('link', { name: 'My Animals' })).toBeVisible();
   await expect(desktopNavigation.getByRole('link', { name: 'Feed Roster' })).toBeVisible();
+  await expect(desktopNavigation.getByRole('link', { name: 'Forms' })).toBeVisible();
   await expect(desktopNavigation.getByRole('link', { name: 'Care Tools' })).toBeVisible();
   await expect(desktopNavigation.getByRole('link', { name: 'Compliance' })).toHaveCount(0);
   await expect(desktopNavigation.getByRole('link', { name: 'Organisation' })).toHaveCount(0);
@@ -83,5 +81,5 @@ test('carer workspace navigation stays focused on care tasks', async ({ page }) 
   const mobileNavigation = page.getByRole('navigation', { name: 'Primary workspace' });
   await expect(mobileNavigation).toBeVisible();
   await expect(mobileNavigation.getByRole('link', { name: 'Feed' })).toBeVisible();
-  await expect(mobileNavigation.getByRole('link', { name: 'Tools' })).toBeVisible();
+  await expect(mobileNavigation.getByRole('link', { name: 'Forms' })).toBeVisible();
 });

@@ -21,7 +21,13 @@ export type WorkspaceNavigationItem = {
 const CARER_NAVIGATION: WorkspaceNavigationItem[] = [
   { id: 'dashboard', label: 'Dashboard', mobileLabel: 'Home', href: '/', icon: 'dashboard' },
   { id: 'animals', label: 'My Animals', mobileLabel: 'Animals', href: '/animals', icon: 'animals' },
-  { id: 'feed', label: 'Feed Roster', mobileLabel: 'Feed', href: '/tools/feed-roster', icon: 'feed' },
+  {
+    id: 'feed',
+    label: 'Feed Roster',
+    mobileLabel: 'Feed',
+    href: '/tools/feed-roster',
+    icon: 'feed',
+  },
   { id: 'forms', label: 'Forms', mobileLabel: 'Forms', href: '/forms', icon: 'forms' },
   { id: 'tools', label: 'Care Tools', mobileLabel: 'Tools', href: '/tools', icon: 'tools' },
 ];
@@ -85,7 +91,10 @@ export function getMobilePrimaryNavigation(
   options: WorkspaceNavigationOptions = {}
 ): WorkspaceNavigationItem[] {
   const items = getWorkspaceNavigation(role, options);
-  return isCoordinatorRole(role) ? items.slice(0, 4) : items;
+  // The bottom bar always renders a fifth "More" control. Keep at most four
+  // destinations in the primary set so feature-gated additions never wrap the
+  // fixed five-column mobile navigation onto a second row.
+  return items.slice(0, 4);
 }
 
 export function getMobileMoreNavigation(
@@ -103,7 +112,9 @@ export function getActiveWorkspaceNavigationId(
   const match = [...items]
     .sort((a, b) => b.href.length - a.href.length)
     .find((item) =>
-      item.href === '/' ? pathname === '/' : pathname === item.href || pathname.startsWith(`${item.href}/`)
+      item.href === '/'
+        ? pathname === '/'
+        : pathname === item.href || pathname.startsWith(`${item.href}/`)
     );
 
   return match?.id ?? null;
@@ -111,7 +122,10 @@ export function getActiveWorkspaceNavigationId(
 
 export function isWorkspaceRoute(pathname: string): boolean {
   if (PRINT_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname))) return false;
-  return pathname === '/' || WORKSPACE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return (
+    pathname === '/' ||
+    WORKSPACE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+  );
 }
 
 export function filterCommandItemsForRole<T extends { id: string; group?: string }>(

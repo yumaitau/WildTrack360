@@ -55,6 +55,18 @@ describe('workspace navigation', () => {
     ]);
   });
 
+  it('moves overflow carer destinations into More when Forms is enabled', () => {
+    const options = { customFormsEnabled: true };
+
+    expect(getMobilePrimaryNavigation('CARER', options).map((item) => item.id)).toEqual([
+      'dashboard',
+      'animals',
+      'feed',
+      'forms',
+    ]);
+    expect(getMobileMoreNavigation('CARER', options).map((item) => item.id)).toEqual(['tools']);
+  });
+
   it('selects the most specific active destination', () => {
     const items = getWorkspaceNavigation('ADMIN');
     expect(getActiveWorkspaceNavigationId('/compliance/call-logs/new', items)).toBe('calls');
