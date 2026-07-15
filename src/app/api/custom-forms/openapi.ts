@@ -542,6 +542,22 @@ export const createCustomFormSubmissionContract = defineContract({
   successStatus: 201,
 });
 
+export const deleteCustomFormSubmissionContract = defineContract({
+  method: 'delete',
+  path: '/api/custom-forms/submissions/{id}',
+  summary: 'Delete a custom form submission',
+  tags: ['Custom Forms'],
+  security: 'clerkSession',
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    200: { description: 'Deleted', schema: z.object({ success: z.boolean() }) },
+    401: { description: 'Unauthorized' },
+    403: { description: 'Forbidden' },
+    404: { description: 'Not found' },
+  },
+  successStatus: 200,
+});
+
 export const batchCreateCustomFormSubmissionsContract = defineContract({
   method: 'post',
   path: '/api/custom-forms/submissions/batch',

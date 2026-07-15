@@ -2,6 +2,7 @@
 
 import { Prisma, type CustomForm, type CustomFormSubmission } from '@prisma/client';
 import { prisma } from '../prisma';
+import { deleteObjectFromS3 } from '../s3';
 import {
   normalizeCustomFormPayload,
   normalizeSubmissionPayload,
@@ -434,6 +435,46 @@ export async function listSubmissions(
     take: Math.min(filters.limit ?? 200, 500),
   });
   return rows.map(serializeSubmission);
+}
+
+export async function deleteSubmission(
+  orgId: string,
+  id: string,
+  options: { submittedByUserId?: string } = {}
+) {
+  const where = {
+    id,
+    clerkOrganizationId: orgId,
+    ...(options.submittedByUserId ? { submittedByUserId: options.submittedByUserId } : {}),
+  };
+  const submission = await prisma.customFormSubmission.findFirst({
+    where,
+    select: { id: true, formId: true, photoUrls: true },
+  });
+  if (!submission) return null;
+
+  // Keep the authorization scope on the delete itself as well as the lookup so
+  // a concurrent request cannot turn an own-submission delete into a broad one.
+  const deleted = await prisma.customFormSubmission.deleteMany({ where });
+  if (deleted.count === 0) return null;
+
+  const photoKeyPrefix = `orgs/${orgId}/animal-photos/`;
+  const photoKeys = ((submission.photoUrls as string[]) ?? []).filter((value) =>
+    value.startsWith(photoKeyPrefix)
+  );
+  const cleanupResults = await Promise.allSettled(
+    photoKeys.map((photoKey) => deleteObjectFromS3(photoKey))
+  );
+  cleanupResults.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      console.error(
+        `[CustomFormSubmissionCleanup] Failed to delete S3 object ${photoKeys[index]}:`,
+        result.reason
+      );
+    }
+  });
+
+  return { id: submission.id, formId: submission.formId, photoCount: photoKeys.length };
 }
 
 function isUniqueViolation(error: unknown): error is Prisma.PrismaClientKnownRequestError {

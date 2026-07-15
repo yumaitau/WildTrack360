@@ -2,13 +2,24 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Download, Eye, MapPin } from 'lucide-react';
+import { ArrowLeft, Download, Eye, MapPin, Trash2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
+import { getPhotoUrl } from '@/lib/photo-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Table,
   TableBody,
@@ -40,6 +51,8 @@ export function CustomFormSubmissions({ formId, canViewSubmissions }: Props) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selected, setSelected] = useState<CustomFormSubmissionRecord | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CustomFormSubmissionRecord | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,6 +106,27 @@ export function CustomFormSubmissions({ formId, canViewSubmissions }: Props) {
       if (parts.length >= 3) break;
     }
     return parts.length > 0 ? parts.join(' · ') : '—';
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/custom-forms/submissions/${deleteTarget.id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error(await readApiError(response, 'Failed to delete submission'));
+      }
+      setSubmissions((current) => current.filter((item) => item.id !== deleteTarget.id));
+      setSelected((current) => (current?.id === deleteTarget.id ? null : current));
+      setDeleteTarget(null);
+      toast.success('Submission deleted');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete submission');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   if (loading) {
@@ -167,7 +201,7 @@ export function CustomFormSubmissions({ formId, canViewSubmissions }: Props) {
                   <TableHead className="hidden lg:table-cell">Location</TableHead>
                   <TableHead>Values</TableHead>
                   <TableHead className="hidden lg:table-cell">Notes</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -212,15 +246,26 @@ export function CustomFormSubmissions({ formId, canViewSubmissions }: Props) {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setSelected(submission)}
-                        title="View submission"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setSelected(submission)}
+                          title="View submission"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(submission)}
+                          title="Delete submission"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -314,22 +359,35 @@ export function CustomFormSubmissions({ formId, canViewSubmissions }: Props) {
               )}
 
               {selected.photoUrls.length > 0 && (
-                <div className="space-y-1 rounded-md border p-3">
-                  <p className="font-medium">Photos</p>
-                  <ul className="list-inside list-disc space-y-1">
-                    {selected.photoUrls.map((url) => (
-                      <li key={url}>
+                <div className="space-y-3 rounded-md border p-3">
+                  <p className="font-medium">Photos ({selected.photoUrls.length})</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {selected.photoUrls.map((storedUrl, index) => {
+                      const photoUrl = getPhotoUrl(storedUrl);
+                      if (!photoUrl) return null;
+                      return (
                         <a
-                          href={url}
+                          key={`${storedUrl}-${index}`}
+                          href={photoUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="break-all text-primary hover:underline"
+                          className="group overflow-hidden rounded-md border bg-muted"
+                          title={`Open photo ${index + 1} full size`}
                         >
-                          {url}
+                          {/* eslint-disable-next-line @next/next/no-img-element -- Next Image cannot forward the browser's Clerk session cookie to this authenticated proxy. */}
+                          <img
+                            src={photoUrl}
+                            alt={`Submission photo ${index + 1}`}
+                            className="aspect-square h-auto w-full object-cover transition-transform group-hover:scale-[1.02]"
+                            loading="lazy"
+                          />
+                          <span className="block px-2 py-1.5 text-center text-xs text-muted-foreground">
+                            Photo {index + 1} · Open full size
+                          </span>
                         </a>
-                      </li>
-                    ))}
-                  </ul>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -339,10 +397,45 @@ export function CustomFormSubmissions({ formId, canViewSubmissions }: Props) {
                   <p className="whitespace-pre-wrap text-muted-foreground">{selected.notes}</p>
                 </div>
               )}
+
+              <div className="flex justify-end border-t pt-4">
+                <Button variant="destructive" size="sm" onClick={() => setDeleteTarget(selected)}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete submission
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => !open && !deleting && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this submission?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the submission and its uploaded photos. This cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                handleDelete();
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Deleting…' : 'Delete submission'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
