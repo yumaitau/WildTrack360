@@ -289,7 +289,8 @@ function normalizeDefinition(
   const issues: ValidationIssue[] = [];
   const input = isRecord(value) ? value : {};
 
-  const rawFields = Array.isArray(input.fields) || !existing ? input.fields : existing.fields;
+  const hasFields = Object.prototype.hasOwnProperty.call(input, 'fields');
+  const rawFields = hasFields ? input.fields : (existing?.fields ?? []);
 
   const definition: CustomFormDefinition = {
     version: 1,

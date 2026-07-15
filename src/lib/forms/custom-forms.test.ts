@@ -68,6 +68,22 @@ describe('slug + key helpers', () => {
 });
 
 describe('normalizeCustomFormPayload', () => {
+  it('creates an empty definition when fields are omitted', () => {
+    const result = normalizeCustomFormPayload({
+      title: 'Koala Survey',
+      description: 'Field survey',
+    });
+
+    expect(result.issues).toEqual([]);
+    expect(result.data?.definition).toMatchObject({
+      requireLocation: true,
+      captureDateTime: true,
+      capturePhotos: true,
+      captureWeather: true,
+      fields: [],
+    });
+  });
+
   it('normalizes a valid create payload', () => {
     const result = normalizeCustomFormPayload({
       title: 'Koala Survey',
