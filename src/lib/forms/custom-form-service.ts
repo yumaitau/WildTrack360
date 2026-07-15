@@ -341,6 +341,7 @@ export async function applySubmission({
   const definition = parseCustomFormDefinition(form.definitionJson);
   const normalized = normalizeSubmissionPayload(input, definition, {
     requireClientSubmissionId,
+    photoKeyPrefix: `orgs/${orgId}/animal-photos/`,
   });
   if (!normalized.data) {
     return rejected(

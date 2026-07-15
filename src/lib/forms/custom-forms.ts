@@ -203,7 +203,7 @@ export function normalizeCustomFormPayload(
 export function normalizeSubmissionPayload(
   input: unknown,
   definition: CustomFormDefinition,
-  options: { requireClientSubmissionId?: boolean } = {}
+  options: { requireClientSubmissionId?: boolean; photoKeyPrefix?: string } = {}
 ): { data: NormalizedSubmission | null; issues: ValidationIssue[] } {
   const issues: ValidationIssue[] = [];
 
@@ -250,7 +250,13 @@ export function normalizeSubmissionPayload(
   }
 
   const photoUrls = definition.capturePhotos
-    ? parsePhotoUrlArray(input.photoUrls ?? input.photos, 20, 'photoUrls', issues)
+    ? parsePhotoUrlArray(
+        input.photoUrls ?? input.photos,
+        20,
+        'photoUrls',
+        issues,
+        options.photoKeyPrefix
+      )
     : [];
 
   const weather = definition.captureWeather ? normalizeWeather(input.weather, issues) : null;
@@ -637,23 +643,28 @@ function parseStringArray(
     .filter((item): item is string => Boolean(item));
 }
 
-// WildForm360 restricted photos to its own R2-backed upload URLs. WildTrack360
-// doesn't have a general upload service yet, so accept https URLs and
-// app-relative paths; tighten this when a native upload flow lands.
+// The shared image upload endpoint returns a private S3 key, while older web
+// clients may submit HTTPS or app-relative proxy URLs. The caller supplies the
+// current org's key prefix so a submission cannot reference another org's
+// private object.
 function parsePhotoUrlArray(
   value: unknown,
   maxItems: number,
   path: string,
-  issues: ValidationIssue[]
+  issues: ValidationIssue[],
+  photoKeyPrefix?: string
 ): string[] {
   const values = parseStringArray(value, maxItems, path, issues);
 
   return values.filter((item, index) => {
-    const valid = item.startsWith('https://') || item.startsWith('/');
+    const valid =
+      item.startsWith('https://') ||
+      item.startsWith('/') ||
+      (photoKeyPrefix != null && item.startsWith(photoKeyPrefix));
     if (!valid) {
       issues.push({
         path: `${path}.${index}`,
-        message: 'Photos must be https URLs or app file paths.',
+        message: 'Photos must be HTTPS URLs or uploaded app photo paths.',
       });
     }
     return valid;

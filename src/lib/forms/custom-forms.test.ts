@@ -325,6 +325,36 @@ describe('normalizeSubmissionPayload', () => {
     expect(withPhotos.issues.some((issue) => issue.path === 'photoUrls.1')).toBe(true);
   });
 
+  it('accepts uploaded photo keys only for the current organisation', () => {
+    const definition = { ...baseDefinition, capturePhotos: true };
+    const currentOrgKey = 'orgs/org-current/animal-photos/photo.jpg';
+
+    const accepted = normalizeSubmissionPayload(
+      {
+        values: { species: 'Koala' },
+        photoUrls: [currentOrgKey],
+      },
+      definition,
+      { photoKeyPrefix: 'orgs/org-current/animal-photos/' }
+    );
+    expect(accepted.issues).toEqual([]);
+    expect(accepted.data?.photoUrls).toEqual([currentOrgKey]);
+
+    const rejected = normalizeSubmissionPayload(
+      {
+        values: { species: 'Koala' },
+        photoUrls: ['orgs/org-other/animal-photos/photo.jpg'],
+      },
+      definition,
+      { photoKeyPrefix: 'orgs/org-current/animal-photos/' }
+    );
+    expect(rejected.data).toBeNull();
+    expect(rejected.issues).toContainEqual({
+      path: 'photoUrls.0',
+      message: 'Photos must be HTTPS URLs or uploaded app photo paths.',
+    });
+  });
+
   it('captures manual weather only when enabled', () => {
     const result = normalizeSubmissionPayload(
       {
