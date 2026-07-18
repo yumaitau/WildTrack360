@@ -5,10 +5,12 @@ name: E2E daily monitor
 # workflow, which triggers GitHub's built-in email to repo watchers.
 on:
   schedule:
-    # 20:00 UTC = 06:00 AEST (UTC+10). GitHub cron is UTC and does NOT follow
+    # 20:30 UTC = 06:30 AEST (UTC+10). GitHub cron is UTC and does NOT follow
     # DST, so while the eastern states are on AEDT (~Oct–Apr) this fires at
-    # 07:00 local; Queensland (no DST) stays at 06:00 year-round.
-    - cron: '0 20 * * *'
+    # 07:30 local; Queensland (no DST) stays at 06:30 year-round. Offset 30 min
+    # after RangerOS's 20:00 monitor so the two don't contend for the single
+    # self-hosted runner.
+    - cron: '30 20 * * *'
   workflow_dispatch:
     inputs:
       base_url:
@@ -25,7 +27,9 @@ permissions:
 
 jobs:
   e2e:
-    runs-on: ubuntu-latest
+    # yuma-mac-mini, the org's self-hosted runner. NOTE: this repo is PUBLIC —
+    # the org runner group must allow public repositories for jobs to pick up.
+    runs-on: [self-hosted, macOS]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +43,9 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        # No --with-deps: OS deps are a Linux concept; the self-hosted mac
+        # already has everything and must never sudo from CI.
+        run: npx playwright install chromium
 
       - name: Run E2E suite
         run: npm run test:e2e

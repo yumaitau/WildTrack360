@@ -5,8 +5,9 @@ name: E2E staging (full CRUD + RBAC)
 # demand only — never on PR/merge. NEVER points at production (specs write+delete).
 on:
   schedule:
-    # 20:00 UTC = 06:00 AEST. Same window as the read-only monitor.
-    - cron: '0 20 * * *'
+    # 21:00 UTC = 07:00 AEST. Offset 30 min after this repo's 20:30 read-only
+    # monitor so the suites queue cleanly on the single self-hosted runner.
+    - cron: '0 21 * * *'
   workflow_dispatch:
     inputs:
       base_url:
@@ -24,7 +25,9 @@ permissions:
 
 jobs:
   e2e-staging:
-    runs-on: ubuntu-latest
+    # yuma-mac-mini, the org's self-hosted runner. NOTE: this repo is PUBLIC —
+    # the org runner group must allow public repositories for jobs to pick up.
+    runs-on: [self-hosted, macOS]
     timeout-minutes: 30
     steps:
       # Skip cleanly (green) until the staging tenant + secrets exist, so the
@@ -58,7 +61,9 @@ jobs:
 
       - name: Install Playwright browser
         if: steps.cfg.outputs.configured == 'true'
-        run: npx playwright install --with-deps chromium
+        # No --with-deps: OS deps are a Linux concept; the self-hosted mac
+        # already has everything and must never sudo from CI.
+        run: npx playwright install chromium
 
       - name: Run staging E2E suite
         if: steps.cfg.outputs.configured == 'true'
