@@ -13,14 +13,16 @@ WORKDIR /usr/src/app
 # Copy package.json and package-lock.json first for caching
 COPY package*.json ./
 
-# Copy Prisma schema before npm install so postinstall hooks can find it
+# Copy Prisma schema before pnpm install so postinstall hooks can find it
 COPY prisma ./prisma
 
 # Install OpenSSL
+RUN corepack enable && corepack install -g pnpm@latest
 RUN apt-get update -y && apt-get install -y openssl
 
 # Install dependencies (this will also run prisma generate via postinstall)
-RUN npm install
+RUN corepack enable && corepack install -g pnpm@latest
+RUN pnpm install
 
 # Copy the rest of the application code
 COPY . .
@@ -52,7 +54,8 @@ ENV NEXT_PUBLIC_SENTRY_PROJECT=$NEXT_PUBLIC_SENTRY_PROJECT
 # Drop .next/cache after the build — it's webpack/Sentry build cache (multi-GB)
 # that has no value at runtime and otherwise gets baked into the final image.
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN npm run build && rm -rf .next/cache
+RUN corepack enable && corepack install -g pnpm@latest
+RUN pnpm build && rm -rf .next/cache
 
 # ============================================
 # Stage 2: Run Next.js application
@@ -61,6 +64,7 @@ RUN npm run build && rm -rf .next/cache
 FROM node:${NODE_VERSION}
 
 # Install OpenSSL
+RUN corepack enable && corepack install -g pnpm@latest
 RUN apt-get update -y && apt-get install -y openssl
 
 # Set working directory
@@ -74,13 +78,14 @@ WORKDIR /usr/src/app
 # and other dev-only tooling are dropped.
 COPY --from=build-stage --chown=node:node /usr/src/app/package*.json ./
 COPY --from=build-stage --chown=node:node /usr/src/app/prisma ./prisma
+RUN corepack enable && corepack install -g pnpm@latest
 RUN npm ci --omit=dev
 
 # Copy built assets and necessary files from the build stage
 COPY --from=build-stage --chown=node:node /usr/src/app/.next ./.next
 COPY --from=build-stage --chown=node:node /usr/src/app/public ./public
 
-# The scheduled jobs (`npm run charge-due`, `npm run refresh-tokens`) run the
+# The scheduled jobs (`pnpm charge-due`, `pnpm refresh-tokens`) run the
 # TypeScript source directly via tsx, so the runtime image needs src/ +
 # tsconfig.json (for the @/ path alias) + tsconfig.scripts.json (which aliases
 # the `server-only` marker to a no-op so these standalone tsx runs don't throw).
