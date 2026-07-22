@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhook } from '@clerk/nextjs/webhooks';
-import { orgSource } from '@/lib/org-source';
+import { isDbOrg } from '@/lib/org-source';
 import { prisma } from '@/lib/prisma';
 import {
   deactivateUser,
@@ -14,8 +14,9 @@ import {
 //
 // User events keep the users mirror fresh in both modes (and claim `pending_`
 // invite placeholders by verified email). Organisation / membership events
-// only apply while Clerk is still authoritative (ORG_SOURCE=clerk): once the
-// DB owns membership, a Clerk-side change must not overwrite it.
+// only apply while Clerk is still authoritative for that organisation (its
+// DB_ORG_SOURCE feature flag is off): once the DB owns an org's membership,
+// a Clerk-side change must not overwrite it.
 
 type ClerkEmailAddress = {
   id: string;
@@ -135,21 +136,27 @@ export async function POST(request: NextRequest) {
         break;
       }
       case 'organization.created':
-      case 'organization.updated':
-        if (orgSource() === 'clerk') {
-          await handleOrganisationUpsert(event.data as unknown as ClerkOrganisationPayload);
+      case 'organization.updated': {
+        const org = event.data as unknown as ClerkOrganisationPayload;
+        if (!(await isDbOrg(org.id))) {
+          await handleOrganisationUpsert(org);
         }
         break;
-      case 'organizationMembership.created':
-        if (orgSource() === 'clerk') {
-          await handleMembershipCreated(event.data as unknown as ClerkMembershipPayload);
+      }
+      case 'organizationMembership.created': {
+        const membership = event.data as unknown as ClerkMembershipPayload;
+        if (membership.organization?.id && !(await isDbOrg(membership.organization.id))) {
+          await handleMembershipCreated(membership);
         }
         break;
-      case 'organizationMembership.deleted':
-        if (orgSource() === 'clerk') {
-          await handleMembershipDeleted(event.data as unknown as ClerkMembershipPayload);
+      }
+      case 'organizationMembership.deleted': {
+        const membership = event.data as unknown as ClerkMembershipPayload;
+        if (membership.organization?.id && !(await isDbOrg(membership.organization.id))) {
+          await handleMembershipDeleted(membership);
         }
         break;
+      }
       default:
         // Unhandled event types are acknowledged so Clerk doesn't retry them.
         break;

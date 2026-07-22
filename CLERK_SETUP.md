@@ -86,14 +86,25 @@ and species access (SBAC) live in Postgres (`organisations`, `users`,
 `org_members` tables). The Clerk **Organizations** feature is only needed
 while running in legacy mode.
 
-The `ORG_SOURCE` env flag selects the authoritative source:
+The migration is driven **per organisation** by the `DB_ORG_SOURCE` feature
+flag, toggled from the **WildTrack360-Admin panel** (the same
+`org_feature_flags` mechanism as `MEMBERSHIP_PLATFORM` etc.):
 
-- `ORG_SOURCE=clerk` (default) — legacy behaviour. Clerk Organizations resolve
-  the tenant; the DB tables are kept as a mirror by the webhook + backfill.
-- `ORG_SOURCE=db` — Postgres is authoritative. The tenant resolves from the
-  request subdomain (`host → Organisation.slug → OrgMember`), invitations are
-  Clerk *application-level* invitations (no org membership, no seat caps), and
-  no Clerk Organization API is called at runtime.
+- **Flag off** (default) — legacy behaviour for that org. Clerk Organizations
+  resolve the tenant; the DB tables are kept as a mirror by the webhook +
+  backfill.
+- **Flag on** — Postgres is authoritative for that org. Its tenant resolves
+  from the request subdomain (`host → Organisation.slug → OrgMember`),
+  invitations are Clerk *application-level* invitations (no org membership,
+  no seat caps), and no Clerk Organization API is called for it at runtime.
+  Rollback = turn the flag off in the admin panel.
+
+Orgs created after the migration (`npm run orgs:create`, `worg_` id prefix)
+are always database-managed — they have no Clerk counterpart.
+
+The `ORG_SOURCE` env var remains as a deployment-wide override:
+`ORG_SOURCE=db` forces every org to database-managed resolution (the final
+state once all orgs have migrated and Clerk Organizations is disabled).
 
 ### Webhook (keep the mirror fresh)
 
@@ -104,17 +115,25 @@ The `ORG_SOURCE` env flag selects the authoritative source:
    `organizationMembership.created`, `organizationMembership.deleted`.
 3. Copy the signing secret into `CLERK_WEBHOOK_SIGNING_SECRET`.
 
-### Migration runbook (clerk → db)
+### Migration runbook (clerk → db, org by org)
 
 1. `npm run orgs:snapshot` — snapshot Clerk data to JSON (audit trail).
 2. `npm run orgs:backfill -- --apply` — populate/refresh the DB mirror
    (idempotent; preserves existing `OrgMember` roles).
 3. `npm run orgs:drift` — repeat until clean for several days (cron/CI).
-4. Set `ORG_SOURCE=db` on staging, regression-test, then production.
-   Rollback at any time = flip the flag back.
-5. Once stable: remove the `org_url` JWT claim from the Clerk JWT template,
+   Orgs already flipped are skipped automatically.
+4. In the **WildTrack360-Admin panel**, enable the `DB_ORG_SOURCE` feature
+   flag for a pilot organisation; verify sign-in, roster, invites, and
+   role management on its subdomain. Rollback = turn the flag off.
+5. Repeat per organisation until all orgs are flipped, then set
+   `ORG_SOURCE=db` as the deployment-wide backstop.
+6. Once stable: remove the `org_url` JWT claim from the Clerk JWT template,
    and later disable the Organizations feature in Clerk (after a final
    snapshot). New organisations are created with `npm run orgs:create`.
+
+> **Admin app coordination:** `DB_ORG_SOURCE` must be added to the feature
+> list in the WildTrack360-Admin app so it can be toggled there — it writes
+> the same `org_feature_flags` rows this app reads.
 
 ## MCP Server (AI chat app access)
 

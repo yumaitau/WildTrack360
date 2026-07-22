@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import type { Organisation, OrgMember, OrgRole } from '@prisma/client';
 import { auth } from './clerk-server';
 import { prisma } from './prisma';
-import { orgSource } from './org-source';
+import { isDbOrg } from './org-source';
 import { getUserRole } from './rbac';
 
 // The load-bearing tenant-resolution module from issue #56 Phase 2. New code
@@ -41,9 +41,9 @@ export const getOrgContext = requestCache(async (): Promise<OrgContext | null> =
     prisma.orgMember.findUnique({ where: { userId_orgId: { userId, orgId } } }),
   ]);
 
-  if (orgSource() === 'db') {
-    // In db mode the subdomain resolution already proved membership; a missing
-    // row here means it was revoked mid-request.
+  if (await isDbOrg(orgId)) {
+    // For a database-managed org the subdomain resolution already proved
+    // membership; a missing row here means it was revoked mid-request.
     if (!org || !membership) return null;
     return { userId, org, membership, role: membership.role };
   }

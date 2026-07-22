@@ -1,12 +1,13 @@
 import 'server-only';
 
 import { prisma } from './prisma';
-import { orgSource } from './org-source';
+import { isDbOrg, isDbOrgSource } from './org-source';
 import { isPendingUserId, upsertUserFromClerk } from './user-sync';
 
 // Dual-path organisation directory (issue #56). Every read that used to hit
-// Clerk's Organizations API goes through here so the ORG_SOURCE flag flips
-// resolution in one place:
+// Clerk's Organizations API goes through here so the org's source flips
+// resolution in one place, per organisation (DB_ORG_SOURCE feature flag from
+// the WildTrack360-Admin panel, or the ORG_SOURCE=db global override):
 //   clerk — legacy: clerkClient() organisation/membership/user lookups.
 //   db    — Postgres: organisations / users / org_members tables.
 
@@ -47,7 +48,7 @@ function displayableSlug(value: unknown): string | null {
 export async function getOrganisationInfo(orgId: string): Promise<OrganisationInfo | null> {
   if (!orgId) return null;
 
-  if (orgSource() === 'db') {
+  if (await isDbOrg(orgId)) {
     const org = await prisma.organisation.findUnique({ where: { id: orgId } });
     if (!org) return null;
     return {
@@ -99,7 +100,7 @@ export async function getOrganisationBySlug(slug: string): Promise<OrganisationI
 export async function getOrgRoster(orgId: string): Promise<OrgRosterEntry[]> {
   if (!orgId) return [];
 
-  if (orgSource() === 'db') {
+  if (await isDbOrg(orgId)) {
     const members = await prisma.orgMember.findMany({
       where: { orgId },
       include: { user: true },
@@ -159,7 +160,7 @@ export async function getOrgRoster(orgId: string): Promise<OrgRosterEntry[]> {
 export async function isUserInOrg(userId: string, orgId: string): Promise<boolean> {
   if (!userId || !orgId) return false;
 
-  if (orgSource() === 'db') {
+  if (await isDbOrg(orgId)) {
     const membership = await prisma.orgMember.findUnique({
       where: { userId_orgId: { userId, orgId } },
       select: { id: true },
@@ -175,71 +176,81 @@ export async function isUserInOrg(userId: string, orgId: string): Promise<boolea
   );
 }
 
-/** All organisations a user belongs to (id/name/slug). */
+/**
+ * All organisations a user belongs to (id/name/slug). With per-org flags a
+ * user can straddle both worlds (one org migrated, another legacy), so the
+ * clerk path is merged with the user's database-managed memberships.
+ */
 export async function getUserOrganisations(
   userId: string
 ): Promise<Array<{ id: string; name: string; slug: string | null }>> {
   if (!userId) return [];
 
-  if (orgSource() === 'db') {
-    const memberships = await prisma.orgMember.findMany({
-      where: { userId },
-      include: { org: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    return memberships.map((m) => ({
-      id: m.org.id,
-      name: m.org.name,
-      slug: m.org.slug === m.org.id ? null : m.org.slug,
-    }));
+  const dbMemberships = await prisma.orgMember.findMany({
+    where: { userId },
+    include: { org: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  const fromDb = [];
+  for (const m of dbMemberships) {
+    if (await isDbOrg(m.org.id)) {
+      fromDb.push({
+        id: m.org.id,
+        name: m.org.name,
+        slug: m.org.slug === m.org.id ? null : m.org.slug,
+      });
+    }
   }
+
+  if (isDbOrgSource()) return fromDb;
 
   const { clerkClient } = await import('@/lib/clerk-server');
   const client = await clerkClient();
   const memberships = await client.users.getOrganizationMembershipList({ userId });
-  return memberships.data.map(
+  const fromClerk = memberships.data.map(
     (m: { organization: { id: string; name: string; slug: string | null } }) => ({
       id: m.organization.id,
       name: m.organization.name,
       slug: m.organization.slug,
     })
   );
+
+  const seen = new Set(fromClerk.map((org: { id: string }) => org.id));
+  return [...fromClerk, ...fromDb.filter((org) => !seen.has(org.id))];
 }
 
 /**
- * Display info for a single user. In db mode reads the users table with a
- * lazy Clerk fallback (covers webhook gaps); in clerk mode reads Clerk.
+ * Display info for a single user. Reads the users mirror first (authoritative
+ * for members of database-managed orgs, warm cache for everyone else) with a
+ * lazy Clerk fallback that persists what it finds — covering webhook gaps.
  */
 export async function getUserInfo(userId: string): Promise<UserInfo | null> {
   if (!userId) return null;
 
-  if (orgSource() === 'db') {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user) {
-      return {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        imageUrl: user.imageUrl,
-      };
-    }
-    if (isPendingUserId(userId)) return null;
-    // Webhook-missed fallback: fetch from Clerk and persist for next time.
-    const fetched = await fetchClerkUserInfo(userId);
-    if (fetched) {
-      await upsertUserFromClerk({
-        id: fetched.id,
-        email: fetched.email,
-        firstName: fetched.firstName,
-        lastName: fetched.lastName,
-        imageUrl: fetched.imageUrl,
-      }).catch((error) => console.error('org-directory: lazy user upsert failed:', error));
-    }
-    return fetched;
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (user) {
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      imageUrl: user.imageUrl,
+    };
   }
+  if (isPendingUserId(userId)) return null;
 
-  return fetchClerkUserInfo(userId);
+  // Webhook-missed fallback: fetch from Clerk and persist for next time.
+  const fetched = await fetchClerkUserInfo(userId);
+  if (fetched) {
+    await upsertUserFromClerk({
+      id: fetched.id,
+      email: fetched.email,
+      firstName: fetched.firstName,
+      lastName: fetched.lastName,
+      imageUrl: fetched.imageUrl,
+    }).catch((error) => console.error('org-directory: lazy user upsert failed:', error));
+  }
+  return fetched;
 }
 
 async function fetchClerkUserInfo(userId: string): Promise<UserInfo | null> {

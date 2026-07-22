@@ -1,6 +1,5 @@
 import { auth, currentUser } from '@/lib/clerk-server';
 import { getOrganisationInfo } from '@/lib/org-directory';
-import { isDbOrgSource } from '@/lib/org-source';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import HomeClient from './home-client';
@@ -30,10 +29,12 @@ export default async function Home() {
   const host = headersList.get('host') ?? '';
   const subdomain = extractSubdomain(host, ROOT_DOMAIN);
 
-  // In db mode a subdomain visit only yields an orgId when the user is a
-  // member of that org (auth() resolves subdomain → Organisation → OrgMember),
-  // so a missing orgId on a tenant host means "not a member here".
-  if (isDbOrgSource() && subdomain && !orgId) {
+  // A signed-in user on a tenant subdomain without a resolved org is not a
+  // member here: for database-managed orgs (DB_ORG_SOURCE flag) auth() only
+  // yields an orgId after the subdomain → Organisation → OrgMember check;
+  // for legacy orgs the Clerk session carries no active org. Mirrors the
+  // middleware's org_url-claim redirect, which claimless sessions bypass.
+  if (!isScreenshotMode() && subdomain && !orgId) {
     redirect('/unauthorized');
   }
 

@@ -2,14 +2,14 @@
 
 import { clerkClient } from '@/lib/clerk-server'
 import { prisma } from './prisma'
-import { orgSource } from './org-source'
+import { isDbOrg, isDbOrgSource } from './org-source'
 import { getOrgMember } from './rbac'
 
 export async function ensureUserInOrg(userId: string, orgId?: string): Promise<string> {
 	if (!userId) throw new Error('Unauthorized')
 	if (!orgId) throw new Error('Organization ID is required')
 
-	if (orgSource() === 'db') {
+	if (await isDbOrg(orgId)) {
 		const membership = await prisma.orgMember.findUnique({
 			where: { userId_orgId: { userId, orgId } },
 			select: { id: true },
@@ -45,7 +45,7 @@ export async function isOrgAdmin(userId: string, orgId: string): Promise<boolean
 		return member.role === 'ADMIN'
 	}
 
-	if (orgSource() === 'db') return false
+	if (await isDbOrg(orgId)) return false
 
 	// No OrgMember record at all — fall back to Clerk role for migration
 	const client = await clerkClient()
@@ -57,7 +57,7 @@ export async function isOrgAdmin(userId: string, orgId: string): Promise<boolean
 export async function getFirstUserOrgId(userId: string): Promise<string | null> {
 	if (!userId) return null
 
-	if (orgSource() === 'db') {
+	if (isDbOrgSource()) {
 		const first = await prisma.orgMember.findFirst({
 			where: { userId },
 			orderBy: { createdAt: 'asc' },
@@ -68,5 +68,18 @@ export async function getFirstUserOrgId(userId: string): Promise<string | null> 
 
 	const client = await clerkClient()
 	const memberships = await client.users.getOrganizationMembershipList({ userId })
-	return memberships.data[0]?.organization.id ?? null
+	const clerkFirst = memberships.data[0]?.organization.id ?? null
+	if (clerkFirst) return clerkFirst
+
+	// No Clerk memberships — the user may belong only to database-managed
+	// organisations (per-org DB_ORG_SOURCE flag / post-Clerk "worg_" orgs).
+	const dbMemberships = await prisma.orgMember.findMany({
+		where: { userId },
+		orderBy: { createdAt: 'asc' },
+		select: { orgId: true },
+	})
+	for (const membership of dbMemberships) {
+		if (await isDbOrg(membership.orgId)) return membership.orgId
+	}
+	return null
 }

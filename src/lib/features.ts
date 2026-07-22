@@ -8,7 +8,14 @@ import { prisma } from './prisma';
 // product surface that ships dark for new orgs and is flipped on per-org via
 // the WildTrack360-Admin app. MEMBERSHIP_PLATFORM wraps the entire member +
 // donation + Square payments bundle as a single rollout switch.
-export const FEATURES = ['MEMBERSHIP_PLATFORM', 'CUSTOM_FORMS', 'COMMUNITY_BOARD'] as const;
+// DB_ORG_SOURCE flips an organisation from Clerk-managed to database-managed
+// identity (issue #56) — resolution logic lives in src/lib/org-source.ts.
+export const FEATURES = [
+  'MEMBERSHIP_PLATFORM',
+  'CUSTOM_FORMS',
+  'COMMUNITY_BOARD',
+  'DB_ORG_SOURCE',
+] as const;
 export type Feature = (typeof FEATURES)[number];
 
 // Per-request memo via React.cache: the same (orgId, feature) pair within a

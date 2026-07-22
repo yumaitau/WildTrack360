@@ -12,6 +12,10 @@ const { mockGetOrgMember, mockClerkClient, mockPrisma } = vi.hoisted(() => ({
     orgMember: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
+    },
+    orgFeatureFlag: {
+      findUnique: vi.fn(),
     },
   },
 }));
@@ -31,6 +35,9 @@ import { ensureUserInOrg, getFirstUserOrgId, isOrgAdmin } from './authz';
 beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.ORG_SOURCE;
+  // DB_ORG_SOURCE feature flag off by default (legacy clerk mode)
+  mockPrisma.orgFeatureFlag.findUnique.mockResolvedValue(null);
+  mockPrisma.orgMember.findMany.mockResolvedValue([]);
 });
 
 // ─── isOrgAdmin ──────────────────────────────────────────────────────────────
@@ -106,6 +113,15 @@ describe('isOrgAdmin', () => {
   it('db mode: never falls back to Clerk when no OrgMember record exists', async () => {
     process.env.ORG_SOURCE = 'db';
     mockGetOrgMember.mockResolvedValue(null);
+
+    const result = await isOrgAdmin('user1', 'org1');
+    expect(result).toBe(false);
+    expect(mockClerkClient.users.getOrganizationMembershipList).not.toHaveBeenCalled();
+  });
+
+  it('DB_ORG_SOURCE flag: a flagged org never falls back to Clerk', async () => {
+    mockGetOrgMember.mockResolvedValue(null);
+    mockPrisma.orgFeatureFlag.findUnique.mockResolvedValue({ enabled: true });
 
     const result = await isOrgAdmin('user1', 'org1');
     expect(result).toBe(false);

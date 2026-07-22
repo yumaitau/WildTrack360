@@ -4,7 +4,7 @@ import type { OrgRole } from '@prisma/client';
 import { auth, clerkClient } from '@/lib/clerk-server';
 import { prisma } from '@/lib/prisma';
 import { getOrganisationInfo } from '@/lib/org-directory';
-import { orgSource } from '@/lib/org-source';
+import { isDbOrg } from '@/lib/org-source';
 import { getUserRole } from '@/lib/rbac';
 import { tenantBaseUrlFromSlug } from '@/lib/tenant-url';
 import { PENDING_USER_PREFIX } from '@/lib/user-sync';
@@ -118,7 +118,7 @@ export const POST = route(inviteUserContract, async ({ body }) => {
   const { emailAddress, role } = body;
   if (!emailAddress) return NextResponse.json({ error: 'Email address is required' }, { status: 400 });
 
-  if (orgSource() === 'db') {
+  if (await isDbOrg(orgId)) {
     return createDbInvite(userId, orgId, emailAddress, (role as OrgRole) ?? 'CARER');
   }
 
@@ -151,7 +151,7 @@ export const GET = route(listInvitesContract, async () => {
   if (adminOrError instanceof NextResponse) return adminOrError;
   const { orgId } = adminOrError;
 
-  if (orgSource() === 'db') {
+  if (await isDbOrg(orgId)) {
     const pendingMembers = await prisma.orgMember.findMany({
       where: { orgId, userId: { startsWith: PENDING_USER_PREFIX } },
       include: { user: true },
@@ -197,7 +197,7 @@ export const DELETE = route(revokeInviteContract, async ({ query }) => {
   const inviteId = query.id;
   if (!inviteId) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
-  if (orgSource() === 'db') {
+  if (await isDbOrg(orgId)) {
     if (!inviteId.startsWith(PENDING_USER_PREFIX)) {
       return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });
     }

@@ -71,6 +71,11 @@ async function main() {
     await prisma.organisationSettings.create({
       data: { clerkOrganisationId: orgId, orgUrl: args.slug },
     });
+    // worg_ ids are database-managed by definition; the explicit flag row
+    // keeps the admin panel's feature list truthful.
+    await prisma.orgFeatureFlag.create({
+      data: { clerkOrganizationId: orgId, feature: 'DB_ORG_SOURCE', enabled: true },
+    });
   }
 
   if (args.adminEmail) {

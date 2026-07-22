@@ -15,7 +15,7 @@ import { isFeatureEnabled } from '@/lib/features';
 import { filterCommandItemsForRole } from '@/lib/workspace-navigation';
 import { OrgProvider, type OrgContextValue } from '@/components/org-provider';
 import { getOrganisationInfo } from '@/lib/org-directory';
-import { orgSource } from '@/lib/org-source';
+import { orgSource, orgSourceForOrg } from '@/lib/org-source';
 
 export const metadata: Metadata = {
   title: 'WildTrack360',
@@ -306,9 +306,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   let workspaceRole: OrgRole | null = null;
   let customFormsEnabled = false;
   let communityEnabled = false;
-  // Server-resolved org context for client components (issue #56): in db org
-  // mode Clerk's useOrganization() has no active org, so the layout provides
-  // the subdomain-resolved organisation through OrgProvider instead.
+  // Server-resolved org context for client components (issue #56): for a
+  // database-managed org (DB_ORG_SOURCE flag from the admin panel) Clerk's
+  // useOrganization() has no active org, so the layout provides the
+  // subdomain-resolved organisation through OrgProvider instead.
   const orgContextValue: OrgContextValue = {
     source: orgSource(),
     orgId: orgId ?? null,
@@ -320,8 +321,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (userId && orgId) {
     try {
       workspaceRole = await getUserRole(userId, orgId);
-      const [org, forms, community] = await Promise.all([
+      const [org, source, forms, community] = await Promise.all([
         getOrganisationInfo(orgId),
+        orgSourceForOrg(orgId),
         isFeatureEnabled(orgId, 'CUSTOM_FORMS'),
         // Nav visibility follows the active org's COMMUNITY_BOARD flag; the
         // /community routes themselves enforce the full home-org access check.
@@ -329,6 +331,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       ]);
       customFormsEnabled = forms;
       communityEnabled = community;
+      orgContextValue.source = source;
       orgContextValue.orgName = org?.name ?? null;
       orgContextValue.orgSlug = org?.slug ?? null;
       orgContextValue.role = workspaceRole;

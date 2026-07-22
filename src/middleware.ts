@@ -5,11 +5,18 @@ import { assertScreenshotModeSafe, isScreenshotMode } from '@/lib/screenshot-mod
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
-// Which system is authoritative for org identity (issue #56). In db mode the
-// subdomain↔membership guard cannot run here (Prisma is not edge-compatible),
-// so it moves one layer down: auth() resolves orgId from subdomain + OrgMember
-// (src/lib/org-resolver.ts) and every protected page/route already rejects a
-// null orgId. Middleware then only enforces authentication.
+// Issue #56: organisations migrate off Clerk Organizations per-org via the
+// DB_ORG_SOURCE feature flag (WildTrack360-Admin panel). That flag lives in
+// Postgres, which the edge middleware cannot read, so the subdomain ↔
+// membership guard for database-managed orgs runs one layer down: auth()
+// resolves orgId from subdomain + OrgMember (src/lib/org-resolver.ts) and
+// every protected page/route already rejects a null orgId.
+//
+// Here we keep the legacy org_url JWT-claim guard for sessions that carry the
+// claim (users of Clerk-managed orgs always do), and let claimless sessions
+// through to the request-level guard (users of migrated orgs eventually have
+// no Clerk org, hence no claim). ORG_SOURCE=db disables the claim guard
+// globally (final state).
 const ORG_SOURCE = process.env.ORG_SOURCE === 'db' ? 'db' : 'clerk';
 
 const isPublicRoute = createRouteMatcher([
@@ -95,15 +102,15 @@ export default isScreenshotMode()
         return;
       }
 
-      // Protected route on a subdomain — require auth. In clerk mode the
-      // org_url JWT claim additionally gates the tenant here; in db mode that
-      // guard lives in the subdomain → Organisation → OrgMember resolution
-      // performed by auth() in server contexts (org-resolver.ts).
+      // Protected route on a subdomain — require auth. Sessions carrying the
+      // org_url claim (Clerk-managed orgs) are additionally gated on it here;
+      // claimless sessions defer to the subdomain → Organisation → OrgMember
+      // resolution performed by auth() in server contexts (org-resolver.ts).
       const session = await auth.protect();
       if (ORG_SOURCE === 'clerk') {
         const orgUrl = session.sessionClaims?.org_url;
 
-        if (!orgUrl || orgUrl !== subdomain) {
+        if (orgUrl && orgUrl !== subdomain) {
           const unauthorizedUrl = new URL('/unauthorized', request.url);
           return NextResponse.redirect(unauthorizedUrl);
         }

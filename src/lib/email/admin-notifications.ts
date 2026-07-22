@@ -1,7 +1,7 @@
 import type { OrgRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getClerkOrganization, getClerkUser } from '@/lib/clerk-management';
-import { orgSource } from '@/lib/org-source';
+import { isDbOrg } from '@/lib/org-source';
 import { tenantBaseUrlFromSlug } from '@/lib/tenant-url';
 import { sendEmail } from './resend';
 import { AdminNotificationEmail } from './templates/admin-notification';
@@ -62,7 +62,7 @@ function clerkErrorStatus(error: unknown): number | null {
 // Org display name + subdomain slug for the email body/links, resolved from
 // the DB in db mode and Clerk's REST API in clerk mode (issue #56).
 async function resolveOrgForEmail(orgId: string): Promise<{ name: string; slug: string | undefined }> {
-  if (orgSource() === 'db') {
+  if (await isDbOrg(orgId)) {
     const org = await prisma.organisation.findUnique({ where: { id: orgId } });
     return {
       name: org?.name ?? '',
@@ -118,7 +118,7 @@ export async function sendAdminNotification(input: AdminNotificationInput): Prom
     }
 
     let email: string | null = null;
-    if (orgSource() === 'db') {
+    if (await isDbOrg(input.orgId)) {
       const user = await prisma.user.findUnique({
         where: { id: recipient.userId },
         select: { email: true },

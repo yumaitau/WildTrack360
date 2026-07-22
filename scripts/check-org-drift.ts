@@ -22,6 +22,18 @@ async function main() {
   const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
   const drift: string[] = [];
 
+  // Organisations already flipped to database-managed (DB_ORG_SOURCE flag in
+  // the admin panel) intentionally diverge from Clerk — membership changes
+  // land only in the DB — so they are excluded from the comparison.
+  const migratedRows = await prisma.orgFeatureFlag.findMany({
+    where: { feature: 'DB_ORG_SOURCE', enabled: true },
+    select: { clerkOrganizationId: true },
+  });
+  const migrated = new Set(migratedRows.map((row) => row.clerkOrganizationId));
+  if (migrated.size) {
+    console.log(`Skipping ${migrated.size} database-managed org(s): ${[...migrated].join(', ')}`);
+  }
+
   const clerkMembershipKeys = new Set<string>();
   const clerkOrgIds = new Set<string>();
 
@@ -34,6 +46,7 @@ async function main() {
 
     for (const org of orgPage.data) {
       clerkOrgIds.add(org.id);
+      if (migrated.has(org.id)) continue;
       const meta = (org.publicMetadata ?? {}) as Record<string, unknown>;
       const orgUrl = typeof meta.org_url === 'string' && meta.org_url.trim() ? meta.org_url.trim() : null;
       const jurisdiction = typeof meta.jurisdiction === 'string' ? meta.jurisdiction : null;
@@ -85,6 +98,7 @@ async function main() {
   for (const member of dbMembers) {
     if (member.userId.startsWith('pending_')) continue;
     if (member.orgId.startsWith('worg_')) continue;
+    if (migrated.has(member.orgId)) continue;
     if (!clerkOrgIds.has(member.orgId)) {
       drift.push(`DB membership ${member.userId} @ ${member.orgId}: org gone from Clerk`);
       continue;

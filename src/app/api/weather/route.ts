@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
 import { extractSubdomain } from '@/lib/subdomain';
-import { orgSource } from '@/lib/org-source';
+import { isDbOrg } from '@/lib/org-source';
 import { route } from '@/lib/openapi/route';
 import { weatherContract } from './openapi';
 
@@ -87,7 +87,7 @@ export const GET = route(weatherContract, async ({ query, request }) => {
   // while Clerk is authoritative.
   const host = request.headers.get('host') ?? '';
   const subdomain = extractSubdomain(host, ROOT_DOMAIN);
-  if (orgSource() === 'clerk' && subdomain && sessionClaims?.org_url !== subdomain) {
+  if (!(await isDbOrg(orgId)) && subdomain && sessionClaims?.org_url !== subdomain) {
     return errorResponse('Forbidden', 403);
   }
 
