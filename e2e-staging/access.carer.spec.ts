@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { refreshAuthenticatedPage } from './browser-api';
 
 // RBAC enforcement for a CARER. The /admin and /compliance sections are gated at
 // the layout with requireMinimumRole(COORDINATOR), which redirects a CARER back
@@ -68,7 +69,7 @@ test('carer sees access-denied on /tools/reporting', async ({ page }) => {
 
 test('carer workspace navigation stays focused on care tasks', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await refreshAuthenticatedPage(page);
 
   const desktopNavigation = page.getByRole('navigation', { name: 'Workspace' });
   await expect(desktopNavigation).toBeVisible();

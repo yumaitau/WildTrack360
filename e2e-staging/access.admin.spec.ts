@@ -1,19 +1,16 @@
 import { test, expect } from '@playwright/test';
+import { refreshAuthenticatedPage } from './browser-api';
 
 // ADMIN can reach every authenticated page. Asserts each renders with a real
 // (<400) status, isn't bounced to sign-in / unauthorized, and shows no Next.js
 // error boundary. Read-only — makes no writes.
 //
 // Static routes only (dynamic /[id] pages are exercised by the CRUD specs).
-// /admin/payments/* is feature-gated per org, so it's covered separately.
+// Feature-gated routes are covered separately below.
 const ADMIN_PAGES: string[] = [
   '/',
   '/animals',
   '/admin',
-  '/admin/carer-interest',
-  '/admin/members',
-  '/admin/members/fields',
-  '/admin/news',
   '/compliance',
   '/compliance/overview',
   '/compliance/register',
@@ -41,11 +38,16 @@ const ADMIN_PAGES: string[] = [
   '/tools/reporting',
 ];
 
+const MEMBERSHIP_PLATFORM_PAGES = [
+  '/admin/carer-interest',
+  '/admin/members',
+  '/admin/members/fields',
+  '/admin/news',
+] as const;
+
 for (const path of ADMIN_PAGES) {
   test(`admin can view ${path}`, async ({ page }) => {
-    const res = await page.goto(path, { waitUntil: 'domcontentloaded' });
-    expect(res, `no response for ${path}`).toBeTruthy();
-    expect(res!.status(), `${path} → HTTP ${res!.status()}`).toBeLessThan(400);
+    await refreshAuthenticatedPage(page, path);
 
     await expect(page).not.toHaveURL(/\/sign-in/);
     await expect(page).not.toHaveURL(/\/unauthorized/);
@@ -60,9 +62,21 @@ for (const path of ADMIN_PAGES) {
   });
 }
 
+for (const path of MEMBERSHIP_PLATFORM_PAGES) {
+  test(`${path} is gated when Membership Platform is disabled`, async ({ page }) => {
+    await refreshAuthenticatedPage(page, path);
+
+    await expect(page).toHaveURL((url) => url.pathname === '/admin');
+    await expect(page).not.toHaveURL(/\/sign-in|\/unauthorized/);
+    await expect(
+      page.getByText(/Application error|Something went wrong/i),
+    ).toHaveCount(0);
+  });
+}
+
 test('admin workspace navigation is visible and responsive', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await refreshAuthenticatedPage(page);
 
   const desktopNavigation = page.getByRole('navigation', { name: 'Workspace' });
   await expect(desktopNavigation).toBeVisible();

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mark } from '../constants';
+import { browserApi } from '../browser-api';
 
 // Animal lifecycle as ADMIN. The create + edit forms carry many NSW-conditional
 // required fields and a fiddly date-picker, so create + update go through the
@@ -12,16 +13,19 @@ test.describe.serial('animals CRUD', () => {
 
   test('create (API) → read → update → delete an animal', async ({ page }) => {
     // ---- CREATE (API) ---------------------------------------------------
-    const res = await page.request.post('/api/animals', {
-      data: {
+    const res = await browserApi<{ data?: { id?: string }; id?: string }>(
+      page,
+      'POST',
+      '/api/animals',
+      {
         name,
         species: 'Test Species',
         status: 'ADMITTED',
         dateFound: new Date().toISOString(),
       },
-    });
-    expect(res.ok(), `animal create failed: HTTP ${res.status()}`).toBeTruthy();
-    const body = await res.json();
+    );
+    expect(res.ok, `animal create failed: HTTP ${res.status}`).toBeTruthy();
+    const body = res.body;
     id = body?.data?.id ?? body?.id;
     expect(id, 'no animal id in create response').toBeTruthy();
 
@@ -37,10 +41,8 @@ test.describe.serial('animals CRUD', () => {
     ).toBeVisible();
 
     // ---- UPDATE (API) ---------------------------------------------------
-    const upd = await page.request.patch(`/api/animals/${id}`, {
-      data: { name: editedName },
-    });
-    expect(upd.ok(), `animal update failed: HTTP ${upd.status()}`).toBeTruthy();
+    const upd = await browserApi(page, 'PATCH', `/api/animals/${id}`, { name: editedName });
+    expect(upd.ok, `animal update failed: HTTP ${upd.status}`).toBeTruthy();
     await page.goto(`/animals/${id}`);
     await expect(
       page.getByRole('heading', { name: new RegExp(editedName) }),
