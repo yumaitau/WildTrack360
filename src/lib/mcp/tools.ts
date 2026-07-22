@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { prisma } from '@/lib/prisma';
-import { clerkClient } from '@/lib/clerk-server';
+import { getUserInfo, getUserOrganisations } from '@/lib/org-directory';
 import { getAuthorisedSpecies, canAccessAnimal } from '@/lib/rbac';
 import { getEnrichedCarers } from '@/lib/carer-helpers';
 import { getSpecies, createRecord } from '@/lib/database';
@@ -13,10 +13,7 @@ import { canPreviewReports } from '@/lib/custom-query/access';
 import { evaluateCustomQueries, type QueryablePrisma } from '@/lib/custom-query/evaluator';
 import { getReportCarerNamesById } from '@/lib/custom-query/carer-names';
 import { CUSTOM_QUERY_SOURCES } from '@/lib/custom-query/allowlist';
-import {
-  CLERK_EMAIL_UNAVAILABLE,
-  getClerkUserEmail,
-} from '@/lib/clerk-user-display';
+import { CLERK_EMAIL_UNAVAILABLE } from '@/lib/clerk-user-display';
 import { McpToolError, resolveMcpContext, requireMcpPermission, type McpContext } from './context';
 
 const ANIMAL_STATUSES = [
@@ -175,24 +172,17 @@ export function registerWildTrackTools(server: McpServer): void {
       inputSchema: { orgId: orgIdInput },
     },
     withContext('whoami', async (context) => {
-      const client = await clerkClient();
-      const [user, memberships] = await Promise.all([
-        client.users.getUser(context.userId),
-        client.users.getOrganizationMembershipList({ userId: context.userId }),
+      const [user, organisations] = await Promise.all([
+        getUserInfo(context.userId),
+        getUserOrganisations(context.userId),
       ]);
       return ok({
         user: {
-          name: [user.firstName, user.lastName].filter(Boolean).join(' ') || null,
-          email: getClerkUserEmail(user) ?? CLERK_EMAIL_UNAVAILABLE,
+          name: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || null,
+          email: user?.email ?? CLERK_EMAIL_UNAVAILABLE,
         },
         activeOrganisation: { id: context.orgId, role: context.role },
-        organisations: memberships.data.map(
-          (m: { organization: { id: string; name: string; slug: string | null } }) => ({
-            id: m.organization.id,
-            name: m.organization.name,
-            slug: m.organization.slug,
-          })
-        ),
+        organisations,
       });
     })
   );

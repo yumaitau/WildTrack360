@@ -1,11 +1,23 @@
 'server-only'
 
 import { clerkClient } from '@/lib/clerk-server'
+import { prisma } from './prisma'
+import { orgSource } from './org-source'
 import { getOrgMember } from './rbac'
 
 export async function ensureUserInOrg(userId: string, orgId?: string): Promise<string> {
 	if (!userId) throw new Error('Unauthorized')
 	if (!orgId) throw new Error('Organization ID is required')
+
+	if (orgSource() === 'db') {
+		const membership = await prisma.orgMember.findUnique({
+			where: { userId_orgId: { userId, orgId } },
+			select: { id: true },
+		})
+		if (!membership) throw new Error('Forbidden')
+		return orgId
+	}
+
 	const client = await clerkClient()
 	const memberships = await client.users.getOrganizationMembershipList({ userId })
 	const allowed = memberships.data.some((m: any) => m.organization.id === orgId)
@@ -15,10 +27,15 @@ export async function ensureUserInOrg(userId: string, orgId?: string): Promise<s
 
 /**
  * Returns true if the user holds the ADMIN role in WildTrack360's own RBAC system.
- * Falls back to checking Clerk's org:admin role ONLY if no OrgMember record exists
- * at all (graceful migration path for existing orgs that haven't provisioned RBAC yet).
- * If an OrgMember record exists with a non-ADMIN role, the Clerk fallback is NOT used
- * — this prevents bypassing an intentional RBAC demotion.
+ *
+ * In clerk mode this falls back to checking Clerk's org:admin role ONLY if no
+ * OrgMember record exists at all (graceful migration path for existing orgs
+ * that haven't provisioned RBAC yet). If an OrgMember record exists with a
+ * non-ADMIN role, the Clerk fallback is NOT used — this prevents bypassing an
+ * intentional RBAC demotion.
+ *
+ * In db mode the OrgMember table is the only source of truth: membership rows
+ * are created at invite time, so a missing row simply means "not an admin".
  */
 export async function isOrgAdmin(userId: string, orgId: string): Promise<boolean> {
 	const member = await getOrgMember(userId, orgId)
@@ -27,6 +44,8 @@ export async function isOrgAdmin(userId: string, orgId: string): Promise<boolean
 	if (member) {
 		return member.role === 'ADMIN'
 	}
+
+	if (orgSource() === 'db') return false
 
 	// No OrgMember record at all — fall back to Clerk role for migration
 	const client = await clerkClient()
@@ -37,6 +56,16 @@ export async function isOrgAdmin(userId: string, orgId: string): Promise<boolean
 
 export async function getFirstUserOrgId(userId: string): Promise<string | null> {
 	if (!userId) return null
+
+	if (orgSource() === 'db') {
+		const first = await prisma.orgMember.findFirst({
+			where: { userId },
+			orderBy: { createdAt: 'asc' },
+			select: { orgId: true },
+		})
+		return first?.orgId ?? null
+	}
+
 	const client = await clerkClient()
 	const memberships = await client.users.getOrganizationMembershipList({ userId })
 	return memberships.data[0]?.organization.id ?? null

@@ -1,4 +1,6 @@
-import { auth, currentUser, clerkClient } from '@/lib/clerk-server';
+import { auth, currentUser } from '@/lib/clerk-server';
+import { getOrganisationInfo } from '@/lib/org-directory';
+import { isDbOrgSource } from '@/lib/org-source';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import HomeClient from './home-client';
@@ -28,11 +30,17 @@ export default async function Home() {
   const host = headersList.get('host') ?? '';
   const subdomain = extractSubdomain(host, ROOT_DOMAIN);
 
+  // In db mode a subdomain visit only yields an orgId when the user is a
+  // member of that org (auth() resolves subdomain → Organisation → OrgMember),
+  // so a missing orgId on a tenant host means "not a member here".
+  if (isDbOrgSource() && subdomain && !orgId) {
+    redirect('/unauthorized');
+  }
+
   if (!isScreenshotMode() && !subdomain && orgId) {
     try {
-      const clerk = await clerkClient();
-      const org = await clerk.organizations.getOrganization({ organizationId: orgId });
-      const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
+      const org = await getOrganisationInfo(orgId);
+      const orgUrl = org?.slug ?? undefined;
       if (orgUrl && /^[a-zA-Z0-9-]+$/.test(orgUrl)) {
         const protocol = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
         redirect(`${protocol}://${orgUrl}.${ROOT_DOMAIN}/`);
@@ -49,11 +57,17 @@ export default async function Home() {
   // Use the active Clerk organization
   const organizationId = orgId || '';
 
-  // Sync Clerk user data with our database
+  // Sync Clerk user data with our database (lazy fallback for the webhook).
+  // Only a verified email may claim a pending invite placeholder row.
   if (user) {
+    const primaryEmail =
+      user.emailAddresses.find((e: { id: string }) => e.id === user.primaryEmailAddressId) ??
+      user.emailAddresses[0];
+    const verifiedEmail =
+      primaryEmail?.verification?.status === 'verified' ? primaryEmail.emailAddress : null;
     await createOrUpdateClerkUser({
       id: user.id,
-      email: user.emailAddresses[0]?.emailAddress || '',
+      email: verifiedEmail,
       firstName: user.firstName || undefined,
       lastName: user.lastName || undefined,
       imageUrl: user.imageUrl || undefined,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/clerk-server';
 import { extractSubdomain } from '@/lib/subdomain';
+import { orgSource } from '@/lib/org-source';
 import { route } from '@/lib/openapi/route';
 import { weatherContract } from './openapi';
 
@@ -80,9 +81,13 @@ export const GET = route(weatherContract, async ({ query, request }) => {
   if (!userId) return errorResponse('Unauthorized', 401);
   if (!orgId) return errorResponse('Forbidden', 403);
 
+  // In db mode auth() only returns a non-null orgId when the user is a
+  // member of the subdomain's organisation, so the (already-passed) orgId
+  // check above covers the tenant guard; the org_url JWT claim only exists
+  // while Clerk is authoritative.
   const host = request.headers.get('host') ?? '';
   const subdomain = extractSubdomain(host, ROOT_DOMAIN);
-  if (subdomain && sessionClaims?.org_url !== subdomain) {
+  if (orgSource() === 'clerk' && subdomain && sessionClaims?.org_url !== subdomain) {
     return errorResponse('Forbidden', 403);
   }
 

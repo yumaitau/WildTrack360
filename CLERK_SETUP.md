@@ -78,6 +78,44 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
 - Organization support
 - Webhooks for user events
 
+## Organisations: database-managed (issue #56)
+
+Clerk is an **authentication-only** provider for WildTrack360: sessions, JWTs,
+MFA, and the sign-in/up UI. Organisation identity, membership, roles (RBAC),
+and species access (SBAC) live in Postgres (`organisations`, `users`,
+`org_members` tables). The Clerk **Organizations** feature is only needed
+while running in legacy mode.
+
+The `ORG_SOURCE` env flag selects the authoritative source:
+
+- `ORG_SOURCE=clerk` (default) — legacy behaviour. Clerk Organizations resolve
+  the tenant; the DB tables are kept as a mirror by the webhook + backfill.
+- `ORG_SOURCE=db` — Postgres is authoritative. The tenant resolves from the
+  request subdomain (`host → Organisation.slug → OrgMember`), invitations are
+  Clerk *application-level* invitations (no org membership, no seat caps), and
+  no Clerk Organization API is called at runtime.
+
+### Webhook (keep the mirror fresh)
+
+1. In the Clerk Dashboard go to **Webhooks** → **Add endpoint** and point it at
+   `https://<your-root-domain>/api/webhooks/clerk`.
+2. Subscribe to: `user.created`, `user.updated`, `user.deleted`,
+   `organization.created`, `organization.updated`,
+   `organizationMembership.created`, `organizationMembership.deleted`.
+3. Copy the signing secret into `CLERK_WEBHOOK_SIGNING_SECRET`.
+
+### Migration runbook (clerk → db)
+
+1. `npm run orgs:snapshot` — snapshot Clerk data to JSON (audit trail).
+2. `npm run orgs:backfill -- --apply` — populate/refresh the DB mirror
+   (idempotent; preserves existing `OrgMember` roles).
+3. `npm run orgs:drift` — repeat until clean for several days (cron/CI).
+4. Set `ORG_SOURCE=db` on staging, regression-test, then production.
+   Rollback at any time = flip the flag back.
+5. Once stable: remove the `org_url` JWT claim from the Clerk JWT template,
+   and later disable the Organizations feature in Clerk (after a final
+   snapshot). New organisations are created with `npm run orgs:create`.
+
 ## MCP Server (AI chat app access)
 
 WildTrack360 ships an MCP server at `/mcp` secured by Clerk OAuth, so Claude, ChatGPT, and other MCP clients can act on a user's behalf. To enable it, toggle on **Dynamic client registration** under **OAuth applications** in the Clerk Dashboard. See [docs/mcp-server.md](docs/mcp-server.md) for the tool list and client setup.

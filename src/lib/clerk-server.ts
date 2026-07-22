@@ -14,6 +14,8 @@ import {
   assertScreenshotModeSafe,
   isScreenshotMode,
 } from '@/lib/screenshot-mode';
+import { orgSource } from '@/lib/org-source';
+import { resolveDbOrgId } from '@/lib/org-resolver';
 
 const demoOrg = {
   id: SCREENSHOT_DEMO_ORG_ID,
@@ -89,13 +91,26 @@ function demoAuthPayload() {
   };
 }
 
+// Issue #56: when ORG_SOURCE=db the session's orgId no longer comes from
+// Clerk Organizations — it resolves from the request subdomain + OrgMember
+// membership (see org-resolver.ts). Every server-side `const { orgId } =
+// await auth()` in the app imports from this module, so overriding here cuts
+// the whole codebase over at one choke point.
+async function withDbOrgId<T extends { userId: string | null; orgId?: string | null }>(
+  session: T
+): Promise<T> {
+  if (orgSource() !== 'db' || !session?.userId) return session;
+  const orgId = await resolveDbOrgId(session.userId);
+  return Object.assign(session, { orgId }) as T;
+}
+
 async function authImpl() {
   if (isScreenshotMode()) {
     assertScreenshotModeSafe();
     return demoAuthPayload() as any;
   }
 
-  return realAuth();
+  return withDbOrgId(await realAuth());
 }
 
 export const auth = Object.assign(authImpl, {
@@ -105,7 +120,7 @@ export const auth = Object.assign(authImpl, {
       return demoAuthPayload() as any;
     }
 
-    return realAuth.protect();
+    return withDbOrgId(await realAuth.protect());
   },
 });
 

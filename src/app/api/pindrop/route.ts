@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@/lib/clerk-server';
+import { auth } from '@/lib/clerk-server';
+import { getOrganisationInfo } from '@/lib/org-directory';
 import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
 import { sendSms } from '@/lib/sms';
@@ -33,9 +34,8 @@ export const POST = route(createPindropContract, async ({ body }) => {
     },
   });
 
-  const clerk = await clerkClient();
-  const org = await clerk.organizations.getOrganization({ organizationId: orgId });
-  const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
+  const org = await getOrganisationInfo(orgId);
+  const orgUrl = org?.slug ?? undefined;
 
   if (!orgUrl || !/^[a-zA-Z0-9-]+$/.test(orgUrl)) {
     await prisma.pindropSession.delete({ where: { id: session.id } });

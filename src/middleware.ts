@@ -5,8 +5,18 @@ import { assertScreenshotModeSafe, isScreenshotMode } from '@/lib/screenshot-mod
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
+// Which system is authoritative for org identity (issue #56). In db mode the
+// subdomain↔membership guard cannot run here (Prisma is not edge-compatible),
+// so it moves one layer down: auth() resolves orgId from subdomain + OrgMember
+// (src/lib/org-resolver.ts) and every protected page/route already rejects a
+// null orgId. Middleware then only enforces authentication.
+const ORG_SOURCE = process.env.ORG_SOURCE === 'db' ? 'db' : 'clerk';
+
 const isPublicRoute = createRouteMatcher([
   '/landing(.*)',
+  // Svix-signed Clerk webhook: Clerk calls it without a session; the handler
+  // verifies the signature with CLERK_WEBHOOK_SIGNING_SECRET.
+  '/api/webhooks/(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/logout-success(.*)',
@@ -76,7 +86,7 @@ export default isScreenshotMode()
       // On a subdomain — allow public routes through (sign-in page must be accessible)
       // But prevent authorized users from manually navigating to /unauthorized
       if (isPublicRoute(request)) {
-        if (request.nextUrl.pathname.startsWith('/unauthorized')) {
+        if (request.nextUrl.pathname.startsWith('/unauthorized') && ORG_SOURCE === 'clerk') {
           const session = await auth();
           if (session?.sessionClaims?.org_url === subdomain) {
             return NextResponse.redirect(new URL('/', request.url));
@@ -85,13 +95,18 @@ export default isScreenshotMode()
         return;
       }
 
-      // Protected route on a subdomain — require auth and validate org_url
+      // Protected route on a subdomain — require auth. In clerk mode the
+      // org_url JWT claim additionally gates the tenant here; in db mode that
+      // guard lives in the subdomain → Organisation → OrgMember resolution
+      // performed by auth() in server contexts (org-resolver.ts).
       const session = await auth.protect();
-      const orgUrl = session.sessionClaims?.org_url;
+      if (ORG_SOURCE === 'clerk') {
+        const orgUrl = session.sessionClaims?.org_url;
 
-      if (!orgUrl || orgUrl !== subdomain) {
-        const unauthorizedUrl = new URL('/unauthorized', request.url);
-        return NextResponse.redirect(unauthorizedUrl);
+        if (!orgUrl || orgUrl !== subdomain) {
+          const unauthorizedUrl = new URL('/unauthorized', request.url);
+          return NextResponse.redirect(unauthorizedUrl);
+        }
       }
     });
 

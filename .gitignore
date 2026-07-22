@@ -67,3 +67,6 @@ docker-compose.override.yml
 /marketing/video/out/
 /marketing/video/public/clips/
 /marketing/video/.remotion/
+
+# Clerk org snapshot dumps (issue #56 migration tooling) — contain member PII
+clerk-snapshot*.json

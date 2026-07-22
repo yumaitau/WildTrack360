@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@/lib/clerk-server';
+import { auth } from '@/lib/clerk-server';
+import { isUserInOrg } from '@/lib/org-directory';
 import { listOrgMembers, setUserRole, requirePermission } from '@/lib/rbac';
 import { logAudit } from '@/lib/audit';
 import { route } from '@/lib/openapi/route';
@@ -34,9 +35,7 @@ export const POST = route(setRoleContract, async ({ body }) => {
       return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 });
     }
 
-    const client = await clerkClient();
-    const memberships = await client.users.getOrganizationMembershipList({ userId: targetUserId });
-    const isMember = memberships.data.some((m: { organization: { id: string } }) => m.organization.id === orgId);
+    const isMember = await isUserInOrg(targetUserId, orgId);
     if (!isMember) {
       return NextResponse.json({ error: 'Target user is not a member of this organisation' }, { status: 400 });
     }

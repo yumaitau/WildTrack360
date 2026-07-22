@@ -11,6 +11,8 @@ export interface AllowlistEntry {
 // so this stays exactly the set of uncontracted routes; it drains to empty as
 // Phase 1+ domains are migrated.
 export const ROUTE_ALLOWLIST: AllowlistEntry[] = [
+  // Svix-signed Clerk webhook — not a session API, never part of the public contract.
+  { path: '/api/webhooks/clerk', method: 'POST' },
   { path: '/api/community/admin/categories/{id}', method: 'DELETE' },
   { path: '/api/community/admin/rooms/{id}', method: 'DELETE' },
   { path: '/api/community/blocks', method: 'DELETE' },

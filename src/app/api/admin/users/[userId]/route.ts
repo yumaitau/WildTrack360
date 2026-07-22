@@ -21,6 +21,9 @@ export const DELETE = route(deleteUserContract, async ({ params }) => {
       prisma.animal.updateMany({ where: { carerId: targetUserId }, data: { carerId: null } }),
       prisma.orgMember.deleteMany({ where: { userId: targetUserId } }),
       prisma.carerProfile.deleteMany({ where: { id: targetUserId } }),
+      // Keep the users mirror consistent without waiting for the user.deleted
+      // webhook; the row stays (audit logs reference it) but goes inactive.
+      prisma.user.updateMany({ where: { id: targetUserId }, data: { isActive: false } }),
     ]);
     await clerk.users.deleteUser(targetUserId);
     return { data: { success: true } };

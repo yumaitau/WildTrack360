@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { clerkClient } from '@/lib/clerk-server';
+import { getOrganisationInfo } from '@/lib/org-directory';
 import type { Animal, OrgRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getServerJurisdiction } from '@/lib/server-config';
@@ -314,7 +314,6 @@ export async function sendDueNSWReminderNotifications(now: Date = new Date()) {
     return { reminder: null, orgsChecked: 0, orgsNotified: 0, results: [] };
   }
 
-  const client = await clerkClient();
   const orgRows = await prisma.orgMember.findMany({
     where: { role: { in: ['ADMIN', 'COORDINATOR_ALL'] } },
     distinct: ['orgId'],
@@ -335,7 +334,8 @@ export async function sendDueNSWReminderNotifications(now: Date = new Date()) {
   for (const row of orgRows) {
     let org;
     try {
-      org = await client.organizations.getOrganization({ organizationId: row.orgId });
+      org = await getOrganisationInfo(row.orgId);
+      if (!org) throw new Error('Organisation not found');
     } catch (error) {
       results.push({
         orgId: row.orgId,
@@ -346,7 +346,7 @@ export async function sendDueNSWReminderNotifications(now: Date = new Date()) {
       continue;
     }
 
-    const jurisdiction = org?.publicMetadata?.jurisdiction;
+    const jurisdiction = org.jurisdiction;
 
     if (jurisdiction !== 'NSW') {
       results.push({ orgId: row.orgId, status: 'skipped', reason: 'non-nsw' });

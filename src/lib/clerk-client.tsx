@@ -19,6 +19,7 @@ import {
   SCREENSHOT_DEMO_USER_ID,
   isClientScreenshotMode,
 } from '@/lib/screenshot-mode';
+import { useOrgContext } from '@/components/org-provider';
 
 const demoUser = {
   id: SCREENSHOT_DEMO_USER_ID,
@@ -167,11 +168,38 @@ export function useUser(): ReturnType<typeof realUseUser> {
 }
 
 export function useOrganization(): ReturnType<typeof realUseOrganization> {
+  // Hooks must run unconditionally.
+  const serverOrg = useOrgContext();
+  const real = isClientScreenshotMode() ? null : realUseOrganization();
+
   if (isClientScreenshotMode()) {
     return demoUseOrganizationReturn;
   }
 
-  return realUseOrganization();
+  // Issue #56: in db org mode the tenant is resolved server-side (subdomain →
+  // Organisation → OrgMember) and provided via OrgProvider; Clerk's own hook
+  // has no active organization. Synthesize the Clerk shape so existing
+  // consumers (which only read id/name/slug/publicMetadata) keep working.
+  // New code should use useOrgContext() directly.
+  if (serverOrg.source === 'db') {
+    if (!serverOrg.orgId) {
+      return { isLoaded: true, organization: null, membership: null } as unknown as ReturnType<
+        typeof realUseOrganization
+      >;
+    }
+    return {
+      isLoaded: true,
+      organization: {
+        id: serverOrg.orgId,
+        name: serverOrg.orgName ?? '',
+        slug: serverOrg.orgSlug,
+        publicMetadata: { org_url: serverOrg.orgSlug ?? undefined },
+      },
+      membership: null,
+    } as unknown as ReturnType<typeof realUseOrganization>;
+  }
+
+  return real as ReturnType<typeof realUseOrganization>;
 }
 
 export function useAuth(): ReturnType<typeof realUseAuth> {

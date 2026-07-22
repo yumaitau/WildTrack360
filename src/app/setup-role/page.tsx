@@ -2,9 +2,16 @@ import { auth } from '@/lib/clerk-server';
 import { clerkClient } from '@/lib/clerk-server';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { isDbOrgSource } from '@/lib/org-source';
 import SetupRoleClient from './setup-role-client';
 
 export default async function SetupRolePage() {
+  // In db org mode every member gets an OrgMember row at invite time, so the
+  // Clerk-role self-provision flow is obsolete (issue #56 Phase 3).
+  if (isDbOrgSource()) {
+    redirect('/');
+  }
+
   const { userId, orgId } = await auth();
 
   if (!userId) {

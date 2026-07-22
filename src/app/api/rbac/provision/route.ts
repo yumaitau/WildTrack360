@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@/lib/clerk-server';
+import { isDbOrgSource } from '@/lib/org-source';
 import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
 import { route } from '@/lib/openapi/route';
 import { provisionRoleContract } from '../openapi';
 
 export const POST = route(provisionRoleContract, async () => {
+  // In db org mode membership rows are created at invite time; Clerk roles no
+  // longer grant anything, so self-provisioning is disabled (issue #56).
+  if (isDbOrgSource()) {
+    return NextResponse.json(
+      { error: 'Self-provisioning is disabled: organisation roles are managed in WildTrack360' },
+      { status: 403 }
+    );
+  }
+
   const { userId, orgId } = await auth();
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
