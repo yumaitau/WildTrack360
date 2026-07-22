@@ -40,6 +40,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:staging": "playwright test --config playwright.staging.config.ts",
+    "test:e2e:staging:headed": "playwright test --config playwright.staging.config.ts --headed",
     "test:e2e:staging:ui": "playwright test --config playwright.staging.config.ts --ui"
   },
   "dependencies": {

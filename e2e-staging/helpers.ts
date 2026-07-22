@@ -1,5 +1,6 @@
-import type { APIRequestContext } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { E2E_MARKER } from './constants';
+import { browserApi } from './browser-api';
 
 // Safety-net registry: each CRUD spec deletes its own record, but if a run
 // crashes mid-test this sweeps anything whose marker field still starts with
@@ -16,18 +17,13 @@ export const CLEANUP_REGISTRY: Array<{
 ];
 
 async function sweep(
-  request: APIRequestContext,
+  page: Page,
   endpoint: string,
   markerField: string,
 ): Promise<number> {
-  const res = await request.get(endpoint);
-  if (!res.ok()) return 0;
-  let body: unknown;
-  try {
-    body = await res.json();
-  } catch {
-    return 0;
-  }
+  const res = await browserApi(page, 'GET', endpoint);
+  if (!res.ok) return 0;
+  const body = res.body;
   const rows = (
     Array.isArray(body)
       ? body
@@ -45,17 +41,17 @@ async function sweep(
       typeof value === 'string' &&
       value.startsWith(E2E_MARKER)
     ) {
-      const del = await request.delete(`${base}/${row.id}`);
-      if (del.ok()) deleted++;
+      const del = await browserApi(page, 'DELETE', `${base}/${row.id}`);
+      if (del.ok) deleted++;
     }
   }
   return deleted;
 }
 
-export async function sweepAll(request: APIRequestContext): Promise<number> {
+export async function sweepAll(page: Page): Promise<number> {
   let total = 0;
   for (const { endpoint, markerField } of CLEANUP_REGISTRY) {
-    total += await sweep(request, endpoint, markerField);
+    total += await sweep(page, endpoint, markerField);
   }
   return total;
 }

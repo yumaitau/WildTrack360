@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mark } from '../constants';
 import { selectOption } from '../ui';
+import { browserApi } from '../browser-api';
 
 // Incident report: Create → Read → Update through the real UI (dedicated
 // /new and /[id]/edit pages). The UI has NO delete button for incidents, so the
@@ -52,8 +53,8 @@ test.describe.serial('incidents CRUD', () => {
     await expect(page.getByText(editedDescription)).toBeVisible();
 
     // ---- DELETE (via API — no UI affordance) ----------------------------
-    const del = await page.request.delete(`/api/incidents/${id}`);
-    expect(del.ok(), 'incident delete failed').toBeTruthy();
+    const del = await browserApi(page, 'DELETE', `/api/incidents/${id}`);
+    expect(del.ok, 'incident delete failed').toBeTruthy();
     await page.goto(`/compliance/incidents/${id}`);
     await expect(page.getByText(editedDescription)).toHaveCount(0);
   });
