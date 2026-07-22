@@ -112,8 +112,8 @@ model Record {
 
   // Soft delete — records are never hard-deleted (immutable ledger). A deleted
   // record is hidden from the UI but retained in the database and data exports.
-  deletedAt   DateTime?
-  deletedBy   String?
+  deletedAt DateTime?
+  deletedBy String?
 
   // Clerk Relations
   clerkUserId         String
@@ -1731,4 +1731,587 @@ model MemberMessage {
   @@index([clerkOrganizationId, createdAt])
   @@index([memberId, readAt])
   @@map("member_messages")
+}
+
+// ─── Community Beta ──────────────────────────────────────────────────────────
+// Ported from the RangerOS Community beta. Community is deliberately
+// product-wide across enabled WildTrack360 organisations. These models NEVER
+// carry or join to operational records (Animal, Record, Photo, CarerProfile,
+// etc.). Author identity is anchored to Clerk IDs, not local FK relations:
+// CommunityProfile.clerkUserId is the Clerk user and homeClerkOrganizationId is
+// the verified home-organisation captured at onboarding for access + optional
+// badge display only. Access is gated by the OrgFeatureFlag key COMMUNITY_BOARD
+// (missing row = disabled). Migrations are forward-only.
+
+enum CommunityPostType {
+  DISCUSSION
+  QUESTION
+}
+
+enum CommunityContentStatus {
+  PENDING
+  PUBLISHED
+  HELD
+  REMOVED
+  DELETED
+  // Author-only staging: a post saved before submitting for moderation. Never
+  // delivered to other members. Publishing moves it to PENDING and enqueues
+  // moderation.
+  DRAFT
+}
+
+enum CommunityReactionType {
+  HELPFUL
+  THANKS
+  SUPPORT
+  CELEBRATE
+}
+
+enum CommunityTargetType {
+  POST
+  COMMENT
+  CHAT_MESSAGE
+}
+
+enum CommunityReportReason {
+  SAFETY
+  HARASSMENT
+  SENSITIVE_LOCATION
+  CULTURAL_INFORMATION
+  PERSONAL_INFORMATION
+  SPAM
+  OTHER
+}
+
+enum CommunityReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum CommunityAppealStatus {
+  OPEN
+  REVIEWING
+  UPHELD
+  OVERTURNED
+}
+
+enum CommunityModerationJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  NEEDS_REVIEW
+  FAILED
+}
+
+enum CommunityModerationRecommendation {
+  PUBLISH
+  REVIEW
+  HOLD
+}
+
+enum CommunityModerationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CommunityFeedbackType {
+  FEATURE_REQUEST
+  BUG
+  CONFUSING_EXPERIENCE
+  SAFETY_MODERATION
+  OTHER
+}
+
+enum CommunityRequestedFeature {
+  IMAGES_FILES
+  REGIONAL_PRIVATE_GROUPS
+  DIRECT_MESSAGES
+  EVENTS
+  BETTER_SEARCH
+  MOBILE_PUSH
+  ORGANISATION_PROFILES
+  OTHER
+}
+
+enum CommunityFeedbackStatus {
+  NEW
+  REVIEWED
+  PLANNED
+  SHIPPED
+  DECLINED
+}
+
+enum CommunityNotificationType {
+  REPLY
+  MENTION
+  ACCEPTED_ANSWER
+  REACTION_SUMMARY
+  FOLLOWED_POST_ACTIVITY
+  MODERATION_DECISION
+  REPORT_OUTCOME
+  APPEAL_OUTCOME
+  BETA_ANNOUNCEMENT
+}
+
+enum CommunityEmailFrequency {
+  OFF
+  IMMEDIATE
+  DAILY
+  WEEKLY
+}
+
+enum CommunityProfileStatus {
+  ACTIVE
+  MUTED
+  BANNED
+  LEFT
+}
+
+enum CommunitySanctionType {
+  WARNING
+  MUTE
+  BAN
+}
+
+enum CommunitySubscriptionTarget {
+  POST
+  CATEGORY
+  CHAT_ROOM
+}
+
+enum CommunityEmailDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SUPPRESSED
+}
+
+model CommunityProfile {
+  id                      String                 @id @default(cuid())
+  // Clerk user ID — the stable community identity. No FK to a local User table.
+  clerkUserId             String                 @unique
+  // Verified home-organisation captured at onboarding. Community identity does
+  // not change when the user switches their active Clerk organisation.
+  homeClerkOrganizationId String
+  // Denormalised org display name for the optional organisation badge, so DTOs
+  // never join to operational organisation records.
+  homeOrganisationName    String?
+  displayName             String
+  showOrganisationBadge   Boolean                @default(false)
+  region                  String?
+  guidelinesVersion       String?
+  guidelinesAcceptedAt    DateTime?
+  isModerator             Boolean                @default(false)
+  status                  CommunityProfileStatus @default(ACTIVE)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+
+  posts                  CommunityPost[]
+  comments               CommunityComment[]
+  chatMessages           CommunityChatMessage[]
+  reactions              CommunityReaction[]
+  follows                CommunityFollow[]
+  reports                CommunityReport[]
+  feedback               CommunityBetaFeedback[]
+  notifications          CommunityNotification[]          @relation("CommunityNotificationRecipient")
+  notificationActions    CommunityNotification[]          @relation("CommunityNotificationActor")
+  notificationPreference CommunityNotificationPreference?
+  moderationEvents       CommunityModerationEvent[]
+  rateLimitBuckets       CommunityRateLimitBucket[]
+  appeals                CommunityAppeal[]
+  sanctions              CommunitySanction[]              @relation("CommunitySanctionTarget")
+  sanctionsCreated       CommunitySanction[]              @relation("CommunitySanctionActor")
+  emailDeliveries        CommunityEmailDelivery[]
+  subscriptions          CommunitySubscription[]
+  blocksCreated          CommunityBlock[]                 @relation("CommunityBlockBlocker")
+  blockedBy              CommunityBlock[]                 @relation("CommunityBlockBlocked")
+  bookmarks              CommunityBookmark[]
+
+  @@index([homeClerkOrganizationId])
+}
+
+// A personal mute: `blocker` hides all of `blocked`'s content for themselves.
+// One-directional and distinct from reporting — no moderator involvement.
+model CommunityBlock {
+  id        String           @id @default(cuid())
+  blockerId String
+  blocker   CommunityProfile @relation("CommunityBlockBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   CommunityProfile @relation("CommunityBlockBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model CommunityCategory {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  posts     CommunityPost[]
+  chatRooms CommunityChatRoom[]
+
+  @@index([isActive, sortOrder])
+}
+
+model CommunityPost {
+  id                String                 @id @default(cuid())
+  authorId          String
+  author            CommunityProfile       @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  categoryId        String
+  category          CommunityCategory      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  type              CommunityPostType
+  // Approved content remains visible while draft content is re-moderated.
+  title             String?
+  body              String?
+  draftTitle        String
+  draftBody         String
+  status            CommunityContentStatus @default(PENDING)
+  clientMutationId  String
+  mentions          Json?
+  acceptedCommentId String?                @unique
+  acceptedComment   CommunityComment?      @relation("AcceptedCommunityComment", fields: [acceptedCommentId], references: [id], onDelete: SetNull)
+  isPinned          Boolean                @default(false)
+  isLocked          Boolean                @default(false)
+  deletedAt         DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  lastActivityAt    DateTime               @default(now())
+
+  comments  CommunityComment[]  @relation("CommunityPostComments")
+  reactions CommunityReaction[]
+  follows   CommunityFollow[]
+  bookmarks CommunityBookmark[]
+
+  @@unique([authorId, clientMutationId])
+  @@index([status, lastActivityAt(sort: Desc), id])
+  @@index([categoryId, type, status, lastActivityAt(sort: Desc)])
+}
+
+model CommunityComment {
+  id               String                 @id @default(cuid())
+  postId           String
+  post             CommunityPost          @relation("CommunityPostComments", fields: [postId], references: [id], onDelete: Cascade)
+  authorId         String
+  author           CommunityProfile       @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  parentId         String?
+  parent           CommunityComment?      @relation("CommunityCommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies          CommunityComment[]     @relation("CommunityCommentReplies")
+  acceptedForPost  CommunityPost?         @relation("AcceptedCommunityComment")
+  body             String?
+  draftBody        String
+  status           CommunityContentStatus @default(PENDING)
+  clientMutationId String
+  mentions         Json?
+  deletedAt        DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  reactions CommunityReaction[]
+
+  @@unique([authorId, clientMutationId])
+  @@index([postId, status, createdAt, id])
+  @@index([parentId])
+}
+
+model CommunityReaction {
+  id            String                @id @default(cuid())
+  profileId     String
+  profile       CommunityProfile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  type          CommunityReactionType
+  postId        String?
+  post          CommunityPost?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId     String?
+  comment       CommunityComment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  chatMessageId String?
+  chatMessage   CommunityChatMessage? @relation(fields: [chatMessageId], references: [id], onDelete: Cascade)
+  createdAt     DateTime              @default(now())
+
+  @@unique([profileId, type, postId])
+  @@unique([profileId, type, commentId])
+  @@unique([profileId, type, chatMessageId])
+  @@index([postId, type])
+  @@index([commentId, type])
+  @@index([chatMessageId, type])
+}
+
+model CommunityFollow {
+  id        String           @id @default(cuid())
+  profileId String
+  profile   CommunityProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  postId    String
+  post      CommunityPost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@unique([profileId, postId])
+  @@index([postId])
+}
+
+model CommunityBookmark {
+  id        String           @id @default(cuid())
+  profileId String
+  profile   CommunityProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  postId    String
+  post      CommunityPost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@unique([profileId, postId])
+  @@index([postId])
+}
+
+model CommunityChatRoom {
+  id              String             @id @default(cuid())
+  slug            String             @unique
+  name            String
+  description     String?
+  categoryId      String?
+  category        CommunityCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  isPinned        Boolean            @default(false)
+  isReadOnly      Boolean            @default(false)
+  isArchived      Boolean            @default(false)
+  slowModeSeconds Int                @default(0)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  messages CommunityChatMessage[]
+
+  @@index([isArchived, isPinned, name])
+}
+
+model CommunityChatMessage {
+  id               String                 @id @default(cuid())
+  roomId           String
+  room             CommunityChatRoom      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  authorId         String
+  author           CommunityProfile       @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  parentId         String?
+  parent           CommunityChatMessage?  @relation("CommunityChatReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies          CommunityChatMessage[] @relation("CommunityChatReplies")
+  body             String?
+  draftBody        String
+  status           CommunityContentStatus @default(PENDING)
+  clientMutationId String
+  mentions         Json?
+  deletedAt        DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  reactions CommunityReaction[]
+
+  @@unique([authorId, clientMutationId])
+  @@index([roomId, status, createdAt(sort: Desc), id])
+  @@index([parentId])
+}
+
+model CommunityReport {
+  id         String                @id @default(cuid())
+  reporterId String
+  reporter   CommunityProfile      @relation(fields: [reporterId], references: [id], onDelete: Restrict)
+  targetType CommunityTargetType
+  targetId   String
+  reason     CommunityReportReason
+  details    String?
+  status     CommunityReportStatus @default(OPEN)
+  reviewedAt DateTime?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+model CommunityModerationJob {
+  id             String                       @id @default(cuid())
+  targetType     CommunityTargetType
+  targetId       String
+  contentHash    String
+  title          String?
+  body           String
+  status         CommunityModerationJobStatus @default(QUEUED)
+  attempts       Int                          @default(0)
+  nextRunAt      DateTime                     @default(now())
+  leaseExpiresAt DateTime?
+  policyVersion  String
+  modelId        String
+  errorCode      String?
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  events CommunityModerationEvent[]
+
+  @@index([status, nextRunAt])
+  @@index([targetType, targetId, createdAt(sort: Desc)])
+}
+
+model CommunityModerationEvent {
+  id             String                            @id @default(cuid())
+  jobId          String
+  job            CommunityModerationJob            @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  actorProfileId String?
+  actorProfile   CommunityProfile?                 @relation(fields: [actorProfileId], references: [id], onDelete: SetNull)
+  recommendation CommunityModerationRecommendation
+  categories     String[]                          @default([])
+  reasonCode     String
+  severity       CommunityModerationSeverity
+  policyVersion  String
+  modelId        String
+  contentHash    String
+  createdAt      DateTime                          @default(now())
+
+  @@index([jobId, createdAt])
+  @@index([recommendation, createdAt])
+}
+
+model CommunityNotification {
+  id          String                    @id @default(cuid())
+  recipientId String
+  recipient   CommunityProfile          @relation("CommunityNotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actorId     String?
+  actor       CommunityProfile?         @relation("CommunityNotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  type        CommunityNotificationType
+  targetType  CommunityTargetType?
+  targetId    String?
+  title       String
+  dedupeKey   String
+  readAt      DateTime?
+  createdAt   DateTime                  @default(now())
+
+  @@unique([recipientId, dedupeKey])
+  @@index([recipientId, readAt, createdAt(sort: Desc)])
+}
+
+model CommunityNotificationPreference {
+  id                      String                  @id @default(cuid())
+  profileId               String                  @unique
+  profile                 CommunityProfile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  emailEnabled            Boolean                 @default(false)
+  frequency               CommunityEmailFrequency @default(OFF)
+  timezone                String
+  digestDay               Int                     @default(1)
+  digestHour              Int                     @default(8)
+  notifyReplies           Boolean                 @default(true)
+  notifyMentions          Boolean                 @default(true)
+  notifyAcceptedAnswers   Boolean                 @default(true)
+  notifyFollowedPosts     Boolean                 @default(true)
+  notifyCategories        Boolean                 @default(false)
+  notifyChats             Boolean                 @default(false)
+  notifyReactionSummaries Boolean                 @default(false)
+  notifyBetaAnnouncements Boolean                 @default(true)
+  preferenceVersion       Int                     @default(1)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+}
+
+model CommunityBetaFeedback {
+  id                String                      @id @default(cuid())
+  profileId         String
+  profile           CommunityProfile            @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  type              CommunityFeedbackType
+  message           String
+  requestedFeatures CommunityRequestedFeature[] @default([])
+  pageContext       String?
+  contactConsent    Boolean                     @default(false)
+  status            CommunityFeedbackStatus     @default(NEW)
+  triageNote        String?
+  roadmapUrl        String?
+  reviewedById      String?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+
+  @@index([status, createdAt])
+  @@index([profileId, createdAt])
+}
+
+model CommunityRateLimitBucket {
+  id          String           @id @default(cuid())
+  profileId   String
+  profile     CommunityProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  action      String
+  windowStart DateTime
+  count       Int              @default(1)
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([profileId, action, windowStart])
+  @@index([windowStart])
+}
+
+model CommunityAppeal {
+  id            String                @id @default(cuid())
+  appellantId   String
+  appellant     CommunityProfile      @relation(fields: [appellantId], references: [id], onDelete: Restrict)
+  targetType    CommunityTargetType
+  targetId      String
+  explanation   String
+  status        CommunityAppealStatus @default(OPEN)
+  reviewerId    String?
+  outcomeReason String?
+  reviewedAt    DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@unique([appellantId, targetType, targetId])
+  @@index([status, createdAt])
+}
+
+model CommunitySanction {
+  id          String                @id @default(cuid())
+  profileId   String
+  profile     CommunityProfile      @relation("CommunitySanctionTarget", fields: [profileId], references: [id], onDelete: Cascade)
+  type        CommunitySanctionType
+  reason      String
+  scope       String                @default("GLOBAL")
+  startsAt    DateTime              @default(now())
+  endsAt      DateTime?
+  createdById String?
+  createdBy   CommunityProfile?     @relation("CommunitySanctionActor", fields: [createdById], references: [id], onDelete: SetNull)
+  revokedAt   DateTime?
+  revokedById String?
+  createdAt   DateTime              @default(now())
+
+  @@index([profileId, startsAt(sort: Desc)])
+  @@index([endsAt])
+}
+
+model CommunityEmailDelivery {
+  id                String                       @id @default(cuid())
+  recipientId       String
+  recipient         CommunityProfile             @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  kind              String
+  dedupeKey         String                       @unique
+  preferenceVersion Int
+  providerMessageId String?
+  status            CommunityEmailDeliveryStatus @default(PENDING)
+  errorCode         String?
+  createdAt         DateTime                     @default(now())
+  sentAt            DateTime?
+
+  @@index([recipientId, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+}
+
+model CommunitySubscription {
+  id             String                      @id @default(cuid())
+  profileId      String
+  profile        CommunityProfile            @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  targetType     CommunitySubscriptionTarget
+  targetId       String
+  inApp          Boolean                     @default(true)
+  emailFrequency CommunityEmailFrequency?
+  muted          Boolean                     @default(false)
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  @@unique([profileId, targetType, targetId])
+  @@index([targetType, targetId])
 }

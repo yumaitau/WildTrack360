@@ -25,6 +25,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:community": "tsx prisma/community-seed.ts",
     "db:studio": "prisma studio",
     "db:migrate:prod": "npx prisma migrate deploy",
     "db:reset": "prisma migrate reset",
@@ -44,6 +45,7 @@
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^4.0.111",
     "@asteasolutions/zod-to-openapi": "^7.3.4",
+    "@aws-sdk/client-bedrock-runtime": "^3.1092.0",
     "@aws-sdk/client-s3": "^3.1053.0",
     "@aws-sdk/client-sns": "^3.1053.0",
     "@clerk/mcp-tools": "^0.3.1",
