@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessagesSquare,
   PawPrint,
   PhoneCall,
   Search,
@@ -60,6 +61,7 @@ const ICONS: Record<WorkspaceNavigationIcon, React.ComponentType<{ className?: s
   forms: ClipboardList,
   organisation: Settings,
   tools: Calculator,
+  community: MessagesSquare,
 };
 
 function openCommandPalette() {
@@ -122,10 +124,12 @@ export function WorkspaceShell({
   children,
   role,
   customFormsEnabled = false,
+  communityEnabled = false,
 }: {
   children: React.ReactNode;
   role: OrgRole | null;
   customFormsEnabled?: boolean;
+  communityEnabled?: boolean;
 }) {
   const pathname = usePathname();
   const { user } = useUser();
@@ -134,7 +138,7 @@ export function WorkspaceShell({
 
   if (!role || !isWorkspaceRoute(pathname)) return <>{children}</>;
 
-  const navOptions = { customFormsEnabled };
+  const navOptions = { customFormsEnabled, communityEnabled };
   const navigation = getWorkspaceNavigation(role, navOptions);
   const mobilePrimary = getMobilePrimaryNavigation(role, navOptions);
   const mobileMore = getMobileMoreNavigation(role, navOptions);
@@ -142,10 +146,11 @@ export function WorkspaceShell({
   const moreActive = mobileMore.some((item) => item.id === activeId);
   const roleLabel = getWorkspaceRoleLabel(role);
   const userName = user?.fullName || user?.firstName || 'Account';
-  const initials = [user?.firstName, user?.lastName]
-    .filter(Boolean)
-    .map((part) => part?.charAt(0).toUpperCase())
-    .join('') || 'WT';
+  const initials =
+    [user?.firstName, user?.lastName]
+      .filter(Boolean)
+      .map((part) => part?.charAt(0).toUpperCase())
+      .join('') || 'WT';
 
   return (
     <div data-workspace-shell="">
@@ -161,7 +166,10 @@ export function WorkspaceShell({
             </span>
           </Link>
 
-          <nav aria-label="Workspace" className="ml-2 hidden min-w-0 flex-1 items-center gap-1 xl:flex">
+          <nav
+            aria-label="Workspace"
+            className="ml-2 hidden min-w-0 flex-1 items-center gap-1 xl:flex"
+          >
             {navigation.map((item) => (
               <DesktopNavigationLink key={item.id} item={item} active={activeId === item.id} />
             ))}
@@ -213,7 +221,9 @@ export function WorkspaceShell({
                   <span className="block truncate text-xs font-normal text-muted-foreground">
                     {organization?.name || roleLabel}
                   </span>
-                  <span className="block text-xs font-normal text-muted-foreground">{roleLabel}</span>
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    {roleLabel}
+                  </span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut({ redirectUrl: '/logout-success' })}>
@@ -253,7 +263,10 @@ export function WorkspaceShell({
                 More
               </button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-xl pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+            <SheetContent
+              side="bottom"
+              className="max-h-[85vh] overflow-y-auto rounded-t-xl pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+            >
               <SheetHeader className="pr-8 text-left">
                 <SheetTitle>Workspace</SheetTitle>
                 <SheetDescription>Navigation and account options</SheetDescription>

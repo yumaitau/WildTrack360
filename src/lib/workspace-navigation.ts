@@ -8,7 +8,8 @@ export type WorkspaceNavigationIcon =
   | 'feed'
   | 'forms'
   | 'organisation'
-  | 'tools';
+  | 'tools'
+  | 'community';
 
 export type WorkspaceNavigationItem = {
   id: WorkspaceNavigationIcon;
@@ -21,9 +22,22 @@ export type WorkspaceNavigationItem = {
 const CARER_NAVIGATION: WorkspaceNavigationItem[] = [
   { id: 'dashboard', label: 'Dashboard', mobileLabel: 'Home', href: '/', icon: 'dashboard' },
   { id: 'animals', label: 'My Animals', mobileLabel: 'Animals', href: '/animals', icon: 'animals' },
-  { id: 'feed', label: 'Feed Roster', mobileLabel: 'Feed', href: '/tools/feed-roster', icon: 'feed' },
+  {
+    id: 'feed',
+    label: 'Feed Roster',
+    mobileLabel: 'Feed',
+    href: '/tools/feed-roster',
+    icon: 'feed',
+  },
   { id: 'forms', label: 'Forms', mobileLabel: 'Forms', href: '/forms', icon: 'forms' },
   { id: 'tools', label: 'Care Tools', mobileLabel: 'Tools', href: '/tools', icon: 'tools' },
+  {
+    id: 'community',
+    label: 'Community',
+    mobileLabel: 'Community',
+    href: '/community',
+    icon: 'community',
+  },
 ];
 
 const COORDINATOR_NAVIGATION: WorkspaceNavigationItem[] = [
@@ -52,9 +66,16 @@ const COORDINATOR_NAVIGATION: WorkspaceNavigationItem[] = [
     href: '/admin',
     icon: 'organisation',
   },
+  {
+    id: 'community',
+    label: 'Community',
+    mobileLabel: 'Community',
+    href: '/community',
+    icon: 'community',
+  },
 ];
 
-const WORKSPACE_PREFIXES = ['/animals', '/compliance', '/admin', '/tools', '/forms'];
+const WORKSPACE_PREFIXES = ['/animals', '/compliance', '/admin', '/tools', '/forms', '/community'];
 const PRINT_ROUTE_PATTERNS = [
   /\/print(?:\/|$)/,
   /\/receipt(?:\/|$)/,
@@ -70,6 +91,9 @@ export type WorkspaceNavigationOptions = {
   // CUSTOM_FORMS is an org feature flag; the Forms entry ships dark until the
   // flag is enabled for the org (mirrors how the routes 404 when disabled).
   customFormsEnabled?: boolean;
+  // COMMUNITY_BOARD org feature flag; the Community entry ships dark until the
+  // caller's home org is enabled (mirrors how the routes 404 when disabled).
+  communityEnabled?: boolean;
 };
 
 export function getWorkspaceNavigation(
@@ -77,7 +101,11 @@ export function getWorkspaceNavigation(
   options: WorkspaceNavigationOptions = {}
 ): WorkspaceNavigationItem[] {
   const items = isCoordinatorRole(role) ? COORDINATOR_NAVIGATION : CARER_NAVIGATION;
-  return items.filter((item) => item.id !== 'forms' || options.customFormsEnabled);
+  return items.filter(
+    (item) =>
+      (item.id !== 'forms' || options.customFormsEnabled) &&
+      (item.id !== 'community' || options.communityEnabled)
+  );
 }
 
 export function getMobilePrimaryNavigation(
@@ -103,7 +131,9 @@ export function getActiveWorkspaceNavigationId(
   const match = [...items]
     .sort((a, b) => b.href.length - a.href.length)
     .find((item) =>
-      item.href === '/' ? pathname === '/' : pathname === item.href || pathname.startsWith(`${item.href}/`)
+      item.href === '/'
+        ? pathname === '/'
+        : pathname === item.href || pathname.startsWith(`${item.href}/`)
     );
 
   return match?.id ?? null;
@@ -111,7 +141,10 @@ export function getActiveWorkspaceNavigationId(
 
 export function isWorkspaceRoute(pathname: string): boolean {
   if (PRINT_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname))) return false;
-  return pathname === '/' || WORKSPACE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return (
+    pathname === '/' ||
+    WORKSPACE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+  );
 }
 
 export function filterCommandItemsForRole<T extends { id: string; group?: string }>(

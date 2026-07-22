@@ -223,9 +223,40 @@ const staticActionItems: CommandItem[] = [
   },
 ];
 
+const communityCommandItems: CommandItem[] = [
+  {
+    id: 'community',
+    title: 'Community',
+    subtitle: 'Cross-organisation carer community beta',
+    href: '/community',
+    group: 'Care',
+    icon: 'users',
+    keywords: ['community', 'forum', 'discussion', 'board', 'carers'],
+  },
+  {
+    id: 'community-members',
+    title: 'Community Members',
+    subtitle: 'Browse the community member directory',
+    href: '/community/members',
+    group: 'Care',
+    icon: 'users',
+    keywords: ['community', 'members', 'directory'],
+  },
+  {
+    id: 'community-notifications',
+    title: 'Community Notification Settings',
+    subtitle: 'Manage community in-app and email notifications',
+    href: '/community/settings/notifications',
+    group: 'Care',
+    icon: 'settings',
+    keywords: ['community', 'notifications', 'email', 'digest'],
+  },
+];
+
 const commandItems: CommandItem[] = [
   ...staticNavigationItems,
   ...staticActionItems,
+  ...communityCommandItems,
   // Append tenant-specific recent records here as serializable CommandItem data.
 ];
 
@@ -259,7 +290,7 @@ function buildAllowedRedirectOrigins(currentHost: string | null): string[] {
     allowedHosts.add(tenantHost);
   }
 
-  return Array.from(allowedHosts).flatMap(host => [
+  return Array.from(allowedHosts).flatMap((host) => [
     new URL(`https://${host}`).origin,
     new URL(`http://${host}`).origin,
   ]);
@@ -271,11 +302,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const { userId, orgId } = await auth();
   let workspaceRole: OrgRole | null = null;
   let customFormsEnabled = false;
+  let communityEnabled = false;
 
   if (userId && orgId) {
     try {
       workspaceRole = await getUserRole(userId, orgId);
-      customFormsEnabled = await isFeatureEnabled(orgId, 'CUSTOM_FORMS');
+      [customFormsEnabled, communityEnabled] = await Promise.all([
+        isFeatureEnabled(orgId, 'CUSTOM_FORMS'),
+        // Nav visibility follows the active org's COMMUNITY_BOARD flag; the
+        // /community routes themselves enforce the full home-org access check.
+        isFeatureEnabled(orgId, 'COMMUNITY_BOARD'),
+      ]);
     } catch (error) {
       console.error('Unable to load workspace navigation role:', error);
     }
@@ -296,7 +333,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </head>
         <body className="font-body antialiased min-h-screen">
           <GoogleMapsProvider>
-            <WorkspaceShell role={workspaceRole} customFormsEnabled={customFormsEnabled}>
+            <WorkspaceShell
+              role={workspaceRole}
+              customFormsEnabled={customFormsEnabled}
+              communityEnabled={communityEnabled}
+            >
               {children}
             </WorkspaceShell>
           </GoogleMapsProvider>
