@@ -13,6 +13,7 @@ import { fetchFeedRosterItems } from '@/lib/feed-roster';
 import { extractSubdomain } from '@/lib/subdomain';
 import { getNSWReminderBannerForUser } from '@/lib/nsw-reminders';
 import { isScreenshotMode } from '@/lib/screenshot-mode';
+import { tenantBaseUrlFromSlug } from '@/lib/tenant-url';
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
@@ -43,8 +44,7 @@ export default async function Home() {
       const org = await getOrganisationInfo(orgId);
       const orgUrl = org?.slug ?? undefined;
       if (orgUrl && /^[a-zA-Z0-9-]+$/.test(orgUrl)) {
-        const protocol = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
-        redirect(`${protocol}://${orgUrl}.${ROOT_DOMAIN}/`);
+        redirect(`${tenantBaseUrlFromSlug(orgUrl)}/`);
       }
     } catch (error) {
       // Re-throw Next.js redirect (it throws a special error internally)

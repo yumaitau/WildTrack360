@@ -12,8 +12,6 @@ import { logAudit } from '@/lib/audit';
 import { route } from '@/lib/openapi/route';
 import { inviteUserContract, listInvitesContract, revokeInviteContract } from '../openapi';
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
-
 function clerkErrorStatus(error: unknown): number | null {
   if (!error || typeof error !== 'object') return null;
   const status = (error as { status?: unknown }).status;
@@ -36,8 +34,7 @@ async function signUpRedirectUrl(orgId: string): Promise<string> {
   if (slug && /^[a-zA-Z0-9-]+$/.test(slug)) {
     return `${tenantBaseUrlFromSlug(slug)}/sign-up`;
   }
-  const protocol = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
-  return `${protocol}://${ROOT_DOMAIN}/sign-up`;
+  return `${tenantBaseUrlFromSlug(undefined)}/sign-up`;
 }
 
 // Issue #56 design decision D5: in db mode an invite is (a) a pending User

@@ -6,9 +6,8 @@ import { logAudit } from '@/lib/audit';
 import { sendSms } from '@/lib/sms';
 import { nanoid } from 'nanoid';
 import { route } from '@/lib/openapi/route';
+import { tenantBaseUrlFromSlug } from '@/lib/tenant-url';
 import { createPindropContract } from './openapi';
-
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
 export const POST = route(createPindropContract, async ({ body }) => {
   const { userId, orgId } = await auth();
@@ -42,8 +41,7 @@ export const POST = route(createPindropContract, async ({ body }) => {
     return NextResponse.json({ error: 'Organisation is not configured for pindrop links. Please contact an administrator.' }, { status: 422 });
   }
 
-  const protocol = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
-  const pinUrl = `${protocol}://${orgUrl}.${ROOT_DOMAIN}/pin/${session.id}?t=${session.accessToken}`;
+  const pinUrl = `${tenantBaseUrlFromSlug(orgUrl)}/pin/${session.id}?t=${session.accessToken}`;
 
   const smsResult = await sendSms({
     organisationId: orgId,

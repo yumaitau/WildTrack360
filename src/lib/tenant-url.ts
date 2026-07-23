@@ -13,7 +13,37 @@ function rootDomain(): string {
 }
 
 function protocolFor(host: string): 'http' | 'https' {
-  return host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
+  const root = rootDomain();
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+
+  if (configuredAppUrl) {
+    try {
+      const configured = new URL(configuredAppUrl);
+      if (
+        configured.host === root &&
+        (configured.protocol === 'http:' || configured.protocol === 'https:')
+      ) {
+        return configured.protocol.slice(0, -1) as 'http' | 'https';
+      }
+    } catch {
+      // Fall through to the safe hostname-based default below.
+    }
+  }
+
+  let hostname = host.toLowerCase();
+  try {
+    hostname = new URL(`http://${host}`).hostname.toLowerCase();
+  } catch {
+    // Keep the raw host for the conservative HTTPS fallback.
+  }
+
+  return hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === 'homelab' ||
+    hostname.endsWith('.homelab')
+    ? 'http'
+    : 'https';
 }
 
 // Only the root domain itself or one of its subdomains is a host we'd ever
