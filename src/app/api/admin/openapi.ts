@@ -10,7 +10,10 @@ export const listCarerInterestContract = defineContract({
   tags: ['Admin'],
   security: 'clerkSession',
   responses: {
-    200: { description: 'Carer interest list', schema: z.object({ interests: z.array(z.object({}).passthrough()) }) },
+    200: {
+      description: 'Carer interest list',
+      schema: z.object({ interests: z.array(z.object({}).passthrough()) }),
+    },
   },
   successStatus: 200,
 });
@@ -56,7 +59,10 @@ export const dataExportContract = defineContract({
   tags: ['Admin'],
   security: 'clerkSession',
   responses: {
-    200: { description: 'Zip archive containing XLSX + S3 files', schema: z.unknown().openapi('DataExport') },
+    200: {
+      description: 'Zip archive containing XLSX + S3 files',
+      schema: z.unknown().openapi('DataExport'),
+    },
   },
   successStatus: 200,
 });
@@ -78,7 +84,10 @@ export const nswRegistersExportContract = defineContract({
     }),
   },
   responses: {
-    200: { description: 'Register export (CSV or XLSX)', schema: z.unknown().openapi('NSWRegisterExport') },
+    200: {
+      description: 'Register export (CSV or XLSX)',
+      schema: z.unknown().openapi('NSWRegisterExport'),
+    },
   },
   successStatus: 200,
 });
@@ -220,6 +229,27 @@ export const listInvitesContract = defineContract({
   security: 'clerkSession',
   responses: {
     200: { description: 'Pending invitations', schema: z.array(pendingInviteSchema) },
+    401: { description: 'Unauthorized' },
+    403: { description: 'Forbidden' },
+  },
+  successStatus: 200,
+});
+
+export const getOrgSeatContract = defineContract({
+  method: 'get',
+  path: '/api/admin/org-seat',
+  summary: 'Get the organisation seat limit and current usage (admin)',
+  tags: ['Admin'],
+  security: 'clerkSession',
+  responses: {
+    200: {
+      description: 'Organisation seat allocation',
+      schema: z.object({
+        limit: z.number().int(),
+        used: z.number().int(),
+        remaining: z.number().int(),
+      }),
+    },
     401: { description: 'Unauthorized' },
     403: { description: 'Forbidden' },
   },

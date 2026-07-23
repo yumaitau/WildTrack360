@@ -12152,6 +12152,53 @@
         }
       }
     },
+    "/api/admin/org-seat": {
+      "get": {
+        "summary": "Get the organisation seat limit and current usage (admin)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "clerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organisation seat allocation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "used": {
+                      "type": "integer"
+                    },
+                    "remaining": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "used",
+                    "remaining"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
     "/api/audit-logs": {
       "get": {
         "summary": "List audit logs with pagination and filters",

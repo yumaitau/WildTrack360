@@ -8,6 +8,7 @@ import { isDbOrg } from '@/lib/org-source';
 import { getUserRole } from '@/lib/rbac';
 import { tenantBaseUrlFromSlug } from '@/lib/tenant-url';
 import { PENDING_USER_PREFIX } from '@/lib/user-sync';
+import { OrgSeatLimitError, assertOrgSeatAvailable, getOrgSeatUsage } from '@/lib/org-seat';
 import { logAudit } from '@/lib/audit';
 import { route } from '@/lib/openapi/route';
 import { inviteUserContract, listInvitesContract, revokeInviteContract } from '../openapi';
@@ -18,9 +19,7 @@ function clerkErrorStatus(error: unknown): number | null {
   return typeof status === 'number' ? status : null;
 }
 
-async function requireAdmin(): Promise<
-  { userId: string; orgId: string } | NextResponse
-> {
+async function requireAdmin(): Promise<{ userId: string; orgId: string } | NextResponse> {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const role = await getUserRole(userId, orgId);
@@ -41,39 +40,70 @@ async function signUpRedirectUrl(orgId: string): Promise<string> {
 // placeholder + OrgMember row carrying the admin-chosen role, and (b) a Clerk
 // *application-level* invitation (free, unlimited — creates a Clerk user, not
 // an org membership). On first sign-in the placeholder is claimed by verified
-// email match (src/lib/user-sync.ts). No seat caps.
+// email match (src/lib/user-sync.ts). ORG_SEAT is enforced transactionally,
+// including pending invitations, without consuming Clerk Organization seats.
 async function createDbInvite(
   actorUserId: string,
   orgId: string,
   emailAddress: string,
   role: OrgRole
 ): Promise<NextResponse | { data: { id: string } }> {
-  const existingUser = await prisma.user.findUnique({
-    where: { email: emailAddress },
-    include: { memberships: { where: { orgId }, select: { id: true } } },
-  });
-  if (existingUser?.memberships.length) {
-    return NextResponse.json(
-      { error: 'This user is already a member or has a pending invitation' },
-      { status: 409 }
-    );
+  let reservation: { userId: string; createdPlaceholder: boolean };
+  try {
+    reservation = await prisma.$transaction(async (tx) => {
+      // Serialise seat reservations for this org so concurrent invitations
+      // cannot both observe the same final available seat.
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${orgId}))`;
+
+      const existingUser = await tx.user.findUnique({
+        where: { email: emailAddress },
+        include: { memberships: { where: { orgId }, select: { id: true } } },
+      });
+      if (existingUser?.memberships.length) {
+        throw new ExistingMembershipError();
+      }
+
+      const usage = await getOrgSeatUsage(orgId, tx);
+      assertOrgSeatAvailable(usage.limit, usage.used);
+
+      const pendingUser =
+        existingUser ??
+        (await tx.user.create({
+          data: {
+            id: `${PENDING_USER_PREFIX}${randomUUID()}`,
+            email: emailAddress,
+            invitedAt: new Date(),
+          },
+        }));
+
+      await tx.orgMember.create({
+        data: { userId: pendingUser.id, orgId, role },
+      });
+
+      return {
+        userId: pendingUser.id,
+        createdPlaceholder: !existingUser,
+      };
+    });
+  } catch (error) {
+    if (error instanceof ExistingMembershipError) {
+      return NextResponse.json(
+        { error: 'This user is already a member or has a pending invitation' },
+        { status: 409 }
+      );
+    }
+    if (error instanceof OrgSeatLimitError) {
+      return NextResponse.json(
+        {
+          error: `Organisation seat limit reached (${error.used} / ${error.limit}). Increase ORG_SEAT in WildTrack360 Admin before inviting another user.`,
+          limit: error.limit,
+          used: error.used,
+        },
+        { status: 409 }
+      );
+    }
+    throw error;
   }
-
-  const pendingUser =
-    existingUser ??
-    (await prisma.user.create({
-      data: {
-        id: `${PENDING_USER_PREFIX}${randomUUID()}`,
-        email: emailAddress,
-        invitedAt: new Date(),
-      },
-    }));
-
-  await prisma.orgMember.upsert({
-    where: { userId_orgId: { userId: pendingUser.id, orgId } },
-    create: { userId: pendingUser.id, orgId, role },
-    update: {},
-  });
 
   try {
     const clerk = await clerkClient();
@@ -89,8 +119,12 @@ async function createDbInvite(
     // The DB rows are the membership grant; a failed Clerk email is retryable
     // via revoke + re-invite, but surface it so the admin knows.
     console.error('Clerk application invitation failed:', error);
-    if (pendingUser.id.startsWith(PENDING_USER_PREFIX) && !existingUser) {
-      await prisma.user.delete({ where: { id: pendingUser.id } }).catch(() => undefined);
+    if (reservation.createdPlaceholder) {
+      await prisma.user.delete({ where: { id: reservation.userId } }).catch(() => undefined);
+    } else {
+      await prisma.orgMember
+        .deleteMany({ where: { userId: reservation.userId, orgId } })
+        .catch(() => undefined);
     }
     return NextResponse.json({ error: 'Failed to create invitation' }, { status: 502 });
   }
@@ -100,12 +134,14 @@ async function createDbInvite(
     orgId,
     action: 'CREATE',
     entity: 'OrgMember',
-    entityId: pendingUser.id,
+    entityId: reservation.userId,
     metadata: { invitedEmail: emailAddress, role, pending: true },
   });
 
-  return { data: { id: pendingUser.id } };
+  return { data: { id: reservation.userId } };
 }
+
+class ExistingMembershipError extends Error {}
 
 export const POST = route(inviteUserContract, async ({ body }) => {
   const adminOrError = await requireAdmin();
@@ -113,7 +149,8 @@ export const POST = route(inviteUserContract, async ({ body }) => {
   const { userId, orgId } = adminOrError;
 
   const { emailAddress, role } = body;
-  if (!emailAddress) return NextResponse.json({ error: 'Email address is required' }, { status: 400 });
+  if (!emailAddress)
+    return NextResponse.json({ error: 'Email address is required' }, { status: 400 });
 
   if (await isDbOrg(orgId)) {
     return createDbInvite(userId, orgId, emailAddress, (role as OrgRole) ?? 'CARER');
@@ -136,7 +173,7 @@ export const POST = route(inviteUserContract, async ({ body }) => {
     if (clerkErrorStatus(error) === 403) {
       return NextResponse.json(
         { error: 'Invitation is not permitted for this organisation' },
-        { status: 403 },
+        { status: 403 }
       );
     }
     return NextResponse.json({ error: 'Failed to create invitation' }, { status: 502 });

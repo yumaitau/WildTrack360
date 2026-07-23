@@ -1232,6 +1232,7 @@ model OrgFeatureFlag {
   clerkOrganizationId String   @map("clerk_organization_id")
   feature             String // e.g. "MEMBERSHIP_PLATFORM"
   enabled             Boolean  @default(false)
+  valueInt            Int?     @map("value_int") // Numeric feature value, e.g. ORG_SEAT
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 

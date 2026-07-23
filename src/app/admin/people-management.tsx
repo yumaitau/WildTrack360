@@ -54,7 +54,7 @@ import { SpeciesGroupBadges } from './species-group-badges';
 import type { OrgMemberWithAssignments, SpeciesGroupWithCoordinators, EnrichedCarer } from '@/lib/types';
 import { AddressAutocomplete, type AddressDetails } from '@/components/address-autocomplete';
 
-const MAX_USERS = 20;
+const DEFAULT_SEAT_LIMIT = 20;
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -83,6 +83,12 @@ interface PendingInvitation {
   createdAt: string | null;
 }
 
+interface SeatAllocation {
+  limit: number;
+  used: number;
+  remaining: number;
+}
+
 interface PeopleMember {
   userId: string;
   firstName: string | null;
@@ -103,14 +109,16 @@ export function PeopleManagement() {
   const { organization, membership } = useOrganization();
   const { user } = useUser();
   const orgContext = useOrgContext();
-  // Clerk seat billing capped orgs at MAX_USERS; DB-managed orgs have no seat
-  // cap (issue #56).
-  const seatCapped = orgContext.source !== 'db';
 
   // Data state
   const [people, setPeople] = useState<PeopleMember[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [speciesGroups, setSpeciesGroups] = useState<SpeciesGroupWithCoordinators[]>([]);
+  const [seatAllocation, setSeatAllocation] = useState<SeatAllocation>({
+    limit: DEFAULT_SEAT_LIMIT,
+    used: 0,
+    remaining: DEFAULT_SEAT_LIMIT,
+  });
   const [loading, setLoading] = useState(true);
 
   // Invite state
@@ -155,9 +163,10 @@ export function PeopleManagement() {
 
       // Fetch all sources in parallel — roster + invitations come from server
       // APIs so the org source (Clerk vs DB) is resolved server-side.
-      const [members, invitations, rolesRes, groupsRes, carersData] = await Promise.all([
+      const [members, invitations, seats, rolesRes, groupsRes, carersData] = await Promise.all([
         apiJson<RosterMember[]>('/api/admin/members'),
         apiJson<PendingInvitation[]>('/api/admin/invite'),
+        apiJson<SeatAllocation>('/api/admin/org-seat'),
         fetch('/api/rbac/roles'),
         fetch('/api/rbac/species-groups'),
         apiJson<EnrichedCarer[]>(`/api/carers?orgId=${orgId}`),
@@ -201,6 +210,18 @@ export function PeopleManagement() {
 
       setPeople(merged);
       setPendingInvitations(invitations);
+      setSeatAllocation(
+        orgContext.source === 'db'
+          ? seats
+          : {
+              limit: DEFAULT_SEAT_LIMIT,
+              used: members.length + invitations.length,
+              remaining: Math.max(
+                0,
+                DEFAULT_SEAT_LIMIT - members.length - invitations.length
+              ),
+            }
+      );
       setSpeciesGroups(groups);
     } catch (error) {
       console.error('Error loading people data:', error);
@@ -225,7 +246,10 @@ export function PeopleManagement() {
     if (!organization) return;
 
     if (!inviteEmail) { toast.error('Please enter an email address'); return; }
-    if (seatCapped && people.length >= MAX_USERS) { toast.error(`Maximum of ${MAX_USERS} users per organisation reached`); return; }
+    if (seatAllocation.used >= seatAllocation.limit) {
+      toast.error(`Organisation seat limit reached (${seatAllocation.used} / ${seatAllocation.limit})`);
+      return;
+    }
     if (!validateEmail(inviteEmail)) { toast.error('Please enter a valid email address'); return; }
 
     setSendingInvite(true);
@@ -435,7 +459,8 @@ export function PeopleManagement() {
   // ── Helpers ────────────────────────────────────────────────────────
 
   const isAdmin = membership?.role === 'org:admin';
-  const remainingSlots = MAX_USERS - people.length;
+  const remainingSlots = seatAllocation.remaining;
+  const atSeatLimit = seatAllocation.used >= seatAllocation.limit;
 
   const getRoleIcon = (role: string | null) => {
     switch (role) {
@@ -494,9 +519,9 @@ export function PeopleManagement() {
                   placeholder="user@example.com"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  disabled={sendingInvite || (seatCapped && people.length >= MAX_USERS)}
+                  disabled={sendingInvite || atSeatLimit}
                 />
-                {!seatCapped && (
+                {orgContext.source === 'db' && (
                   <Select value={inviteRole} onValueChange={setInviteRole} disabled={sendingInvite}>
                     <SelectTrigger className="w-[170px]">
                       <SelectValue placeholder="Role" />
@@ -510,7 +535,7 @@ export function PeopleManagement() {
                     </SelectContent>
                   </Select>
                 )}
-                <Button type="submit" disabled={sendingInvite || (seatCapped && people.length >= MAX_USERS)}>
+                <Button type="submit" disabled={sendingInvite || atSeatLimit}>
                   {sendingInvite ? 'Sending...' : 'Send Invite'}
                 </Button>
               </div>
@@ -518,9 +543,9 @@ export function PeopleManagement() {
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Users className="h-4 w-4" />
-                {seatCapped ? `${people.length} / ${MAX_USERS} users` : `${people.length} users`}
+                {`${seatAllocation.used} / ${seatAllocation.limit} seats used`}
               </span>
-              {seatCapped && remainingSlots > 0 && remainingSlots <= 5 && (
+              {remainingSlots > 0 && remainingSlots <= 5 && (
                 <span className="text-amber-600">
                   {remainingSlots} slot{remainingSlots !== 1 ? 's' : ''} remaining
                 </span>

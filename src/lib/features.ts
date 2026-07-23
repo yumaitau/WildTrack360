@@ -15,6 +15,7 @@ export const FEATURES = [
   'CUSTOM_FORMS',
   'COMMUNITY_BOARD',
   'DB_ORG_SOURCE',
+  'ORG_SEAT',
 ] as const;
 export type Feature = (typeof FEATURES)[number];
 
