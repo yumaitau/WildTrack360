@@ -23,6 +23,35 @@ const eslintConfig = [
     },
   },
   {
+    // Issue #56: tenant resolution (ORG_SOURCE) lives in @/lib/clerk-server —
+    // importing auth/clerkClient straight from Clerk would silently bypass the
+    // db-mode subdomain→membership orgId override.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      // The shim itself.
+      "src/lib/clerk-server.ts",
+      // clerkMiddleware runs on the edge (no Prisma) — auth/clerkClient still banned there.
+      "src/middleware.ts",
+      // OAuth bearer-token auth (acceptsToken: 'oauth_token'), never session-based.
+      "src/app/mcp/route.ts",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@clerk/nextjs/server",
+              importNames: ["auth", "clerkClient", "currentUser"],
+              message:
+                "Import auth/clerkClient/currentUser from '@/lib/clerk-server' so ORG_SOURCE tenant resolution applies (issue #56).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     ignores: [".next/", "node_modules/", "prisma/migrations/"],
   },
 ];

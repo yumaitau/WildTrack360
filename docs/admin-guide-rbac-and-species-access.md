@@ -51,7 +51,7 @@ ADMIN  (highest)
 3. Select their role from the dropdown (ADMIN, COORDINATOR, or CARER)
 4. The system prevents demoting the last ADMIN in the organisation
 
-> **Note:** New members default to the CARER role. The first admin is self-provisioned: when a Clerk `org:admin` user logs in and has no WildTrack360 role yet, they are automatically provisioned as ADMIN.
+> **Note:** New members default to the CARER role. In legacy mode (`ORG_SOURCE=clerk`) the first admin is self-provisioned: when a Clerk `org:admin` user logs in and has no WildTrack360 role yet, they are automatically provisioned as ADMIN. In database mode (`ORG_SOURCE=db`) every member's role is set at invite time — the invite form includes a role selector, and the initial ADMIN is created with the organisation (`npm run orgs:create`).
 
 ---
 

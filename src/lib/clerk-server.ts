@@ -14,6 +14,7 @@ import {
   assertScreenshotModeSafe,
   isScreenshotMode,
 } from '@/lib/screenshot-mode';
+import { resolveOrgIdForRequest } from '@/lib/org-resolver';
 
 const demoOrg = {
   id: SCREENSHOT_DEMO_ORG_ID,
@@ -89,13 +90,29 @@ function demoAuthPayload() {
   };
 }
 
+// Issue #56: for database-managed organisations (DB_ORG_SOURCE feature flag
+// set from the WildTrack360-Admin panel, a "worg_" DB-native org, or the
+// ORG_SOURCE=db global override) the session's orgId no longer comes from
+// Clerk Organizations — it resolves from the request subdomain + OrgMember
+// membership (see org-resolver.ts). Legacy orgs keep the Clerk session orgId
+// untouched. Every server-side `const { orgId } = await auth()` in the app
+// imports from this module, so overriding here cuts the whole codebase over
+// at one choke point.
+async function withDbOrgId<T extends { userId: string | null; orgId?: string | null }>(
+  session: T
+): Promise<T> {
+  if (!session?.userId) return session;
+  const orgId = await resolveOrgIdForRequest(session.userId, session.orgId ?? null);
+  return Object.assign(session, { orgId }) as T;
+}
+
 async function authImpl() {
   if (isScreenshotMode()) {
     assertScreenshotModeSafe();
     return demoAuthPayload() as any;
   }
 
-  return realAuth();
+  return withDbOrgId(await realAuth());
 }
 
 export const auth = Object.assign(authImpl, {
@@ -105,7 +122,7 @@ export const auth = Object.assign(authImpl, {
       return demoAuthPayload() as any;
     }
 
-    return realAuth.protect();
+    return withDbOrgId(await realAuth.protect());
   },
 });
 

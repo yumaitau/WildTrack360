@@ -1,6 +1,7 @@
 import type { OrgRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getClerkOrganization, getClerkUser } from '@/lib/clerk-management';
+import { isDbOrg } from '@/lib/org-source';
 import { tenantBaseUrlFromSlug } from '@/lib/tenant-url';
 import { sendEmail } from './resend';
 import { AdminNotificationEmail } from './templates/admin-notification';
@@ -58,12 +59,29 @@ function clerkErrorStatus(error: unknown): number | null {
   return typeof status === 'number' ? status : null;
 }
 
+// Org display name + subdomain slug for the email body/links, resolved from
+// the DB in db mode and Clerk's REST API in clerk mode (issue #56).
+async function resolveOrgForEmail(orgId: string): Promise<{ name: string; slug: string | undefined }> {
+  if (await isDbOrg(orgId)) {
+    const org = await prisma.organisation.findUnique({ where: { id: orgId } });
+    return {
+      name: org?.name ?? '',
+      slug: org && org.slug !== org.id ? org.slug : undefined,
+    };
+  }
+  const org = await getClerkOrganization(orgId);
+  return {
+    name: org.name,
+    slug: (org.public_metadata?.org_url as string | undefined) ?? undefined,
+  };
+}
+
 export async function sendAdminNotification(input: AdminNotificationInput): Promise<SendResult[]> {
   const recipientRoles = input.recipientRoles?.length
     ? input.recipientRoles
     : DEFAULT_RECIPIENT_ROLES;
   const [org, recipients] = await Promise.all([
-    getClerkOrganization(input.orgId),
+    resolveOrgForEmail(input.orgId),
     prisma.orgMember.findMany({
       where: {
         orgId: input.orgId,
@@ -75,7 +93,7 @@ export async function sendAdminNotification(input: AdminNotificationInput): Prom
   ]);
 
   const dedupeKey = input.dedupeKey.trim();
-  const base = tenantBaseUrlFromSlug(org.public_metadata?.org_url as string | undefined);
+  const base = tenantBaseUrlFromSlug(org.slug);
   const cta = { ...input.cta, href: toAbsoluteAppUrl(input.cta.href, base) };
   const manageNotificationsHref = toAbsoluteAppUrl('/admin', base);
   const results: SendResult[] = [];
@@ -99,34 +117,48 @@ export async function sendAdminNotification(input: AdminNotificationInput): Prom
       }
     }
 
-    let clerkUser: Awaited<ReturnType<typeof getClerkUser>>;
-    try {
-      clerkUser = await getClerkUser(recipient.userId);
-    } catch (error) {
-      if (clerkErrorStatus(error) === 404) {
+    let email: string | null = null;
+    if (await isDbOrg(input.orgId)) {
+      const user = await prisma.user.findUnique({
+        where: { id: recipient.userId },
+        select: { email: true },
+      });
+      if (!user) {
         results.push({ userId: recipient.userId, status: 'skipped', reason: 'missing-user' });
-      } else {
-        console.error('Failed to resolve admin notification recipient from Clerk:', {
-          error,
-          orgId: input.orgId,
-          userId: recipient.userId,
-          kind: input.kind,
-        });
-        results.push({
-          userId: recipient.userId,
-          status: 'failed',
-          reason: 'clerk-user-lookup-failed',
-        });
+        continue;
       }
-      continue;
+      email = user.email;
+    } else {
+      let clerkUser: Awaited<ReturnType<typeof getClerkUser>>;
+      try {
+        clerkUser = await getClerkUser(recipient.userId);
+      } catch (error) {
+        if (clerkErrorStatus(error) === 404) {
+          results.push({ userId: recipient.userId, status: 'skipped', reason: 'missing-user' });
+        } else {
+          console.error('Failed to resolve admin notification recipient from Clerk:', {
+            error,
+            orgId: input.orgId,
+            userId: recipient.userId,
+            kind: input.kind,
+          });
+          results.push({
+            userId: recipient.userId,
+            status: 'failed',
+            reason: 'clerk-user-lookup-failed',
+          });
+        }
+        continue;
+      }
+
+      if (!clerkUser) {
+        results.push({ userId: recipient.userId, status: 'skipped', reason: 'missing-user' });
+        continue;
+      }
+
+      email = primaryEmailForUser(clerkUser);
     }
 
-    if (!clerkUser) {
-      results.push({ userId: recipient.userId, status: 'skipped', reason: 'missing-user' });
-      continue;
-    }
-
-    const email = primaryEmailForUser(clerkUser);
     if (!email) {
       results.push({ userId: recipient.userId, status: 'skipped', reason: 'missing-email' });
       continue;

@@ -277,11 +277,31 @@ export async function createAsset(assetData: any, auth: { clerkUserId: string; c
 	});
 }
 
-// Clerk User and Organization Management (no-op to match current schema)
-export async function createOrUpdateClerkUser(_userData: any): Promise<void> {
-	return;
+// Clerk User and Organization mirroring (issue #56). Lazy-sync fallback for
+// webhook gaps — called on page loads that already have fresh Clerk data.
+export async function createOrUpdateClerkUser(userData: {
+	id: string;
+	email?: string | null;
+	firstName?: string | null;
+	lastName?: string | null;
+	imageUrl?: string | null;
+}): Promise<void> {
+	const { upsertUserFromClerk } = await import('./user-sync');
+	await upsertUserFromClerk(userData).catch((error) => {
+		// Sync failures must never break the page that triggered them.
+		console.error('createOrUpdateClerkUser failed:', error);
+	});
 }
 
-export async function createOrUpdateClerkOrganization(_orgData: any): Promise<void> {
-	return;
+export async function createOrUpdateClerkOrganization(orgData: {
+	id: string;
+	name?: string | null;
+	slug?: string | null;
+	jurisdiction?: string | null;
+	logoUrl?: string | null;
+}): Promise<void> {
+	const { upsertOrganisationFromClerk } = await import('./user-sync');
+	await upsertOrganisationFromClerk(orgData).catch((error) => {
+		console.error('createOrUpdateClerkOrganization failed:', error);
+	});
 }

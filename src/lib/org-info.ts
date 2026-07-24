@@ -20,14 +20,9 @@ export async function getOrgDisplayInfo(orgId: string): Promise<OrgDisplayInfo> 
 
   let name = settings?.legalName?.trim() ?? '';
   if (!name) {
-    try {
-      const { clerkClient } = await import('@/lib/clerk-server');
-      const client = await clerkClient();
-      const org = await client.organizations.getOrganization({ organizationId: orgId });
-      name = org.name ?? '';
-    } catch {
-      // Clerk lookup failed — fall through to the env default.
-    }
+    const { getOrganisationInfo } = await import('@/lib/org-directory');
+    const org = await getOrganisationInfo(orgId);
+    name = org?.name ?? '';
   }
 
   return {

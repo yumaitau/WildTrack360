@@ -1,30 +1,18 @@
 'server-only';
 
-import { clerkClient } from '@/lib/clerk-server';
 import { prisma } from './prisma';
 import type { CarerProfile, CarerTraining } from '@prisma/client';
 import type { EnrichedCarer } from './types';
+import { getOrgRoster, getUserInfo } from './org-directory';
 
 /**
- * Fetches all Clerk org members (paginated) and merges with CarerProfile data from DB.
+ * Fetches all org members (Clerk or DB roster depending on ORG_SOURCE) and
+ * merges with CarerProfile data from the DB.
  */
 export async function getEnrichedCarers(orgId: string): Promise<EnrichedCarer[]> {
-  const client = await clerkClient();
-
-  // Paginate through all org members
-  const allMembers: any[] = [];
-  let offset = 0;
-  const limit = 100;
-  while (true) {
-    const batch = await client.organizations.getOrganizationMembershipList({
-      organizationId: orgId,
-      limit,
-      offset,
-    });
-    allMembers.push(...batch.data);
-    if (batch.data.length < limit) break;
-    offset += limit;
-  }
+  // Pending invite placeholders are not carers yet — they surface in the
+  // people-management invitations list instead.
+  const roster = (await getOrgRoster(orgId)).filter((entry) => !entry.pending);
 
   const profiles = await prisma.carerProfile.findMany({
     where: { clerkOrganizationId: orgId },
@@ -36,19 +24,17 @@ export async function getEnrichedCarers(orgId: string): Promise<EnrichedCarer[]>
     profileMap.set(p.id, p);
   }
 
-  return allMembers
-    .filter((m: any) => m.publicUserData?.userId)
-    .map(m => {
-      const userId = m.publicUserData!.userId!;
+  return roster.map(member => {
+      const userId = member.userId;
       const profile = profileMap.get(userId);
 
       return {
         id: userId,
-        name: [m.publicUserData?.firstName, m.publicUserData?.lastName]
+        name: [member.firstName, member.lastName]
           .filter(Boolean)
-          .join(' ') || m.publicUserData?.identifier || 'Unknown',
-        email: m.publicUserData?.identifier || '',
-        imageUrl: m.publicUserData?.imageUrl || '',
+          .join(' ') || member.email || 'Unknown',
+        email: member.email || '',
+        imageUrl: member.imageUrl || '',
         // Profile fields
         phone: profile?.phone ?? null,
         licenseNumber: profile?.licenseNumber ?? null,
@@ -83,24 +69,22 @@ export async function getEnrichedCarers(orgId: string): Promise<EnrichedCarer[]>
  * Single enriched carer by Clerk user ID.
  */
 export async function getEnrichedCarer(userId: string, orgId: string): Promise<EnrichedCarer | null> {
-  const client = await clerkClient();
-
-  const [clerkUser, profile] = await Promise.all([
-    client.users.getUser(userId).catch(() => null),
+  const [user, profile] = await Promise.all([
+    getUserInfo(userId),
     prisma.carerProfile.findFirst({
       where: { id: userId, clerkOrganizationId: orgId },
       include: { trainings: true },
     }),
   ]);
 
-  if (!clerkUser) return null;
+  if (!user) return null;
 
   return {
-    id: clerkUser.id,
-    name: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') ||
-      clerkUser.emailAddresses[0]?.emailAddress || 'Unknown',
-    email: clerkUser.emailAddresses[0]?.emailAddress || '',
-    imageUrl: clerkUser.imageUrl || '',
+    id: user.id,
+    name: [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+      user.email || 'Unknown',
+    email: user.email || '',
+    imageUrl: user.imageUrl || '',
     phone: profile?.phone ?? null,
     licenseNumber: profile?.licenseNumber ?? null,
     licenseExpiry: profile?.licenseExpiry ?? null,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useOrganization, useUser } from '@/lib/clerk-client';
+import { useOrgContext } from '@/components/org-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,7 +54,7 @@ import { SpeciesGroupBadges } from './species-group-badges';
 import type { OrgMemberWithAssignments, SpeciesGroupWithCoordinators, EnrichedCarer } from '@/lib/types';
 import { AddressAutocomplete, type AddressDetails } from '@/components/address-autocomplete';
 
-const MAX_USERS = 20;
+const DEFAULT_SEAT_LIMIT = 20;
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -63,29 +64,32 @@ async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-interface ClerkMember {
-  id: string;
-  publicUserData: {
-    userId: string;
-    firstName: string | null;
-    lastName: string | null;
-    imageUrl: string;
-    identifier: string;
-  };
-  role: string;
-  createdAt: string;
+// Roster entry from /api/admin/members — resolved server-side from Clerk or
+// the DB depending on ORG_SOURCE (issue #56).
+interface RosterMember {
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  imageUrl: string | null;
+  joinedAt: string | null;
 }
 
-interface ClerkInvitation {
+// Pending invitation from /api/admin/invite.
+interface PendingInvitation {
   id: string;
   emailAddress: string;
-  role: string;
-  status: string;
-  createdAt: string;
+  role: string | null;
+  createdAt: string | null;
+}
+
+interface SeatAllocation {
+  limit: number;
+  used: number;
+  remaining: number;
 }
 
 interface PeopleMember {
-  clerkMembershipId: string;
   userId: string;
   firstName: string | null;
   lastName: string | null;
@@ -104,15 +108,22 @@ interface PeopleMember {
 export function PeopleManagement() {
   const { organization, membership } = useOrganization();
   const { user } = useUser();
+  const orgContext = useOrgContext();
 
   // Data state
   const [people, setPeople] = useState<PeopleMember[]>([]);
-  const [pendingInvitations, setPendingInvitations] = useState<ClerkInvitation[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [speciesGroups, setSpeciesGroups] = useState<SpeciesGroupWithCoordinators[]>([]);
+  const [seatAllocation, setSeatAllocation] = useState<SeatAllocation>({
+    limit: DEFAULT_SEAT_LIMIT,
+    used: 0,
+    remaining: DEFAULT_SEAT_LIMIT,
+  });
   const [loading, setLoading] = useState(true);
 
   // Invite state
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('CARER');
   const [sendingInvite, setSendingInvite] = useState(false);
 
   // Action state
@@ -150,17 +161,16 @@ export function PeopleManagement() {
     try {
       const orgId = org.id;
 
-      // Fetch all sources in parallel
-      const [membersList, invitationsList, rolesRes, groupsRes, carersData] = await Promise.all([
-        org.getMemberships(),
-        org.getInvitations(),
+      // Fetch all sources in parallel — roster + invitations come from server
+      // APIs so the org source (Clerk vs DB) is resolved server-side.
+      const [members, invitations, seats, rolesRes, groupsRes, carersData] = await Promise.all([
+        apiJson<RosterMember[]>('/api/admin/members'),
+        apiJson<PendingInvitation[]>('/api/admin/invite'),
+        apiJson<SeatAllocation>('/api/admin/org-seat'),
         fetch('/api/rbac/roles'),
         fetch('/api/rbac/species-groups'),
         apiJson<EnrichedCarer[]>(`/api/carers?orgId=${orgId}`),
       ]);
-
-      const clerkMembers = membersList.data as unknown as ClerkMember[];
-      const invitations = invitationsList.data.filter(inv => inv.status === 'pending') as unknown as ClerkInvitation[];
 
       const orgMembers: OrgMemberWithAssignments[] = rolesRes.ok ? await rolesRes.json() : [];
       const groups: SpeciesGroupWithCoordinators[] = groupsRes.ok ? await groupsRes.json() : [];
@@ -178,19 +188,18 @@ export function PeopleManagement() {
       }
 
       // Merge into PeopleMember[]
-      const merged: PeopleMember[] = clerkMembers.map((cm) => {
-        const userId = cm.publicUserData.userId;
+      const merged: PeopleMember[] = members.map((member) => {
+        const userId = member.userId;
         const rbac = rolesByUserId.get(userId);
         const carer = carersByUserId.get(userId);
 
         return {
-          clerkMembershipId: cm.id,
           userId,
-          firstName: cm.publicUserData.firstName,
-          lastName: cm.publicUserData.lastName,
-          imageUrl: cm.publicUserData.imageUrl,
-          email: cm.publicUserData.identifier,
-          joinedAt: cm.createdAt,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          imageUrl: member.imageUrl ?? '',
+          email: member.email ?? '',
+          joinedAt: member.joinedAt ?? '',
           role: rbac?.role ?? null,
           orgMemberId: rbac?.id ?? null,
           speciesAssignments: rbac?.speciesAssignments ?? [],
@@ -201,6 +210,18 @@ export function PeopleManagement() {
 
       setPeople(merged);
       setPendingInvitations(invitations);
+      setSeatAllocation(
+        orgContext.source === 'db'
+          ? seats
+          : {
+              limit: DEFAULT_SEAT_LIMIT,
+              used: members.length + invitations.length,
+              remaining: Math.max(
+                0,
+                DEFAULT_SEAT_LIMIT - members.length - invitations.length
+              ),
+            }
+      );
       setSpeciesGroups(groups);
     } catch (error) {
       console.error('Error loading people data:', error);
@@ -225,7 +246,10 @@ export function PeopleManagement() {
     if (!organization) return;
 
     if (!inviteEmail) { toast.error('Please enter an email address'); return; }
-    if (people.length >= MAX_USERS) { toast.error(`Maximum of ${MAX_USERS} users per organisation reached`); return; }
+    if (seatAllocation.used >= seatAllocation.limit) {
+      toast.error(`Organisation seat limit reached (${seatAllocation.used} / ${seatAllocation.limit})`);
+      return;
+    }
     if (!validateEmail(inviteEmail)) { toast.error('Please enter a valid email address'); return; }
 
     setSendingInvite(true);
@@ -233,7 +257,13 @@ export function PeopleManagement() {
       const res = await fetch('/api/admin/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emailAddress: inviteEmail }),
+        // role applies in db org mode: the membership row is created with it
+        // at invite time (issue #56)
+        body: JSON.stringify(
+          orgContext.source === 'db'
+            ? { emailAddress: inviteEmail, role: inviteRole }
+            : { emailAddress: inviteEmail }
+        ),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -258,15 +288,18 @@ export function PeopleManagement() {
     if (!organization) return;
     setRevokingInviteId(invitationId);
     try {
-      const invitationsList = await organization.getInvitations();
-      const invitation = invitationsList.data.find(inv => inv.id === invitationId);
-      if (!invitation) { toast.error('Invitation not found'); return; }
-      await invitation.revoke();
+      const res = await fetch(`/api/admin/invite?id=${encodeURIComponent(invitationId)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to revoke invitation');
+      }
       toast.success('Invitation revoked successfully');
       refreshAll();
     } catch (error) {
       console.error('Error revoking invitation:', error);
-      toast.error('Failed to revoke invitation');
+      toast.error(error instanceof Error ? error.message : 'Failed to revoke invitation');
     } finally {
       setRevokingInviteId(null);
     }
@@ -426,7 +459,8 @@ export function PeopleManagement() {
   // ── Helpers ────────────────────────────────────────────────────────
 
   const isAdmin = membership?.role === 'org:admin';
-  const remainingSlots = MAX_USERS - people.length;
+  const remainingSlots = seatAllocation.remaining;
+  const atSeatLimit = seatAllocation.used >= seatAllocation.limit;
 
   const getRoleIcon = (role: string | null) => {
     switch (role) {
@@ -485,9 +519,23 @@ export function PeopleManagement() {
                   placeholder="user@example.com"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  disabled={sendingInvite || people.length >= MAX_USERS}
+                  disabled={sendingInvite || atSeatLimit}
                 />
-                <Button type="submit" disabled={sendingInvite || people.length >= MAX_USERS}>
+                {orgContext.source === 'db' && (
+                  <Select value={inviteRole} onValueChange={setInviteRole} disabled={sendingInvite}>
+                    <SelectTrigger className="w-[170px]">
+                      <SelectValue placeholder="Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ADMIN">Admin</SelectItem>
+                      <SelectItem value="COORDINATOR_ALL">Coordinator (All)</SelectItem>
+                      <SelectItem value="COORDINATOR">Coordinator</SelectItem>
+                      <SelectItem value="CARER_ALL">Carer (All)</SelectItem>
+                      <SelectItem value="CARER">Carer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button type="submit" disabled={sendingInvite || atSeatLimit}>
                   {sendingInvite ? 'Sending...' : 'Send Invite'}
                 </Button>
               </div>
@@ -495,7 +543,7 @@ export function PeopleManagement() {
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Users className="h-4 w-4" />
-                {people.length} / {MAX_USERS} users
+                {`${seatAllocation.used} / ${seatAllocation.limit} seats used`}
               </span>
               {remainingSlots > 0 && remainingSlots <= 5 && (
                 <span className="text-amber-600">
@@ -535,7 +583,7 @@ export function PeopleManagement() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(invitation.createdAt).toLocaleDateString()}
+                      {invitation.createdAt ? new Date(invitation.createdAt).toLocaleDateString() : '—'}
                     </TableCell>
                     <TableCell className="text-right">
                       <AlertDialog>
@@ -623,7 +671,7 @@ export function PeopleManagement() {
                   const isCurrentUser = member.userId === user?.id;
 
                   return (
-                    <TableRow key={member.clerkMembershipId}>
+                    <TableRow key={member.userId}>
                       {/* Name + avatar */}
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">

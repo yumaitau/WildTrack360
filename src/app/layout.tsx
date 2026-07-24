@@ -13,6 +13,9 @@ import { WorkspaceShell } from '@/components/workspace-shell';
 import { getUserRole } from '@/lib/rbac';
 import { isFeatureEnabled } from '@/lib/features';
 import { filterCommandItemsForRole } from '@/lib/workspace-navigation';
+import { OrgProvider, type OrgContextValue } from '@/components/org-provider';
+import { getOrganisationInfo } from '@/lib/org-directory';
+import { orgSource, orgSourceForOrg } from '@/lib/org-source';
 
 export const metadata: Metadata = {
   title: 'WildTrack360',
@@ -303,16 +306,35 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   let workspaceRole: OrgRole | null = null;
   let customFormsEnabled = false;
   let communityEnabled = false;
+  // Server-resolved org context for client components (issue #56): for a
+  // database-managed org (DB_ORG_SOURCE flag from the admin panel) Clerk's
+  // useOrganization() has no active org, so the layout provides the
+  // subdomain-resolved organisation through OrgProvider instead.
+  const orgContextValue: OrgContextValue = {
+    source: orgSource(),
+    orgId: orgId ?? null,
+    orgName: null,
+    orgSlug: null,
+    role: null,
+  };
 
   if (userId && orgId) {
     try {
       workspaceRole = await getUserRole(userId, orgId);
-      [customFormsEnabled, communityEnabled] = await Promise.all([
+      const [org, source, forms, community] = await Promise.all([
+        getOrganisationInfo(orgId),
+        orgSourceForOrg(orgId),
         isFeatureEnabled(orgId, 'CUSTOM_FORMS'),
         // Nav visibility follows the active org's COMMUNITY_BOARD flag; the
         // /community routes themselves enforce the full home-org access check.
         isFeatureEnabled(orgId, 'COMMUNITY_BOARD'),
       ]);
+      customFormsEnabled = forms;
+      communityEnabled = community;
+      orgContextValue.source = source;
+      orgContextValue.orgName = org?.name ?? null;
+      orgContextValue.orgSlug = org?.slug ?? null;
+      orgContextValue.role = workspaceRole;
     } catch (error) {
       console.error('Unable to load workspace navigation role:', error);
     }
@@ -332,6 +354,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           />
         </head>
         <body className="font-body antialiased min-h-screen">
+          <OrgProvider value={orgContextValue}>
           <GoogleMapsProvider>
             <WorkspaceShell
               role={workspaceRole}
@@ -345,6 +368,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <WallyAssistant />
           <Toaster closeButton richColors position="top-right" />
           <LegacyToaster />
+          </OrgProvider>
         </body>
       </html>
     </ClerkProvider>

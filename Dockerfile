@@ -13,16 +13,14 @@ WORKDIR /usr/src/app
 # Copy package.json and package-lock.json first for caching
 COPY package*.json ./
 
-# Copy Prisma schema before pnpm install so postinstall hooks can find it
+# Copy Prisma schema before npm ci so postinstall hooks can find it
 COPY prisma ./prisma
 
 # Install OpenSSL
-RUN corepack enable && corepack install -g pnpm@latest
 RUN apt-get update -y && apt-get install -y openssl
 
 # Install dependencies (this will also run prisma generate via postinstall)
-RUN corepack enable && corepack install -g pnpm@latest
-RUN pnpm install
+RUN npm ci
 
 # Copy the rest of the application code
 COPY . .
@@ -54,8 +52,7 @@ ENV NEXT_PUBLIC_SENTRY_PROJECT=$NEXT_PUBLIC_SENTRY_PROJECT
 # Drop .next/cache after the build — it's webpack/Sentry build cache (multi-GB)
 # that has no value at runtime and otherwise gets baked into the final image.
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN corepack enable && corepack install -g pnpm@latest
-RUN pnpm build && rm -rf .next/cache
+RUN npm run build && rm -rf .next/cache
 
 # ============================================
 # Stage 2: Run Next.js application
@@ -64,7 +61,6 @@ RUN pnpm build && rm -rf .next/cache
 FROM node:${NODE_VERSION}
 
 # Install OpenSSL
-RUN corepack enable && corepack install -g pnpm@latest
 RUN apt-get update -y && apt-get install -y openssl
 
 # Set working directory
@@ -78,7 +74,6 @@ WORKDIR /usr/src/app
 # and other dev-only tooling are dropped.
 COPY --from=build-stage --chown=node:node /usr/src/app/package*.json ./
 COPY --from=build-stage --chown=node:node /usr/src/app/prisma ./prisma
-RUN corepack enable && corepack install -g pnpm@latest
 RUN npm ci --omit=dev
 
 # Copy built assets and necessary files from the build stage
