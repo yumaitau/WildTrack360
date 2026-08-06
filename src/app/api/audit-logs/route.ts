@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@/lib/clerk-server';
+import { auth } from '@/lib/clerk-server';
+import { getOrgRoster } from '@/lib/org-directory';
 import { prisma } from '@/lib/prisma';
 import { requirePermission } from '@/lib/rbac';
 import type { AuditAction, Prisma } from '@prisma/client';
@@ -43,46 +44,23 @@ type SortField = (typeof VALID_SORT_FIELDS)[number];
 
 type AuditUserLookup = Map<string, { email: string; searchable: string }>;
 
-type OrgMembership = {
-  publicUserData?: {
-    userId?: string | null;
-    firstName?: string | null;
-    lastName?: string | null;
-    identifier?: string | null;
-  } | null;
-};
-
 async function getAuditUserLookup(orgId: string): Promise<AuditUserLookup> {
-  const client = await clerkClient();
+  const roster = await getOrgRoster(orgId);
   const users: AuditUserLookup = new Map();
-  const limit = 100;
-  let offset = 0;
 
-  while (true) {
-    const batch = await client.organizations.getOrganizationMembershipList({
-      organizationId: orgId,
-      limit,
-      offset,
-    });
-    for (const membership of batch.data as OrgMembership[]) {
-      const publicUserData = membership.publicUserData;
-      const userId = publicUserData?.userId;
-      if (!userId) continue;
-      const email = publicUserData?.identifier || '';
-      const searchable = [
-        userId,
-        publicUserData?.firstName,
-        publicUserData?.lastName,
-        [publicUserData?.firstName, publicUserData?.lastName].filter(Boolean).join(' '),
-        email,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      users.set(userId, { email, searchable });
-    }
-    if (batch.data.length < limit) break;
-    offset += limit;
+  for (const member of roster) {
+    const email = member.email || '';
+    const searchable = [
+      member.userId,
+      member.firstName,
+      member.lastName,
+      [member.firstName, member.lastName].filter(Boolean).join(' '),
+      email,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    users.set(member.userId, { email, searchable });
   }
 
   return users;

@@ -1,4 +1,5 @@
-import { auth, currentUser, clerkClient } from '@/lib/clerk-server';
+import { auth, currentUser } from '@/lib/clerk-server';
+import { getOrganisationInfo } from '@/lib/org-directory';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import HomeClient from './home-client';
@@ -12,6 +13,7 @@ import { fetchFeedRosterItems } from '@/lib/feed-roster';
 import { extractSubdomain } from '@/lib/subdomain';
 import { getNSWReminderBannerForUser } from '@/lib/nsw-reminders';
 import { isScreenshotMode } from '@/lib/screenshot-mode';
+import { tenantBaseUrlFromSlug } from '@/lib/tenant-url';
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
@@ -28,14 +30,21 @@ export default async function Home() {
   const host = headersList.get('host') ?? '';
   const subdomain = extractSubdomain(host, ROOT_DOMAIN);
 
+  // A signed-in user on a tenant subdomain without a resolved org is not a
+  // member here: for database-managed orgs (DB_ORG_SOURCE flag) auth() only
+  // yields an orgId after the subdomain → Organisation → OrgMember check;
+  // for legacy orgs the Clerk session carries no active org. Mirrors the
+  // middleware's org_url-claim redirect, which claimless sessions bypass.
+  if (!isScreenshotMode() && subdomain && !orgId) {
+    redirect('/unauthorized');
+  }
+
   if (!isScreenshotMode() && !subdomain && orgId) {
     try {
-      const clerk = await clerkClient();
-      const org = await clerk.organizations.getOrganization({ organizationId: orgId });
-      const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
+      const org = await getOrganisationInfo(orgId);
+      const orgUrl = org?.slug ?? undefined;
       if (orgUrl && /^[a-zA-Z0-9-]+$/.test(orgUrl)) {
-        const protocol = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
-        redirect(`${protocol}://${orgUrl}.${ROOT_DOMAIN}/`);
+        redirect(`${tenantBaseUrlFromSlug(orgUrl)}/`);
       }
     } catch (error) {
       // Re-throw Next.js redirect (it throws a special error internally)
@@ -49,11 +58,17 @@ export default async function Home() {
   // Use the active Clerk organization
   const organizationId = orgId || '';
 
-  // Sync Clerk user data with our database
+  // Sync Clerk user data with our database (lazy fallback for the webhook).
+  // Only a verified email may claim a pending invite placeholder row.
   if (user) {
+    const primaryEmail =
+      user.emailAddresses.find((e: { id: string }) => e.id === user.primaryEmailAddressId) ??
+      user.emailAddresses[0];
+    const verifiedEmail =
+      primaryEmail?.verification?.status === 'verified' ? primaryEmail.emailAddress : null;
     await createOrUpdateClerkUser({
       id: user.id,
-      email: user.emailAddresses[0]?.emailAddress || '',
+      email: verifiedEmail,
       firstName: user.firstName || undefined,
       lastName: user.lastName || undefined,
       imageUrl: user.imageUrl || undefined,

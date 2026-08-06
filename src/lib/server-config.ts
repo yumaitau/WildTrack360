@@ -1,5 +1,5 @@
 import 'server-only';
-import { clerkClient } from '@/lib/clerk-server';
+import { getOrganisationInfo } from '@/lib/org-directory';
 
 // Define jurisdiction configuration type
 type JurisdictionConfig = {
@@ -109,17 +109,15 @@ const JURISDICTION_CONFIGS: { [key: string]: JurisdictionConfig } = {
   },
 };
 
-// Get organization jurisdiction from Clerk (server-side)
+// Get organisation jurisdiction (server-side). Resolves from the DB or Clerk
+// publicMetadata depending on ORG_SOURCE (see src/lib/org-directory.ts).
 export async function getServerJurisdiction(orgId: string | null): Promise<string> {
   if (!orgId) return 'ACT'; // Default jurisdiction
-  
+
   try {
-    const client = await clerkClient();
-    const org = await client.organizations.getOrganization({ organizationId: orgId });
-    
-    // Check for jurisdiction in publicMetadata
-    const jurisdiction = org.publicMetadata?.jurisdiction as string | undefined;
-    
+    const org = await getOrganisationInfo(orgId);
+    const jurisdiction = org?.jurisdiction ?? undefined;
+
     // Validate jurisdiction exists in our configs
     if (jurisdiction && JURISDICTION_CONFIGS[jurisdiction]) {
       return jurisdiction;
@@ -127,7 +125,7 @@ export async function getServerJurisdiction(orgId: string | null): Promise<strin
   } catch (error) {
     console.error('Error fetching organization jurisdiction:', error);
   }
-  
+
   return 'ACT'; // Default jurisdiction if not found
 }
 

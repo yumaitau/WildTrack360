@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@/lib/clerk-server';
+import { auth } from '@/lib/clerk-server';
+import { getOrganisationInfo } from '@/lib/org-directory';
 import { requirePermission } from '@/lib/rbac';
 import { gateFeature } from '@/lib/features';
 import { prisma } from '@/lib/prisma';
 import { route } from '@/lib/openapi/route';
+import { tenantBaseUrlFromSlug } from '@/lib/tenant-url';
 import { squareEmbedContract } from '../openapi';
-
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
 export const GET = route(squareEmbedContract, async () => {
   const { userId, orgId } = await auth();
@@ -20,9 +20,8 @@ export const GET = route(squareEmbedContract, async () => {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const clerk = await clerkClient();
-  const org = await clerk.organizations.getOrganization({ organizationId: orgId });
-  const orgUrl = (org.publicMetadata as Record<string, unknown>)?.org_url as string | undefined;
+  const org = await getOrganisationInfo(orgId);
+  const orgUrl = org?.slug ?? undefined;
   if (!orgUrl || !/^[a-zA-Z0-9-]+$/.test(orgUrl)) {
     return NextResponse.json({ error: 'Your organisation has no public web address configured yet.' }, { status: 400 });
   }
@@ -37,8 +36,7 @@ export const GET = route(squareEmbedContract, async () => {
     return NextResponse.json({ error: 'That web address is already in use.' }, { status: 409 });
   }
 
-  const protocol = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
-  const baseUrl = `${protocol}://${orgUrl}.${ROOT_DOMAIN}`;
+  const baseUrl = tenantBaseUrlFromSlug(orgUrl);
   return {
     data: {
       handle: orgUrl,

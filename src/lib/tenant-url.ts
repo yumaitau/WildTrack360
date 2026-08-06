@@ -1,23 +1,49 @@
 import 'server-only';
 
-import { clerkClient } from '@clerk/nextjs/server';
-
 // Resolving a tenant's absolute base URL. Each org lives on its own subdomain
-// (`<org_url>.<root>`), so a baked-in site-URL env var (NEXT_PUBLIC_APP_URL)
+// (`<slug>.<root>`), so a baked-in site-URL env var (NEXT_PUBLIC_APP_URL)
 // can't be right for more than one tenant — and isn't even present at runtime
 // in the Docker image, which is why it fell back to http://localhost:3000. We
-// derive the host from the org's `org_url` publicMetadata (the same slug the
-// middleware matches against the request subdomain) and the BAKED
-// NEXT_PUBLIC_ROOT_DOMAIN.
-
-type Clerk = Awaited<ReturnType<typeof clerkClient>>;
+// derive the host from the org's subdomain slug (Organisation.slug in db
+// mode, Clerk publicMetadata.org_url in clerk mode — see org-directory.ts)
+// and the BAKED NEXT_PUBLIC_ROOT_DOMAIN.
 
 function rootDomain(): string {
   return process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 }
 
 function protocolFor(host: string): 'http' | 'https' {
-  return host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
+  const root = rootDomain();
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+
+  if (configuredAppUrl) {
+    try {
+      const configured = new URL(configuredAppUrl);
+      if (
+        configured.host === root &&
+        (configured.protocol === 'http:' || configured.protocol === 'https:')
+      ) {
+        return configured.protocol.slice(0, -1) as 'http' | 'https';
+      }
+    } catch {
+      // Fall through to the safe hostname-based default below.
+    }
+  }
+
+  let hostname = host.toLowerCase();
+  try {
+    hostname = new URL(`http://${host}`).hostname.toLowerCase();
+  } catch {
+    // Keep the raw host for the conservative HTTPS fallback.
+  }
+
+  return hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === 'homelab' ||
+    hostname.endsWith('.homelab')
+    ? 'http'
+    : 'https';
 }
 
 // Only the root domain itself or one of its subdomains is a host we'd ever
@@ -40,16 +66,11 @@ export function tenantBaseUrlFromSlug(orgUrl: string | null | undefined): string
 }
 
 // Look up an org's tenant base origin (e.g. https://rescue.wildtrack360.com.au).
-// Pass an existing Clerk client to avoid a second handshake when the caller
-// already has one.
-export async function tenantBaseUrl(orgId: string, clerk?: Clerk): Promise<string> {
-  const client = clerk ?? (await clerkClient());
+export async function tenantBaseUrl(orgId: string): Promise<string> {
   try {
-    const org = await client.organizations.getOrganization({ organizationId: orgId });
-    const orgUrl = (org.publicMetadata as Record<string, unknown> | null)?.org_url as
-      | string
-      | undefined;
-    return tenantBaseUrlFromSlug(orgUrl);
+    const { getOrganisationInfo } = await import('@/lib/org-directory');
+    const org = await getOrganisationInfo(orgId);
+    return tenantBaseUrlFromSlug(org?.slug ?? undefined);
   } catch {
     return tenantBaseUrlFromSlug(undefined);
   }

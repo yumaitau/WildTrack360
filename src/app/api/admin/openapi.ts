@@ -10,7 +10,10 @@ export const listCarerInterestContract = defineContract({
   tags: ['Admin'],
   security: 'clerkSession',
   responses: {
-    200: { description: 'Carer interest list', schema: z.object({ interests: z.array(z.object({}).passthrough()) }) },
+    200: {
+      description: 'Carer interest list',
+      schema: z.object({ interests: z.array(z.object({}).passthrough()) }),
+    },
   },
   successStatus: 200,
 });
@@ -56,7 +59,10 @@ export const dataExportContract = defineContract({
   tags: ['Admin'],
   security: 'clerkSession',
   responses: {
-    200: { description: 'Zip archive containing XLSX + S3 files', schema: z.unknown().openapi('DataExport') },
+    200: {
+      description: 'Zip archive containing XLSX + S3 files',
+      schema: z.unknown().openapi('DataExport'),
+    },
   },
   successStatus: 200,
 });
@@ -78,7 +84,10 @@ export const nswRegistersExportContract = defineContract({
     }),
   },
   responses: {
-    200: { description: 'Register export (CSV or XLSX)', schema: z.unknown().openapi('NSWRegisterExport') },
+    200: {
+      description: 'Register export (CSV or XLSX)',
+      schema: z.unknown().openapi('NSWRegisterExport'),
+    },
   },
   successStatus: 200,
 });
@@ -153,6 +162,8 @@ export const deleteUserContract = defineContract({
 
 // ── Admin: Invite User ──────────────────────────────────────────────────────
 
+const ORG_ROLE_VALUES = ['ADMIN', 'COORDINATOR_ALL', 'COORDINATOR', 'CARER_ALL', 'CARER'] as const;
+
 export const inviteUserContract = defineContract({
   method: 'post',
   path: '/api/admin/invite',
@@ -160,13 +171,105 @@ export const inviteUserContract = defineContract({
   tags: ['Admin'],
   security: 'clerkSession',
   request: {
-    body: z.object({ emailAddress: z.string().email() }),
+    // role applies in db org mode (issue #56): the OrgMember row is created
+    // with this role at invite time. Defaults to CARER.
+    body: z.object({
+      emailAddress: z.string().email(),
+      role: z.enum(ORG_ROLE_VALUES).optional(),
+    }),
   },
   responses: {
     200: { description: 'Invitation created', schema: z.object({ id: z.string() }) },
     401: { description: 'Unauthorized' },
     403: { description: 'Forbidden or invitation not permitted by Clerk' },
+    409: { description: 'Already a member or already invited' },
     502: { description: 'Invitation provider failed' },
+  },
+  successStatus: 200,
+});
+
+export const listMembersContract = defineContract({
+  method: 'get',
+  path: '/api/admin/members',
+  summary: 'List organisation members (admin roster)',
+  tags: ['Admin'],
+  security: 'clerkSession',
+  responses: {
+    200: {
+      description: 'Organisation members',
+      schema: z.array(
+        z.object({
+          userId: z.string(),
+          firstName: z.string().nullable(),
+          lastName: z.string().nullable(),
+          email: z.string().nullable(),
+          imageUrl: z.string().nullable(),
+          joinedAt: z.string().nullable(),
+        })
+      ),
+    },
+    401: { description: 'Unauthorized' },
+    403: { description: 'Forbidden' },
+  },
+  successStatus: 200,
+});
+
+const pendingInviteSchema = z.object({
+  id: z.string(),
+  emailAddress: z.string(),
+  role: z.enum(ORG_ROLE_VALUES).nullable(),
+  createdAt: z.string().nullable(),
+});
+
+export const listInvitesContract = defineContract({
+  method: 'get',
+  path: '/api/admin/invite',
+  summary: 'List pending organisation invitations (admin)',
+  tags: ['Admin'],
+  security: 'clerkSession',
+  responses: {
+    200: { description: 'Pending invitations', schema: z.array(pendingInviteSchema) },
+    401: { description: 'Unauthorized' },
+    403: { description: 'Forbidden' },
+  },
+  successStatus: 200,
+});
+
+export const getOrgSeatContract = defineContract({
+  method: 'get',
+  path: '/api/admin/org-seat',
+  summary: 'Get the organisation seat limit and current usage (admin)',
+  tags: ['Admin'],
+  security: 'clerkSession',
+  responses: {
+    200: {
+      description: 'Organisation seat allocation',
+      schema: z.object({
+        limit: z.number().int(),
+        used: z.number().int(),
+        remaining: z.number().int(),
+      }),
+    },
+    401: { description: 'Unauthorized' },
+    403: { description: 'Forbidden' },
+  },
+  successStatus: 200,
+});
+
+export const revokeInviteContract = defineContract({
+  method: 'delete',
+  path: '/api/admin/invite',
+  summary: 'Revoke a pending organisation invitation (admin)',
+  tags: ['Admin'],
+  security: 'clerkSession',
+  request: {
+    query: z.object({ id: z.string() }),
+  },
+  responses: {
+    200: { description: 'Invitation revoked', schema: z.object({ ok: z.boolean() }) },
+    401: { description: 'Unauthorized' },
+    403: { description: 'Forbidden' },
+    404: { description: 'Invitation not found' },
   },
   successStatus: 200,
 });

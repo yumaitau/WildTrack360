@@ -217,7 +217,8 @@ describe('sendDueNSWReminderNotifications', () => {
         orgId: 'org-bad',
         status: 'error',
         reason: 'org_lookup_failed',
-        error: 'Clerk unavailable',
+        // org-directory normalises provider lookup failures to "not found"
+        error: 'Organisation not found',
       },
       { orgId: 'org-act', status: 'skipped', reason: 'non-nsw' },
     ]);

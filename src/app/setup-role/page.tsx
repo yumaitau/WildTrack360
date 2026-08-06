@@ -2,6 +2,7 @@ import { auth } from '@/lib/clerk-server';
 import { clerkClient } from '@/lib/clerk-server';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { isDbOrg } from '@/lib/org-source';
 import SetupRoleClient from './setup-role-client';
 
 export default async function SetupRolePage() {
@@ -13,6 +14,13 @@ export default async function SetupRolePage() {
 
   if (!orgId) {
     redirect('/landing');
+  }
+
+  // Database-managed orgs (DB_ORG_SOURCE flag) create every member's
+  // OrgMember row at invite time, so the Clerk-role self-provision flow is
+  // obsolete for them (issue #56 Phase 3).
+  if (await isDbOrg(orgId)) {
+    redirect('/');
   }
 
   // If the user already has an OrgMember record, they're migrated — send them home

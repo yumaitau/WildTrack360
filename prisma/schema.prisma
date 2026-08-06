@@ -699,6 +699,43 @@ model NSWLifeStage {
   @@map("nsw_life_stages")
 }
 
+// ─── Organisation & User (DB-managed identity; Clerk is auth-only) ──────────
+// Issue #56: organisation identity, membership and metadata resolve from
+// Postgres. Ids reuse the Clerk ids already stored across tenant tables
+// ("org_..." / "user_..."); organisations created after the migration use a
+// "worg_" prefix so provenance stays obvious.
+
+model Organisation {
+  id           String   @id
+  name         String
+  slug         String   @unique // subdomain, canonical replacement for Clerk publicMetadata.org_url
+  jurisdiction String? // was Clerk publicMetadata.jurisdiction
+  logoUrl      String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  members OrgMember[]
+
+  @@map("organisations")
+}
+
+model User {
+  id          String    @id // Clerk user id; invited-not-yet-signed-up rows use a "pending_" prefix
+  email       String?   @unique
+  firstName   String?
+  lastName    String?
+  imageUrl    String?
+  isActive    Boolean   @default(true)
+  invitedAt   DateTime? // set when the row was created via an invite
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  memberships OrgMember[]
+
+  @@map("users")
+}
+
 // ─── RBAC Models ─────────────────────────────────────────────────────────────
 
 enum OrgRole {
@@ -721,6 +758,9 @@ model OrgMember {
 
   // A coordinator can be assigned to one or more species groups
   speciesAssignments CoordinatorSpeciesAssignment[]
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@unique([userId, orgId])
   @@index([orgId])
@@ -1192,6 +1232,7 @@ model OrgFeatureFlag {
   clerkOrganizationId String   @map("clerk_organization_id")
   feature             String // e.g. "MEMBERSHIP_PLATFORM"
   enabled             Boolean  @default(false)
+  valueInt            Int?     @map("value_int") // Numeric feature value, e.g. ORG_SEAT
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 

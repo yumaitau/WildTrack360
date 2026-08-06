@@ -39,7 +39,7 @@ export async function invitePortalMember(memberId: string, orgId: string): Promi
 
   try {
     const clerk = await clerkClient();
-    const base = await tenantBaseUrl(orgId, clerk);
+    const base = await tenantBaseUrl(orgId);
     const invitation = await clerk.invitations.createInvitation({
       emailAddress: member.email,
       redirectUrl: `${base}/portal/sign-up`,
