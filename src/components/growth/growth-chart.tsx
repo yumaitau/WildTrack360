@@ -2,18 +2,15 @@
 
 import { useMemo } from "react";
 import { Info } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { colorLegend, defineChart, lineY } from "@tanstack/charts";
+import { Chart } from "@tanstack/charts/react";
+import { scaleLinear } from "@tanstack/charts/scales/linear";
+import { tooltip } from "@tanstack/charts/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { type GrowthReferencePoint, calculatePredictedWeight } from "@/lib/growth-utils";
+import {
+  type GrowthReferencePoint,
+  calculatePredictedWeight,
+} from "@/lib/growth-utils";
 import type { GrowthMeasurement } from "@prisma/client";
 import { differenceInDays } from "date-fns";
 
@@ -27,11 +24,16 @@ interface GrowthChartProps {
   dateOfBirth: Date | null;
 }
 
-interface ChartDataPoint {
+interface SeriesPoint {
   ageDays: number;
-  actual?: number;
-  predicted?: number;
+  weight: number;
+  series: "Actual Weight" | "Predicted Weight";
 }
+
+const SERIES_COLORS = {
+  "Predicted Weight": "hsl(var(--chart-1, 221.2 83.2% 53.3%))",
+  "Actual Weight": "hsl(var(--chart-2, 0 84.2% 60.2%))",
+} as const;
 
 export function GrowthChart({
   measurements,
@@ -44,54 +46,91 @@ export function GrowthChart({
         .map((r) => (r as GrowthReferenceWithMeta).reference)
         .filter(Boolean)
     );
-    return sources.size > 0 ? Array.from(sources).join('; ') : null;
+    return sources.size > 0 ? Array.from(sources).join("; ") : null;
   }, [referenceData]);
 
-  const chartData = useMemo(() => {
-    if (!dateOfBirth) return [];
+  const seriesRows = useMemo(() => {
+    if (!dateOfBirth) return [] as SeriesPoint[];
 
     const dob = new Date(dateOfBirth);
-    const dataMap = new Map<number, ChartDataPoint>();
+    const predicted: SeriesPoint[] = [];
+    const actual: SeriesPoint[] = [];
+    const agesWithActual = new Set<number>();
 
-    // Add actual measurements
     for (const m of measurements) {
       if (m.weightGrams == null) continue;
       const ageDays = differenceInDays(new Date(m.date), dob);
       if (ageDays < 0) continue;
-      dataMap.set(ageDays, {
+      agesWithActual.add(ageDays);
+      actual.push({
         ageDays,
-        actual: m.weightGrams,
-        predicted: dataMap.get(ageDays)?.predicted,
+        weight: m.weightGrams,
+        series: "Actual Weight",
       });
     }
 
-    // Add predicted curve from reference data
     for (const ref of referenceData) {
       if (ref.weightGrams == null) continue;
-      const existing = dataMap.get(ref.ageDays);
-      dataMap.set(ref.ageDays, {
+      predicted.push({
         ageDays: ref.ageDays,
-        actual: existing?.actual,
-        predicted: ref.weightGrams,
+        weight: ref.weightGrams,
+        series: "Predicted Weight",
       });
     }
 
-    // Also fill predicted values at actual measurement ages
-    for (const m of measurements) {
-      if (m.weightGrams == null) continue;
-      const ageDays = differenceInDays(new Date(m.date), dob);
-      if (ageDays < 0) continue;
-      const point = dataMap.get(ageDays);
-      if (point && point.predicted == null) {
-        const predicted = calculatePredictedWeight(referenceData, ageDays);
-        if (predicted != null) {
-          point.predicted = predicted;
-        }
+    // Fill predicted at actual measurement ages when missing from reference
+    for (const ageDays of agesWithActual) {
+      if (predicted.some((p) => p.ageDays === ageDays)) continue;
+      const weight = calculatePredictedWeight(referenceData, ageDays);
+      if (weight != null) {
+        predicted.push({ ageDays, weight, series: "Predicted Weight" });
       }
     }
 
-    return Array.from(dataMap.values()).sort((a, b) => a.ageDays - b.ageDays);
+    predicted.sort((a, b) => a.ageDays - b.ageDays);
+    actual.sort((a, b) => a.ageDays - b.ageDays);
+
+    return [...predicted, ...actual];
   }, [measurements, referenceData, dateOfBirth]);
+
+  const definition = useMemo(() => {
+    if (seriesRows.length === 0) return null;
+
+    return defineChart({
+      marks: [
+        lineY(seriesRows, {
+          x: "ageDays",
+          y: "weight",
+          z: "series",
+          color: "series",
+          strokeWidth: 2,
+          points: true,
+          key: (d) => `${d.series}-${d.ageDays}`,
+        }),
+      ],
+      x: {
+        scale: scaleLinear,
+        nice: true,
+        grid: true,
+        axis: { label: "Age (days)" },
+      },
+      y: {
+        scale: scaleLinear,
+        nice: true,
+        grid: true,
+        axis: { label: "Weight (g)" },
+      },
+      color: {
+        domain: ["Predicted Weight", "Actual Weight"],
+        range: [
+          SERIES_COLORS["Predicted Weight"],
+          SERIES_COLORS["Actual Weight"],
+        ],
+        legend: colorLegend({ label: "Series" }),
+      },
+      tooltip,
+    });
+  }, [seriesRows]);
 
   if (!dateOfBirth) {
     return (
@@ -109,7 +148,7 @@ export function GrowthChart({
     );
   }
 
-  if (chartData.length === 0) {
+  if (seriesRows.length === 0 || !definition) {
     return (
       <Card>
         <CardHeader>
@@ -131,53 +170,14 @@ export function GrowthChart({
         <CardTitle>Growth Chart</CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={350}>
-          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="ageDays"
-              label={{ value: "Age (days)", position: "insideBottomRight", offset: -5 }}
-            />
-            <YAxis
-              label={{
-                value: "Weight (g)",
-                angle: -90,
-                position: "insideLeft",
-                offset: -5,
-              }}
-            />
-            <Tooltip
-              formatter={(value: number, name: string) => [
-                `${Math.round(value)}g`,
-                name === "actual" ? "Actual" : "Predicted",
-              ]}
-              labelFormatter={(label) => `Age: ${label} days`}
-            />
-            <Legend
-              formatter={(value) =>
-                value === "actual" ? "Actual Weight" : "Predicted Weight"
-              }
-            />
-            <Line
-              type="monotone"
-              dataKey="predicted"
-              stroke="hsl(var(--chart-1, 221.2 83.2% 53.3%))"
-              strokeWidth={2}
-              dot={false}
-              connectNulls
-              name="predicted"
-            />
-            <Line
-              type="monotone"
-              dataKey="actual"
-              stroke="hsl(var(--chart-2, 0 84.2% 60.2%))"
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              connectNulls
-              name="actual"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <div className="h-[350px] w-full">
+          <Chart
+            definition={definition}
+            height={350}
+            ariaLabel="Growth chart comparing actual and predicted weight"
+            className="h-full w-full"
+          />
+        </div>
         {referenceSource && (
           <div className="flex items-start gap-1.5 mt-3 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />

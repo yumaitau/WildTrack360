@@ -115,7 +115,7 @@ export type QuerySeries = Array<{
 
 /**
  * Transform a {@link QuerySeries} into rows + series keys suitable for a
- * Recharts line chart. Buckets are taken from the union of every series' point
+ * line chart. Buckets are taken from the union of every series' point
  * labels, sorted, and missing values are filled with 0 so lines stay continuous.
  */
 export function buildTrendChartRows(series: QuerySeries) {

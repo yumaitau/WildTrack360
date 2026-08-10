@@ -1,35 +1,25 @@
 // src/components/carer-distribution-chart.tsx
-'use client';
+"use client";
 
-import * as React from 'react';
-import { Pie, PieChart, Cell } from 'recharts';
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import * as React from "react";
+import { colorLegend, defineChart } from "@tanstack/charts";
+import { Chart } from "@tanstack/charts/react";
+import { pie, polar, radialArc } from "@tanstack/charts/polar";
+import { tooltip } from "@tanstack/charts/tooltip";
 import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from '@/components/ui/chart';
-import { Animal } from '@prisma/client';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { CHART_COLORS } from "@/components/ui/chart";
+import { Animal } from "@prisma/client";
 
 interface CarerDistributionChartProps {
   animals: Animal[];
   carerMap?: Record<string, string>; // carerId → name
 }
-
-const CHART_COLORS = [
-  'hsl(var(--chart-1))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
-  'hsl(var(--chart-5))',
-  '#f59e0b', // amber-500
-  '#10b981', // emerald-500
-  '#3b82f6', // blue-500
-];
 
 export default function CarerDistributionChart({
   animals,
@@ -37,7 +27,7 @@ export default function CarerDistributionChart({
 }: CarerDistributionChartProps) {
   const chartData = React.useMemo(() => {
     const carerCount = animals
-      .filter((a) => a.status === 'IN_CARE')
+      .filter((a) => a.status === "IN_CARE")
       .reduce(
         (acc, animal) => {
           if (animal.carerId) {
@@ -48,22 +38,40 @@ export default function CarerDistributionChart({
         {} as { [key: string]: number }
       );
 
-    return Object.entries(carerCount).map(([carerId, count], index) => ({
-      name: carerMap[carerId] || 'Carer email unavailable',
+    return Object.entries(carerCount).map(([carerId, count]) => ({
+      name: carerMap[carerId] || "Carer email unavailable",
       value: count,
-      fill: CHART_COLORS[index % CHART_COLORS.length],
     }));
   }, [animals, carerMap]);
 
-  const chartConfig = React.useMemo(() => {
-    const config: ChartConfig = {};
-    chartData.forEach((item) => {
-      config[item.name] = {
-        label: item.name,
-        color: item.fill,
-      };
+  const definition = React.useMemo(() => {
+    const slices = pie(chartData, { value: "value", gapAngle: 0.02 });
+    const names = chartData.map((d) => d.name);
+
+    return defineChart({
+      marks: [
+        polar({
+          inset: 8,
+          radiusRatio: 0.9,
+          marks: [
+            radialArc(slices, {
+              innerRadius: ({ radius }) => radius * 0.55,
+              cornerRadius: 3,
+              color: "name",
+              key: "name",
+            }),
+          ],
+        }),
+      ],
+      color: {
+        domain: names,
+        range: names.map(
+          (_, i) => CHART_COLORS[i % CHART_COLORS.length]
+        ),
+        legend: colorLegend({ label: "Carer" }),
+      },
+      tooltip,
     });
-    return config;
   }, [chartData]);
 
   return (
@@ -74,17 +82,14 @@ export default function CarerDistributionChart({
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         {chartData.length > 0 ? (
-          <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px]">
-            <PieChart>
-              <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-              <Pie data={chartData} dataKey="value" nameKey="name" innerRadius={60} strokeWidth={5}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Pie>
-              <ChartLegend content={<ChartLegendContent nameKey="name" />} />
-            </PieChart>
-          </ChartContainer>
+          <div className="mx-auto aspect-square max-h-[300px] w-full">
+            <Chart
+              definition={definition}
+              height={280}
+              ariaLabel="Animals currently in care per carer"
+              className="h-full w-full"
+            />
+          </div>
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             No data to display.
