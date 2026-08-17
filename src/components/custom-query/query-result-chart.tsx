@@ -5,20 +5,17 @@
 
 import * as React from 'react';
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+  barY,
+  colorLegend,
+  defineChart,
+  lineY,
+} from '@tanstack/charts';
+import { Chart } from '@tanstack/charts/react';
+import { pie, polar, radialArc } from '@tanstack/charts/polar';
+import { scaleBand } from '@tanstack/charts/scales/band';
+import { scaleLinear } from '@tanstack/charts/scales/linear';
+import { scalePoint } from '@tanstack/charts/scales/point';
+import { tooltip } from '@tanstack/charts/tooltip';
 import {
   Table,
   TableBody,
@@ -27,24 +24,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { CHART_COLORS } from '@/components/ui/chart';
 import type { CustomQueryResult } from '@/lib/custom-query/types';
 import { getUserFriendlyErrorMessage } from '@/lib/user-friendly-error';
 
-const COLORS = [
-  'hsl(var(--chart-1))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
-  'hsl(var(--chart-5))',
-  '#f59e0b',
-  '#10b981',
-  '#3b82f6',
-  '#ec4899',
-  '#8b5cf6',
-];
-
 function formatNumber(n: number): string {
-  return Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return Number.isInteger(n)
+    ? n.toLocaleString()
+    : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
 interface Props {
@@ -96,96 +83,218 @@ export function QueryResultChart({ result, height = 280 }: Props) {
 
   // ── bar ──
   if (visualization === 'bar') {
-    return (
-      <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={rows} margin={{ top: 16, right: 16, bottom: 16, left: 0 }}>
-          <CartesianGrid vertical={false} strokeDasharray="3 3" />
-          <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} interval={0} angle={rows.length > 6 ? -30 : 0} textAnchor={rows.length > 6 ? 'end' : 'middle'} height={rows.length > 6 ? 60 : 30} />
-          <YAxis allowDecimals={false} fontSize={12} />
-          <Tooltip formatter={(v: number) => formatNumber(v)} />
-          <Bar dataKey="value" radius={4}>
-            {rows.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    );
+    return <BarResultChart rows={rows} height={height} />;
   }
 
   // ── pie ──
   if (visualization === 'pie') {
-    return (
-      <ResponsiveContainer width="100%" height={height}>
-        <PieChart>
-          <Tooltip formatter={(v: number) => formatNumber(v)} />
-          <Legend />
-          <Pie
-            data={rows}
-            dataKey="value"
-            nameKey="label"
-            innerRadius={height * 0.18}
-            outerRadius={height * 0.38}
-            paddingAngle={2}
-          >
-            {rows.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
-            ))}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-    );
+    return <PieResultChart rows={rows} height={height} />;
   }
 
   // ── line ──
   if (visualization === 'line') {
-    const series = result.series ?? [];
-    if (series.length > 0) {
-      // Pivot series into one row per bucket with a column per group.
-      const buckets = rows.map((r) => r.label);
-      const data = buckets.map((bucket) => {
-        const point: Record<string, string | number> = { label: bucket };
-        for (const s of series) {
-          point[s.label] = s.rows.find((r) => r.label === bucket)?.value ?? 0;
-        }
-        return point;
-      });
-      return (
-        <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={data} margin={{ top: 16, right: 16, bottom: 16, left: 0 }}>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
-            <YAxis allowDecimals={false} fontSize={12} />
-            <Tooltip formatter={(v: number) => formatNumber(v)} />
-            <Legend />
-            {series.map((s, i) => (
-              <Line
-                key={s.label}
-                type="monotone"
-                dataKey={s.label}
-                stroke={COLORS[i % COLORS.length]}
-                strokeWidth={2}
-                dot={false}
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-      );
-    }
     return (
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={rows} margin={{ top: 16, right: 16, bottom: 16, left: 0 }}>
-          <CartesianGrid vertical={false} strokeDasharray="3 3" />
-          <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
-          <YAxis allowDecimals={false} fontSize={12} />
-          <Tooltip formatter={(v: number) => formatNumber(v)} />
-          <Line type="monotone" dataKey="value" stroke={COLORS[0]} strokeWidth={2} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
+      <LineResultChart
+        rows={rows}
+        series={result.series ?? []}
+        height={height}
+      />
     );
   }
 
   return <ResultTable result={result} />;
+}
+
+function BarResultChart({
+  rows,
+  height,
+}: {
+  rows: Array<{ label: string; value: number }>;
+  height: number;
+}) {
+  const definition = React.useMemo(() => {
+    const labels = rows.map((r) => r.label);
+    return defineChart({
+      marks: [
+        barY(rows, {
+          x: 'label',
+          y: 'value',
+          color: 'label',
+          radius: 4,
+          inset: 2,
+          key: 'label',
+        }),
+      ],
+      x: {
+        scale: () => scaleBand<string>().domain(labels).padding(0.2),
+        axis: {
+          tickLabels: {
+            fontSize: 12,
+            rotate: rows.length > 6 ? -30 : 0,
+          },
+        },
+      },
+      y: {
+        scale: scaleLinear,
+        nice: true,
+        grid: true,
+      },
+      color: {
+        domain: labels,
+        range: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+      },
+      tooltip,
+    });
+  }, [rows]);
+
+  return (
+    <div style={{ height }} className="w-full">
+      <Chart
+        definition={definition}
+        height={height}
+        ariaLabel="Query result bar chart"
+        className="h-full w-full"
+      />
+    </div>
+  );
+}
+
+function PieResultChart({
+  rows,
+  height,
+}: {
+  rows: Array<{ label: string; value: number }>;
+  height: number;
+}) {
+  const definition = React.useMemo(() => {
+    const data = rows.map((r) => ({ name: r.label, value: r.value }));
+    const slices = pie(data, { value: 'value', gapAngle: 0.02 });
+    const names = data.map((d) => d.name);
+
+    return defineChart({
+      marks: [
+        polar({
+          inset: 8,
+          radiusRatio: 0.88,
+          marks: [
+            radialArc(slices, {
+              innerRadius: ({ radius }) => radius * 0.45,
+              cornerRadius: 3,
+              color: 'name',
+              key: 'name',
+            }),
+          ],
+        }),
+      ],
+      color: {
+        domain: names,
+        range: names.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+        legend: colorLegend({ label: 'Category' }),
+      },
+      tooltip,
+    });
+  }, [rows]);
+
+  return (
+    <div style={{ height }} className="w-full">
+      <Chart
+        definition={definition}
+        height={height}
+        ariaLabel="Query result pie chart"
+        className="h-full w-full"
+      />
+    </div>
+  );
+}
+
+function LineResultChart({
+  rows,
+  series,
+  height,
+}: {
+  rows: Array<{ label: string; value: number }>;
+  series: Array<{ label: string; rows: Array<{ label: string; value: number }> }>;
+  height: number;
+}) {
+  const definition = React.useMemo(() => {
+    if (series.length > 0) {
+      const longRows = series.flatMap((s) =>
+        s.rows.map((r) => ({
+          label: r.label,
+          value: r.value,
+          series: s.label,
+        }))
+      );
+      const seriesLabels = series.map((s) => s.label);
+      const buckets = rows.map((r) => r.label);
+
+      return defineChart({
+        marks: [
+          lineY(longRows, {
+            x: 'label',
+            y: 'value',
+            z: 'series',
+            color: 'series',
+            strokeWidth: 2,
+            key: (d) => `${d.series}-${d.label}`,
+          }),
+        ],
+        x: {
+          scale: () => scalePoint<string>().domain(buckets).padding(0.15),
+          axis: { tickLabels: { fontSize: 12 } },
+        },
+        y: {
+          scale: scaleLinear,
+          nice: true,
+          grid: true,
+        },
+        color: {
+          domain: seriesLabels,
+          range: seriesLabels.map(
+            (_, i) => CHART_COLORS[i % CHART_COLORS.length]
+          ),
+          legend: colorLegend({ label: 'Series' }),
+        },
+        tooltip,
+      });
+    }
+
+    return defineChart({
+      marks: [
+        lineY(rows, {
+          x: 'label',
+          y: 'value',
+          stroke: CHART_COLORS[0],
+          strokeWidth: 2,
+          key: 'label',
+        }),
+      ],
+      x: {
+        scale: () =>
+          scalePoint<string>()
+            .domain(rows.map((r) => r.label))
+            .padding(0.15),
+        axis: { tickLabels: { fontSize: 12 } },
+      },
+      y: {
+        scale: scaleLinear,
+        nice: true,
+        grid: true,
+      },
+      tooltip,
+    });
+  }, [rows, series]);
+
+  return (
+    <div style={{ height }} className="w-full">
+      <Chart
+        definition={definition}
+        height={height}
+        ariaLabel="Query result line chart"
+        className="h-full w-full"
+      />
+    </div>
+  );
 }
 
 function ResultTable({ result }: { result: CustomQueryResult }) {
@@ -214,7 +323,9 @@ function ResultTable({ result }: { result: CustomQueryResult }) {
                 <TableCell>{bucket}</TableCell>
                 {series.map((s) => (
                   <TableCell key={s.label} className="text-right tabular-nums">
-                    {formatNumber(s.rows.find((r) => r.label === bucket)?.value ?? 0)}
+                    {formatNumber(
+                      s.rows.find((r) => r.label === bucket)?.value ?? 0
+                    )}
                   </TableCell>
                 ))}
               </TableRow>
@@ -234,7 +345,8 @@ function ResultTable({ result }: { result: CustomQueryResult }) {
   }
 
   const labelHeader = result.groupBy ?? result.trendBy ?? 'Label';
-  const valueHeader = result.operation === 'sum' ? result.metric ?? 'Total' : 'Count';
+  const valueHeader =
+    result.operation === 'sum' ? (result.metric ?? 'Total') : 'Count';
 
   return (
     <div className="max-h-[320px] overflow-auto rounded-md border">
@@ -249,7 +361,9 @@ function ResultTable({ result }: { result: CustomQueryResult }) {
           {rows.map((row) => (
             <TableRow key={row.label}>
               <TableCell>{row.label}</TableCell>
-              <TableCell className="text-right tabular-nums">{formatNumber(row.value)}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {formatNumber(row.value)}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
