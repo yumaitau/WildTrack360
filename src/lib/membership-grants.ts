@@ -3,7 +3,7 @@
 import { prisma } from './prisma';
 import { computeMembershipEnd } from './square/periods';
 import { getOrgDisplayInfo } from './org-info';
-import { sendEmail } from './email/resend';
+import { isPaperboyConfigured, sendEmail } from './email/resend';
 import { MemberBroadcastEmail } from './email/templates/member-broadcast';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.wildtrack360.com.au';
@@ -62,7 +62,7 @@ export async function grantMembership(orgId: string, input: GrantInput) {
   });
 
   // Best-effort welcome email.
-  if (process.env.RESEND_API_KEY) {
+  if (isPaperboyConfigured()) {
     try {
       const org = await getOrgDisplayInfo(orgId);
       const isComp = giftedBy === 'Complimentary';

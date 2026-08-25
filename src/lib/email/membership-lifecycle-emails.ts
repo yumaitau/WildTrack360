@@ -1,6 +1,6 @@
 'server-only';
 
-import { sendEmail } from './resend';
+import { isPaperboyConfigured, sendEmail } from './resend';
 import { MemberBroadcastEmail } from './templates/member-broadcast';
 import type { MembershipNotificationKind } from '@prisma/client';
 
@@ -88,14 +88,14 @@ function buildCopy(
   }
 }
 
-// Email one lifecycle message. Best-effort: no-op when Resend isn't configured.
+// Email one lifecycle message. Best-effort: no-op when Paperboy isn't configured.
 export async function sendMembershipLifecycleEmail(
   kind: MembershipNotificationKind,
   to: string,
   org: LifecycleOrg,
   ctx: LifecycleContext
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) return false;
+  if (!isPaperboyConfigured()) return false;
   const copy = buildCopy(kind, org, ctx);
   try {
     await sendEmail({
