@@ -1,7 +1,7 @@
 // Community email configuration resolved from the environment. Kept tiny and
 // pure so callers can decide whether email is even possible before doing any
-// work. WildTrack360 sends through Resend (not SES), so this reads the Resend
-// env plus a Community-specific enable flag. Returns null when Resend is not
+// work. WildTrack360 sends through Paperboy, so this reads the Paperboy env
+// plus a Community-specific enable flag. Returns null when Paperboy is not
 // configured, so the whole Community email subsystem fails closed and silent in
 // unconfigured environments.
 
@@ -15,11 +15,12 @@ export interface CommunityEmailConfig {
 }
 
 export function getEmailConfig(): CommunityEmailConfig | null {
-  // Resend is the only mail transport. No key → email is impossible → fail closed.
-  if (!process.env.RESEND_API_KEY?.trim()) return null;
+  // Paperboy is the only mail transport. No URL/key → email is impossible → fail closed.
+  if (!process.env.PAPERBOY_URL?.trim() || !process.env.PAPERBOY_API_KEY?.trim()) return null;
 
   const fromEmail =
     process.env.COMMUNITY_EMAIL_FROM?.trim() ||
+    process.env.PAPERBOY_FROM_EMAIL?.trim() ||
     process.env.RESEND_FROM_EMAIL?.trim() ||
     'WildTrack360 Community <community@wildtrack360.com.au>';
 
@@ -35,6 +36,8 @@ export function getEmailConfig(): CommunityEmailConfig | null {
 
   return {
     fromEmail,
+    // Paperboy has no Reply-To field. Kept on the config type so existing
+    // callers keep compiling; the provider does not send it.
     replyToEmail: process.env.COMMUNITY_EMAIL_REPLY_TO?.trim() || null,
     appUrl,
     enabled,

@@ -1,59 +1,37 @@
 'server-only';
 
-import type { ReactNode } from 'react';
-import { Resend } from 'resend';
+import type { ReactElement, ReactNode } from 'react';
+import { render } from '@react-email/render';
+import {
+  getPaperboyFromEmail,
+  isPaperboyConfigured,
+  sendPaperboyEmail,
+  type PaperboyTag,
+} from './paperboy';
 
-type EmailTag = {
-  name: string;
-  value: string;
-};
+type EmailTag = PaperboyTag;
 
 type SendEmailInput = {
   to: string | string[];
   subject: string;
   react: ReactNode;
   tags?: EmailTag[];
+  // Accepted for call-site compatibility. Paperboy has no custom headers, so
+  // List-Unsubscribe and any other headers are dropped.
   headers?: Record<string, string>;
 };
 
-let resendClient: Resend | null = null;
+export { isPaperboyConfigured };
 
-function getResendClient() {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error('RESEND_API_KEY is not configured');
+export async function sendEmail({ to, subject, react, tags }: SendEmailInput) {
+  if (!isPaperboyConfigured()) {
+    throw new Error('PAPERBOY_URL and PAPERBOY_API_KEY are not configured');
   }
 
-  if (!resendClient) {
-    resendClient = new Resend(process.env.RESEND_API_KEY);
-  }
+  const from = getPaperboyFromEmail('WildTrack360 <notifications@wildtrack360.com.au>');
+  const element = react as ReactElement;
+  const html = await render(element);
+  const text = await render(element, { plainText: true });
 
-  return resendClient;
-}
-
-export async function sendEmail({ to, subject, react, tags, headers }: SendEmailInput) {
-  const from = process.env.RESEND_FROM_EMAIL ?? 'WildTrack360 <notifications@wildtrack360.com.au>';
-  const unsubscribeUrl =
-    process.env.ADMIN_NOTIFICATION_UNSUBSCRIBE_URL ?? 'mailto:unsubscribe@wildtrack360.com.au';
-
-  const response = await getResendClient().emails.send({
-    from,
-    to,
-    subject,
-    react,
-    tags,
-    headers: {
-      'List-Unsubscribe': unsubscribeUrl.startsWith('mailto:')
-        ? `<${unsubscribeUrl}>`
-        : `<${unsubscribeUrl}>`,
-      ...headers,
-    },
-  });
-
-  if (response.error) {
-    throw new Error(response.error.message);
-  }
-
-  return {
-    id: response.data?.id ?? null,
-  };
+  return sendPaperboyEmail({ from, to, subject, html, text, tags });
 }
