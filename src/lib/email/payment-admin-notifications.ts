@@ -2,6 +2,7 @@ import type { BillingInterval, PaymentKind } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { formatAmountCents, receiptKindLabel } from '@/lib/receipts';
 import { sendAdminNotification } from './admin-notifications';
+import { isPaperboyConfigured } from './resend';
 
 type PaymentAdminEvent = 'donation-received' | 'membership-signup' | 'membership-renewed';
 
@@ -120,7 +121,7 @@ export async function sendPaymentActivityAdminNotification(
   paymentId: string,
   orgId: string
 ): Promise<void> {
-  if (!process.env.RESEND_API_KEY) return;
+  if (!isPaperboyConfigured()) return;
 
   const payment = await loadPaymentForAdminNotification(paymentId, orgId);
 
