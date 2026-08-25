@@ -24,14 +24,16 @@ const updatedAt = new Date('2026-06-11T02:00:00.000Z');
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.RESEND_API_KEY = 'test-key';
+  process.env.PAPERBOY_URL = 'https://paperboy.test';
+  process.env.PAPERBOY_API_KEY = 'test-key';
   mockPrisma.membership.findFirst.mockResolvedValue(null);
   mockPrisma.recurringSubscription.findUnique.mockResolvedValue(null);
 });
 
 describe('sendPaymentActivityAdminNotification', () => {
   it('does not hit the database when email is not configured', async () => {
-    delete process.env.RESEND_API_KEY;
+    delete process.env.PAPERBOY_URL;
+    delete process.env.PAPERBOY_API_KEY;
 
     await sendPaymentActivityAdminNotification('pay-1', 'org-1');
 
