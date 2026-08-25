@@ -7,14 +7,14 @@ import {
   formatAbn,
   resolveThankYouMessage,
 } from '../receipts';
-import { sendEmail } from './resend';
+import { isPaperboyConfigured, sendEmail } from './resend';
 import { PaymentReceiptEmail } from './templates/payment-receipt';
 
 // Email a branded receipt to the payer after a successful payment. Best-effort:
-// returns silently when Resend isn't configured or the payment can't be loaded,
+// returns silently when Paperboy isn't configured or the payment can't be loaded,
 // so it never blocks payment processing. Callers should also wrap in try/catch.
 export async function sendPaymentReceiptEmail(paymentId: string, orgId: string): Promise<void> {
-  if (!process.env.RESEND_API_KEY) return; // email not configured — no-op
+  if (!isPaperboyConfigured()) return; // email not configured — no-op
 
   const data = await loadReceiptData(paymentId, orgId);
   if (!data) return;

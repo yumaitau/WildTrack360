@@ -1,6 +1,6 @@
 'server-only';
 
-import { sendEmail } from './resend';
+import { isPaperboyConfigured, sendEmail } from './resend';
 import { MemberBroadcastEmail } from './templates/member-broadcast';
 
 const PORTAL_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.wildtrack360.com.au';
@@ -11,14 +11,14 @@ interface OrgContact {
   contactPhone: string | null;
 }
 
-// Email a single admin → member message. Best-effort: no-op when Resend isn't
+// Email a single admin → member message. Best-effort: no-op when Paperboy isn't
 // configured. Caller is responsible for batching / error handling.
 export async function sendMemberMessageEmail(
   to: string,
   org: OrgContact,
   msg: { subject: string; body: string; memberFirstName: string }
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) return false;
+  if (!isPaperboyConfigured()) return false;
   await sendEmail({
     to,
     subject: msg.subject,
@@ -45,7 +45,7 @@ export async function sendNewsPostEmail(
   org: OrgContact,
   post: { title: string; body: string; memberFirstName: string }
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) return false;
+  if (!isPaperboyConfigured()) return false;
   await sendEmail({
     to,
     subject: `${post.title} — ${org.name}`,
@@ -72,13 +72,13 @@ interface NewsRecipient {
 }
 
 // Fan out a news post to many members in small concurrent batches so a large
-// roster doesn't hammer Resend. Returns the number of emails that sent OK.
+// roster doesn't hammer Paperboy. Returns the number of emails that sent OK.
 export async function broadcastNewsPost(
   recipients: NewsRecipient[],
   org: OrgContact,
   post: { title: string; body: string }
 ): Promise<number> {
-  if (!process.env.RESEND_API_KEY) return 0;
+  if (!isPaperboyConfigured()) return 0;
   const BATCH = 20;
   let sent = 0;
   for (let i = 0; i < recipients.length; i += BATCH) {
