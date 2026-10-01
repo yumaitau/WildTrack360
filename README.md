@@ -504,7 +504,7 @@ This project is licensed under the Mozilla Public License 2.0 (MPL-2.0) - see th
 - Components from [shadcn/ui](https://ui.shadcn.com/)
 - Authentication by [Clerk](https://clerk.com/)
 - Database powered by [Prisma](https://www.prisma.io/)
-- Charts by [Recharts](https://recharts.org/)
+- Charts by [TanStack Charts](https://tanstack.com/charts)
 - Error monitoring by [Sentry](https://sentry.io/)
 
 ---
