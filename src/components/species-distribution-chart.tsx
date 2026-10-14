@@ -1,64 +1,71 @@
 // src/components/species-distribution-chart.tsx
-"use client"
+"use client";
 
-import * as React from "react"
-import { Pie, PieChart, Cell } from "recharts"
-
+import * as React from "react";
+import { colorLegend, defineChart } from "@tanstack/charts";
+import { Chart } from "@tanstack/charts/react";
+import { pie, polar, radialArc } from "@tanstack/charts/polar";
+import { tooltip } from "@tanstack/charts/tooltip";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from "@/components/ui/chart"
-import { Animal } from "@prisma/client"
+} from "@/components/ui/card";
+import { CHART_COLORS } from "@/components/ui/chart";
+import { Animal } from "@prisma/client";
 
 interface SpeciesDistributionChartProps {
   animals: Animal[];
 }
 
-const CHART_COLORS = [
-    "hsl(var(--chart-1))",
-    "hsl(var(--chart-2))",
-    "hsl(var(--chart-3))",
-    "hsl(var(--chart-4))",
-    "hsl(var(--chart-5))",
-    "#f59e0b", // amber-500
-    "#10b981", // emerald-500
-    "#3b82f6", // blue-500
-];
-
-export default function SpeciesDistributionChart({ animals }: SpeciesDistributionChartProps) {
+export default function SpeciesDistributionChart({
+  animals,
+}: SpeciesDistributionChartProps) {
   const chartData = React.useMemo(() => {
-    const speciesCount = animals.reduce((acc, animal) => {
-      acc[animal.species] = (acc[animal.species] || 0) + 1;
-      return acc;
-    }, {} as { [key: string]: number });
+    const speciesCount = animals.reduce(
+      (acc, animal) => {
+        acc[animal.species] = (acc[animal.species] || 0) + 1;
+        return acc;
+      },
+      {} as { [key: string]: number }
+    );
 
-    return Object.entries(speciesCount).map(([species, count], index) => ({
+    return Object.entries(speciesCount).map(([species, count]) => ({
       name: species,
       value: count,
-      fill: CHART_COLORS[index % CHART_COLORS.length],
     }));
   }, [animals]);
-  
-  const chartConfig = React.useMemo(() => {
-      const config: ChartConfig = {};
-      chartData.forEach((item) => {
-          config[item.name] = {
-              label: item.name,
-              color: item.fill,
-          }
-      });
-      return config;
+
+  const definition = React.useMemo(() => {
+    const slices = pie(chartData, { value: "value", gapAngle: 0.02 });
+    const names = chartData.map((d) => d.name);
+
+    return defineChart({
+      marks: [
+        polar({
+          inset: 8,
+          radiusRatio: 0.9,
+          marks: [
+            radialArc(slices, {
+              innerRadius: ({ radius }) => radius * 0.55,
+              cornerRadius: 3,
+              color: "name",
+              key: "name",
+            }),
+          ],
+        }),
+      ],
+      color: {
+        domain: names,
+        range: names.map(
+          (_, i) => CHART_COLORS[i % CHART_COLORS.length]
+        ),
+        legend: colorLegend({ label: "Species" }),
+      },
+      tooltip,
+    });
   }, [chartData]);
 
   return (
@@ -68,36 +75,21 @@ export default function SpeciesDistributionChart({ animals }: SpeciesDistributio
         <CardDescription>Breakdown of animals by species</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
-         {chartData.length > 0 ? (
-            <ChartContainer
-                config={chartConfig}
-                className="mx-auto aspect-square max-h-[300px]"
-            >
-            <PieChart>
-                <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent hideLabel />}
-                />
-                <Pie
-                    data={chartData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={60}
-                    strokeWidth={5}
-                >
-                    {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                     ))}
-                </Pie>
-                 <ChartLegend content={<ChartLegendContent nameKey="name" />} />
-            </PieChart>
-            </ChartContainer>
-         ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-                No data to display.
-            </div>
-         )}
+        {chartData.length > 0 ? (
+          <div className="mx-auto aspect-square max-h-[300px] w-full">
+            <Chart
+              definition={definition}
+              height={280}
+              ariaLabel="Species distribution"
+              className="h-full w-full"
+            />
+          </div>
+        ) : (
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            No data to display.
+          </div>
+        )}
       </CardContent>
     </Card>
-  )
+  );
 }
