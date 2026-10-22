@@ -1,5 +1,5 @@
 # Mangeled version of https://github.com/vercel/next.js/blob/canary/examples/with-docker/Dockerfile
-ARG NODE_VERSION=lts-slim
+ARG NODE_VERSION=24.22.1-slim
 
 # ============================================
 # Stage 1: Build Next.js application

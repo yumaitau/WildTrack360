@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Wildlife conservation management system for tracking animal lifecycle, carer compliance, and regulatory reporting across Australian jurisdictions",
   "license": "MPL-2.0",
+  "engines": {
+    "node": ">=24.22.1 <25"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/yumaitau/WildTrack360.git"
