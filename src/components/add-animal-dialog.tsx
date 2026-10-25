@@ -129,10 +129,10 @@ const addAnimalSchema = z.object({
   ageClass: z.string().optional(),
   age: z.string().optional(),
   dateOfBirth: z.date().optional().nullable(),
-  dateFound: z.date({ required_error: "Date found is required" }),
+  dateFound: z.date({ error: (issue) => issue.input === undefined ? "Date found is required" : undefined }),
   carer: z.string().optional(),
   status: z.enum(["ADMITTED","IN_CARE","READY_FOR_RELEASE","RELEASED","DECEASED","TRANSFERRED","PERMANENT_CARE"], {
-    required_error: "Status is required"
+    error: (issue) => issue.input === undefined ? "Status is required" : undefined
   }),
   rescueLocation: z.string().optional(),
   rescueCoordinates: z.object({ lat: z.number(), lng: z.number() }).optional(),
@@ -236,7 +236,7 @@ export function AddAnimalDialog({
   const prevIsOpenRef = React.useRef(isOpen);
   const prevAnimalToEditRef = React.useRef(animalToEdit);
 
-  const form = useForm<AddAnimalFormValues>({
+  const form = useForm<z.input<typeof addAnimalSchema>, unknown, AddAnimalFormValues>({
     resolver: zodResolver(addAnimalSchema),
     defaultValues: isEditMode && animalToEdit ? {
       orgAnimalId: animalToEdit.orgAnimalId || '',
