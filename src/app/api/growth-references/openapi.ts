@@ -36,7 +36,7 @@ const EstimateBirthDateBodySchema = z
   .object({
     speciesName: z.string().min(1),
     measurementDate: z.string().min(1),
-    measurements: z.record(z.number()),
+    measurements: z.record(z.string(), z.number()),
     sex: z.string().optional(),
   })
   .passthrough()

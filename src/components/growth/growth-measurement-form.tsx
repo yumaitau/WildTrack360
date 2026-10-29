@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { type MeasurementField, MEASUREMENT_LABELS, getRelevantFields } from "@/lib/growth-utils";
 
 const formSchema = z.object({
-  date: z.date({ required_error: "Date is required." }),
+  date: z.date({ error: (issue) => issue.input === undefined ? "Date is required." : undefined }),
   weightGrams: z.string().optional(),
   headLengthMm: z.string().optional(),
   earLengthMm: z.string().optional(),
