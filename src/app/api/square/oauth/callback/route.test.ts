@@ -59,6 +59,24 @@ describe('Square OAuth callback', () => {
     );
   });
 
+  it.each([
+    'attacker.invalid?.wildtrack360.com.au',
+    'attacker.invalid#.wildtrack360.com.au',
+    'attacker.invalid/.wildtrack360.com.au',
+    'wildtrack360.com.au@attacker.invalid',
+  ])('rejects URL syntax hidden inside x-forwarded-host: %s', async (forwardedHost) => {
+    const spoofed = new Request(
+      'https://yumait.wildtrack360.com.au/api/square/oauth/callback?error=access_denied',
+      { headers: { 'x-forwarded-host': forwardedHost, 'x-forwarded-proto': 'https' } }
+    );
+
+    const res = await GET(spoofed);
+
+    expect(res.headers.get('location')).toBe(
+      'https://yumait.wildtrack360.com.au/admin/payments/settings?error=access_denied'
+    );
+  });
+
   it('redirects with error=state when the state is unknown/expired', async () => {
     consumeOAuthState.mockResolvedValue(null);
     const res = await GET(req('code=abc&state=bad'));
