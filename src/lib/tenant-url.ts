@@ -20,11 +20,44 @@ function protocolFor(host: string): 'http' | 'https' {
   return host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
 }
 
-// Only the root domain itself or one of its subdomains is a host we'd ever
-// redirect to. Anything else in a forwarded header is treated as spoofed.
-function isTrustedHost(host: string): boolean {
-  const root = rootDomain();
-  return host === root || host.endsWith(`.${root}`);
+function parseAuthority(authority: string): URL | null {
+  const value = authority.trim().toLowerCase();
+  if (!value || /[\s,/?#@\\]/.test(value)) return null;
+
+  try {
+    const url = new URL(`https://${value}`);
+    if (url.username || url.password || !url.hostname) return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+// Only the root domain itself or an authority beneath it is accepted. Parse
+// before comparing so URL delimiters cannot hide an attacker origin in a
+// string that merely ends with the configured root domain.
+function trustedHost(authority: string): string | null {
+  const candidate = parseAuthority(authority);
+  const root = parseAuthority(rootDomain());
+  if (!candidate || !root) return null;
+
+  const matchesDomain =
+    candidate.hostname === root.hostname || candidate.hostname.endsWith(`.${root.hostname}`);
+  if (!matchesDomain || candidate.port !== root.port) return null;
+
+  return candidate.host;
+}
+
+export function requestHost(request: Request): string {
+  const url = new URL(request.url);
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+
+  return (
+    (forwardedHost ? trustedHost(forwardedHost) : null) ??
+    trustedHost(url.host) ??
+    trustedHost(rootDomain()) ??
+    'localhost:3000'
+  );
 }
 
 // Build a tenant base origin from an already-known org slug. Falls back to the
@@ -60,14 +93,7 @@ export async function tenantBaseUrl(orgId: string, clerk?: Clerk): Promise<strin
 // state is consumed) so we bounce back to the host the caller actually hit
 // instead of a baked-in URL.
 export function requestOrigin(request: Request): string {
-  const url = new URL(request.url);
-
-  // x-forwarded-* are attacker-controllable unless the proxy overwrites them,
-  // and this origin feeds a redirect Location — so sanitise before trusting.
-  // Take only the first hop, and only accept a host under our root domain;
-  // otherwise fall back to the host the server itself received.
-  const fwdHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
-  const host = fwdHost && isTrustedHost(fwdHost) ? fwdHost : url.host;
+  const host = requestHost(request);
 
   const fwdProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
   const proto = fwdProto === 'http' || fwdProto === 'https' ? fwdProto : protocolFor(host);

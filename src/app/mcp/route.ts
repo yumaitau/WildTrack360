@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { extractSubdomain } from '@/lib/subdomain';
 import { registerWildTrackTools } from '@/lib/mcp/tools';
+import { requestHost } from '@/lib/tenant-url';
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
 
@@ -48,7 +49,7 @@ const authHandler = withMcpAuth(
     // resolveMcpContext still verifies the user's Clerk membership before any
     // data access, so a spoofed Host header cannot grant access to an org the
     // caller doesn't belong to.
-    const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? '';
+    const host = requestHost(req);
     const subdomain = extractSubdomain(host, ROOT_DOMAIN);
     if (!subdomain) return authInfo;
 
