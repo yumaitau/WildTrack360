@@ -64,8 +64,9 @@ FROM node:${NODE_VERSION}
 # Keep pnpm available for existing Coolify scheduled task commands.
 RUN corepack enable && corepack install -g pnpm@latest
 
-# Install OpenSSL
-RUN apt-get update -y && apt-get install -y openssl
+# Coolify's HTTP health probes require curl inside the runtime container.
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl curl \
+  && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /usr/src/app
@@ -101,7 +102,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/internal/ping || exit 1
+  CMD curl --fail --silent --show-error --max-time 4 http://127.0.0.1:3000/api/internal/ping || exit 1
 
 # Start the application
 CMD ["npm", "run", "prod_start"]
