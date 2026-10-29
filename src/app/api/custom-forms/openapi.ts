@@ -176,7 +176,7 @@ const submissionSchema = z
       .nullable(),
     photoUrls: z.array(z.string()),
     weather: weatherCaptureSchema.nullable(),
-    values: z.record(z.unknown()),
+    values: z.record(z.string(), z.unknown()),
     notes: z.string().nullable(),
     device: deviceCaptureSchema.nullable(),
     createdAt: isoDateTime(),
@@ -291,7 +291,7 @@ const submissionBodySchema = z
     photoUrls: z.array(z.string()).max(20).optional(),
     photos: z.array(z.string()).max(20).optional(),
     weather: weatherCaptureInputSchema.optional(),
-    values: z.record(z.unknown()).optional(),
+    values: z.record(z.string(), z.unknown()).optional(),
     notes: z.string().nullable().optional(),
     device: deviceCaptureSchema.optional(),
   })

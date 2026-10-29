@@ -39,7 +39,7 @@ import { recordTypes } from "@/lib/types";
 
 const addRecordSchema = z.object({
   type: z.enum(recordTypes),
-  date: z.date({ required_error: "Record date is required." }),
+  date: z.date({ error: (issue) => issue.input === undefined ? "Record date is required." : undefined }),
   time: z.string().min(1, "Record time is required."),
   notes: z.string().min(1, "Notes are required."),
   weight: z.string().optional(),

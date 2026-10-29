@@ -176,7 +176,8 @@
           "name",
           "type",
           "status"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "AssetUpdate": {
         "type": "object",
@@ -226,7 +227,8 @@
               "null"
             ]
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "AssetOk": {
         "type": "object",
@@ -405,7 +407,8 @@
           "carerId",
           "courseName",
           "date"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "CarerTrainingUpdate": {
         "type": "object",
@@ -458,7 +461,8 @@
               "null"
             ]
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "CarerTrainingDeleted": {
         "type": "object",
@@ -538,7 +542,8 @@
             },
             "required": [
               "id"
-            ]
+            ],
+            "additionalProperties": {}
           }
         },
         "required": [
@@ -605,7 +610,8 @@
         },
         "required": [
           "carerId"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "HygieneLogUpdate": {
         "type": "object",
@@ -644,7 +650,8 @@
               "null"
             ]
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "HygieneLogDeleted": {
         "type": "object",
@@ -833,7 +840,8 @@
           "type",
           "description",
           "severity"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "IncidentUpdate": {
         "type": "object",
@@ -895,7 +903,8 @@
               "null"
             ]
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "IncidentDeleted": {
         "type": "object",
@@ -924,7 +933,8 @@
         "required": [
           "name",
           "species"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "PostReleaseMonitoring": {
         "type": "object",
@@ -1032,7 +1042,8 @@
         "required": [
           "animalId",
           "notes"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "PostReleaseMonitoringUpdate": {
         "type": "object",
@@ -1063,7 +1074,8 @@
             "type": "string"
           },
           "photos": {}
-        }
+        },
+        "additionalProperties": {}
       },
       "PRMDeleted": {
         "type": "object",
@@ -1106,7 +1118,8 @@
           "id",
           "name",
           "species"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "AnimalTransfer": {
         "type": "object",
@@ -1411,7 +1424,8 @@
           "transferDate",
           "reasonForTransfer",
           "receivingEntity"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "TransferUpdate": {
         "type": "object",
@@ -1525,7 +1539,8 @@
             ]
           },
           "documents": {}
-        }
+        },
+        "additionalProperties": {}
       },
       "TransferDeleted": {
         "type": "object",
@@ -1567,7 +1582,8 @@
           "id",
           "name",
           "species"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "PermanentCareApplication": {
         "type": "object",
@@ -1847,7 +1863,8 @@
           "animalId",
           "nonReleasableReasons",
           "euthanasiaJustification"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "PermanentCareApplicationUpdate": {
         "type": "object",
@@ -1949,7 +1966,8 @@
           "rejectionReason": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "ReleaseChecklist": {
         "type": "object",
@@ -2077,7 +2095,8 @@
           "animalId",
           "releaseLocation",
           "releaseType"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "CallLogAnimalLite": {
         "type": [
@@ -2099,7 +2118,8 @@
           "id",
           "name",
           "species"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "CallLog": {
         "type": "object",
@@ -2362,7 +2382,8 @@
         },
         "required": [
           "callerName"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "CallLogUpdate": {
         "type": "object",
@@ -2464,7 +2485,8 @@
               "null"
             ]
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "CallLogDeleted": {
         "type": "object",
@@ -2562,7 +2584,8 @@
         "required": [
           "type",
           "label"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "CallLogLookupUpdate": {
         "type": "object",
@@ -2587,7 +2610,8 @@
         "required": [
           "type",
           "id"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "LookupDeleted": {
         "type": "object",
@@ -2717,7 +2741,8 @@
         },
         "required": [
           "name"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "SpeciesRenameResult": {
         "type": "object",
@@ -2800,7 +2825,8 @@
               "null"
             ]
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "SpeciesDeletedById": {
         "type": "object",
@@ -2918,7 +2944,8 @@
           "tailLengthMm",
           "hindFootLengthMm",
           "earLengthMm"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "BirthDateEstimate": {
         "type": "object",
@@ -2997,15 +3024,18 @@
           "speciesName",
           "measurementDate",
           "measurements"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "MembershipTier": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": {}
       },
       "MembershipTierBody": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": {}
       },
       "TierArchived": {
         "type": "object",
@@ -3020,11 +3050,13 @@
       },
       "NewsPost": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": {}
       },
       "NewsPostBody": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": {}
       },
       "NewsPostDeleted": {
         "type": "object",
@@ -3065,15 +3097,18 @@
       },
       "EnrichedCarer": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": {}
       },
       "CarerProfile": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": {}
       },
       "CarerProfileBody": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": {}
       },
       "CarerMapEntry": {
         "type": "object",
@@ -3672,7 +3707,8 @@
           "species",
           "status",
           "dateFound"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "AnimalUpdate": {
         "type": "object",
@@ -3697,7 +3733,8 @@
           "orgAnimalId": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "GrowthMeasurement": {
         "type": "object",
@@ -3878,7 +3915,8 @@
         },
         "required": [
           "date"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "AnimalReminder": {
         "type": "object",
@@ -3953,7 +3991,8 @@
         },
         "required": [
           "message"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "MemberStatus": {
         "type": "string",
@@ -4213,7 +4252,8 @@
           "email",
           "firstName",
           "lastName"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "MemberWithMemberships": {
         "allOf": [
@@ -4389,7 +4429,8 @@
             ],
             "additionalProperties": {}
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "OkResult": {
         "type": "object",
@@ -4512,7 +4553,8 @@
       },
       "SavedReportQuery": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": {}
       },
       "SavedQueryCreate": {
         "type": "object",
@@ -4578,7 +4620,8 @@
             "type": "array",
             "items": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": {}
             }
           }
         },
@@ -4593,7 +4636,8 @@
             "type": "array",
             "items": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": {}
             }
           }
         },
@@ -6363,11 +6407,13 @@
       "SquareCallbackRedirect": {},
       "MembershipLifecycleResult": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": {}
       },
       "NswRemindersResult": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": {}
       },
       "PortalMe": {
         "type": "object",
@@ -6522,7 +6568,8 @@
               "null"
             ]
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "CarerInterest": {
         "type": [
@@ -6642,7 +6689,8 @@
           "message": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": {}
       },
       "HouseholdMembers": {
         "type": "object",
@@ -6974,7 +7022,8 @@
         "required": [
           "amountCents",
           "sourceId"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "SubscriptionResult": {
         "type": "object",
@@ -7029,7 +7078,8 @@
         "required": [
           "tierId",
           "sourceId"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "RecurringDonationCheckout": {
         "type": "object",
@@ -7062,7 +7112,8 @@
           "amountCents",
           "interval",
           "sourceId"
-        ]
+        ],
+        "additionalProperties": {}
       },
       "UpdateSubscriptionCard": {
         "type": "object",
@@ -7080,7 +7131,8 @@
         },
         "required": [
           "sourceId"
-        ]
+        ],
+        "additionalProperties": {}
       }
     },
     "parameters": {}
@@ -11546,7 +11598,8 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "properties": {}
+                        "properties": {},
+                        "additionalProperties": {}
                       }
                     }
                   },
@@ -11802,7 +11855,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -11824,7 +11878,8 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {}
+                "properties": {},
+                "additionalProperties": {}
               }
             }
           }
@@ -11836,7 +11891,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -12166,7 +12222,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -12190,7 +12247,8 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {}
+                "properties": {},
+                "additionalProperties": {}
               }
             }
           }
@@ -12256,7 +12314,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -12352,7 +12411,8 @@
                         "object",
                         "null"
                       ],
-                      "properties": {}
+                      "properties": {},
+                      "additionalProperties": {}
                     }
                   },
                   "required": [
@@ -12386,7 +12446,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -12414,7 +12475,8 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "properties": {}
+                    "properties": {},
+                    "additionalProperties": {}
                   }
                 }
               }
@@ -12467,7 +12529,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -12495,7 +12558,8 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "properties": {}
+                    "properties": {},
+                    "additionalProperties": {}
                   }
                 }
               }
@@ -12551,7 +12615,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -12613,7 +12678,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -12750,7 +12816,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -13027,7 +13094,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -13059,7 +13127,8 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {}
+                "properties": {},
+                "additionalProperties": {}
               }
             }
           }
@@ -13071,7 +13140,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -14011,7 +14081,8 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {}
+                "properties": {},
+                "additionalProperties": {}
               }
             }
           }
@@ -14023,7 +14094,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -14121,7 +14193,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -14476,7 +14549,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -14752,7 +14826,8 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "properties": {}
+                    "properties": {},
+                    "additionalProperties": {}
                   }
                 }
               }
@@ -14791,7 +14866,8 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "properties": {}
+                    "properties": {},
+                    "additionalProperties": {}
                   }
                 }
               }
@@ -14955,7 +15031,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }
@@ -15012,7 +15089,8 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": {}
                 }
               }
             }

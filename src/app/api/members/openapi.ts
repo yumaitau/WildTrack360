@@ -83,7 +83,7 @@ export const MemberCreateSchema = z
     memberNumber: z.string().nullable().optional(),
     status: MemberStatusEnum.optional(),
     joinedAt: z.union([z.string(), z.null()]).optional(),
-    customFields: z.record(z.unknown()).nullable().optional(),
+    customFields: z.record(z.string(), z.unknown()).nullable().optional(),
   })
   .passthrough()
   .openapi('MemberCreate');
@@ -103,7 +103,7 @@ export const MemberUpdateSchema = z
     memberNumber: z.string().nullable().optional(),
     status: MemberStatusEnum.optional(),
     joinedAt: z.union([z.string(), z.null()]).optional(),
-    customFields: z.record(z.unknown()).nullable().optional(),
+    customFields: z.record(z.string(), z.unknown()).nullable().optional(),
   })
   .passthrough()
   .openapi('MemberUpdate');
