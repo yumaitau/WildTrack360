@@ -106,7 +106,7 @@
     "jspdf": "^4.2.1",
     "lucide-react": "^0.475.0",
     "mcp-handler": "^1.1.0",
-    "nanoid": "^5.1.7",
+    "nanoid": "^5.1.16",
     "next": "15.5.28",
     "nprogress": "^0.2.0",
     "patch-package": "^8.0.0",
@@ -156,6 +156,8 @@
     "tmp": "^0.2.6",
     "uuid": "^14.0.0",
     "esbuild": "0.28.1",
-    "vite": "^7.3.2"
+    "vite": "^7.3.2",
+    "deepmerge-ts": "^8.0.2",
+    "nanoid@3.3.17": "3.3.18"
   }
 }
