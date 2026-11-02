@@ -20,14 +20,14 @@ services:
 
   # Optional: pgAdmin for database management
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.19
     restart: always
     environment:
       - PGADMIN_DEFAULT_EMAIL=admin@wildtrack360.com
       - PGADMIN_DEFAULT_PASSWORD=admin
       - PGADMIN_CONFIG_SERVER_MODE=False
     ports:
-      - '8080:80'
+      - '127.0.0.1:8080:80'
     volumes:
       - pgadmin:/var/lib/pgadmin
     depends_on:
